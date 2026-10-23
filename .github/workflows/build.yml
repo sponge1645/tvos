@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/tvos-android-sdk/licenses"
           cp -R "$ANDROID_HOME/licenses/." "$RUNNER_TEMP/tvos-android-sdk/licenses/"
-          sdkmanager --sdk_root="$RUNNER_TEMP/tvos-android-sdk" "platforms;android-34" "build-tools;34.0.0"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$RUNNER_TEMP/tvos-android-sdk" "platforms;android-34" "build-tools;34.0.0"
       - name: Compile Android APK with disposable CI key
         env:
           ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
