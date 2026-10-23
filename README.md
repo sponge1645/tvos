@@ -28,13 +28,13 @@ full performance verification on physical TV hardware remains pending.
 ## Updates
 
 GitHub Releases for [sponge1645/tvos](https://github.com/sponge1645/tvos/releases) are the update source.
-Version 1.1 introduces real manual checks/downloads and optional daily automatic check/download.
+Version 1.0 includes real manual checks/downloads and optional daily automatic check/download.
 Installation uses Android's installer and requires confirmation. Update APKs must have the same
 package and current signing certificate set, matching version metadata and SHA-256.
 
 `./build.sh` also creates `release/tvOS.apk` and `release/update.json` from the same build.
-For the next version, run `./release.sh 1.2`, commit the version change and upload both assets to
-release tag `v1.2`. See [release instructions in Russian](docs/RELEASING.md).
+For the next version, run `./release.sh 1.1`, commit the version change and upload both assets to
+release tag `v1.1`. See [release instructions in Russian](docs/RELEASING.md).
 
 GitHub Actions compiles with a disposable CI key and never publishes its test APK.
 

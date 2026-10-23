@@ -206,7 +206,7 @@ final class SelfUpdate {
             connection.setInstanceFollowRedirects(false);
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
-            connection.setRequestProperty("User-Agent", "tvOS-Updater/1.1");
+            connection.setRequestProperty("User-Agent", "tvOS-Updater/1.0");
             connection.setRequestProperty("Accept-Encoding", "identity");
             int code;
             try { code = connection.getResponseCode(); }
