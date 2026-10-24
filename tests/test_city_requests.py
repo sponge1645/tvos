@@ -25,6 +25,8 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
      static class Choreographer {static Choreographer getInstance(){return new Choreographer();}void removeFrameCallback(Object o){} }
      static class Spoken {void focusMoved(){} }
      static class SelfUpdate {static SelfUpdate get(Object o){return new SelfUpdate();}void removeListener(Object o){}}
+     static class Shadows {boolean cleared;void clear(){cleared=true;}}
+     Shadows rowShadows=new Shadows();Object descriptionLayout=new Object();String descriptionText="cached";
  Object updateListener;Object getContext(){return this;}
  static final ThreadPoolExecutor CITY_IO=new ThreadPoolExecutor(1,1,0,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>());
      Handler handler=new Handler();Spoken spoken=new Spoken();UiRequest cityRequest;int citySerial,screen=GENERAL,pickers;boolean running=true;
@@ -38,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
       CityHarness h=new CityHarness();
       try {
        h.searchCity("old");h.flush();h.pause();h.handler.drain();check(h.pickers==0,"paused settings suppress city callback");
+       check(h.rowShadows.cleared && h.descriptionLayout==null && h.descriptionText==null,"pause drops shadow and description caches");
        h.running=true;h.searchCity("different-screen");h.flush();h.screen=99;h.handler.drain();check(h.pickers==0 && h.cityStatus.isEmpty(),"navigation suppresses picker");
        h.screen=GENERAL;CountDownLatch gate=new CountDownLatch(1),entered=new CountDownLatch(1);
        CITY_IO.execute(()->{entered.countDown();try{gate.await(3,TimeUnit.SECONDS);}catch(Exception e){throw new RuntimeException(e);}});entered.await(3,TimeUnit.SECONDS);

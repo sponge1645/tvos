@@ -57,7 +57,12 @@ final class Prefs {
         return v != null && v.trim().toLowerCase(Locale.ROOT).startsWith("ru") ? "ru" : "en";
     }
 
-    static void setLanguage(String v) { put("language", v); Ui.applyLanguage(); }
+    static void setLanguage(String v) {
+        String previous = language();
+        put("language", v);
+        Ui.applyLanguage();
+        if (!previous.equals(language())) Recs.languageChanged();
+    }
 
     /** "auto", "C" or "F". */
     static String temperature() {

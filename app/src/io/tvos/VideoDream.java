@@ -108,7 +108,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         cp.setMargins(0, dp(55), 0, 0);
         addView(clock, cp);
         date = new TextView(context);
-        date.setTypeface(sfAerial(context, "sf_text_regular.otf"));
+        date.setTypeface(sfAerial(context, "sf_display_regular.otf"));
         date.setTextColor(0xE6FFFFFF);
         date.setTextSize(20);
         date.setShadowLayer(5, 1, 2, Color.BLACK);

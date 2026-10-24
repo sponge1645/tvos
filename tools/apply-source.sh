@@ -16,6 +16,10 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
     else cp "$SOURCE/$ITEM" "$TARGET/$ITEM"; fi
   fi
 done
+# These fonts were replaced by SF Pro Display. The complete previous app is already in BACKUP.
+for FONT_FILE in InterVariable.ttf sf_text_regular.otf sf_text_medium.otf sf_text_semibold.otf OFL.txt; do
+  rm -f -- "$TARGET/app/assets/fonts/$FONT_FILE"
+done
 chmod +x "$TARGET/build.sh" "$TARGET/release.sh"
 echo "Source applied. Backup: $BACKUP"
 echo 'Existing config.properties and freemytv.keystore preserved.'

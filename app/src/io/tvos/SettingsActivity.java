@@ -15,6 +15,10 @@ import android.graphics.Shader;
 import android.graphics.Canvas;
 import android.graphics.Bitmap;
 import android.graphics.Paint;
+import android.graphics.Matrix;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Bundle;
@@ -123,13 +127,14 @@ public class SettingsActivity extends Activity {
     static final class SettingsView extends View implements Choreographer.FrameCallback {
         private static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, GENERAL = 6, WIDGETS = 7, SYSTEM = 8, ABOUT = 9, SCREENSAVER = 10, WEATHER = 11, DATE_TIME = 12, MENU_BUTTONS = 13, UPDATES = 14, TOP_PANEL = 15, ACCESSIBILITY = 16, RESET = 17, VPN_SETTINGS = 18, APPS_DOWNLOADS = 19;
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
-        private static final int PICK_VISIBLE = 9;
+        private static final int PICK_VISIBLE = 10;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
         private static final int AMBER = 0xFFFFC266, INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
         private Click tvosClick; // TVOS_AERIAL_CONTROLS_V1: same sound as HomeView
         private final Scene scene = new Scene();
+        private final Shadows rowShadows = new Shadows();
         private final Handler handler = new Handler(Looper.getMainLooper());
         private static final java.util.concurrent.ThreadPoolExecutor CITY_IO = new java.util.concurrent.ThreadPoolExecutor(
                 1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
@@ -144,10 +149,28 @@ public class SettingsActivity extends Activity {
         private final List<String[]> shelfRows = new ArrayList<>();
         private final List<String> shelfOrder = new ArrayList<>();
         private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
+        private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private static final int PICK_CITY = 0, PICK_VPN = -1;
         private final List<String[]> cities = new ArrayList<>();
         private String cityStatus = "";
         private final RectF tmp = new RectF(), rowRect = new RectF(), focusBox = new RectF();
+        private final RectF logoBounds = new RectF();
+        private final Paint.FontMetrics logoMetrics = new Paint.FontMetrics();
+        private final Paint trackedGlyphPaint = new Paint();
+        private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path arrowPath = new Path();
+        private final TextPaint shelfMeasurePaint = new TextPaint();
+        private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private StaticLayout descriptionLayout;
+        private String descriptionText;
+        private int descriptionWidth;
+        private final Matrix capsuleMatrix = new Matrix();
+        private final Shader lightCapsuleGradient = new LinearGradient(0, 0, 1, 0,
+                new int[]{0x96ECFCFF, 0xA8DFF6FA, 0x92E8F8FD},
+                new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP);
+        private final Shader darkCapsuleGradient = new LinearGradient(0, 0, 1, 0,
+                new int[]{0xB3475A63, 0xB13B484E, 0xB43B4145},
+                new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP);
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
         private Bitmap cachedBackground;
@@ -169,8 +192,15 @@ public class SettingsActivity extends Activity {
         private static final long MENU_TRANSITION_MS = 280;
         private int drawnScreen = -1, transitionFrom = -1;
         private long transitionStarted;
+        private String pageTitleShown, pageTitlePrevious;
+        private long pageTitleStarted;
+        private final Paint listEdgeMask = new Paint();
+        {
+            listEdgeMask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+        }
 
         private boolean running, okDown, backDown, wasBusy;
+        private boolean lightAppearance;
         private final Runnable clearCityStatus = () -> { cityStatus = ""; if (running) invalidate(); };
         private long updatePopupStarted = 0;
         private boolean updatePopupClosing = false;
@@ -204,14 +234,14 @@ public class SettingsActivity extends Activity {
                 cursor -= width;
             }
 
-            Paint glyphPaint = new Paint(paint);
+            Paint glyphPaint = trackedGlyphPaint;
+            glyphPaint.set(paint);
             glyphPaint.setTextAlign(Paint.Align.LEFT);
 
             for (int i = 0; i < text.length();) {
                 int next = text.offsetByCodePoints(i, 1);
-                String glyph = text.substring(i, next);
-                canvas.drawText(glyph, cursor, y, glyphPaint);
-                cursor += glyphPaint.measureText(glyph) + spacing;
+                canvas.drawText(text, i, next, cursor, y, glyphPaint);
+                cursor += glyphPaint.measureText(text, i, next) + spacing;
                 i = next;
             }
         }
@@ -245,6 +275,7 @@ public class SettingsActivity extends Activity {
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             HomeData.Weather wx = HomeData.get(a).weather;
+            updateAppearance(System.currentTimeMillis());
             Shaders.sky(scene.palette, System.currentTimeMillis(), wx.sunrise, wx.sunset);
             scene.setMotion(0.5f, 0.2f);
             scene.applyPalette();
@@ -336,6 +367,7 @@ public class SettingsActivity extends Activity {
                 height = ROW_H;
             }
             focusBox.set(LIST_X * k, top * k, (LIST_R + ABOUT_NAME_RIGHT_EXTENSION) * k, (top + height) * k);
+            if (scrolling()) focusBox.offset(0, (pickScroll - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
             return focusBox;
         }
 
@@ -363,6 +395,9 @@ public class SettingsActivity extends Activity {
             handler.removeCallbacks(poll);
             Choreographer.getInstance().removeFrameCallback(this);
             releaseBackground(); // Free cached bitmap when settings are hidden.
+            rowShadows.clear();
+            descriptionLayout = null;
+            descriptionText = null;
         }
 
         @Override protected void onAttachedToWindow() {
@@ -391,6 +426,24 @@ public class SettingsActivity extends Activity {
             w = width;
             h = height;
             k = w / 1920f;
+            rowShadows.clear();
+            descriptionLayout = null;
+            descriptionText = null;
+            arrowPaint.setColor(ABOUT_SECONDARY_COLOR);
+            arrowPaint.setStyle(Paint.Style.STROKE);
+            arrowPaint.setStrokeWidth(ABOUT_ARROW_STROKE * k);
+            arrowPaint.setStrokeCap(Paint.Cap.ROUND);
+            arrowPaint.setStrokeJoin(Paint.Join.ROUND);
+            arrowPath.reset();
+            arrowPath.moveTo(-ABOUT_ARROW_LEFT * k, -ABOUT_ARROW_HALF_HEIGHT * k);
+            arrowPath.lineTo(ABOUT_ARROW_TIP * k, 0);
+            arrowPath.lineTo(-ABOUT_ARROW_LEFT * k, ABOUT_ARROW_HALF_HEIGHT * k);
+            float listTop = 148 * k, listSpan = Math.max(1f, h - listTop);
+            float topStop = Math.min(0.25f, 38 * k / listSpan);
+            float bottomStop = Math.max(topStop, 1f - 64 * k / listSpan);
+            listEdgeMask.setShader(new LinearGradient(0, listTop, 0, h,
+                    new int[] {0x00FFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00FFFFFF},
+                    new float[] {0f, topStop, bottomStop, 1f}, Shader.TileMode.CLAMP));
             scene.setSize(w, h);
             releaseBackground();
             popupHeading = Ui.text(Ui.displaySemibold, 47*k, 0xFFFFFFFF);
@@ -475,9 +528,16 @@ public class SettingsActivity extends Activity {
 
         @Override protected void onDraw(Canvas c) {
             if (w == 0) return;
+            updateAppearance(System.currentTimeMillis());
             long now = System.nanoTime();
             float dt = lastNanos == 0 ? 1 / 60f : Math.min(0.05f, (now - lastNanos) / 1e9f);
             lastNanos = now;
+            if (scrolling()) {
+                listScroll.target = pickScroll;
+                if (localFlag("reduce_motion") || Math.abs(listScroll.target - listScroll.value) > PICK_VISIBLE)
+                    listScroll.snap(pickScroll);
+                else if (listScroll.step(dt)) postInvalidateOnAnimation();
+            }
             for (int i = 0; i < pop.length; i++) {
                 pop[i].target = (screen != ABOUT || i == 0) && i == focus && i < rowCount() ? 1 : 0;
                 pop[i].step(dt);
@@ -494,8 +554,9 @@ public class SettingsActivity extends Activity {
             pageTitle.setColor(lightSettings() ? 0x66607985 : 0x73FFFFFF);
             logoInk.setColor(lightSettings() ? 0xFFECFFFF : 0xFF173344);
             logoTile.setColor(lightSettings() ? 0x9A678B96 : 0x70B9C8CD);
-            drawTrackedText(c, screenTitle(), w / 2f, 111 * k, pageTitle, 0.02f);
-            RectF logo = new RectF(254 * k, 236 * k, 790 * k, 772 * k);
+            drawPageTitle(c, up);
+            RectF logo = logoBounds;
+            logo.set(254 * k, 236 * k, 790 * k, 772 * k);
             c.drawRoundRect(logo, 116 * k, 116 * k, logoTile);
             rim.setColor(0x50FFFFFF);
             c.drawRoundRect(logo, 116 * k, 116 * k, rim);
@@ -505,7 +566,8 @@ public class SettingsActivity extends Activity {
             if (wordmarkWidth > 0f) {
                 logoInk.setTextSize(logoInk.getTextSize() * (logo.width() / 2f) / wordmarkWidth);
             }
-            Paint.FontMetrics wordmarkMetrics = logoInk.getFontMetrics();
+            Paint.FontMetrics wordmarkMetrics = logoMetrics;
+            logoInk.getFontMetrics(wordmarkMetrics);
             float wordmarkBaseline = logo.centerY() - (wordmarkMetrics.ascent + wordmarkMetrics.descent) / 2f;
             c.drawText("tvOS", logo.centerX(), wordmarkBaseline, logoInk);
 
@@ -516,21 +578,54 @@ public class SettingsActivity extends Activity {
                 transitionStarted = SystemClock.uptimeMillis();
                 drawnScreen = screen;
             }
-            if (transitionFrom != -1) {
-                drawMenuTransition(c);
-            } else drawScreenContent(c);
+            drawListViewport(c);
             drawTileDescription(c);
             if (updatePopup != 0) drawUpdatePopup(c);
         }
 
-        /** Follow the launcher's light/dark preference, including automatic day/night. */
-        private boolean lightSettings() {
-            String mode = Prefs.theme();
-            if ("light".equals(mode)) return true;
-            if ("dark".equals(mode)) return false;
-            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-            return hour >= 7 && hour < 19;
+        /** Crossfade only the lettering; the background keeps its original brightness. */
+        private void drawPageTitle(Canvas c, long now) {
+            String next = screenTitle();
+            if (pageTitleShown == null) pageTitleShown = next;
+            if (!next.equals(pageTitleShown)) {
+                pageTitlePrevious = pageTitleShown;
+                pageTitleShown = next;
+                pageTitleStarted = now;
+            }
+            float t = localFlag("reduce_motion") ? 1f : Math.min(1f,
+                    (now - pageTitleStarted) / (float) MENU_TRANSITION_MS);
+            if (pageTitlePrevious == null || t >= 1f) {
+                pageTitlePrevious = null;
+                drawTrackedText(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
+                return;
+            }
+            float eased = t * t * (3f - 2f * t);
+            int alpha = pageTitle.getAlpha();
+            pageTitle.setAlpha(Math.round(alpha * (1f - eased)));
+            drawTrackedText(c, pageTitlePrevious, w / 2f, 111 * k, pageTitle, 0.02f);
+            pageTitle.setAlpha(Math.round(alpha * eased));
+            drawTrackedText(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
+            pageTitle.setAlpha(alpha);
+            postInvalidateDelayed(16);
         }
+
+        /** Fade the list into the untouched background at both vertical viewport edges. */
+        private void drawListViewport(Canvas c) {
+            float left = 960 * k, top = 148 * k;
+            int layer = c.saveLayer(left, top, w, h, null);
+            c.clipRect(left, top, w, h);
+            if (transitionFrom != -1) drawMenuTransition(c);
+            else drawScreenContent(c);
+            c.drawRect(left, top, w, h, listEdgeMask);
+            c.restoreToCount(layer);
+        }
+
+        /** Resolve once per frame so every surface uses the launcher's same sunrise/sunset policy. */
+        private void updateAppearance(long now) {
+            lightAppearance = !HomeData.get(getContext()).isNight(now);
+        }
+
+        private boolean lightSettings() { return lightAppearance; }
 
         private int normalInk() { return lightSettings() ? 0xE5162730 : 0xF2FFFFFF; }
         private int secondaryInk() { return lightSettings() ? 0x99182731 : 0x8CFFFFFF; }
@@ -637,7 +732,7 @@ public class SettingsActivity extends Activity {
                 case SYSTEM: return new String[] {tr("Обновления ПО", "Software Updates"), tr("Сброс", "Reset"), tr("Перезагрузить tvOS", "Restart tvOS")};
                 case RESET: return new String[] {tr("Очистить кеш", "Clear cache"), tr("Сброс tvOS", "Reset tvOS")};
                 case TOP_PANEL: return new String[] {tr("Категории", "Categories"), tr("Кнопки", "Buttons")};
-                case APPS_DOWNLOADS: return new String[] {"Загрузить AirPlay", "Загрузить Apple Music", "Загрузить TizenTube", "Загрузить INCY", "Загрузить Seena", "Загрузить Lampa", "Загрузить KinoPub"};
+                case APPS_DOWNLOADS: return new String[] {tr("Загрузить AirPlay", "Download AirPlay"), tr("Загрузить Apple Music", "Download Apple Music"), tr("Загрузить TizenTube", "Download TizenTube"), tr("Загрузить INCY", "Download INCY"), tr("Загрузить Seena", "Download Seena"), tr("Загрузить Lampa", "Download Lampa"), tr("Загрузить KinoPub", "Download KinoPub")};
                 case ACCESSIBILITY: return new String[] {tr("Уменьшение прозрачности", "Reduce transparency"), tr("Уменьшение анимаций", "Reduce motion"), tr("Домашний экран", "Home screen"), tr("Настройки ТВ", "TV settings")};
                 case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show on top panel"), tr("VPN-служба", "VPN service")};
                 case SCREENSAVER: return new String[] {tr("Источник", "Source"), tr("Начало после", "Start after"), tr("Показывать часы", "Show clock"), tr("Показывать место съёмки", "Show filming location"), tr("Показывать погоду", "Show weather"), tr("Предпросмотр", "Preview")};
@@ -734,9 +829,9 @@ public class SettingsActivity extends Activity {
                     if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
                 } catch (Exception ignored) {}
                 try {
-                    v[2] = "tvOS " + getContext().getPackageManager()
+                    v[2] = getContext().getPackageManager()
                             .getPackageInfo(getContext().getPackageName(), 0).versionName;
-                } catch (Exception e) { v[2] = "tvOS"; }
+                } catch (Exception e) { v[2] = "—"; }
                 v[3] = "Android " + android.os.Build.VERSION.RELEASE;
                 android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
                 activity.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
@@ -807,17 +902,10 @@ public class SettingsActivity extends Activity {
 
         private void drawApprovedChevron(Canvas c) {
             float x = rowRect.right - 13 * k, y = rowRect.centerY();
-            Paint arrow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            arrow.setColor(ABOUT_SECONDARY_COLOR);
-            arrow.setStyle(Paint.Style.STROKE);
-            arrow.setStrokeWidth(ABOUT_ARROW_STROKE * k);
-            arrow.setStrokeCap(Paint.Cap.ROUND);
-            arrow.setStrokeJoin(Paint.Join.ROUND);
-            android.graphics.Path path = new android.graphics.Path();
-            path.moveTo(x - ABOUT_ARROW_LEFT * k, y - ABOUT_ARROW_HALF_HEIGHT * k);
-            path.lineTo(x + ABOUT_ARROW_TIP * k, y);
-            path.lineTo(x - ABOUT_ARROW_LEFT * k, y + ABOUT_ARROW_HALF_HEIGHT * k);
-            c.drawPath(path, arrow);
+            c.save();
+            c.translate(x, y);
+            c.drawPath(arrowPath, arrowPaint);
+            c.restore();
         }
 
         private void setApprovedRowRect(int i) {
@@ -857,7 +945,7 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        /** Animate only the right-hand list; background, title and logo stay static. */
+        /** Animate the right-hand list separately from the title crossfade and fixed background/logo. */
         private void drawMenuTransition(Canvas c) {
             float t = Math.min(1f, (SystemClock.uptimeMillis() - transitionStarted)
                     / (float) MENU_TRANSITION_MS);
@@ -894,6 +982,18 @@ public class SettingsActivity extends Activity {
             postInvalidateDelayed(16);
         }
 
+        private boolean menuChevronVisible(int row) {
+            switch (screen) {
+                case SCREENSAVER: return row != 5;
+                case ACCESSIBILITY: return row != 3;
+                case APPS_DOWNLOADS: case RESET: return false;
+                case UPDATES: return row != 0;
+                case SYSTEM: return row != 2;
+                case VPN_SETTINGS: return row != 0 && (vpnTopEnabled() || row != 1);
+                default: return true;
+            }
+        }
+
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = menuValues();
             for (int i = 0; i < labels.length; i++) {
@@ -913,7 +1013,7 @@ public class SettingsActivity extends Activity {
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 float right = rowRect.right - 30 * k;
                 if (screen != ABOUT || i == 0) {
-                    if (!(screen == VPN_SETTINGS && (i == 0 || !vpnTopEnabled() && i == 1))) drawApprovedChevron(c);
+                    if (menuChevronVisible(i)) drawApprovedChevron(c);
                     rowValue.setColor(screen == VPN_SETTINGS && i == 1 && !vpnTopEnabled() ? 0x66808080 : ABOUT_SECONDARY_COLOR);
                     drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
                 } else {
@@ -945,14 +1045,16 @@ public class SettingsActivity extends Activity {
 
         /** tvOS-style soft graphite capsules; focused row lifts into an opaque white pill. */
         private float drawRowBackground(Canvas c, int i) {
-            float f = Ui.clamp(pop[i].value);
+            float f = i >= 0 && i < pop.length ? Ui.clamp(pop[i].value) : 0f;
             float radius = rowRect.height() / 2f;
             // Light mode uses pale frosted cyan pills; dark mode keeps graphite.
-            capsule.setShader(new LinearGradient(rowRect.left, rowRect.top,
-                    rowRect.right, rowRect.bottom,
-                    lightSettings() ? new int[]{0x96ECFCFF, 0xA8DFF6FA, 0x92E8F8FD}
-                                    : new int[]{0xB3475A63, 0xB13B484E, 0xB43B4145},
-                    new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP));
+            Shader gradient = lightSettings() ? lightCapsuleGradient : darkCapsuleGradient;
+            float gradientLength = (float) Math.hypot(rowRect.width(), rowRect.height());
+            capsuleMatrix.setSinCos(rowRect.height() / gradientLength, rowRect.width() / gradientLength);
+            capsuleMatrix.postScale(gradientLength, gradientLength);
+            capsuleMatrix.postTranslate(rowRect.left, rowRect.top);
+            gradient.setLocalMatrix(capsuleMatrix);
+            capsule.setShader(gradient);
             c.drawRoundRect(rowRect, radius, radius, capsule);
             capsule.setShader(null);
             if (f > 0.01f) {
@@ -966,7 +1068,7 @@ public class SettingsActivity extends Activity {
                 // A restrained lift shadow, rather than a glass highlight.
                 tmp.offset(0, 7 * k * f);
                 shadow.setColor(Ui.alpha(0xFF000000, 0.34f * f));
-                c.drawRoundRect(tmp, r, r, shadow);
+                rowShadows.draw(c, tmp, r, 22 * k, shadow);
                 tmp.offset(0, -7 * k * f);
                 white.setAlpha(Math.round(255 * f));
                 c.drawRoundRect(tmp, r, r, white);
@@ -1064,16 +1166,19 @@ public class SettingsActivity extends Activity {
                     break;
             }
             if (info == null) return;
-            TextPaint description = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            description.setTypeface(Ui.regular);
-            description.setTextSize(25 * k);
-            description.setColor(lightSettings() ? 0xB33A5761 : 0xB3C9D5D9);
+            descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xB3C9D5D9);
             int width = Math.round(740 * k);
-            StaticLayout layout = new StaticLayout(info, description, width,
-                    android.text.Layout.Alignment.ALIGN_CENTER, 1.18f, 0, false);
+            if (descriptionLayout == null || !info.equals(descriptionText) || width != descriptionWidth) {
+                descriptionPaint.setTypeface(Ui.regular);
+                descriptionPaint.setTextSize(25 * k);
+                descriptionLayout = new StaticLayout(info, descriptionPaint, width,
+                        android.text.Layout.Alignment.ALIGN_CENTER, 1.18f, 0, false);
+                descriptionText = info;
+                descriptionWidth = width;
+            }
             c.save();
             c.translate(152 * k, 837 * k);
-            layout.draw(c);
+            descriptionLayout.draw(c);
             c.restore();
         }
 
@@ -1293,11 +1398,11 @@ public class SettingsActivity extends Activity {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || screen == HOME_SETTINGS || screen == GENERAL || screen == WIDGETS || screen == SCREENSAVER || screen == SYSTEM || screen == ACCESSIBILITY || screen == APPS_DOWNLOADS || screen == MENU_BUTTONS || screen == VPN_SETTINGS || screen == UPDATES)) tvosClick.move();
+                    if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || canAdjustMenu())) tvosClick.move();
                     if (down && screen == SHELF_EDIT) {
                         moveShelfApp(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
-                    } else if (down && (screen == HOME_SETTINGS || screen == GENERAL || screen == WIDGETS || screen == SCREENSAVER || screen == SYSTEM || screen == ACCESSIBILITY || screen == APPS_DOWNLOADS || screen == MENU_BUTTONS || screen == VPN_SETTINGS || screen == UPDATES)) {
+                    } else if (down && canAdjustMenu()) {
                         adjustMenu(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     }
@@ -1498,7 +1603,7 @@ public class SettingsActivity extends Activity {
             appPkgs.clear();
             appLabels.clear();
             appPkgs.add("");
-            appLabels.add(Ui.tr("Nada", "Nothing"));
+            appLabels.add(tr("Не выбрано", "Not selected"));
             for (String[] f : found) {
                 appPkgs.add(f[0]);
                 appLabels.add(f[1]);
@@ -1532,6 +1637,20 @@ public class SettingsActivity extends Activity {
             setLocalFlag(key, !localPrefs().getBoolean(key, true));
         }
 
+        /** Only value rows respond to left/right; actions and submenus require OK. */
+        private boolean canAdjustMenu() {
+            switch (screen) {
+                case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
+                case GENERAL: return focus == 1 || focus == 2 || focus == 5 || focus == 6 || focus == 7;
+                case SCREENSAVER: return focus < 5;
+                case UPDATES: return focus == 1;
+                case ACCESSIBILITY: return focus < 2;
+                case VPN_SETTINGS: return focus == 0;
+                case MENU_BUTTONS: return focus != 2;
+                default: return false;
+            }
+        }
+
         private void adjustMenu(int dir) {
             if (screen == HOME_SETTINGS) { adjust(dir); return; }
             if (screen == WIDGETS && focus == 2) { return; }
@@ -1553,7 +1672,6 @@ public class SettingsActivity extends Activity {
                 if (focus == 1) { int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme()); Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]); }
                 else if (focus == 2) { int at = java.util.Arrays.asList(LANGUAGES).indexOf(Prefs.language()); Prefs.setLanguage(LANGUAGES[(at + dir + LANGUAGES.length) % LANGUAGES.length]); }
                 else if (focus == 5) { int at = java.util.Arrays.asList(UNITS).indexOf(Prefs.temperature()); Prefs.setTemperature(UNITS[(at + dir + UNITS.length) % UNITS.length]); }
-                else if (focus == 4) { activity.startActivity(new Intent(Settings.ACTION_DATE_SETTINGS)); }
                 else if (focus == 6) { Prefs.setHour24(!Prefs.hour24()); }
                 else if (focus == 7) { setLocalFlag("navigation_clicks", !localPrefs().getBoolean("navigation_clicks", true)); }
                 HomeData.get(getContext()).settingsChanged();
@@ -1676,6 +1794,7 @@ public class SettingsActivity extends Activity {
             shelfOrder.addAll(HomeApps.shelfPackages(getContext()));
             rebuildShelfRows(HomeApps.shelfCandidates(getContext()));
             pickScroll = 0;
+            listScroll.snap(0);
             focus = 0;
             screen = SHELF_EDIT;
         }
@@ -1725,16 +1844,17 @@ public class SettingsActivity extends Activity {
 
         private void drawShelfEditor(Canvas c) {
             // The centered screenTitle() is the only heading.
-            int rows = rowCount();
-            for (int i = 0; i < rows; i++) {
-                String[] app = shelfRows.get(pickScroll + i);
+            shelfMeasurePaint.set(rowLabel);
+            for (int at = scrollingFirstRow(); at < scrollingEndRow(); at++) {
+                int i = at - pickScroll;
+                String[] app = shelfRows.get(at);
                 int place = shelfOrder.indexOf(app[0]);
-                setApprovedRowRect(i);
+                setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(ABOUT_SECONDARY_COLOR);
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                drawTrackedText(c, TextUtils.ellipsize(app[1], new TextPaint(rowLabel), 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                drawTrackedText(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 drawTrackedText(c, place >= 0 ? "#" + (place + 1) : Ui.tr("Fora", "Off"), rowRect.right - 61 * k, base, rowValue, 0.02f);
                 drawApprovedChevron(c);
             }
@@ -1753,19 +1873,31 @@ public class SettingsActivity extends Activity {
             int visible = Math.min(PICK_VISIBLE, pickLabels.size());
             int at = Math.max(0, pickCurrent);
             pickScroll = Math.max(0, Math.min(at - 3, pickLabels.size() - visible));
+            listScroll.snap(pickScroll);
             focus = at - pickScroll;
             screen = PICKER;
         }
 
-        /** A long list (the apps): nine rows at a time, the one in use checked. */
+        // Include rows on both sides of the logical window: they must physically enter the fade mask.
+        private int scrollingFirstRow() {
+            return Math.max(0, (int) Math.floor(listScroll.value) - 1);
+        }
+
+        private int scrollingEndRow() {
+            return Math.min(listSize(), (int) Math.ceil(listScroll.value) + PICK_VISIBLE + 1);
+        }
+
+        private void setScrollingRowRect(int absoluteRow) {
+            setApprovedRowRect(absoluteRow - pickScroll);
+            rowRect.offset(0, (pickScroll - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
+        }
+
+        /** A long list with buffered edge rows and a continuous vertical scroll. */
         private void drawPicker(Canvas c) {
-            Paint heading = Ui.text(Ui.displaySemibold, 34 * k, 0xFFFFFFFF);
-            String title = pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (Ui.ru ? "Город" : Ui.tr("Cidade", "City")) : keyLabels()[pickFor - 1];
             // The centered screenTitle() is the only heading.
-            int rows = rowCount();
-            for (int i = 0; i < rows; i++) {
-                int at = pickScroll + i;
-                setApprovedRowRect(i);
+            for (int at = scrollingFirstRow(); at < scrollingEndRow(); at++) {
+                int i = at - pickScroll;
+                setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 float labelX = rowRect.left + rowRect.width() * 0.10f + 10 * k;
@@ -1813,7 +1945,7 @@ public class SettingsActivity extends Activity {
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
-                if (keys) drawApprovedChevron(c);
+                drawApprovedChevron(c);
             }
 
         }
@@ -1913,6 +2045,7 @@ public class SettingsActivity extends Activity {
             } else if (screen == GENERAL) {
                 if (focus == 3) { askCity(); return; }
                 if (focus == 0) { screen = ABOUT; focus = 0; }
+                else if (focus == 4) { activity.startActivity(new Intent(Settings.ACTION_DATE_SETTINGS)); return; }
                 else { adjustMenu(1); }
             } else if (screen == WIDGETS) {
                 if (focus == 2) { screen = DATE_TIME; focus = 0; }

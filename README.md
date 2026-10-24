@@ -33,8 +33,8 @@ Installation uses Android's installer and requires confirmation. Update APKs mus
 package and current signing certificate set, matching version metadata and SHA-256.
 
 `./build.sh` also creates `release/tvOS.apk` and `release/update.json` from the same build.
-For the next version, run `./release.sh 1.1`, commit the version change and upload both assets to
-release tag `v1.1`. See [release instructions in Russian](docs/RELEASING.md).
+For the next version, run `./release.sh 1.0.1`, commit the version change and upload both assets to
+release tag `v1.0.1`. See [release instructions in Russian](docs/RELEASING.md).
 
 GitHub Actions compiles with a disposable CI key and never publishes its test APK.
 

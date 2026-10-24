@@ -9,8 +9,6 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Build;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,9 +16,8 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 /**
- * Fonts and text for the home screen, the screensaver and the settings. Font: Inter (variable, assets/fonts, SIL OFL),
- * with the "display" optical size for large text and the "text" size for small text; without it, the system font at a
- * similar weight.
+ * Shared SF Pro Display fonts and text helpers for the home screen, screensavers and settings.
+ * If an asset cannot be loaded, use the system font at a similar weight.
  */
 final class Ui {
     private Ui() {}
@@ -40,37 +37,21 @@ final class Ui {
         if (loaded) return;
         loaded = true;
         AssetManager a = c.getAssets();
-        // SFPRO_LOCAL_PATCH: local-only bundled SF Pro fonts.
         thin = sf(a, "fonts/sf_display_light.otf", 300);
-        light = sf(a, "fonts/sf_display_light.otf", 300);
+        light = thin;
         displayMedium = sf(a, "fonts/sf_display_medium.otf", 500);
         displaySemibold = sf(a, "fonts/sf_display_semibold.otf", 600);
         displayBold = sf(a, "fonts/sf_display_bold.otf", 700);
         displayRegular = sf(a, "fonts/sf_display_regular.otf", 400);
-        regular = sf(a, "fonts/sf_text_regular.otf", 400);
-        medium = sf(a, "fonts/sf_text_medium.otf", 500);
-        semibold = sf(a, "fonts/sf_text_semibold.otf", 600);
+        regular = displayRegular;
+        medium = displayMedium;
+        semibold = displaySemibold;
     }
 
     private static Typeface sf(AssetManager a, String path, int weight) {
         try { return Typeface.createFromAsset(a, path); }
         catch (RuntimeException e) { return Typeface.create(Typeface.DEFAULT, weight, false); }
     }
-
-    /** Inter at an optical size (14 = text, 32 = display) and weight; the system font if the file is missing. */
-    private static Typeface font(AssetManager a, int opticalSize, int weight) {
-        if (has(a, FONT)) {
-            try {
-                Typeface t = new Typeface.Builder(a, FONT)
-                        .setFontVariationSettings("'opsz' " + opticalSize + ", 'wght' " + weight).build();
-                if (t != null) return t;
-            } catch (RuntimeException ignored) {
-            }
-        }
-        return Typeface.create(Typeface.DEFAULT, weight, false);
-    }
-
-    private static final String FONT = "fonts/InterVariable.ttf";
 
     private static String language() { return Prefs.language(); }
 
@@ -80,14 +61,6 @@ final class Ui {
         ru = "ru".equals(language);
         es = false;
         de = false;
-    }
-
-    private static boolean has(AssetManager a, String path) {
-        try (InputStream in = a.open(path)) {
-            return in != null;
-        } catch (IOException e) {
-            return false;
-        }
     }
 
     static Paint text(Typeface face, float size, int color) {

@@ -13,15 +13,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Material Symbols Rounded icons (Apache 2.0), rendered by tools/make_symbols.py as white PNGs in assets/symbols. Drawn
+ * Monochrome PNG icons in assets/symbols. Drawn
  * like text: `pointSize` is the size of the font next to the icon, and the icon is centered on that font's cap height.
  */
 final class Symbols {
     private Symbols() {}
 
     /**
-     * PNG pixels per em of `pointSize` (a 96 pt × 1.5 px/pt reference scale). tools/make_symbols.py renders a 172 px
-     * em, so an icon's em is drawn at ~1.2 × `pointSize`.
+     * Reference pixels per em. Each symbol keeps its original layout size even when replaced by a larger PNG.
      */
     private static final float PX_PER_POINT = 96 * 1.5f;
     private static final Map<String, Bitmap> CACHE = new HashMap<>();
@@ -47,7 +46,33 @@ final class Symbols {
 
     static float width(Context c, String name, float pointSize) {
         Bitmap b = get(c, name);
-        return b == null ? 0 : b.getWidth() * pointSize / PX_PER_POINT;
+        return b == null ? 0 : b.getWidth() * scale(name, b, pointSize);
+    }
+
+    private static float scale(String name, Bitmap b, float pointSize) {
+        return referenceSize(name) * pointSize / PX_PER_POINT / Math.max(b.getWidth(), b.getHeight());
+    }
+
+    private static int referenceSize(String name) {
+        switch (name) {
+            case "apps": case "sync": return 123;
+            case "home": return 135;
+            case "bitcoin": return 138;
+            case "check": return 120;
+            case "chevron_right": case "chevron_down": return 89;
+            case "play": return 102;
+            case "bedtime": case "clear_night": return 148;
+            case "snowflake": return 150;
+            case "foggy": case "rainy": return 155;
+            case "gamepad": case "sparkles": case "partly_cloudy_day": return 156;
+            case "partly_cloudy_night": case "bell": return 154;
+            case "speaker": case "live_tv": case "tv_settings": return 153;
+            case "thunderstorm": return 160;
+            case "sunny": case "cloud": return 166;
+            case "sunrise": case "sunset": return 151;
+            case "search": case "vpn": return 144;
+            default: return 152;
+        }
     }
 
     /** Draws centered at (cx, cy) in the given color (lighter, translucent parts of the symbol stay lighter). */
@@ -55,12 +80,12 @@ final class Symbols {
         Bitmap b = get(c, name);
         if (b == null) return;
         synchronized (PAINT) {   // card loading (another thread) also draws symbols
-            drawLocked(canvas, b, cx, cy, pointSize, color);
+            drawLocked(canvas, b, cx, cy, scale(name, b, pointSize), color);
         }
     }
 
-    private static void drawLocked(Canvas canvas, Bitmap b, float cx, float cy, float pointSize, int color) {
-        float w = b.getWidth() * pointSize / PX_PER_POINT, h = b.getHeight() * pointSize / PX_PER_POINT;
+    private static void drawLocked(Canvas canvas, Bitmap b, float cx, float cy, float scale, int color) {
+        float w = b.getWidth() * scale, h = b.getHeight() * scale;
         PAINT.setColor(color);
         RECT.set(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
         canvas.drawBitmap(b, null, RECT, PAINT);

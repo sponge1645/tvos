@@ -24,6 +24,11 @@ final class Shadows {
     private final float[] xs = new float[4], ys = new float[4];
     private final int[] sx = new int[4], sy = new int[4];
 
+    /** Drop retained masks when the owning screen is hidden; existing display lists may still use them. */
+    void clear() {
+        cache.clear();
+    }
+
     /** Draws `shape` (radius `r`) with `paint`, whose BlurMaskFilter was made with radius `blur`. */
     void draw(Canvas c, RectF shape, float r, float blur, Paint paint) {
         if (!Ui.LEGACY) {

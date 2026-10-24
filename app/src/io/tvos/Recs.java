@@ -55,7 +55,7 @@ final class Recs {
     private static final String IMAGES = "https://image.tmdb.org/t/p/original";
     private static final long LIST_EVERY = 6 * 3600_000L;
     /** Bump when what is saved for each title changes (the saved list is discarded and fetched again). */
-    private static final int CACHE_VERSION = 15; // Refresh cached TV origin/year metadata
+    private static final int CACHE_VERSION = 16; // Discard catalogs previously labeled English but fetched in Russian
     private static final int MANHA = 0, TARDE = 1, NOITE = 2;
     static final String[] PERIOD_LABEL = {"PARA ESTA MANHÃ", "PARA ESTA TARDE", "PARA ESTA NOITE"};
     static final String[] PERIOD_LABEL_RU = {"ЭТИМ УТРОМ", "СЕГОДНЯ ДНЁМ", "СЕГОДНЯ ВЕЧЕРОМ"};
@@ -119,6 +119,23 @@ final class Recs {
     private volatile boolean light;     // light design: builds only the cards (all three tabs' cards fit in memory)
     private volatile long failedAt, keyStamp;
     private volatile String listLanguage = "";   // language used for the saved titles, genres and texts
+
+    static void languageChanged() {
+        Recs current = instance;
+        if (current != null) current.resetLanguage();
+    }
+
+    private synchronized void resetLanguage() {
+        picks = new ArrayList<>();
+        newPicks = new ArrayList<>();
+        detectivePicks = new ArrayList<>();
+        listLanguage = "";
+        listAt = failedAt = keyStamp = 0;
+        error = "";
+        synchronized (durationRequested) { durationLastAttempt.clear(); }
+        notifyListeners();
+        refreshIfStale();
+    }
 
     private Recs(Context c) {
         context = c;
@@ -227,6 +244,8 @@ final class Recs {
     // Guarded by posters, including access-order mutations.
     private final Map<String, Long> posterFailures = new LinkedHashMap<>(32, 0.75f, true);
     private long posterRamBytes;
+    // Null until a screen supplies a window. An empty window stops loading while Home is hidden.
+    private java.util.Set<String> posterWindow;
     // Used only by the single poster worker.
     private boolean posterCacheChecked;
     private final ExecutorService durationIo = Executors.newSingleThreadExecutor();
@@ -238,7 +257,8 @@ final class Recs {
         if (p == null || !"movie".equals(p.kind)
                 || ((p.duration != null && !p.duration.isEmpty())
                 && (p.movieOrigin != null && p.movieOrigin.contains(" · ")))) return;
-        final String id = key(p);
+        final String language = Ui.language;
+        final String id = language + ":" + key(p);
         synchronized (durationRequested) {
             if (durationRequested.contains(id)) return;
             Long last = durationLastAttempt.get(id);
@@ -258,6 +278,7 @@ final class Recs {
                     if (minutes <= 0) minutes = fallback.optInt("runtime", 0);
                     if (!origin.contains(" · ")) origin = movieOrigin(fallback, origin);
                 }
+                if (!language.equals(Ui.language)) return;
                 if (minutes > 0) p.duration = Ui.ru ? minutes + " мин" : minutes + " min";
                 if (!origin.isEmpty()) p.movieOrigin = origin;
                 save();
@@ -272,6 +293,27 @@ final class Recs {
     }
 
 
+    /** Retain only the visible/prefetched window; disk copies remain available when browsing back. */
+    void setPosterWindow(List<Pick> window) {
+        java.util.Set<String> wanted = new java.util.HashSet<>();
+        for (Pick p : window) if (p != null && p.poster != null && !p.poster.isEmpty()) wanted.add(p.poster);
+        synchronized (posters) {
+            if (wanted.equals(posterWindow)) return;
+            posterWindow = wanted;
+            java.util.Iterator<Map.Entry<String, Bitmap>> entries = posters.entrySet().iterator();
+            while (entries.hasNext()) {
+                Map.Entry<String, Bitmap> entry = entries.next();
+                if (wanted.contains(entry.getKey())) continue;
+                posterRamBytes -= entry.getValue().getAllocationByteCount();
+                entries.remove(); // No recycle: the last submitted frame may still reference this bitmap.
+            }
+        }
+    }
+
+    private boolean posterWanted(String path) {
+        synchronized (posters) { return posterWindow == null || posterWindow.contains(path); }
+    }
+
     /** Small RAM LRU for immediate draws; downloaded posters persist on disk up to 200 MiB. */
     Bitmap poster(Pick p) {
         if (p == null || p.poster == null || p.poster.isEmpty()) return null;
@@ -279,6 +321,7 @@ final class Recs {
         synchronized (posters) {
             Bitmap ready = posters.get(path);
             if (ready != null) return ready;
+            if (posterWindow != null && !posterWindow.contains(path)) return null;
             Long failed = posterFailures.get(path);
             if (failed != null && SystemClock.elapsedRealtime() - failed < POSTER_RETRY_MS) return null;
             if (posterPending.size() >= POSTER_PENDING_MAX || !posterPending.add(path)) return null;
@@ -286,7 +329,9 @@ final class Recs {
         posterIo.execute(() -> {
             File tmp = null;
             boolean loaded = false;
+            boolean abandoned = false;
             try {
+                if (!posterWanted(path)) { abandoned = true; return; }
                 File dir = new File(context.getCacheDir(), "tmdb-posters");
                 if (!dir.exists() && !dir.mkdirs()) throw new IOException("Cannot create poster cache");
                 File f = new File(dir, path.replace("/", ""));
@@ -304,6 +349,7 @@ final class Recs {
                             byte[] buf = new byte[16384];
                             int n;
                             while ((n = in.read(buf)) != -1) {
+                                if (!posterWanted(path)) { abandoned = true; return; }
                                 received += n;
                                 if (received > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
                                 out.write(buf, 0, n);
@@ -314,6 +360,7 @@ final class Recs {
                     if (!tmp.renameTo(f)) throw new IOException("Poster cache write failed");
                     downloaded = true;
                 }
+                if (!posterWanted(path)) { abandoned = true; return; }
                 BitmapFactory.Options opts = new BitmapFactory.Options();
                 opts.inSampleSize = 2;
                 Bitmap bmp = BitmapFactory.decodeFile(f.getPath(), opts);
@@ -327,6 +374,7 @@ final class Recs {
                         posterCacheChecked = true;
                     }
                     synchronized (posters) {
+                        if (posterWindow != null && !posterWindow.contains(path)) { abandoned = true; return; }
                         Bitmap previous = posters.put(path, bmp);
                         if (previous != null) posterRamBytes -= previous.getAllocationByteCount();
                         posterRamBytes += bmp.getAllocationByteCount();
@@ -346,7 +394,7 @@ final class Recs {
             } finally {
                 if (tmp != null && tmp.exists()) tmp.delete();
                 synchronized (posters) {
-                    if (!loaded) {
+                    if (!loaded && !abandoned && (posterWindow == null || posterWindow.contains(path))) {
                         posterFailures.put(path, SystemClock.elapsedRealtime());
                         // A long browsing session must not accumulate an unbounded failure history.
                         while (posterFailures.size() > 128) {
@@ -406,6 +454,7 @@ final class Recs {
     void refreshIfStale() {
         if (!hasKey(context) || fetching) return;
         long now = System.currentTimeMillis();
+        final String language = Ui.language;
         long stamp = sourceStamp();   // a new key, country or installed streaming-app set refetches
         boolean newKey = stamp != keyStamp;
         long sinceFail = now - failedAt;    // negative = the clock went back: don't wait
@@ -420,11 +469,13 @@ final class Recs {
         fetching = true;
         io.execute(() -> {
             try {
-                if (stale) fetchList(p);
+                if (!language.equals(Ui.language)) return;
+                if (stale && !fetchList(p, language)) return;
                 // One failing title doesn't stop the others; whatever has no app on the TV is not downloaded.
                 int failures = 0, tried = 0;
                 String last = "";
                 for (Pick pick : wanted()) {
+                    if (!language.equals(Ui.language)) return;
                     tried++;
                     try {
                         if (!pick.detailed) fetchDetails(pick);
@@ -434,18 +485,22 @@ final class Recs {
                         last = e.getMessage() == null ? e.toString() : e.getMessage();
                     }
                 }
+                if (!language.equals(Ui.language)) return;
                 save();
                 if (tried > 0 && failures == tried) throw new IOException(last);
                 error = "";
                 failedAt = 0;
             } catch (Exception e) {
-                error = e.getMessage() == null ? e.toString() : e.getMessage();
-                failedAt = System.currentTimeMillis();
-                AppLog.w("recommendations: " + error);
+                if (language.equals(Ui.language)) {
+                    error = e.getMessage() == null ? e.toString() : e.getMessage();
+                    failedAt = System.currentTimeMillis();
+                    AppLog.w("recommendations: " + error);
+                }
             } finally {
                 fetching = false;
                 writeStatus();
                 notifyListeners();
+                if (!language.equals(Ui.language)) main.post(this::refreshIfStale);
             }
         });
     }
@@ -540,15 +595,17 @@ final class Recs {
 
     // MARK: - TMDB
 
-    private void fetchList(int p) throws Exception {
+    private boolean fetchList(int p, String language) throws Exception {
+        String apiLanguage = "ru".equals(language) ? "ru-RU" : "en-US";
         // Popularity is TMDB's global popularity score, filtered by Russian release context.
         // It is NOT a measurement of viewing figures in Russia.
         List<Pick> popular = new ArrayList<>();
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (String kind : new String[] {"movie", "tv"}) {
             for (int page = 1; page <= 2; page++) {
-                String path = "/discover/" + kind + "?language=ru-RU&region=RU"
+                String path = "/discover/" + kind + "?language=" + apiLanguage + "&region=RU"
                         + "&sort_by=popularity.desc&include_adult=false&page=" + page;
+                if (!language.equals(Ui.language)) return false;
                 JSONArray results = get(path).getJSONArray("results");
                 for (int i = 0; i < results.length(); i++) {
                     List<Pick> one = new ArrayList<>();
@@ -567,10 +624,11 @@ final class Recs {
         for (String kind : new String[] {"movie", "tv"}) {
             String dateField = "movie".equals(kind) ? "primary_release_date" : "first_air_date";
             for (int page = 1; page <= 4; page++) {
-                String path = "/discover/" + kind + "?language=ru-RU&region=RU"
+                String path = "/discover/" + kind + "?language=" + apiLanguage + "&region=RU"
                         + "&sort_by=popularity.desc&vote_count.gte=200&include_adult=false"
                         + "&" + dateField + ".gte=" + from + "&" + dateField + ".lte=" + to
                         + "&page=" + page;
+                if (!language.equals(Ui.language)) return false;
                 JSONArray results = get(path).getJSONArray("results");
                 for (int i = 0; i < results.length(); i++) {
                     JSONObject o = results.getJSONObject(i);
@@ -600,11 +658,12 @@ final class Recs {
         }
         // Mystery (TMDB genre 9648), movies only, rating strictly above 7.5.
         // An unavailable discover endpoint must not prevent the regular catalog refreshing.
+        List<Pick> detectives = new ArrayList<>();
         try {
-            List<Pick> detectives = new ArrayList<>();
             java.util.Set<Integer> detectiveIds = new java.util.HashSet<>();
             for (int page = 1; page <= 5; page++) {
-                JSONArray results = get("/discover/movie?language=" + lang()
+                if (!language.equals(Ui.language)) return false;
+                JSONArray results = get("/discover/movie?language=" + apiLanguage
                         + "&with_genres=9648&vote_average.gte=7.5&vote_count.gte=200"
                         + "&sort_by=vote_average.desc&include_adult=false&page=" + page)
                         .getJSONArray("results");
@@ -620,15 +679,20 @@ final class Recs {
                     add(detectives, item, "movie");
                 }
             }
-            detectivePicks = detectives;
         } catch (Exception e) {
+            if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
             AppLog.w("detective recommendations: " + e.getMessage());
         }
-        picks = popular;
-        newPicks = fresh;
-        period = p;
-        listAt = System.currentTimeMillis();
-        listLanguage = Ui.language;
+        synchronized (this) {
+            if (!language.equals(Ui.language)) return false;
+            picks = popular;
+            newPicks = fresh;
+            detectivePicks = detectives;
+            period = p;
+            listAt = System.currentTimeMillis();
+            listLanguage = language;
+        }
+        return true;
     }
 
     /** Critically acclaimed roulette candidates. TMDB discover approximation: rated >= 7,
@@ -782,25 +846,28 @@ final class Recs {
             if (countries != null && countries.length() > 0) {
                 String code = countries.optString(0, "");
                 if (code.length() == 2) {
-                    Locale display = Ui.ru ? new Locale("ru") : Locale.getDefault();
-                    country = new Locale("", code).getDisplayCountry(display);
-                    if ("US".equalsIgnoreCase(code)) country = "США";
-                    else if ("GB".equalsIgnoreCase(code)) country = "Великобритания";
-                    else if ("RU".equalsIgnoreCase(code)) country = "Россия";
-                    else if ("KR".equalsIgnoreCase(code)) country = "Южная Корея";
-                    else if ("JP".equalsIgnoreCase(code)) country = "Япония";
-                    else if ("CN".equalsIgnoreCase(code)) country = "Китай";
-                    else if ("FR".equalsIgnoreCase(code)) country = "Франция";
-                    else if ("DE".equalsIgnoreCase(code)) country = "Германия";
-                    else if ("CA".equalsIgnoreCase(code)) country = "Канада";
-                    else if ("AU".equalsIgnoreCase(code)) country = "Австралия";
-                    else if ("ZA".equalsIgnoreCase(code)) country = "ЮАР";
-                    if (country.equalsIgnoreCase(code)) country = "";
+                    country = countryName(code);
                 }
             }
             p.tvOrigin = country.isEmpty() ? (year.isEmpty() ? "" : year) : year.isEmpty() ? country : year + " · " + country;
         }
         list.add(p);
+    }
+
+    private static String countryName(String code) {
+        if (code == null || code.length() != 2) return "";
+        code = code.toUpperCase(Locale.ROOT);
+        if (Ui.ru) {
+            if ("US".equals(code)) return "США";
+            if ("GB".equals(code)) return "Великобритания";
+            if ("ZA".equals(code)) return "ЮАР";
+            if ("KR".equals(code)) return "Южная Корея";
+        } else {
+            if ("US".equals(code)) return "USA";
+            if ("GB".equals(code)) return "UK";
+        }
+        String name = new Locale("", code).getDisplayCountry(Ui.ru ? new Locale("ru") : Locale.ENGLISH);
+        return name.equalsIgnoreCase(code) ? "" : name;
     }
 
     /** Movie production country (first TMDB country) and theatrical release year. */
@@ -817,12 +884,7 @@ final class Recs {
         if (countries != null && countries.length() > 0) {
             String code = countries.optJSONObject(0) == null ? "" : countries.optJSONObject(0).optString("iso_3166_1", "");
             if (code.length() == 2) {
-                country = new Locale("", code).getDisplayCountry(Ui.ru ? new Locale("ru") : Locale.getDefault());
-                if ("US".equals(code)) country = "США";
-                else if ("GB".equals(code)) country = "Великобритания";
-                else if ("ZA".equals(code)) country = "ЮАР";
-                else if ("KR".equals(code)) country = "Южная Корея";
-                if (country.equalsIgnoreCase(code)) country = "";
+                country = countryName(code);
             }
         }
         return country.isEmpty() ? year : year.isEmpty() ? country : year + " · " + country;
@@ -860,11 +922,7 @@ final class Recs {
             if (origins != null && origins.length() > 0) {
                 String code = origins.optString(0, "");
                 if (code.length() == 2) {
-                    country = new Locale("", code).getDisplayCountry(Ui.ru ? new Locale("ru") : Locale.getDefault());
-                    if ("US".equals(code)) country = "США";
-                    else if ("GB".equals(code)) country = "Великобритания";
-                    else if ("ZA".equals(code)) country = "ЮАР";
-                    if (country.equalsIgnoreCase(code)) country = "";
+                    country = countryName(code);
                 }
             }
             if (!year.isEmpty() || !country.isEmpty())
@@ -947,7 +1005,7 @@ final class Recs {
     }
 
     private long sourceStamp() {
-        return Config.TMDB_KEY.hashCode() * 31L + REGION.hashCode();
+        return (Config.TMDB_KEY.hashCode() * 31L + REGION.hashCode()) * 31L + Ui.language.hashCode();
     }
 
     private JSONObject get(String path) throws IOException, org.json.JSONException {

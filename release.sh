@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ./release.sh 1.1 -> increase versionCode, build and prepare both GitHub Release assets.
+# ./release.sh 1.0.1 -> increase versionCode, build and prepare both GitHub Release assets.
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -f freemytv.keystore ] || { echo 'Missing existing freemytv.keystore. Restore your current signing key before releasing.'; exit 1; }
@@ -11,7 +11,7 @@ import sys
 
 version = sys.argv[1]
 if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', version):
-    raise SystemExit('Usage: ./release.sh 1.1')
+    raise SystemExit('Usage: ./release.sh 1.0.1')
 path = Path('app/AndroidManifest.xml')
 source = path.read_text()
 old = re.search(r'android:versionName="([^"]+)"', source).group(1)

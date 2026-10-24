@@ -19,8 +19,9 @@ import java.nio.file.*;
 public class PosterHarness {
  static class Bitmap { int getAllocationByteCount(){return 1024*1024;} }
  static class BitmapFactory {
+  static Runnable afterDecode;
   static class Options {int inSampleSize;}
-  static Bitmap decodeFile(String p,Options o){if(new File(p).getName().startsWith("oom"))throw new OutOfMemoryError("test decode");return new File(p).getName().startsWith("bad")?null:new Bitmap();}
+  static Bitmap decodeFile(String p,Options o){if(new File(p).getName().startsWith("oom"))throw new OutOfMemoryError("test decode");if(afterDecode!=null)afterDecode.run();return new File(p).getName().startsWith("bad")?null:new Bitmap();}
  }
  static class SystemClock {static long now;static long elapsedRealtime(){return now;} }
  static class AppLog {static void w(String s){} }
@@ -34,7 +35,7 @@ public class PosterHarness {
 # The harness compiles the exact production method and fields, replacing Android I/O dependencies only.
 header+='import_placeholder'
 header=header.replace('import_placeholder','')
-body=fields+'\n'+method('    Bitmap poster(Pick p)')+'\n'+method('    private static void prunePosterCache(File dir)')
+body=fields+'\n'+method('    void setPosterWindow(')+'\n'+method('    private boolean posterWanted(')+'\n'+method('    Bitmap poster(Pick p)')+'\n'+method('    private static void prunePosterCache(File dir)')
 body=body.replace('HttpURLConnection','java.net.HttpURLConnection').replace('new URL(', 'new java.net.URL(')
 tests='''
  void fixture(String path)throws Exception{
@@ -63,6 +64,26 @@ tests='''
   check(h.posterFailures.size()==128,"failure history bound");
   h.fixture("/oom");h.poster(new Pick("/oom"));h.posterIo.drain();
   check(h.posterFailures.containsKey("/oom") && h.posterPending.isEmpty(),"OOM backoff and pending cleanup");
+  h.setPosterWindow(Collections.singletonList(new Pick("/p23")));
+  h.poster(new Pick("/p23"));h.posterIo.drain();
+  check(h.posters.size()==1 && h.posters.containsKey("/p23"),"window drops unrelated RAM entries");
+  h.poster(new Pick("/p0"));check(h.posterIo.queue.isEmpty(),"off-window draws do not enqueue");
+  h.setPosterWindow(Collections.singletonList(new Pick("/p0")));
+  h.poster(new Pick("/p0"));
+  h.setPosterWindow(Collections.singletonList(new Pick("/p1")));
+  int noticesBefore=h.notices;h.posterIo.drain();
+  check(h.posters.isEmpty() && h.posterRamBytes==0 && h.notices==noticesBefore,"obsolete queued task cannot refill cache");
+  check(!h.posterFailures.containsKey("/p0") && h.posterPending.isEmpty(),"cancelled work has no failure backoff");
+  h.setPosterWindow(Collections.singletonList(new Pick("/p0")));
+  h.poster(new Pick("/p0"));h.posterIo.drain();
+  check(h.posters.containsKey("/p0"),"returning page reloads immediately from disk");
+  h.setPosterWindow(Collections.emptyList());
+  check(h.posters.isEmpty() && h.posterRamBytes==0,"hidden home drops poster cache");
+  h.setPosterWindow(Collections.singletonList(new Pick("/p2")));
+  h.poster(new Pick("/p2"));
+  BitmapFactory.afterDecode=()->h.setPosterWindow(Collections.emptyList());
+  h.posterIo.drain();BitmapFactory.afterDecode=null;
+  check(h.posters.isEmpty() && h.posterRamBytes==0 && !h.posterFailures.containsKey("/p2"),"in-flight decode cannot refill hidden home or poison retries");
   System.out.println("PASS: pending bound, deduplication, RAM LRU, disk reload, retry deadline, bounded failure history");
  }
 }

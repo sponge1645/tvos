@@ -141,7 +141,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Paint headerDateScratch = new Paint();
     private final Paint headerWeatherScratch = new Paint();
     private final Paint searchHeadingScratch = new Paint();
-    private final Paint topIconScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint.FontMetrics headerMetricsScratch = new Paint.FontMetrics();
     private final Paint.FontMetrics clockMetricsScratch = new Paint.FontMetrics();
     private final TextPaint ellipsizeScratch = new TextPaint();
@@ -166,10 +165,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Paint rouletteGhostPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     { rouletteGhostPaint.setAlpha(25); }
     private final RectF rouletteButtonRect = new RectF();
-    private final Paint rouletteSelectedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint rouletteRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rouletteTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    { rouletteRimPaint.setStyle(Paint.Style.STROKE); }
     private final Layer sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer;
     private int zone = Z_SHELF;
 
@@ -187,7 +183,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int tab, topIndex, cardIndex;
     private final RectF searchGlassBounds = new RectF();
     private boolean searchGlassVisible;
+    private android.app.Dialog searchDialog;
+    private int roulettePosterSlot = Integer.MIN_VALUE;
     private boolean searchMode;
+    private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
     private String searchQuery = "";
     private List<Recs.Pick> searchResults = new ArrayList<>();
     private int searchSerial;
@@ -220,6 +219,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private long marqueeSince;
     private boolean marqueeNeeded; // Set by drawing the focused title/metadata, using their actual available widths.
     private final Spring[] topFocus = new Spring[10];
+    private final Spring rouletteButtonFocus = new Spring(0.26f, 0.85f, 0);
     private final RectF[] topRects = new RectF[10];
     private final Spring[] cardFocus = new Spring[8];
     private final RectF[] cardRects = new RectF[8];
@@ -337,7 +337,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             dockLift.target = 1;
             dockAnimating = true;
             playDockEditClick();
-            showToast("← → — переместить · OK — сохранить · Назад — отмена");
+            showToast("← → – переместить. ОК – сохранить. Назад – отменить.");
             tilesDirty = true;
             wake();
         }
@@ -354,6 +354,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Paint shadowDeep = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Shadows shadows = new Shadows();
+    private final ActionSurface actionSurface = new ActionSurface(scene, shadows);
+    private final ProfileAvatar profileAvatar = new ProfileAvatar(getContext());
+    private int profileAvatarIndex = -1;
     // BitmapShader retains its Bitmap. A strong value would keep this WeakHashMap's key alive.
     private final Map<Bitmap, java.lang.ref.WeakReference<BitmapShader>> imageShaders = new WeakHashMap<>();
     private final Matrix imageMatrix = new Matrix();
@@ -515,6 +518,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // MARK: - Lifecycle (called by HomeActivity)
 
     void resume() {
+        int nextAvatar = ProfileAvatar.selected(getContext());
+        if (nextAvatar != profileAvatarIndex) profileAvatar.clear();
+        profileAvatarIndex = nextAvatar;
         if (running) return;
         running = true;
         checkNight(false);
@@ -564,11 +570,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         handler.removeCallbacks(reloadSoon);
         data.removeListener(this);
         recs.removeListener(this);
+        recs.setPosterWindow(java.util.Collections.emptyList());
+        roulettePosterSlot = Integer.MIN_VALUE;
+        imageShaders.clear();
+        crispLogos.clear();
+        shadows.clear();
+        weatherSnapshot.clear();
+        quotesSnapshot.clear();
         if (tvInputs != null) tvInputs.unregisterCallback(inputCallback);
     }
 
     void destroy() {
         pause();
+        if (searchDialog != null) searchDialog.dismiss();
         click.release();
     }
 
@@ -602,7 +616,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lightButtons.clear();
         lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "search", Ui.ru ? "Поиск" : "Search", "search"));
         lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "live", Ui.tr("TV aberta", "Live TV"), "live_tv"));
-        lightButtons.add(HomeApps.action(HomeApps.INPUTS, "vpn", "VPN", "public"));
+        lightButtons.add(HomeApps.action(HomeApps.INPUTS, "vpn", "VPN", "vpn"));
         lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", Ui.tr("Configurações", "Settings"), "settings"));
     }
 
@@ -867,7 +881,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean tilesMoving = step(tileFocus, dt) | dockMoving;
         boolean statusMoving = step(statusFocus, dt);
         boolean heroMoving = heroFocus.step(dt);
-        boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt);
+        boolean searchHeadingMoving = tickSearchHeading(dt);
+        boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
         if (topMoving) status.invalidate();
         heroMoving |= topMoving | cardsMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
@@ -886,7 +901,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // glass shows the background where it ended up.
         if (tilesMoving || tilesDirty) tiles.invalidate();
         if (statusMoving || statusDirty || bgFading) status.invalidate();
-        if (heroMoving || heroDirty || heroFading) heroLayer.invalidate();
+        if (heroMoving || heroDirty || heroFading || searchHeadingMoving) heroLayer.invalidate();
         if (drawerItemsMoving || drawerDirty || bgFading) drawerLayer.invalidate();
         if (gridMoving || gridDirty) sheetLayer.invalidate();
         if (drawerMoving || bgFading) sky.invalidate();
@@ -905,7 +920,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
         // Busy: something is moving, or the sheet or the drawer is open.
         boolean busy = tilesMoving || statusMoving || heroMoving || drawerItemsMoving || gridMoving || drawerMoving
-                || sheetMoving || toastFading || heroFading || bgFading || nightMoving
+                || sheetMoving || toastFading || heroFading || bgFading || nightMoving || searchHeadingMoving
                 || toast != null || !toasts.isEmpty() || rouletteSpinning || dockMoving;
         idle = !busy;
         if (busy) Choreographer.getInstance().postFrameCallback(this);
@@ -989,7 +1004,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private static boolean samePicks(List<Recs.Pick> a, List<Recs.Pick> b) {
         if (a.size() != b.size()) return false;
-        for (int i = 0; i < a.size(); i++) if (!Recs.key(a.get(i)).equals(Recs.key(b.get(i)))) return false;
+        for (int i = 0; i < a.size(); i++) if (a.get(i) != b.get(i)) return false;
         return true;
     }
 
@@ -1901,6 +1916,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         private Bitmap bitmap;
         private String key = "";
 
+        void clear() { bitmap = null; key = ""; }
+
         void draw(Canvas c, RectF r, String key, Consumer<Canvas> content) {
             int left = Math.round(r.left), top = Math.round(r.top);
             int w = Math.max(1, Math.round(r.right) - left), h = Math.max(1, Math.round(r.bottom) - top);
@@ -1959,6 +1976,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         heroFocus.target = !sheetOpen && zone == Z_HERO ? 1 : 0;
         if (snap) heroFocus.snap(heroFocus.target);
         boolean topChanged = aim(topFocus, !sheetOpen && zone == Z_TOP ? topIndex : -1, snap);
+        float rouletteTarget = !sheetOpen && tab == 4 && zone == Z_CARDS ? 1 : 0;
+        heroChanged |= rouletteButtonFocus.target != rouletteTarget;
+        rouletteButtonFocus.target = rouletteTarget;
+        if (snap) rouletteButtonFocus.snap(rouletteTarget);
         heroChanged |= aim(cardFocus, !sheetOpen && zone == Z_CARDS ? cardIndex : -1, snap) | topChanged;
         statusChanged |= topChanged;
         tilesDirty |= snap || tilesChanged;
@@ -2520,7 +2541,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 selectTab(topIndex);
                 return;
             }
-            if (topIndex == 9) return; // Focusable clock: intentionally no action.
+            if (topIndex == 9) {
+                click.open();
+                ProfileActivity.open(activity, profileBackground());
+                return;
+            }
             if (topIndex >= 5 && !topButtonEnabled(topIndex - 5)) return;
             if (topIndex == 5) { openSearch(); return; }
             it = lightButtons.get(topIndex - 5);
@@ -2585,6 +2610,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Position the wallpaper-aware glass under the transparent Android text-input window. */
     private void syncSearchGlass(View panel) {
+        if (!running || searchDialog == null || !searchDialog.isShowing()) return;
         if (panel.getWidth() == 0 || panel.getHeight() == 0) return;
         int[] panelPos = new int[2], homePos = new int[2];
         panel.getLocationOnScreen(panelPos);
@@ -2609,12 +2635,26 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 .withEndAction(dialog::dismiss).start();
     }
 
+    private void beginSearch() {
+        cancelRouletteWork();
+        setSearchInputOpen(true);
+        if (!searchMode) {
+            searchResults = new ArrayList<>();
+            cardPage = cardIndex = 0;
+        }
+        searchMode = true;
+    }
+
+    private void restoreSearchRequest() {
+        if (searchResults.isEmpty() && searchRequest == null && pendingSearch == null
+                && searchQuery.codePointCount(0, searchQuery.length()) >= 3)
+            requestSearch(searchQuery, ++searchSerial);
+    }
+
     /** A translucent in-app search field; Android TV supplies only the text keyboard. */
     private void openSearch() {
-        cancelSearchWork();
-        searchMode = true;
-        searchResults = new ArrayList<>();
-        cardPage = cardIndex = 0;
+        if (searchDialog != null && searchDialog.isShowing()) return;
+        beginSearch();
         zone = Z_TOP;
         topIndex = availableTopButton(5);
         layoutLight();
@@ -2648,6 +2688,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 panelExit(this);
             }
         };
+        searchDialog = dialog;
         // HOME is handled by Android, not delivered as a key event to applications.
         // Close the dialog when our activity goes to the background.
         final android.app.Application.ActivityLifecycleCallbacks searchLifecycle =
@@ -2686,6 +2727,23 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         panel.addView(input, new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+        // Measure the former capsule before removing its vertical padding and themed input minimum.
+        // Keep 60% of that height, with enough room for the text at the user's font scale.
+        int searchWidth = (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f);
+        panel.measure(View.MeasureSpec.makeMeasureSpec(searchWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        Paint.FontMetricsInt searchMetrics = input.getPaint().getFontMetricsInt();
+        int searchHeight = Math.max(Math.round(panel.getMeasuredHeight() * 0.60f),
+                searchMetrics.bottom - searchMetrics.top
+                        + Math.round(2 * activity.getResources().getDisplayMetrics().density));
+        panel.setPadding(pad, 0, pad, 0);
+        input.setMinimumHeight(0);
+        input.setMinHeight(0);
+        input.setIncludeFontPadding(false);
+        input.setPadding(input.getPaddingLeft(), 0, input.getPaddingRight(), 0);
+        input.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        input.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, searchHeight));
         dialog.setContentView(panel);
         android.view.Window window = dialog.getWindow();
         if (window != null) {
@@ -2698,11 +2756,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     | android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
         }
 
+        // Restore before attaching the watcher: reopening the same query must not clear or reload its results.
+        input.setText(searchQuery);
+        input.setSelection(input.length());
         input.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                cancelSearchWork();
                 String query = s.toString().trim();
+                if (query.equals(searchQuery)) return;
+                cancelSearchWork();
                 searchQuery = query;
                 int serial = ++searchSerial;
                 searchResults = new ArrayList<>();
@@ -2720,10 +2782,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
             @Override public void afterTextChanged(android.text.Editable e) { }
         });
-        // Restore text after attaching the watcher: this also re-runs an existing
-        // query when the search panel is reopened, without requiring a keystroke.
-        input.setText(searchQuery);
-        input.setSelection(input.length());
+        restoreSearchRequest();
         input.setOnEditorActionListener((v, actionId, event) -> {
             panelExit(dialog);
             return true;
@@ -2731,8 +2790,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         panel.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
                 panel.post(() -> syncSearchGlass(panel)));
         dialog.setOnDismissListener(d -> {
+            if (searchDialog == dialog) searchDialog = null;
             activity.getApplication().unregisterActivityLifecycleCallbacks(searchLifecycle);
             searchGlassVisible = false;
+            setSearchInputOpen(false);
             searchGlassLayer.animate().cancel();
             searchGlassLayer.setAlpha(1f);
             searchGlassLayer.setScaleX(1f);
@@ -2758,13 +2819,29 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             window.setLayout((int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f),
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
             android.view.WindowManager.LayoutParams attrs = window.getAttributes();
-            attrs.y = (int) (activity.getResources().getDisplayMetrics().heightPixels * 0.13f);
+            attrs.y = Math.round(L_BUTTON_CY * k - searchHeight / 2f);
             window.setAttributes(attrs);
         }
         panel.post(() -> {
-            syncSearchGlass(panel);
-            searchGlassLayer.setAlpha(0f);
-            searchGlassLayer.animate().alpha(1f).setDuration(260).start();
+            if (!running || !dialog.isShowing()) return;
+            // Match the toolbar's actual screen coordinates, including window insets.
+            int[] panelPos = new int[2], homePos = new int[2];
+            panel.getLocationOnScreen(panelPos);
+            getLocationOnScreen(homePos);
+            int offset = Math.round(homePos[1] + L_BUTTON_CY * k
+                    - panelPos[1] - panel.getHeight() / 2f);
+            android.view.Window searchWindow = dialog.getWindow();
+            if (searchWindow != null && offset != 0) {
+                android.view.WindowManager.LayoutParams attrs = searchWindow.getAttributes();
+                attrs.y += offset;
+                searchWindow.setAttributes(attrs);
+            }
+            panel.postOnAnimation(() -> {
+                if (!dialog.isShowing()) return;
+                syncSearchGlass(panel);
+                searchGlassLayer.setAlpha(0f);
+                searchGlassLayer.animate().alpha(1f).setDuration(260).start();
+            });
         });
         android.view.View decor = dialog.getWindow().getDecorView();
         decor.setAlpha(0f);
@@ -2793,6 +2870,22 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             heroDirty = statusDirty = true;
             wake();
         });
+    }
+
+    /** Input intent is known before the dialog has its first layout, avoiding a heading flash. */
+    private void setSearchInputOpen(boolean open) {
+        if (open && !searchMode) searchHeadingOpacity.snap(0);
+        searchHeadingOpacity.target = open || !searchMode ? 0 : 1;
+        heroDirty = true;
+        wake();
+    }
+
+    private boolean tickSearchHeading(float dt) {
+        if (!searchMode) {
+            searchHeadingOpacity.snap(0);
+            return false;
+        }
+        return searchHeadingOpacity.step(dt);
     }
 
     private void closeSearch() {
@@ -3065,7 +3158,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (i >= others.size()) return "";
                 return label(others, i) + ", " + (i + 1) + Ui.tr(" de ", " of ") + others.size();
             case Z_TOP:
-                if (i == 9) return Ui.ru ? "Часы" : "Clock";
+                if (i == 9) return Ui.ru ? "Часы и профиль" : "Clock and profile";
                 if (i >= 5) return label(lightButtons, i - 5);
                 return tabs()[i] + Ui.tr(", aba ", ", tab ") + (i + 1) + Ui.tr(" de 5", " of 5");
             case Z_CARDS: return tab == 4 ? (Ui.ru ? "Случайный фильм" : "Random movie") : i < cards.size() ? pickText(cards.get(i)) : "";
@@ -3319,7 +3412,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
         if (tab == 4 && !searchMode) {
-            cards = new java.util.ArrayList<>();
+            cards.clear();
+            if (!rouletteSpinning && !rouletteFinished) {
+                roulettePosterSlot = Integer.MIN_VALUE;
+                recs.setPosterWindow(java.util.Collections.emptyList());
+            }
             cardPage = 0;
             heroDirty = true;
             return;
@@ -3338,13 +3435,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 retarget(false);
             }
         }
-        // Preload portrait posters for this page, the next two and the previous one.
+        // Current page first, then the next two and previous page. Drop work from the old window.
         int ahead = Math.min(all.size(), from + perPage * 3);
-        for (int i = from; i < ahead; i++) recs.poster(all.get(i));
-        for (int i = Math.max(0, from - perPage); i < from; i++) recs.poster(all.get(i));
-        if (searchMode || tab <= 2) for (Recs.Pick pick : cards) recs.requestDuration(pick);
-        Backdrop b = cards.isEmpty() ? null : recs.backdrop(cards.get(0));
-        if (cards.isEmpty() || b != null) showBackdrop(b);
+        List<Recs.Pick> posterWindow = new ArrayList<>(all.subList(from, ahead));
+        posterWindow.addAll(all.subList(Math.max(0, from - perPage), from));
+        recs.setPosterWindow(running ? posterWindow : java.util.Collections.emptyList());
+        if (running) for (Recs.Pick pick : posterWindow) recs.poster(pick);
+        if (running) {
+            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) recs.requestDuration(pick);
+            Backdrop b = cards.isEmpty() ? null : recs.backdrop(cards.get(0));
+            if (cards.isEmpty() || b != null) showBackdrop(b);
+        }
         heroDirty = true;
         spoken.focusMoved();    // new picks under the focused card
     }
@@ -3393,6 +3494,22 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         });
     }
 
+    /** Advance a small poster window with the strip, rather than retaining the whole roulette catalog. */
+    private void prepareRoulettePosters(int slot) {
+        if (!running || roulette.isEmpty() || slot == roulettePosterSlot) return;
+        roulettePosterSlot = slot;
+        List<Recs.Pick> window = new ArrayList<>(14);
+        // Fetch and retain the eventual winner first, even while it is still outside the moving strip.
+        window.add(roulette.get(rouletteWinner));
+        int center = rouletteWinner - slot, count = roulette.size();
+        for (int distance = 0; distance <= 6; distance++) {
+            window.add(roulette.get(Math.floorMod(center + distance, count)));
+            if (distance != 0) window.add(roulette.get(Math.floorMod(center - distance, count)));
+        }
+        recs.setPosterWindow(window);
+        for (Recs.Pick pick : window) recs.poster(pick);
+    }
+
     private void spinRoulette() {
         if (rouletteSpinning) return;
         if (roulette.isEmpty()) {
@@ -3401,9 +3518,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             return;
         }
         rouletteWinner = rouletteRandom.nextInt(roulette.size());
+        roulettePosterSlot = Integer.MIN_VALUE;
         rouletteFinished = false;
         rouletteSpinning = true;
         rouletteStarted = SystemClock.uptimeMillis();
+        prepareRoulettePosters(57);
         handler.removeCallbacks(rouletteComplete);
         handler.postDelayed(rouletteComplete, 5000);
         heroDirty = true;
@@ -3484,10 +3603,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             if (i == tab) lTabOn.setColor(blend(tone(L_INK, WHITE), L_INK, focus));   // always dark on the white pill
             c.drawText(tabs()[i], r.centerX() - p.measureText(tabs()[i]) / 2, r.centerY() + Ui.halfCap(p), p);
         }
-        if (searchMode) {
+        if (searchMode && searchHeadingOpacity.value > 0.001f) {
             Paint heading = searchHeadingScratch;
             heading.set(lTabOn);
-            heading.setColor(tone(L_INK, WHITE));
+            heading.setColor(Ui.alpha(tone(L_INK, WHITE), Ui.clamp(searchHeadingOpacity.value)));
             c.drawText((Ui.ru ? "Поиск: " : "Search: ") + searchQuery, MARGIN * k,
                     (largePostersWithoutWidgets ? L_BUTTON_CY + 14 : L_TABBAR_TOP + 48) * k, heading);
         }
@@ -3550,25 +3669,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!rouletteSpinning && !rouletteFinished) {
             setRouletteButtonRect(rouletteButtonRect);
             RectF button = rouletteButtonRect;
-            float focus = zone == Z_CARDS ? Ui.clamp(cardFocus[0].value) : 0f;
-            scene.liquid(c, button, 63 * k, tone(0xFFFFFFFF, SMOKE),
-                    tone(0.52f, 0.48f), tone(0.02f, 0.02f), 14 * k, 9 * k,
-                    tone(0.62f, 0.48f), 1f);
-            // Solid white focus surface, matching the selected top-right controls.
-            if (focus > 0.01f) {
-                rouletteSelectedPaint.setColor(Ui.alpha(0xFFFFFFFF, focus * 0.97f));
-                c.drawRoundRect(button, 63 * k, 63 * k, rouletteSelectedPaint);
-                rouletteRimPaint.setStrokeWidth((2f + focus) * k);
-                rouletteRimPaint.setColor(Ui.alpha(0xFFFFFFFF, 0.65f + 0.35f * focus));
-                c.drawRoundRect(button, 63 * k, 63 * k, rouletteRimPaint);
-            }
+            float focus = Ui.clamp(rouletteButtonFocus.value);
+            float scale = drawActionSurface(c, button, focus);
             rouletteTextPaint.set(lCardTitle);
             Paint p = rouletteTextPaint;
             p.setTextSize(40.8f * k);
-            p.setColor(focus > 0.01f ? 0xFF202124 : tone(L_INK, WHITE));
+            p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, focus));
             String label = rouletteLoading ? (Ui.ru ? "Загрузка фильмов…" : "Loading movies…")
                     : (Ui.ru ? "🎲  Случайный фильм" : "🎲  Random movie");
+            int saved = c.save();
+            c.scale(scale, scale, cx, cy);
             c.drawText(label, cx - p.measureText(label) / 2, cy + Ui.halfCap(p), p);
+            c.restoreToCount(saved);
             return;
         }
         if (roulette.isEmpty()) return;
@@ -3604,6 +3716,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // Leave room for the focused card's blurred shadow below the poster.
         final float layerTop = cy - cardH / 2 - 55 * k;
         final float layerBottom = cy + cardH / 2 + 85 * k;
+        prepareRoulettePosters(Math.round(totalStrides - travel));
         c.saveLayer(left, layerTop, right, layerBottom, null);
         for (int i = -62; i <= 5; i++) {
             float pos = i + totalStrides - travel;
@@ -3915,33 +4028,29 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
     }
 
-    /**
-     * Live TV, HDMI Inputs and Settings: icon-only glass circles (light by day, smoked at night); the focused one turns
-     * white with a dark icon (the tvOS focus) and its name appears below it.
-     */
-    /** Decorative, non-focusable clock/profile capsule next to the top-right actions. */
+    /** Reuse the visible background's tiny blurred pixels, including its day/night treatment. */
+    private int[] profileBackground() {
+        if (bgTo == null) return null;
+        if (night >= 0.5f && bgTo.nightFrost != null) return bgTo.nightFrost;
+        return bgTo.light != null ? bgTo.light : frostOf(bgTo);
+    }
+
+    /** Shared focus surface for circular actions and larger capsules. Leaves scaled bounds in cell. */
+    private float drawActionSurface(Canvas c, RectF bounds, float focus) {
+        float scale = actionSurface.draw(c, bounds, focus, night, k);
+        cell.set(actionSurface.bounds);
+        return scale;
+    }
+
+    /** Focusable clock/profile capsule next to the top-right actions. */
     private void drawClockProfileCapsule(Canvas c) {
         if (!clockButtonEnabled()) return;
         RectF capsule = topRects[9];
         if (capsule.isEmpty()) return;
-        float height = capsule.height();
-        float radius = height / 2f;
         float clockFocus = Ui.clamp(topFocus[9].value);
-        // Match the search/TV/VPN/settings buttons: same shadow offset,
-        // focus-dependent opacity and lift, and glass fading under focus.
-        tmp.set(capsule);
-        tmp.offset(0, (6 + 8 * clockFocus) * k);
-        shadow.setColor(Ui.alpha(0xFF000000,
-                tone(0.1f, 0.3f) + tone(0.14f, 0.2f) * clockFocus));
-        shadows.draw(c, tmp, radius, SHADOW_BLUR * k, shadow);
-        scene.liquid(c, capsule, radius, tone(0xFFFFFFFF, SMOKE),
-                tone(0.55f, 0.5f), tone(0.02f, 0.01f), 12 * k, 8 * k,
-                tone(0.6f, 0.45f), 1 - clockFocus);
-        if (clockFocus > 0.01f) {
-            fill.setShader(null);
-            fill.setColor(Ui.alpha(0xFFFFFFFF, clockFocus));
-            c.drawRoundRect(capsule, radius, radius, fill);
-        }
+        float scale = drawActionSurface(c, capsule, clockFocus);
+        int saved = c.save();
+        c.scale(scale, scale, capsule.centerX(), capsule.centerY());
         Paint p = clockCapsuleScratch;
         p.reset();
         p.setAntiAlias(true);
@@ -3957,6 +4066,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.drawText(time, capsule.left + clockInset + 5 * k, clockBaseline, p);
         float avatarRadius = Math.max(1f, capsule.height() / 2f - 5 * k);
         float ax = capsule.right - 5 * k - avatarRadius, ay = capsule.centerY();
+        if (profileAvatarIndex >= 0) {
+            profileAvatar.draw(c, profileAvatarIndex, ax, ay, avatarRadius);
+            c.restoreToCount(saved);
+            return;
+        }
         p.setColor(tone(0xFFD5E1E8, 0xFF485662));
         c.drawCircle(ax, ay, avatarRadius, p);
         p.setColor(tone(0xFF41505D, 0xFFF1F3F5));
@@ -3964,6 +4078,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         RectF shoulders = avatarShouldersScratch;
         shoulders.set(ax - 13 * k, ay + 3 * k, ax + 13 * k, ay + 16 * k);
         c.drawRoundRect(shoulders, 11 * k, 11 * k, p);
+        c.restoreToCount(saved);
     }
 
     private void drawLightButtons(Canvas c) {
@@ -3972,40 +4087,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         for (int i = 0; i < lightButtons.size(); i++) {
             if (!topButtonEnabled(i)) continue;
             RectF r = topRects[5 + i];
-            float f = Ui.clamp(topFocus[5 + i].value), s = 1 + 0.1f * f, rad = r.width() / 2 * s;
-            cell.set(r.centerX() - rad, r.centerY() - rad, r.centerX() + rad, r.centerY() + rad);
-            tmp.set(cell);
-            tmp.offset(0, (6 + 8 * f) * k);
-            shadow.setColor(Ui.alpha(0xFF000000, tone(0.1f, 0.3f) + tone(0.14f, 0.2f) * f));
-            shadows.draw(c, tmp, rad, SHADOW_BLUR * k, shadow);
-            scene.liquid(c, cell, rad, tone(0xFFFFFFFF, SMOKE), tone(0.55f, 0.5f), tone(0.02f, 0.01f), 12 * k, 8 * k,
-                    tone(0.6f, 0.45f), 1 - f);
-            if (f > 0.01f) {
-                fill.setShader(null);
-                fill.setColor(Ui.alpha(0xFFFFFFFF, f));
-                c.drawCircle(cell.centerX(), cell.centerY(), rad, fill);
-            }
-            if (i == 0) {
-                Paint magnifier = topIconScratch;
-                magnifier.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, f));
-                magnifier.setStyle(Paint.Style.STROKE);
-                magnifier.setStrokeWidth(3.3f * k * s);
-                float cx = cell.centerX(), cy = cell.centerY();
-                c.drawCircle(cx - 3 * k, cy - 3 * k, 9 * k * s, magnifier);
-                c.drawLine(cx + 4 * k, cy + 4 * k, cx + 13 * k, cy + 13 * k, magnifier);
-            } else if (i == 2) {
-                Paint globe = topIconScratch;
-                globe.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, f));
-                globe.setStyle(Paint.Style.STROKE);
-                globe.setStrokeWidth(2.5f * k * s);
-                float cx = cell.centerX(), cy = cell.centerY(), gr = 12f * k * s;
-                c.drawCircle(cx, cy, gr, globe);
-                c.drawOval(cx - gr * .48f, cy - gr, cx + gr * .48f, cy + gr, globe);
-                c.drawLine(cx - gr, cy, cx + gr, cy, globe);
-                c.drawLine(cx - gr * .85f, cy - gr * .5f, cx + gr * .85f, cy - gr * .5f, globe);
-                c.drawLine(cx - gr * .85f, cy + gr * .5f, cx + gr * .85f, cy + gr * .5f, globe);
-            } else Symbols.draw(getContext(), c, lightButtons.get(i).symbol, cell.centerX(), cell.centerY(),
-                    27f * k * s,
+            float f = Ui.clamp(topFocus[5 + i].value);
+            float s = drawActionSurface(c, r, f);
+            Symbols.draw(getContext(), c, lightButtons.get(i).symbol, cell.centerX(), cell.centerY(),
+                    27f * 1.15f * k * s,
                     blend(tone(L_INK, 0xEBFFFFFF), L_INK, f));
 
         }
