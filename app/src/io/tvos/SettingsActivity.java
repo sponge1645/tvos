@@ -1209,6 +1209,9 @@ public class SettingsActivity extends Activity {
         private void drawTileDescription(Canvas c) {
             String info = null;
             switch (screen) {
+                case APPS_DOWNLOADS:
+                    info = appDownloadDescription(focus);
+                    break;
                 case UPDATES:
                     info = updateDetailsText();
                     break;
@@ -1257,6 +1260,26 @@ public class SettingsActivity extends Activity {
             c.translate(152 * k, 837 * k);
             descriptionLayout.draw(c);
             c.restore();
+        }
+
+        private String appDownloadDescription(int index) {
+            switch (index) {
+                case 0: return tr("Трансляция экрана, видео и музыки\nс iPhone, iPad и Mac на телевизор.",
+                        "Share your screen, videos and music\nfrom iPhone, iPad or Mac to your TV.");
+                case 1: return tr("Музыка, альбомы и плейлисты на телевизоре.\nСторонний клиент; нужна подписка Apple Music.",
+                        "Music, albums and playlists on your TV.\nA third-party client; Apple Music subscription required.");
+                case 2: return tr("Альтернативный клиент YouTube\nс интерфейсом для телевизора и управлением с пульта.",
+                        "An alternative YouTube client\nwith a TV interface and remote control support.");
+                case 3: return tr("VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.",
+                        "A VPN client for connecting to your own servers.\nImport configurations and subscription links.");
+                case 4: return tr("Фильмы, сериалы и мультфильмы\nв приложении с управлением с пульта.",
+                        "Movies, series and cartoons\nin an app designed for your TV remote.");
+                case 5: return tr("Каталог фильмов и сериалов для телевизора.\nИсточники просмотра настраиваются отдельно.",
+                        "A movie and series catalog for your TV.\nPlayback sources are configured separately.");
+                case 6: return tr("Фильмы и сериалы из сервиса KinoPub.\nДля просмотра нужен аккаунт с доступом.",
+                        "Movies and series from KinoPub.\nAn account with viewing access is required.");
+                default: return null;
+            }
         }
 
         private String updateDetailsText() {

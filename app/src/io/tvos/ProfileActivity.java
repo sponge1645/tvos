@@ -55,7 +55,6 @@ public final class ProfileActivity extends Activity {
     }
 
     @Override public void finish() {
-        if (profile != null && profile.beginExit()) return;
         super.finish();
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
@@ -84,10 +83,6 @@ public final class ProfileActivity extends Activity {
         private final Spring pageTransition = new Spring(0.24f, 1f, 1);
         private boolean choosing, running, scheduled, okDown, backDown, night;
         private long lastFrame;
-        private boolean exiting, exitReady;
-        private long exitStarted;
-        private float exitOpacity;
-        private final Runnable exitFinish = () -> ProfileActivity.this.finish();
         private float k = 1, ox, oy;
         // Slot zero is the current avatar; satellites match the reference composition.
         private final float[] xs = {1410, 1179, 1618, 1410, 1632, 1460, 1196, 1129, 1684};
@@ -145,7 +140,6 @@ public final class ProfileActivity extends Activity {
                 }
                 @Override public int focused() { return (choosing ? avatarIndex : focus) + 1; }
                 @Override public void focus(int id) {
-                    if (exiting) return;
                     if (id < 1 || id > (choosing ? 20 : 2)) return;
                     if (choosing && id > 18) { changePage(id - 19); return; }
                     if (choosing) { changePage((id - 1) / 9); avatarIndex = id - 1; } else focus = id - 1;
@@ -221,12 +215,6 @@ public final class ProfileActivity extends Activity {
 
         void pause() {
             running = false;
-            removeCallbacks(exitFinish);
-            if (!isFinishing()) {
-                exiting = exitReady = false;
-                exitStarted = 0;
-                exitOpacity = 0;
-            }
             okDown = backDown = false;
             Choreographer.getInstance().removeFrameCallback(this);
             scheduled = false;
@@ -245,7 +233,6 @@ public final class ProfileActivity extends Activity {
         @Override public void doFrame(long now) {
             scheduled = false;
             if (!running) return;
-            if (stepExit(now)) return;
             float dt = lastFrame == 0 ? 1f / 60 : Math.min(0.05f, (now - lastFrame) / 1e9f);
             lastFrame = now;
             boolean moving = entrance.step(dt) | chooser.step(dt) | pageTransition.step(dt);
@@ -253,31 +240,6 @@ public final class ProfileActivity extends Activity {
             for (Spring spring : avatarFocus) moving |= spring.step(dt);
             invalidate();
             if (moving) wake(); else { lastFrame = 0; avatars.prepare(page); }
-        }
-
-        boolean beginExit() {
-            if (exitReady || !running) return false;
-            if (exiting) return true;
-            if (getContext().getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false)) return false;
-            exiting = true;
-            exitStarted = 0;
-            wake();
-            return true;
-        }
-
-        private boolean stepExit(long now) {
-            if (!exiting) return false;
-            if (exitReady) return true;
-            if (exitStarted == 0) exitStarted = now;
-            float progress = Math.max(0f, Math.min(1f, (now - exitStarted) / 160_000_000f));
-            exitOpacity = progress * progress * (3f - 2f * progress);
-            invalidate();
-            if (progress >= 1f) {
-                exitReady = true;
-                // Let the fully covered foreground reach the screen before Android fades the window.
-                postOnAnimation(exitFinish);
-            } else wake();
-            return true;
         }
 
         private void retarget(boolean snap) {
@@ -342,13 +304,6 @@ public final class ProfileActivity extends Activity {
                 }
                 rim.setStyle(Paint.Style.STROKE);
             }
-            if (exitOpacity > 0) {
-                // Reuse the exact backdrop to dissolve foreground into it: no bitmap capture or saveLayer.
-                scratch.set(0, 0, 1920, 1080);
-                photo.setAlpha(Math.round(255 * exitOpacity));
-                c.drawBitmap(background, null, scratch, photo);
-                photo.setAlpha(255);
-            }
             c.restoreToCount(save);
         }
 
@@ -406,7 +361,6 @@ public final class ProfileActivity extends Activity {
         }
 
         private void activate() {
-            if (exiting) return;
             if (click != null) click.open();
             if (choosing) {
                 selected = avatarIndex;
@@ -420,7 +374,6 @@ public final class ProfileActivity extends Activity {
         }
 
         private void back() {
-            if (exiting) return;
             if (!choosing) { finish(); return; }
             choosing = false;
             changePage(selected / 9);
@@ -428,7 +381,6 @@ public final class ProfileActivity extends Activity {
         }
 
         private void move(int dx, int dy) {
-            if (exiting) return;
             int before = choosing ? avatarIndex : focus;
             if (choosing) {
                 int local = avatarIndex % 9;
@@ -477,7 +429,6 @@ public final class ProfileActivity extends Activity {
         }
 
         @Override public boolean onTouchEvent(MotionEvent event) {
-            if (exiting) return true;
             if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
             if (event.getAction() != MotionEvent.ACTION_UP) return super.onTouchEvent(event);
             float x = (event.getX() - ox) / k, y = (event.getY() - oy) / k;
