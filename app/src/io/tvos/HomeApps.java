@@ -905,7 +905,7 @@ final class HomeApps {
                 logoKey = "lampa"; top = 0xFF313130; bottom = 0xFF161613; break;
             case "com.android.vending":
             case "com.yandex.devices.appstore":
-                logoKey = "googleplay"; top = 0xFF009BF6; bottom = 0xFF166CED; boost = 1.2f; break;
+                logoKey = "googleplay"; top = 0xFF52ABEF; bottom = 0xFF2D6AD4; boost = 1.2f; break;
             default:
                 return appTile(c, null, pkg, 0);
         }
@@ -1008,11 +1008,11 @@ final class HomeApps {
         Canvas canvas = new Canvas(b);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         paint.setShader(new LinearGradient(0, 0, 0, TILE_H,
-                0xFFA3A2AB, 0xFF4D4C50, Shader.TileMode.CLAMP));
+                0xFFA5A6AB, 0xFF656368, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, TILE_W, TILE_H, paint);
         Bitmap logo = ownLogoCached(c, "settings");
         if (logo != null) {
-            float maxW = TILE_W * 0.516f, maxH = TILE_H * 0.744f;
+            float maxW = TILE_W * (0.516f * 1.05f), maxH = TILE_H * (0.744f * 1.05f);
             float scale = Math.min(maxW / logo.getWidth(), maxH / logo.getHeight());
             float w = logo.getWidth() * scale, h = logo.getHeight() * scale;
             Paint image = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);

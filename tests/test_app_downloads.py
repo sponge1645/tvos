@@ -18,14 +18,15 @@ stubs = {
  public int minSdkVersion=28;}''',
  'android/content/pm/PackageInfo.java': '''package android.content.pm; public class PackageInfo {
  public String packageName="test.app";public long code=2;
- public SigningInfo signingInfo=new SigningInfo();public ApplicationInfo applicationInfo=new ApplicationInfo();
+ public Signature[] signatures;public SigningInfo signingInfo=new SigningInfo();public ApplicationInfo applicationInfo=new ApplicationInfo();
  public long getLongVersionCode(){return code;} }''',
  'android/content/pm/PackageManager.java': '''package android.content.pm; public class PackageManager {
- public static final int GET_SIGNING_CERTIFICATES=1;public PackageInfo archive,installed;
+ public static final int GET_SIGNING_CERTIFICATES=1,GET_SIGNATURES=2;public PackageInfo archive,installed;
  public static class NameNotFoundException extends Exception {}
  public PackageInfo getPackageInfo(String p,int f)throws NameNotFoundException{
  if(installed==null)throw new NameNotFoundException();return installed;}
- public PackageInfo getPackageArchiveInfo(String p,int f){return archive;} }''',
+ public PackageInfo getPackageArchiveInfo(String p,int f){
+ if(f!=(GET_SIGNING_CERTIFICATES|GET_SIGNATURES))throw new AssertionError("both signing flags required");return archive;} }''',
  'org/json/JSONArray.java': '''package org.json; import java.util.*; public class JSONArray {
  public static List<JSONObject> next=new ArrayList<>();private final List<JSONObject> items;
  public JSONArray(String s){items=next;}public JSONArray(List<JSONObject> v){items=v;}
@@ -126,6 +127,20 @@ public class DownloadHarness {
   String signer=ApkTransfer.hex(ApkTransfer.digest().digest("publisher".getBytes()));
   AppDownloadCatalog.Entry app=new AppDownloadCatalog.Entry("Test","test.app",signer,src,null,false,2);
   ApkTrust.verify(pm,tmp,app,null);
+  pm.archive.signatures=new Signature[]{new Signature("publisher")};pm.archive.signingInfo=null;
+  ApkTrust.verify(pm,tmp,app,null);
+  pm.archive.signingInfo=new SigningInfo();
+  ApkTrust.verify(pm,tmp,app,null);
+  pm.archive.signingInfo.signers=new Signature[0];
+  ApkTrust.verify(pm,tmp,app,null);
+  pm.archive.signingInfo=null;
+  PackageInfo legacy=signed("publisher");legacy.signatures=new Signature[]{new Signature("publisher")};legacy.signingInfo=null;
+  ApkTrust.verify(pm,tmp,app,legacy);
+  pm.archive.signatures=new Signature[]{new Signature("attacker")};
+  rejects(()->ApkTrust.verify(pm,tmp,app,null),"legacy signer mismatch rejected");
+  pm.archive.signatures=null;rejects(()->ApkTrust.verify(pm,tmp,app,null),"missing certificates rejected");
+  pm.archive=signed("attacker");pm.archive.signatures=new Signature[]{new Signature("publisher")};
+  rejects(()->ApkTrust.verify(pm,tmp,app,null),"legacy data cannot override current signer set");
   pm.archive=signed("attacker");rejects(()->ApkTrust.verify(pm,tmp,app,null),"first install rejects unexpected signer");
   pm.archive=signed("publisher");pm.archive.packageName="other.app";rejects(()->ApkTrust.verify(pm,tmp,app,null),"package substitution rejected");
   pm.archive=signed("publisher");pm.archive.applicationInfo.minSdkVersion=99;rejects(()->ApkTrust.verify(pm,tmp,app,null),"unsupported SDK rejected");

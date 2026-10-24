@@ -235,17 +235,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** Each app's tile like its Apple TV icon: brand colors (top, bottom) and logo (0 = as is, 1 = white, 2 = dark). */
     private static final Map<String, int[]> TILE_STYLE = new HashMap<>();
     static {
-        TILE_STYLE.put("com.android.vending", new int[] {0xFF009BF6, 0xFF166CED, 0});
-        TILE_STYLE.put("com.yandex.devices.appstore", new int[] {0xFF009BF6, 0xFF166CED, 0});
+        TILE_STYLE.put("com.android.vending", new int[] {0xFF52ABEF, 0xFF2D6AD4, 0});
+        TILE_STYLE.put("com.yandex.devices.appstore", new int[] {0xFF52ABEF, 0xFF2D6AD4, 0});
         TILE_STYLE.put("netflix", new int[] {0xFF0A0A0A, 0xFF000000, 0});
         TILE_STYLE.put("youtube", new int[] {0xFF1C1C1E, 0xFF09090A, 0});
         TILE_STYLE.put("io.gh.reisxd.tizentube.cobalt", new int[] {0xFFFFFFFF, 0xFFFFFFFF, 0});
         TILE_STYLE.put("watch.kino", new int[] {0xFFFFFFFF, 0xFFFFFFFF, 0});
         TILE_STYLE.put("com.seena.app", new int[] {0xFF007AFF, 0xFF007AFF, 0});
         TILE_STYLE.put("top.rootu.lampa", new int[] {0xFF313130, 0xFF161613, 0});
-        TILE_STYLE.put("tv-settings", new int[] {0xFFA3A2AB, 0xFF4D4C50, 0});
+        TILE_STYLE.put("tv-settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
         TILE_STYLE.put("com.applemusicktv", new int[] {0xFFFF4A6E, 0xFFFE072E, 0});
-        TILE_STYLE.put("com.android.tv.settings", new int[] {0xFFA1A0A9, 0xFF4D4C4F, 0});
+        TILE_STYLE.put("com.android.tv.settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
         TILE_STYLE.put("io.github.jqssun.airplay", new int[] {0xFFF79E1F, 0xFFFF6933, 0});
         TILE_STYLE.put("llc.itdev.incy", new int[] {0xFF024824, 0xFF0B1B11, 0});
         TILE_STYLE.put("globoplay", new int[] {0xFFFF8A1F, 0xFFFF2D5A, 1});
@@ -1621,10 +1621,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float scale = s / (1 + FOCUS_GROW);
         // Dock logo adjustments relative to v18: KinoPub +10%, TV Settings -10%, TizenTube +5%.
         float brandBoost = ("com.android.vending".equals(it.pkg) || "com.yandex.devices.appstore".equals(it.pkg)) ? 1.2f
-                : "com.android.tv.settings".equals(it.pkg) ? 1.26f
+                : "com.android.tv.settings".equals(it.pkg) ? 1.323f
                 : "com.applemusicktv".equals(it.pkg) ? 1.25f
                 : "watch.kino".equals(it.key) ? 1.32f
-                : ("tv-settings".equals(it.key) ? 1.44f
+                : ("tv-settings".equals(it.key) ? 1.512f
                 : ("io.gh.reisxd.tizentube.cobalt".equals(it.key) ? 1.05f : 1f));
         float dw = logo.getWidth() * scale * brandBoost, dh = logo.getHeight() * scale * brandBoost;
         float left = box.centerX() - dw / 2, top = box.centerY() - dh / 2;
