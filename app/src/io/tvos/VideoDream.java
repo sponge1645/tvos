@@ -127,7 +127,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialLocation.setTextColor(0xD9F2F2F2);
         aerialLocation.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
         aerialLocation.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        aerialLocation.setShadowLayer(dp(6), 0, dp(2), 0x66000000);
+        aerialLocation.setShadowLayer(dp(8), 0, dp(2), 0xE6000000);
         LayoutParams lp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT);
         lp.setMargins(dp(48), 0, 0, dp(42));
         addView(aerialLocation, lp);
