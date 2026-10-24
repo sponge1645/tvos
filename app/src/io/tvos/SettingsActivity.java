@@ -1221,8 +1221,8 @@ public class SettingsActivity extends Activity {
                     if (focus == 3) info = tr("Город для прогноза погоды.", "The city used for weather forecasts.");
                     break;
                 case SCREENSAVER:
-                    if (focus == 3) info = tr("Та же погода выбранного региона, что на главном экране tvOS.",
-                            "The same weather for your selected region as on the tvOS Home screen.");
+                    if (focus == 3) info = tr("Город для погоды указывается в пункте «Регион».",
+                            "Set the weather city in Region.");
                     break;
                 case APPS_DOWNLOADS:
                     info = appDownloadDescription(focus);
