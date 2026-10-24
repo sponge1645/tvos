@@ -18,8 +18,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -43,8 +41,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final ArrayList<String> urls = new ArrayList<>();
     private final android.os.Bundle settings;
     private final SurfaceView surface;
-    private View exitCover;
-    private boolean exiting;
+    private final View transitionCover;
+    private static final long TRANSITION_MS = 600;
+    private boolean exiting, entered;
     // TVOS_AERIAL_POLISH_V1: fade only video, keep weather and clock steady.
     private final View videoFade;
     private final GlassClockView clock;
@@ -94,7 +93,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         addView(surface, new LayoutParams(-1, -1));
         videoFade = new View(context);
         videoFade.setBackgroundColor(Color.BLACK);
-        videoFade.setAlpha(0f);
+        videoFade.setAlpha(1f);
         addView(videoFade, new LayoutParams(-1, -1));
         clock = new GlassClockView(context);
         // SFPRO_AERIAL_TEXT
@@ -136,6 +135,11 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         wp.setMargins(0, 0, dp(48), dp(42));
         addView(aerialWeather, wp);
         aerialWeather.setVisibility(View.GONE);
+        // One topmost black cover fades the video/photo and every overlay together.
+        transitionCover = new View(context);
+        transitionCover.setBackgroundColor(Color.BLACK);
+        transitionCover.setAlpha(1f);
+        addView(transitionCover, new LayoutParams(-1, -1));
         loadPlaylist();
     }
 
@@ -186,6 +190,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         if (running) return;
         running = true;
         exiting = false;
+        entered = false;
+        transitionCover.animate().cancel();
+        transitionCover.setAlpha(1f);
         weatherData.refreshIfStale();
         // Keep weather hidden until the first video and location fade in.
         aerialWeather.animate().cancel();
@@ -196,7 +203,16 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         else if (surfaceReady) playNext();
     }
 
-    /** Cover the SurfaceView and overlays before releasing the decoder or closing the dream window. */
+    /** Called only after a first video frame or a photo/fallback frame is ready. */
+    private void fadeEntrance() {
+        if (!running || exiting || entered) return;
+        entered = true;
+        transitionCover.animate().cancel();
+        transitionCover.animate().alpha(0f).setDuration(TRANSITION_MS)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).start();
+    }
+
+    /** Use the same cover, duration and easing in both directions, including interrupted entry. */
     void fadeExit(Runnable finished) {
         if (exiting) return;
         if (!running) { finished.run(); return; }
@@ -207,25 +223,21 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         videoFade.animate().cancel();
         aerialLocation.animate().cancel();
         aerialWeather.animate().cancel();
-        exitCover = new View(getContext());
-        exitCover.setBackgroundColor(Color.BLACK);
-        exitCover.setAlpha(0f);
-        addView(exitCover, new LayoutParams(-1, -1));
-        // The deadline also finishes if the animator is interrupted by the device firmware.
-        handler.postDelayed(finished, 450);
-        exitCover.animate().alpha(1f).setDuration(300).withEndAction(() -> {
-            handler.removeCallbacks(finished);
-            finished.run();
-        }).start();
+        transitionCover.animate().cancel();
+        // Keep the current cover opacity when entry is interrupted; never flash the full image.
+        handler.postDelayed(finished, TRANSITION_MS + 150);
+        transitionCover.animate().alpha(1f).setDuration(TRANSITION_MS)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    handler.removeCallbacks(finished);
+                    finished.run();
+                }).start();
     }
 
     void stop() {
         running = false;
-        if (exitCover != null) {
-            exitCover.animate().cancel();
-            removeView(exitCover);
-            exitCover = null;
-        }
+        transitionCover.animate().cancel();
+        transitionCover.setAlpha(1f);
         generation++;
         catalogGeneration++;
         loadingCatalog = false;
@@ -513,6 +525,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialWeather.setAlpha(0f);
         aerialWeather.setVisibility(View.GONE);
         fallback = new DreamView(getContext(), settings);
+        fallback.setOnContentReadyListener(this::fadeEntrance);
         addView(fallback, 0, new LayoutParams(-1, -1));
         fallback.start();
     }
@@ -533,21 +546,32 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             mp.setOnPreparedListener(p -> {
                 AppLog.w("TVOS_STREAM_TEST prepared");
                 if (!running || token != generation || p != player) return;
+                try {
+                    p.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+                    p.start();
+
+                } catch (Exception e) { onFailure(token); }
+            });
+            mp.setOnInfoListener((p, what, extra) -> {
+                if (what != MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) return false;
+                if (!running || exiting || token != generation || p != player) return true;
                 if (prepareTimeout != null) handler.removeCallbacks(prepareTimeout);
                 prepareTimeout = null;
                 preparing = false;
                 failures = 0;
                 try {
-                    p.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
-                    p.start();
                     if (appleMode) {
                         videoFade.animate().cancel();
-                        videoFade.animate().alpha(0f).setDuration(850).start();
+                        if (!entered) videoFade.setAlpha(0f);
+                        else videoFade.animate().alpha(0f).setDuration(850).start();
                         aerialLocation.animate().cancel();
-                        aerialLocation.animate().alpha(1f).setDuration(850).start();
+                        if (!entered) aerialLocation.setAlpha(1f);
+                        else aerialLocation.animate().alpha(1f).setDuration(850).start();
                         aerialWeather.animate().cancel();
-                        if (aerialWeather.getVisibility() == View.VISIBLE)
-                            aerialWeather.animate().alpha(1f).setDuration(850).start();
+                        if (aerialWeather.getVisibility() == View.VISIBLE) {
+                            if (!entered) aerialWeather.setAlpha(1f);
+                            else aerialWeather.animate().alpha(1f).setDuration(850).start();
+                        }
                         int duration = p.getDuration();
                         if (duration > 1800) {
                             fadeOut = () -> {
@@ -563,7 +587,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
                             handler.postDelayed(fadeOut, duration - 700L);
                         }
                     }
+                    fadeEntrance();
                 } catch (Exception e) { onFailure(token); }
+                return true;
             });
             mp.setOnCompletionListener(p -> { if (running && token == generation && p == player) {
                 if (appleMode) {

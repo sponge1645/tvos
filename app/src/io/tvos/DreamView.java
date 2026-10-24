@@ -149,6 +149,17 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     };
 
     private final android.os.Bundle settings;
+    private Runnable contentReady;
+    private boolean parentPhotoEntrance;
+
+    void setOnContentReadyListener(Runnable listener) { contentReady = listener; }
+
+    private void notifyContentReady() {
+        if (!running || contentReady == null) return;
+        Runnable ready = contentReady;
+        contentReady = null;
+        post(() -> { if (running) ready.run(); });
+    }
 
     DreamView(Context c) {
         this(c, ScreensaverSettingsProvider.read(c));
@@ -198,6 +209,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     void stop() {
         if (!running) return;
         running = false;
+        contentReady = null;
         generation++;
         decoding = false;
         Choreographer.getInstance().removeFrameCallback(this);
@@ -429,12 +441,17 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         if (running) advance(up);
         if (!glassFor.equals(clock)) buildGlass(clock);
 
-        float first = current == null ? 0 : fadeIn(up - firstAt, FIRST_MS);
+        // The parent owns initial fade for every source. Keep later photo crossfades unchanged.
+        if (current != null && contentReady != null) parentPhotoEntrance = true;
+        float first = current == null ? 0 : parentPhotoEntrance ? 1 : fadeIn(up - firstAt, FIRST_MS);
         if (current == null || first < 1) {
             if (fallback) drawFallback(canvas, up, current == null ? 1 : 1 - first);
             else canvas.drawRect(0, 0, w, h, black);
         }
-        if (current == null) return;
+        if (current == null) {
+            if (fallback) notifyContentReady();
+            return;
+        }
         if (fallback && first >= 1) fallback = false;
 
         place(current, up, placeA);
@@ -449,6 +466,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         chrome.setAlpha(first);
         chrome.draw(canvas);
         drawGlass(canvas, first, e);
+        notifyContentReady();
         // Captions hidden: keep photo, glass clock and weather
     }
 

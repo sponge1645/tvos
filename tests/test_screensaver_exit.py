@@ -13,8 +13,8 @@ public class ExitHarness {
  static class LayoutParams {LayoutParams(int w,int h){}}
  static class Handler {List<Runnable> tasks=new ArrayList<>();void postDelayed(Runnable r,long t){tasks.add(r);}void removeCallbacks(Runnable r){tasks.remove(r);}void removeCallbacksAndMessages(Object o){tasks.clear();}}
  static class Animation {
-  Runnable end;int cancels;long duration;
-  Animation alpha(float a){return this;}Animation setDuration(long n){duration=n;return this;}
+  Runnable end;int cancels;long duration;float target;Object easing;
+  Animation alpha(float a){target=a;return this;}Animation setInterpolator(Object i){easing=i;return this;}Animation setDuration(long n){duration=n;return this;}
   Animation withEndAction(Runnable r){end=r;return this;}void start(){}void cancel(){cancels++;end=null;}
  }
  static class View {
@@ -24,36 +24,51 @@ public class ExitHarness {
  }
  static class MediaPlayer {boolean released;void reset(){}void release(){released=true;}}
  static class Fallback extends View {boolean stopped;void stop(){stopped=true;}}
- Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View(),exitCover;
- Fallback fallback;MediaPlayer player=new MediaPlayer();boolean running=true,exiting,loadingCatalog,preparing;
+ Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();final View transitionCover=new View();static final long TRANSITION_MS=600;
+ Fallback fallback;MediaPlayer player=new MediaPlayer();boolean running=true,exiting,loadingCatalog,preparing,entered;
  int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
  List<View> children=new ArrayList<>();Object getContext(){return this;}
  void addView(View v,LayoutParams p){children.add(v);}void removeView(View v){children.remove(v);}
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
 '''
+photo_source=Path('app/src/io/tvos/DreamView.java').read_text()
+a=photo_source.index('    private void notifyContentReady()');b=photo_source.index('{',a);d=1;i=b+1
+while d:
+    d+=(photo_source[i]=='{')-(photo_source[i]=='}');i+=1
+photo_method=photo_source[a:i]
+header+='static class PhotoReady {boolean running=true;Runnable contentReady;List<Runnable> posted=new ArrayList<>();void post(Runnable r){posted.add(r);}' + photo_method + '}\n'
 tests='''
  public static void main(String[] args){
   ExitHarness h=new ExitHarness();MediaPlayer original=h.player;int[] calls={0};
-  h.handler.tasks.add(()->{throw new AssertionError("old work ran");});
-  h.fadeExit(()->{calls[0]++;h.stop();});
+  h.transitionCover.setAlpha(1f);h.fadeEntrance();
+  check(h.entered && h.transitionCover.animation.target==0 && h.transitionCover.animation.duration==600,"entry fades from black with shared duration");
+  h.transitionCover.setAlpha(.4f);h.fadeExit(()->{calls[0]++;h.stop();});
   check(h.exiting && h.generation==1 && h.catalogGeneration==1,"stale asynchronous work invalidated");
-  check(!original.released && h.children.contains(h.exitCover),"video remains alive under exit overlay");
-  check(h.exitCover.animation.duration==300 && h.handler.tasks.size()==1,"bounded fade and deadline");
+  check(!original.released && h.transitionCover.alpha==.4f,"interrupted entry preserves cover opacity and live decoder");
+  check(h.transitionCover.animation.target==1 && h.transitionCover.animation.duration==600 && h.handler.tasks.size()==1,"matching exit fade and deadline");
+  h.fadeEntrance();check(h.transitionCover.animation.target==1,"late content ready cannot reverse exit");
   h.fadeExit(()->{throw new AssertionError("duplicate exit");});
-  h.exitCover.animation.end.run();
-  check(calls[0]==1 && original.released && h.handler.tasks.isEmpty() && h.children.isEmpty(),"normal completion releases after fade");
+  h.transitionCover.animation.end.run();
+  check(calls[0]==1 && original.released && h.handler.tasks.isEmpty() && h.transitionCover.alpha==1,"normal completion releases after fade");
   ExitHarness deadline=new ExitHarness();deadline.fadeExit(()->{calls[0]++;deadline.stop();});
   deadline.handler.tasks.get(0).run();
-  check(calls[0]==2 && deadline.player==null && deadline.children.isEmpty(),"deadline handles missing animation callback");
+  check(calls[0]==2 && deadline.player==null,"deadline handles missing animation callback");
   ExitHarness forced=new ExitHarness();forced.fadeExit(()->{throw new AssertionError("callback after forced stop");});
-  forced.stop();check(forced.handler.tasks.isEmpty() && forced.exitCover==null,"forced stop cancels transition");
+  forced.stop();check(forced.handler.tasks.isEmpty() && forced.transitionCover.animation.end==null,"forced stop cancels transition");
   ExitHarness photos=new ExitHarness();photos.fallback=new Fallback();Fallback f=photos.fallback;
   photos.fadeExit(()->photos.stop());check(!f.stopped,"photo remains visible during fade");
-  photos.exitCover.animation.end.run();check(f.stopped,"photo stops after fade");
-  System.out.println("PASS: live decoder during fade, duplicate exit, completion, deadline, forced stop, photo fallback");
+  photos.transitionCover.animation.end.run();check(f.stopped,"photo stops after fade");
+  PhotoReady ready=new PhotoReady();int[] readyCalls={0};ready.contentReady=()->readyCalls[0]++;
+  ready.notifyContentReady();ready.notifyContentReady();
+  check(ready.posted.size()==1 && readyCalls[0]==0,"photo readiness waits for drawing and notifies once");
+  ready.posted.get(0).run();check(readyCalls[0]==1,"ready photo triggers parent entrance");
+  PhotoReady stopped=new PhotoReady();stopped.contentReady=()->{throw new AssertionError("late photo entry");};
+  stopped.notifyContentReady();stopped.running=false;stopped.posted.get(0).run();
+  System.out.println("PASS: symmetric entry/exit, interrupted entry, late ready, live decoder, completion, deadline, forced stop, photos");
  }
 }'''
 with tempfile.TemporaryDirectory() as tmp:
- p=Path(tmp)/'ExitHarness.java';p.write_text(header+method('    void fadeExit(')+method('    void stop()')+method('    private void releasePlayer()')+tests)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p)],check=True)
+ p=Path(tmp)/'ExitHarness.java';p.write_text(header+method('    private void fadeEntrance(')+method('    void fadeExit(')+method('    void stop()')+method('    private void releasePlayer()')+tests)
+ stub=Path(tmp)/'AccelerateDecelerateInterpolator.java';stub.write_text('package android.view.animation;public class AccelerateDecelerateInterpolator {}')
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p),str(stub)],check=True)
  subprocess.run(['java','-cp',tmp,'ExitHarness'],check=True)
