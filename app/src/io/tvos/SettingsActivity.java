@@ -789,7 +789,7 @@ public class SettingsActivity extends Activity {
                 case VPN_SETTINGS: return "VPN";
                 case HOME_SETTINGS: return settingsGroup == WIDGETS ? (Ui.ru ? "Котировки" : "Quotes") : settingsGroup == SYSTEM ? (Ui.ru ? "Категории" : "Categories") : (Ui.ru ? "Основные" : "General");
                 case REMOTE_KEYS: return tr("Пульты и устройства", "Remotes and Devices");
-                case SHELF_EDIT: return Ui.ru ? "Приложения в Dock" : "Dock";
+                case SHELF_EDIT: return "Dock";
                 case PICKER: return pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (Ui.ru ? "Регион" : "Region") : (Ui.ru ? "Выбор приложения" : "Choose app");
                 default: return Ui.ru ? "Настройки" : "Settings";
             }
@@ -811,18 +811,12 @@ public class SettingsActivity extends Activity {
                 case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("VPN-служба", "VPN")};
                 case SCREENSAVER: return new String[] {tr("Источник", "Current Selection"), tr("Начало после", "Start After"), tr("Показывать часы", "Show Clock"), tr("Показывать место съёмки", "Show Location"), tr("Показывать погоду", "Show Weather"), tr("Предпросмотр", "Preview")};
                 case ABOUT: return new String[] {tr("Имя", "Name"), tr("Модель", "Model"), tr("Серийный номер", "Serial Number"), "tvOS", tr("ОС", "OS"), tr("Разрешение", "Resolution"), tr("Имя сети Wi-Fi", "Wi-Fi Network Name"), tr("IP-адрес", "IP Address")};
-                default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screen Saver"), "AirPlay", tr("Пульты и устройства", "Remotes and Devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Apps"), tr("Приложения в Dock", "Dock"), tr("Верхняя панель", "Menu Bar"), tr("Виджеты", "Widgets"), tr("Система", "System")};
+                default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screen Saver"), "AirPlay", tr("Пульты и устройства", "Remotes and Devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Apps"), "Dock", tr("Верхняя панель", "Menu Bar"), tr("Виджеты", "Widgets"), tr("Система", "System")};
             }
         }
         private android.content.SharedPreferences localPrefs() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE); }
         private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
         private void setLocalFlag(String key, boolean value) { localPrefs().edit().putBoolean(key, value).apply(); invalidate(); }
-        private String delayValue(String key, int fallback) { int n = localPrefs().getInt(key, fallback); return n == 0 ? tr("Выкл.", "Off") : n + tr(" мин", " min"); }
-        private void cycleDelay(String key, int fallback, int direction) {
-            int[] choices = "dream_delay".equals(key) ? new int[] {5, 10, 15, 30, 60, 0} : new int[] {0, 2, 5, 10, 15, 30, 60}; int current = localPrefs().getInt(key, fallback), at = 0;
-            for (int i = 0; i < choices.length; i++) if (choices[i] == current) at = i;
-            localPrefs().edit().putInt(key, choices[(at + direction + choices.length) % choices.length]).apply();
-        }
         private void cycleDreamSource(int direction) {
             String[] choices = {"apple", "google", "na"};
             String value = localPrefs().getString("video_dream_source", "google");
@@ -883,7 +877,6 @@ public class SettingsActivity extends Activity {
             } else if (screen == SCREENSAVER) {
                 String src = localPrefs().getString("video_dream_source", "google");
                 v[0] = "apple".equals(src) ? "Apple" : "na".equals(src) ? "National Geographic" : "Google";
-                v[1] = localPrefs().getInt("dream_delay", 5) == 0 ? tr("Никогда", "Never") : delayValue("dream_delay", 5);
                 v[2] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
                 v[3] = onOff(localPrefs().getBoolean("aerial_show_location", false));
                 v[4] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
@@ -1209,6 +1202,20 @@ public class SettingsActivity extends Activity {
         private void drawTileDescription(Canvas c) {
             String info = null;
             switch (screen) {
+                case MAIN:
+                    if (focus == 2) info = tr("Для AirPlay нужно дополнительное приложение.\nУстановите его в разделе «Приложения».",
+                            "AirPlay requires an additional app.\nInstall it from the Apps section.");
+                    else if (focus == 6) info = tr("Настройка приложений на панели Dock.", "Choose the apps shown in the Dock.");
+                    break;
+                case GENERAL:
+                    if (focus == 3) info = tr("Город для прогноза погоды.", "The city used for weather forecasts.");
+                    break;
+                case SCREENSAVER:
+                    if (focus == 1) info = tr("Время запуска задаётся в настройках заставки Android.",
+                            "Set the start delay in Android screen saver settings.");
+                    else if (focus == 4) info = tr("Та же погода выбранного региона, что на главном экране tvOS.",
+                            "The same weather for your selected region as on the tvOS Home screen.");
+                    break;
                 case APPS_DOWNLOADS:
                     info = appDownloadDescription(focus);
                     break;
@@ -1220,11 +1227,13 @@ public class SettingsActivity extends Activity {
                             "tvOS has no ads and a new screen saver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
                     break;
                 case SHELF_EDIT:
-                    info = tr("Выберите до восьми приложений для Dock. OK — добавить или убрать. Стрелки влево и вправо меняют порядок.",
-                            "Choose up to eight Dock apps. OK adds or removes an app. Left and right change its order.");
+                    info = tr("Настройка приложений на панели Dock.\nOK — добавить или убрать, стрелки — изменить порядок.",
+                            "Choose the apps shown in the Dock.\nOK adds or removes an app; left and right change its order.");
                     break;
                 case PICKER:
-                    info = tr("Нажмите OK для выбора. Назад — отмена.", "Press OK to select. Back to cancel.");
+                    info = pickFor == PICK_CITY
+                            ? tr("Город для прогноза погоды.", "The city used for weather forecasts.")
+                            : tr("Нажмите OK для выбора. Назад — отмена.", "Press OK to select. Back to cancel.");
                     break;
                 case HOME_SETTINGS:
                     info = tr("OK или стрелки изменяют выбранный параметр.", "Press OK or the arrow keys to change a setting.");
@@ -1730,6 +1739,20 @@ public class SettingsActivity extends Activity {
             }
         }
 
+        private void openAndroidScreenSaverSettings() {
+            for (String action : new String[] {Settings.ACTION_DREAM_SETTINGS, Settings.ACTION_SETTINGS}) {
+                try {
+                    activity.startActivity(new Intent(action));
+                    return;
+                } catch (android.content.ActivityNotFoundException | SecurityException unavailable) {
+                    // TV firmware may omit or restrict the direct dream-settings screen.
+                }
+            }
+            android.widget.Toast.makeText(getContext(),
+                    tr("Настройки заставки Android недоступны", "Android screen saver settings are unavailable"),
+                    android.widget.Toast.LENGTH_SHORT).show();
+        }
+
         private void launchAirPlay() {
             final String packageName = "io.github.jqssun.airplay";
             PackageManager pm = getContext().getPackageManager();
@@ -1762,7 +1785,7 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
                 case GENERAL: return focus == 1 || focus == 2 || focus == 5 || focus == 6 || focus == 7;
-                case SCREENSAVER: return focus < 5;
+                case SCREENSAVER: return focus == 0 || focus == 2 || focus == 3 || focus == 4;
                 case UPDATES: return focus == 1;
                 case ACCESSIBILITY: return focus < 2;
                 case VPN_SETTINGS: return focus == 0;
@@ -1778,7 +1801,6 @@ public class SettingsActivity extends Activity {
             if (screen == DATE_TIME) { toggleDateTime(); return; }
             if (screen == SCREENSAVER) {
                 if (focus == 0) cycleDreamSource(dir);
-                else if (focus == 1) cycleDelay("dream_delay", 5, dir);
                 else if (focus == 2) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
                 else if (focus == 3) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
                 else if (focus == 4) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
@@ -2192,7 +2214,7 @@ public class SettingsActivity extends Activity {
                 toggleWeather(focus == 0);
             } else if (screen == SCREENSAVER) {
                 if (focus == 0) cycleDreamSource(1);
-                else if (focus == 1) cycleDelay("dream_delay", 5, 1);
+                else if (focus == 1) { openAndroidScreenSaverSettings(); return; }
                 else if (focus == 2) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
                 else if (focus == 3) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
                 else if (focus == 4) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));

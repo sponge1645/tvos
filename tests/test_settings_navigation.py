@@ -52,6 +52,10 @@ tests=r'''
   h.screen=SCREENSAVER;check(h.menuLabels()[3].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
   h.screen=SCREENSAVER;h.focus=5;check(!h.canAdjustMenu(),"preview requires OK");
+  h.focus=1;check(!h.canAdjustMenu(),"system screen saver timing requires OK instead of fake local cycling");
+  int stored=h.store.m.size();h.adjustMenu(1);check(h.store.m.size()==stored,"delay row cannot change an unused local timer");
+  for(int row:new int[]{0,2,3,4}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
+  h.screen=MAIN;Ui.ru=true;check(h.menuLabels()[6].equals("Dock"),"Dock naming matches both languages");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");
  }
 }
