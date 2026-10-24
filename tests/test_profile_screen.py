@@ -81,13 +81,18 @@ public class ProfileHarness extends BaseView implements Choreographer.FrameCallb
  int page,previousPage;
  int selected,focus,avatarIndex,finished,draws;long lastFrame;
  boolean choosing,running,scheduled,okDown,backDown;Click click;
+ boolean exiting,exitReady;long exitStarted;float exitOpacity;
+ final Runnable exitFinish=()->finish();Runnable postedExit;
+ void postOnAnimation(Runnable r){postedExit=r;}
+ void removeCallbacks(Runnable r){if(postedExit==r)postedExit=null;}
+ boolean isFinishing(){return finished>0;}
  ProfileHarness(){for(int i=0;i<avatarFocus.length;i++)avatarFocus[i]=new Spring(.26f,.85f,0);}
  void finish(){finished++;}void updateText(){}void invalidate(){draws++;}
  void requestFocus(){}
 ''' + ''.join(method(signature) for signature in [
     '        void save(', '        void resume(', '        void pause(',
     '        private void wake(', '        @Override public void doFrame(',
-    '        private void retarget(', '        private void activate(',
+    '        boolean beginExit(', '        private boolean stepExit(', '        private void retarget(', '        private void activate(',
     '        private void back(', '        private void changePage(', '        private void move(',
     '        @Override public boolean onKeyDown(', '        @Override public boolean onKeyUp(',
 ]) + '''
@@ -131,7 +136,26 @@ public class ProfileHarness extends BaseView implements Choreographer.FrameCallb
   check(Boolean.TRUE.equals(state.data.get("choosing")) && state.data.get("avatar").equals(h.avatarIndex),"selection survives saved state");
   h.back();h.focus=1;h.activate();check(h.finished==1,"return action exits page");
   h.pause();
-  System.out.println("PASS: profile arrows, cancel/save, avatar validation, held keys, pause, bounded frames, idle, reduced motion, saved state");
+  ProfileHarness exit=new ProfileHarness();exit.resume();exit.drain();
+  check(exit.beginExit(),"exit starts foreground dissolve");
+  check(exit.beginExit(),"repeat finish does not restart transition");
+  exit.stepExit(1_000_000_000L);check(exit.exitOpacity==0,"exit begins from intact content");
+  exit.stepExit(1_080_000_000L);check(Math.abs(exit.exitOpacity-.5f)<.001f,"foreground fades smoothly before window exit");
+  int beforeFocus=exit.focus;exit.move(0,1);exit.activate();exit.back();
+  check(exit.focus==beforeFocus && !exit.choosing && exit.finished==0,"input frozen during exit");
+  exit.stepExit(1_160_000_000L);
+  check(exit.exitOpacity==1 && exit.exitReady && exit.postedExit!=null && exit.finished==0,
+        "foreground fully covered before deferred window finish");
+  check(!exit.beginExit(),"deferred finish can reach Activity finish without looping");
+  exit.postedExit.run();check(exit.finished==1,"window exit follows content fade");exit.pause();
+  ProfileHarness interrupted=new ProfileHarness();interrupted.resume();interrupted.beginExit();
+  interrupted.stepExit(2_000_000_000L);interrupted.stepExit(2_160_000_000L);interrupted.pause();
+  check(interrupted.postedExit==null && !interrupted.exiting && interrupted.exitOpacity==0,
+        "pause cancels deferred exit and clears mask before resume");
+  interrupted.resume();check(!interrupted.exitReady,"returning from Home cannot execute stale finish");
+  interrupted.context.prefs.reduced=true;
+  check(!interrupted.beginExit(),"Reduce Motion skips added foreground animation");interrupted.pause();
+  System.out.println("PASS: profile arrows, cancel/save, avatar validation, held keys, pause, bounded frames, idle, reduced motion, saved state, foreground exit, deferred finish, interruption cleanup");
  }
 }
 '''
