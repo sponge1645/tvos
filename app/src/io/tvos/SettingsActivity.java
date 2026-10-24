@@ -248,7 +248,6 @@ public class SettingsActivity extends Activity {
         private long transitionStarted, focusReadyAt;
         private String pageTitleShown, pageTitlePrevious;
         private long pageTitleStarted;
-        private Paint updateVersionPaint, updateCheckPaint;
         private String updateInstalledVersion, updateCheckShown;
         private long updateCheckAt = Long.MIN_VALUE;
         private boolean updateCheckRussian;
@@ -516,10 +515,6 @@ public class SettingsActivity extends Activity {
             subtitle.setTextAlign(Paint.Align.CENTER);
             version = Ui.text(Ui.regular, 24 * k, 0x66FFFFFF);
             version.setTextAlign(Paint.Align.CENTER);
-            updateVersionPaint = Ui.text(Ui.regular, 30 * k, 0xF2FFFFFF);
-            updateVersionPaint.setTextAlign(Paint.Align.CENTER);
-            updateCheckPaint = Ui.text(Ui.regular, 24 * k, 0x8CFFFFFF);
-            updateCheckPaint.setTextAlign(Paint.Align.CENTER);
             rowLabel = Ui.text(Ui.displaySemibold, 36 * k, 0xF2FFFFFF);
             rowValue = Ui.text(Ui.displayRegular, 36 * k, 0x8CFFFFFF);
             rowValue.setTextAlign(Paint.Align.RIGHT);
@@ -1211,12 +1206,11 @@ public class SettingsActivity extends Activity {
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
         private void drawTileDescription(Canvas c) {
-            if (screen == UPDATES) {
-                drawUpdateDetails(c);
-                return;
-            }
             String info = null;
             switch (screen) {
+                case UPDATES:
+                    info = updateDetailsText();
+                    break;
                 case HOME_CHOICE:
                     info = tr("tvOS — без рекламы, с новой заставкой. Встроенный — заводской главный экран телевизора. Переключение занимает несколько секунд; экран может мигать.",
                             "tvOS has no ads and a new screen saver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
@@ -1264,7 +1258,7 @@ public class SettingsActivity extends Activity {
             c.restore();
         }
 
-        private void drawUpdateDetails(Canvas canvas) {
+        private String updateDetailsText() {
             if (updateInstalledVersion == null) updateInstalledVersion = versionName(getContext());
             long checkedAt = localPrefs().getLong("self_update_attempt", 0);
             if (updateCheckShown == null || checkedAt != updateCheckAt || updateCheckRussian != Ui.ru) {
@@ -1272,10 +1266,7 @@ public class SettingsActivity extends Activity {
                 updateCheckRussian = Ui.ru;
                 updateCheckShown = formatLastUpdateCheck(checkedAt, Ui.ru);
             }
-            updateVersionPaint.setColor(normalInk());
-            updateCheckPaint.setColor(secondaryInk());
-            canvas.drawText(updateInstalledVersion, logoBounds.centerX(), 845 * k, updateVersionPaint);
-            canvas.drawText(updateCheckShown, logoBounds.centerX(), 889 * k, updateCheckPaint);
+            return updateInstalledVersion + "\n" + updateCheckShown;
         }
 
         private static String formatLastUpdateCheck(long checkedAt, boolean russian) {
