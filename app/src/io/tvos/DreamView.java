@@ -148,6 +148,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         }
     };
 
+    private final ScreensaverWeather weatherBadge;
     private final android.os.Bundle settings;
     private Runnable contentReady;
     private boolean parentPhotoEntrance;
@@ -168,6 +169,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     DreamView(Context c, android.os.Bundle settings) {
         super(c);
         this.settings = settings;
+        weatherBadge = new ScreensaverWeather(c);
         data = HomeData.get(c);
         recs = Recs.get(c);
         String source = settings.getString("video_dream_source", "google");
@@ -533,14 +535,8 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             float x = RIGHT * k;
             HomeData.Weather wx = data.weather;
             if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
-                String temp = HomeData.degrees(wx.temp);
-                float tw = cornerDate.measureText(temp);
-                c.drawText(temp, x - tw, DATE_BASE * k, cornerDate);
-                x -= tw + 10 * k;
-                String symbol = Symbols.weather(wx.code, wx.isDay);
-                float size = 30 * k, sw = Symbols.width(getContext(), symbol, size);
-                Symbols.draw(getContext(), c, symbol, x - sw / 2, DATE_BASE * k - Ui.halfCap(cornerDate), size, 0xEBFFFFFF);
-                x -= sw + 26 * k;
+                weatherBadge.setWeather(Symbols.weather(wx.code, wx.isDay), HomeData.degrees(wx.temp));
+                weatherBadge.drawRightAligned(c, x, DATE_BASE * k);
             }
             // Date intentionally hidden on all screensavers.
 
@@ -785,16 +781,8 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         // Identical upper-right weather rendering and shared visibility preference.
         HomeData.Weather wx = data.weather;
         if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
-            String temp = HomeData.degrees(wx.temp);
-            float x = RIGHT * k;
-            float tw = cornerDate.measureText(temp);
-            canvas.drawText(temp, x - tw, DATE_BASE * k, cornerDate);
-            x -= tw + 10 * k;
-            String symbol = Symbols.weather(wx.code, wx.isDay);
-            float size = 30 * k;
-            float sw = Symbols.width(getContext(), symbol, size);
-            Symbols.draw(getContext(), canvas, symbol, x - sw / 2,
-                    DATE_BASE * k - Ui.halfCap(cornerDate), size, 0xEBFFFFFF);
+            weatherBadge.setWeather(Symbols.weather(wx.code, wx.isDay), HomeData.degrees(wx.temp));
+            weatherBadge.drawRightAligned(canvas, RIGHT * k, DATE_BASE * k);
         }
         canvas.restoreToCount(save);
     }

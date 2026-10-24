@@ -137,7 +137,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         addView(aerialLocation, lp);
         aerialWeather = new AerialWeatherView(context);
         LayoutParams wp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
-        wp.setMargins(0, 0, dp(48), dp(42));
+        wp.setMargins(0, 0, dp(38), dp(32));
         addView(aerialWeather, wp);
         aerialWeather.setVisibility(View.GONE);
         // One topmost black cover fades the video/photo and every overlay together.
@@ -440,52 +440,33 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         return score;
     }
 
-    /** Same weather icon, SF typeface, sizing and color as DreamView.recordChrome(). */
+    /** The same pre-rendered glyph shadow and 24 sp badge used by both photo sources. */
     private static final class AerialWeatherView extends View {
-        private final Paint temperature = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final ScreensaverWeather badge;
         private String symbol = "", degrees = "";
-        private float scale, iconSize, gap, textWidth, iconWidth;
 
         AerialWeatherView(Context context) {
             super(context);
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null); // reliable soft text shadow
+            badge = new ScreensaverWeather(context);
         }
 
         void setWeather(String symbol, String degrees) {
             if (this.symbol.equals(symbol) && this.degrees.equals(degrees)) return;
             this.symbol = symbol;
             this.degrees = degrees;
+            badge.setWeather(symbol, degrees);
             requestLayout();
             invalidate();
         }
 
         @Override protected void onMeasure(int widthSpec, int heightSpec) {
-            scale = getResources().getDisplayMetrics().widthPixels / 1920f;
-            iconSize = 30f * scale;
-            gap = 10f * scale;
-            temperature.setTypeface(Ui.semibold);
-            temperature.setTextSize(30f * scale);
-            temperature.setColor(0xEBFFFFFF);
-            temperature.setShadowLayer(6f * scale, 0, 2f * scale, 0x66000000);
-            iconWidth = Symbols.width(getContext(), symbol, iconSize);
-            textWidth = temperature.measureText(degrees);
-            int width = (int) Math.ceil(iconWidth + gap + textWidth + 12f * scale);
-            int height = (int) Math.ceil(48f * scale);
-            setMeasuredDimension(resolveSize(width, widthSpec), resolveSize(height, heightSpec));
+            badge.setWeather(symbol, degrees);
+            setMeasuredDimension(resolveSize(badge.width(), widthSpec), resolveSize(badge.height(), heightSpec));
         }
 
-        @Override protected void onDraw(Canvas c) {
-            super.onDraw(c);
-            if (degrees.isEmpty()) return;
-            float cap = Ui.cap(temperature);
-            float baseline = (getHeight() + cap) / 2f;
-            float centerY = baseline - Ui.halfCap(temperature);
-            float iconX = 6f * scale + iconWidth / 2f;
-            // Material Symbols icon is exactly the same asset used by DreamView.
-            // Two faint offset copies provide a dark shadow over bright video.
-            Symbols.draw(getContext(), c, symbol, iconX, centerY + 2f * scale, iconSize, 0x44000000);
-            Symbols.draw(getContext(), c, symbol, iconX, centerY, iconSize, 0xEBFFFFFF);
-            c.drawText(degrees, 6f * scale + iconWidth + gap, baseline, temperature);
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if (!degrees.isEmpty()) badge.draw(canvas, 0, 0);
         }
     }
 
