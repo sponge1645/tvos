@@ -127,9 +127,13 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialLocation.setTextColor(0xD9F2F2F2);
         aerialLocation.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
         aerialLocation.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        // Rasterize the glyph shadow into a transparent text layer, not the video surface.
+        // Padding keeps the blur away from the rectangular layer clip on TV firmware.
+        aerialLocation.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        aerialLocation.setPadding(dp(10), dp(10), dp(10), dp(10));
         aerialLocation.setShadowLayer(dp(8), 0, dp(2), 0xE6000000);
         LayoutParams lp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT);
-        lp.setMargins(dp(48), 0, 0, dp(42));
+        lp.setMargins(dp(38), 0, 0, dp(32));
         addView(aerialLocation, lp);
         aerialWeather = new AerialWeatherView(context);
         LayoutParams wp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
