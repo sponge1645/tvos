@@ -42,19 +42,22 @@ tests=r'''
   h.screen=MAIN;check(Arrays.equals(h.menuLabels(),new String[]{"General","Screen Saver","AirPlay","Remotes and Devices","Accessibility","Apps","Dock","Menu Bar","Widgets","System"}),"main menu naming contract");
   h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Language","Region","Date & Time","Temperature","Time Format","Navigation Clicks"}),"General naming contract");
   h.screen=ABOUT;check(Arrays.equals(h.menuLabels(),new String[]{"Name","Model","Serial Number","tvOS","OS","Resolution","Wi-Fi Network Name","IP Address"}),"About naming contract");
-  h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Start After","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
+  h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
   h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatically Update"}),"update actions naming contract");
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","Default Launcher","TV Settings"}),"accessibility naming contract");
   for(int page:new int[]{WEATHER,DATE_TIME,VPN_SETTINGS}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}
   h.screen=WEATHER;check(h.menuLabels()[1].equals("Show in Bottom Menu"),"bottom menu naming contract");
   h.screen=VPN_SETTINGS;check(h.menuLabels()[1].equals("VPN"),"VPN label stays concise");
   Ui.ru=true;h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
-  h.screen=SCREENSAVER;check(h.menuLabels()[3].equals("Показывать место съёмки"),"Russian Screen Saver retained");
+  h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
-  h.screen=SCREENSAVER;h.focus=5;check(!h.canAdjustMenu(),"preview requires OK");
-  h.focus=1;check(!h.canAdjustMenu(),"system screen saver timing requires OK instead of fake local cycling");
-  int stored=h.store.m.size();h.adjustMenu(1);check(h.store.m.size()==stored,"delay row cannot change an unused local timer");
-  for(int row:new int[]{0,2,3,4}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
+  h.screen=SCREENSAVER;h.focus=4;check(!h.canAdjustMenu(),"preview requires OK");
+  for(int row:new int[]{0,1,2,3}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
+  String[] overlayKeys={"aerial_show_clock","aerial_show_location","screensaver_show_weather"};
+  for(int i=0;i<overlayKeys.length;i++){
+   h.focus=i+1;h.arrow(1);check(h.store.getBoolean(overlayKeys[i],false),"reindexed overlay toggles its own setting");
+   h.arrow(-1);check(!h.store.getBoolean(overlayKeys[i],true),"reindexed overlay can toggle back");
+  }
   h.screen=MAIN;Ui.ru=true;check(h.menuLabels()[6].equals("Dock"),"Dock naming matches both languages");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");
  }

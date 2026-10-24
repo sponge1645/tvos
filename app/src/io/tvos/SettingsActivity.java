@@ -564,7 +564,7 @@ public class SettingsActivity extends Activity {
                 case MAIN: return 10;
                 case APPS_DOWNLOADS: return 7;
                 case GENERAL: return 8;
-                case SCREENSAVER: return 6;
+                case SCREENSAVER: return 5;
                 case WIDGETS: return 3;
                 case WEATHER: return 2;
                 case DATE_TIME: return 1;
@@ -809,7 +809,7 @@ public class SettingsActivity extends Activity {
                 case APPS_DOWNLOADS: return new String[] {tr("Загрузить AirPlay", "Download AirPlay"), tr("Загрузить Apple Music", "Download Apple Music"), tr("Загрузить TizenTube", "Download TizenTube"), tr("Загрузить INCY", "Download INCY"), tr("Загрузить Seena", "Download Seena"), tr("Загрузить Lampa", "Download Lampa"), tr("Загрузить KinoPub", "Download KinoPub")};
                 case ACCESSIBILITY: return new String[] {tr("Уменьшение прозрачности", "Reduce Transparency"), tr("Уменьшение анимаций", "Reduce Motion"), tr("Домашний экран", "Default Launcher"), tr("Настройки ТВ", "TV Settings")};
                 case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("VPN-служба", "VPN")};
-                case SCREENSAVER: return new String[] {tr("Источник", "Current Selection"), tr("Начало после", "Start After"), tr("Показывать часы", "Show Clock"), tr("Показывать место съёмки", "Show Location"), tr("Показывать погоду", "Show Weather"), tr("Предпросмотр", "Preview")};
+                case SCREENSAVER: return new String[] {tr("Источник", "Current Selection"), tr("Показывать часы", "Show Clock"), tr("Показывать место съёмки", "Show Location"), tr("Показывать погоду", "Show Weather"), tr("Предпросмотр", "Preview")};
                 case ABOUT: return new String[] {tr("Имя", "Name"), tr("Модель", "Model"), tr("Серийный номер", "Serial Number"), "tvOS", tr("ОС", "OS"), tr("Разрешение", "Resolution"), tr("Имя сети Wi-Fi", "Wi-Fi Network Name"), tr("IP-адрес", "IP Address")};
                 default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screen Saver"), "AirPlay", tr("Пульты и устройства", "Remotes and Devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Apps"), "Dock", tr("Верхняя панель", "Menu Bar"), tr("Виджеты", "Widgets"), tr("Система", "System")};
             }
@@ -877,9 +877,9 @@ public class SettingsActivity extends Activity {
             } else if (screen == SCREENSAVER) {
                 String src = localPrefs().getString("video_dream_source", "google");
                 v[0] = "apple".equals(src) ? "Apple" : "na".equals(src) ? "National Geographic" : "Google";
-                v[2] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
-                v[3] = onOff(localPrefs().getBoolean("aerial_show_location", false));
-                v[4] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
+                v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
+                v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
+                v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
             } else if (screen == WIDGETS) {
                 // Quotes is a submenu; its switch is shown inside HOME_SETTINGS.
                 // Date is a submenu; its switch is shown inside DATE_TIME.
@@ -1051,7 +1051,7 @@ public class SettingsActivity extends Activity {
 
         private boolean menuChevronVisible(int row) {
             switch (screen) {
-                case SCREENSAVER: return row != 5;
+                case SCREENSAVER: return row != 4;
                 case ACCESSIBILITY: return row != 3;
                 case APPS_DOWNLOADS: case RESET: return false;
                 case UPDATES: return row != 0;
@@ -1211,9 +1211,7 @@ public class SettingsActivity extends Activity {
                     if (focus == 3) info = tr("Город для прогноза погоды.", "The city used for weather forecasts.");
                     break;
                 case SCREENSAVER:
-                    if (focus == 1) info = tr("Время запуска задаётся в настройках заставки Android.",
-                            "Set the start delay in Android screen saver settings.");
-                    else if (focus == 4) info = tr("Та же погода выбранного региона, что на главном экране tvOS.",
+                    if (focus == 3) info = tr("Та же погода выбранного региона, что на главном экране tvOS.",
                             "The same weather for your selected region as on the tvOS Home screen.");
                     break;
                 case APPS_DOWNLOADS:
@@ -1739,20 +1737,6 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        private void openAndroidScreenSaverSettings() {
-            for (String action : new String[] {Settings.ACTION_DREAM_SETTINGS, Settings.ACTION_SETTINGS}) {
-                try {
-                    activity.startActivity(new Intent(action));
-                    return;
-                } catch (android.content.ActivityNotFoundException | SecurityException unavailable) {
-                    // TV firmware may omit or restrict the direct dream-settings screen.
-                }
-            }
-            android.widget.Toast.makeText(getContext(),
-                    tr("Настройки заставки Android недоступны", "Android screen saver settings are unavailable"),
-                    android.widget.Toast.LENGTH_SHORT).show();
-        }
-
         private void launchAirPlay() {
             final String packageName = "io.github.jqssun.airplay";
             PackageManager pm = getContext().getPackageManager();
@@ -1785,7 +1769,7 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
                 case GENERAL: return focus == 1 || focus == 2 || focus == 5 || focus == 6 || focus == 7;
-                case SCREENSAVER: return focus == 0 || focus == 2 || focus == 3 || focus == 4;
+                case SCREENSAVER: return focus >= 0 && focus < 4;
                 case UPDATES: return focus == 1;
                 case ACCESSIBILITY: return focus < 2;
                 case VPN_SETTINGS: return focus == 0;
@@ -1801,9 +1785,9 @@ public class SettingsActivity extends Activity {
             if (screen == DATE_TIME) { toggleDateTime(); return; }
             if (screen == SCREENSAVER) {
                 if (focus == 0) cycleDreamSource(dir);
-                else if (focus == 2) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
-                else if (focus == 3) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
-                else if (focus == 4) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
+                else if (focus == 1) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
+                else if (focus == 2) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
+                else if (focus == 3) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
                 return;
             }
             if (screen == UPDATES) { if (focus == 1) toggleAutomaticUpdates(); return; }
@@ -2214,11 +2198,10 @@ public class SettingsActivity extends Activity {
                 toggleWeather(focus == 0);
             } else if (screen == SCREENSAVER) {
                 if (focus == 0) cycleDreamSource(1);
-                else if (focus == 1) { openAndroidScreenSaverSettings(); return; }
-                else if (focus == 2) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
-                else if (focus == 3) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
-                else if (focus == 4) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
-                else if (focus == 5) { pause(); activity.showPreview(); return; }
+                else if (focus == 1) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
+                else if (focus == 2) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
+                else if (focus == 3) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
+                else if (focus == 4) { pause(); activity.showPreview(); return; }
             } else if (screen == TOP_PANEL) {
                 if (focus == 0) { settingsGroup = SYSTEM; screen = HOME_SETTINGS; focus = 0; }
                 else if (focus == 1) { screen = MENU_BUTTONS; focus = 0; }
