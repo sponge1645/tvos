@@ -48,7 +48,7 @@ import java.util.Set;
 
 /**
  * tvOS's settings (the app's icon, "All Apps", or the gear on the home screen), in the style of Apple TV's
- * settings: the big symbol and title on the left, the list on the right with the focused row in white. "Home screen"
+ * settings: the big symbol and title on the left, the list on the right with the focused row in white. "Default Launcher"
  * opens the tvOS / Original choice (with a check on the current one); the switch runs in the main process
  * (HomeMode) and this screen only asks for it and follows the state file.
  */
@@ -57,7 +57,7 @@ public class SettingsActivity extends Activity {
     private android.widget.FrameLayout previewHost;
     private View previewCover;
     private boolean previewTransition;
-    private VideoDream preview;   // "Screensaver": the screensaver right here, without changing the system setting
+    private VideoDream preview;   // "Screen Saver": the screensaver right here, without changing the system setting
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -245,9 +245,13 @@ public class SettingsActivity extends Activity {
         // Shared, short-lived Canvas transition for all settings submenus.
         private static final long MENU_TRANSITION_MS = 280;
         private int drawnScreen = -1, transitionFrom = -1;
-        private long transitionStarted;
+        private long transitionStarted, focusReadyAt;
         private String pageTitleShown, pageTitlePrevious;
         private long pageTitleStarted;
+        private Paint updateVersionPaint, updateCheckPaint;
+        private String updateInstalledVersion, updateCheckShown;
+        private long updateCheckAt = Long.MIN_VALUE;
+        private boolean updateCheckRussian;
         private final Paint listEdgeMask = new Paint();
         {
             listEdgeMask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
@@ -512,6 +516,10 @@ public class SettingsActivity extends Activity {
             subtitle.setTextAlign(Paint.Align.CENTER);
             version = Ui.text(Ui.regular, 24 * k, 0x66FFFFFF);
             version.setTextAlign(Paint.Align.CENTER);
+            updateVersionPaint = Ui.text(Ui.regular, 30 * k, 0xF2FFFFFF);
+            updateVersionPaint.setTextAlign(Paint.Align.CENTER);
+            updateCheckPaint = Ui.text(Ui.regular, 24 * k, 0x8CFFFFFF);
+            updateCheckPaint.setTextAlign(Paint.Align.CENTER);
             rowLabel = Ui.text(Ui.displaySemibold, 36 * k, 0xF2FFFFFF);
             rowValue = Ui.text(Ui.displayRegular, 36 * k, 0x8CFFFFFF);
             rowValue.setTextAlign(Paint.Align.RIGHT);
@@ -583,6 +591,8 @@ public class SettingsActivity extends Activity {
         @Override protected void onDraw(Canvas c) {
             if (w == 0) return;
             updateAppearance(System.currentTimeMillis());
+            long up = SystemClock.uptimeMillis();
+            syncMenuTransition(up);
             long now = System.nanoTime();
             float dt = lastNanos == 0 ? 1 / 60f : Math.min(0.05f, (now - lastNanos) / 1e9f);
             lastNanos = now;
@@ -592,11 +602,7 @@ public class SettingsActivity extends Activity {
                     listScroll.snap(pickScroll);
                 else if (listScroll.step(dt)) postInvalidateOnAnimation();
             }
-            for (int i = 0; i < pop.length; i++) {
-                pop[i].target = (screen != ABOUT || i == 0) && i == focus && i < rowCount() ? 1 : 0;
-                pop[i].step(dt);
-            }
-            long up = SystemClock.uptimeMillis();
+            stepRowFocus(dt, up);
             float seconds = (up - startedAt) / 1000f;
             if (updatePopup == 0 && up - lastSky >= 100) {
                 lastSky = up;
@@ -625,16 +631,34 @@ public class SettingsActivity extends Activity {
             float wordmarkBaseline = logo.centerY() - (wordmarkMetrics.ascent + wordmarkMetrics.descent) / 2f;
             c.drawText("tvOS", logo.centerX(), wordmarkBaseline, logoInk);
 
-            if (drawnScreen != screen) {
-                transitionFrom = (drawnScreen >= 0 && updatePopup == 0
-                        && (parentScreen(screen) == drawnScreen
-                            || parentScreen(drawnScreen) == screen)) ? drawnScreen : -1;
-                transitionStarted = SystemClock.uptimeMillis();
-                drawnScreen = screen;
-            }
             drawListViewport(c);
             drawTileDescription(c);
             if (updatePopup != 0) drawUpdatePopup(c);
+        }
+
+        /** Reset inherited selection before drawing either page of a menu transition. */
+        private void syncMenuTransition(long now) {
+            if (drawnScreen == screen) return;
+            boolean reduceMotion = localFlag("reduce_motion");
+            boolean previous = drawnScreen >= 0;
+            transitionFrom = previous && !reduceMotion && updatePopup == 0
+                    && (parentScreen(screen) == drawnScreen || parentScreen(drawnScreen) == screen)
+                    ? drawnScreen : -1;
+            transitionStarted = now;
+            focusReadyAt = now + (previous && !reduceMotion ? MENU_TRANSITION_MS : 0);
+            drawnScreen = screen;
+            for (Spring spring : pop) spring.snap(0);
+        }
+
+        private void stepRowFocus(float dt, long now) {
+            boolean ready = now >= focusReadyAt;
+            boolean reduceMotion = localFlag("reduce_motion");
+            for (int i = 0; i < pop.length; i++) {
+                pop[i].target = ready && (screen != ABOUT || i == 0)
+                        && i == focus && i < rowCount() ? 1 : 0;
+                if (reduceMotion) pop[i].snap(pop[i].target);
+                else pop[i].step(dt);
+            }
         }
 
         /** Crossfade only the lettering; the background keeps its original brightness. */
@@ -758,18 +782,18 @@ public class SettingsActivity extends Activity {
                 case DATE_TIME: return tr("Дата", "Date");
                 case SYSTEM: return Ui.ru ? "Система" : "System";
                 case RESET: return tr("Сброс", "Reset");
-                case TOP_PANEL: return tr("Верхняя панель", "Top panel");
+                case TOP_PANEL: return tr("Верхняя панель", "Menu Bar");
                 case ACCESSIBILITY: return tr("Универсальный доступ", "Accessibility");
-                case APPS_DOWNLOADS: return tr("Приложения", "Applications");
+                case APPS_DOWNLOADS: return tr("Приложения", "Apps");
                 case MENU_BUTTONS: return tr("Кнопки", "Buttons");
                 case UPDATES: return tr("Обновления ПО", "Software Updates");
-                case ABOUT: return Ui.ru ? "Об этом устройстве" : "About This Device";
-                case SCREENSAVER: return tr("Заставка", "Screensaver");
-                case HOME_CHOICE: return tr("Домашний экран", "Home screen");
+                case ABOUT: return Ui.ru ? "Об этом устройстве" : "About";
+                case SCREENSAVER: return tr("Заставка", "Screen Saver");
+                case HOME_CHOICE: return tr("Домашний экран", "Default Launcher");
                 case VPN_SETTINGS: return "VPN";
                 case HOME_SETTINGS: return settingsGroup == WIDGETS ? (Ui.ru ? "Котировки" : "Quotes") : settingsGroup == SYSTEM ? (Ui.ru ? "Категории" : "Categories") : (Ui.ru ? "Основные" : "General");
-                case REMOTE_KEYS: return tr("Пульты и устройства", "Remotes & devices");
-                case SHELF_EDIT: return Ui.ru ? "Приложения в Dock" : "Dock apps";
+                case REMOTE_KEYS: return tr("Пульты и устройства", "Remotes and Devices");
+                case SHELF_EDIT: return Ui.ru ? "Приложения в Dock" : "Dock";
                 case PICKER: return pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (Ui.ru ? "Регион" : "Region") : (Ui.ru ? "Выбор приложения" : "Choose app");
                 default: return Ui.ru ? "Настройки" : "Settings";
             }
@@ -777,21 +801,21 @@ public class SettingsActivity extends Activity {
 
         private String[] menuLabels() {
             switch (screen) {
-                case GENERAL: return new String[] {tr("Об этом устройстве", "About This Device"), tr("Оформление", "Appearance"), tr("Язык", "Language"), tr("Регион", "Region"), tr("Дата и время", "Date & time"), tr("Температура", "Temperature"), tr("Формат времени", "Time format"), tr("Щелчки при навигации", "Navigation clicks")};
+                case GENERAL: return new String[] {tr("Об этом устройстве", "About"), tr("Оформление", "Appearance"), tr("Язык", "Language"), tr("Регион", "Region"), tr("Дата и время", "Date & Time"), tr("Температура", "Temperature"), tr("Формат времени", "Time Format"), tr("Щелчки при навигации", "Navigation Clicks")};
                 case WIDGETS: return new String[] {tr("Погода", "Weather"), tr("Котировки", "Quotes"), tr("Дата", "Date")};
-                case DATE_TIME: return new String[] {tr("Показывать на верхней панели", "Show on top panel")};
-                case WEATHER: return new String[] {tr("Показывать на верхней панели", "Show on top panel"), tr("Показывать на нижней панели", "Show on bottom panel")};
+                case DATE_TIME: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar")};
+                case WEATHER: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("Показывать на нижней панели", "Show on bottom panel")};
                 case MENU_BUTTONS: return new String[] {tr("Поиск", "Search"), tr("ТВ", "TV"), "VPN", tr("Настройки", "Settings"), tr("Часы", "Clock")};
-                case UPDATES: return new String[] {tr("Обновление ПО", "Software Update"), tr("Автоматическое обновление", "Automatic Updates")};
+                case UPDATES: return new String[] {tr("Обновление ПО", "Update Software"), tr("Автоматическое обновление", "Automatically Update")};
                 case SYSTEM: return new String[] {tr("Обновления ПО", "Software Updates"), tr("Сброс", "Reset"), tr("Перезагрузить tvOS", "Restart tvOS")};
                 case RESET: return new String[] {tr("Очистить кеш", "Clear cache"), tr("Сброс tvOS", "Reset tvOS")};
                 case TOP_PANEL: return new String[] {tr("Категории", "Categories"), tr("Кнопки", "Buttons")};
                 case APPS_DOWNLOADS: return new String[] {tr("Загрузить AirPlay", "Download AirPlay"), tr("Загрузить Apple Music", "Download Apple Music"), tr("Загрузить TizenTube", "Download TizenTube"), tr("Загрузить INCY", "Download INCY"), tr("Загрузить Seena", "Download Seena"), tr("Загрузить Lampa", "Download Lampa"), tr("Загрузить KinoPub", "Download KinoPub")};
-                case ACCESSIBILITY: return new String[] {tr("Уменьшение прозрачности", "Reduce transparency"), tr("Уменьшение анимаций", "Reduce motion"), tr("Домашний экран", "Home screen"), tr("Настройки ТВ", "TV settings")};
-                case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show on top panel"), tr("VPN-служба", "VPN service")};
-                case SCREENSAVER: return new String[] {tr("Источник", "Source"), tr("Начало после", "Start after"), tr("Показывать часы", "Show clock"), tr("Показывать место съёмки", "Show filming location"), tr("Показывать погоду", "Show weather"), tr("Предпросмотр", "Preview")};
-                case ABOUT: return new String[] {tr("Имя", "Name"), tr("Модель", "Model"), tr("Серийный номер", "Serial number"), "tvOS", tr("ОС", "OS"), tr("Разрешение", "Resolution"), tr("Имя сети Wi-Fi", "Wi-Fi network name"), tr("IP-адрес", "IP address")};
-                default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screensaver"), "AirPlay", tr("Пульты и устройства", "Remotes & devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Applications"), tr("Приложения в Dock", "Dock apps"), tr("Верхняя панель", "Top panel"), tr("Виджеты", "Widgets"), tr("Система", "System")};
+                case ACCESSIBILITY: return new String[] {tr("Уменьшение прозрачности", "Reduce Transparency"), tr("Уменьшение анимаций", "Reduce Motion"), tr("Домашний экран", "Default Launcher"), tr("Настройки ТВ", "TV Settings")};
+                case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("VPN-служба", "VPN service")};
+                case SCREENSAVER: return new String[] {tr("Источник", "Current Selection"), tr("Начало после", "Start After"), tr("Показывать часы", "Show Clock"), tr("Показывать место съёмки", "Show Location"), tr("Показывать погоду", "Show Weather"), tr("Предпросмотр", "Preview")};
+                case ABOUT: return new String[] {tr("Имя", "Name"), tr("Модель", "Model"), tr("Серийный номер", "Serial Number"), "tvOS", tr("ОС", "OS"), tr("Разрешение", "Resolution"), tr("Имя сети Wi-Fi", "Wi-Fi Network Name"), tr("IP-адрес", "IP Address")};
+                default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screen Saver"), "AirPlay", tr("Пульты и устройства", "Remotes and Devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Apps"), tr("Приложения в Dock", "Dock"), tr("Верхняя панель", "Menu Bar"), tr("Виджеты", "Widgets"), tr("Система", "System")};
             }
         }
         private android.content.SharedPreferences localPrefs() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE); }
@@ -839,7 +863,7 @@ public class SettingsActivity extends Activity {
             java.util.Arrays.fill(v, "");
             if (screen == GENERAL) {
                 String theme = Prefs.theme();
-                v[1] = "light".equals(theme) ? tr("Светлое", "Light") : "dark".equals(theme) ? tr("Тёмное", "Dark") : tr("Авто", "Auto");
+                v[1] = "light".equals(theme) ? tr("Светлое", "Light") : "dark".equals(theme) ? tr("Тёмное", "Dark") : tr("Авто", "Automatic");
                 v[2] = settingValues()[0];
                 v[3] = Prefs.city();
                 v[4] = "";
@@ -1187,11 +1211,15 @@ public class SettingsActivity extends Activity {
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
         private void drawTileDescription(Canvas c) {
+            if (screen == UPDATES) {
+                drawUpdateDetails(c);
+                return;
+            }
             String info = null;
             switch (screen) {
                 case HOME_CHOICE:
                     info = tr("tvOS — без рекламы, с новой заставкой. Встроенный — заводской главный экран телевизора. Переключение занимает несколько секунд; экран может мигать.",
-                            "tvOS has no ads and a new screensaver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
+                            "tvOS has no ads and a new screen saver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
                     break;
                 case SHELF_EDIT:
                     info = tr("Выберите до восьми приложений для Dock. OK — добавить или убрать. Стрелки влево и вправо меняют порядок.",
@@ -1206,10 +1234,10 @@ public class SettingsActivity extends Activity {
                         info = tr("Включайте и выключайте разделы главного экрана.", "Enable or disable home screen sections.");
                     break;
                 case TOP_PANEL:
-                    if (focus == 1) info = tr("Настройка кнопок быстрого доступа на верхней панели.", "Configure quick-access buttons on the top panel.");
+                    if (focus == 1) info = tr("Настройка кнопок быстрого доступа на верхней панели.", "Configure quick-access buttons in the Menu Bar.");
                     break;
                 case MENU_BUTTONS:
-                    info = tr("Настройте кнопки быстрого доступа на верхней панели.", "Configure quick-access buttons on the top panel.");
+                    info = tr("Настройте кнопки быстрого доступа на верхней панели.", "Configure quick-access buttons in the Menu Bar.");
                     break;
                 case RESET:
                     info = tr("Очистка кеша не удаляет настройки. Сброс tvOS удалит все данные приложения.", "Clearing cache preserves settings. Reset tvOS erases all app data.");
@@ -1234,6 +1262,29 @@ public class SettingsActivity extends Activity {
             c.translate(152 * k, 837 * k);
             descriptionLayout.draw(c);
             c.restore();
+        }
+
+        private void drawUpdateDetails(Canvas canvas) {
+            if (updateInstalledVersion == null) updateInstalledVersion = versionName(getContext());
+            long checkedAt = localPrefs().getLong("self_update_attempt", 0);
+            if (updateCheckShown == null || checkedAt != updateCheckAt || updateCheckRussian != Ui.ru) {
+                updateCheckAt = checkedAt;
+                updateCheckRussian = Ui.ru;
+                updateCheckShown = formatLastUpdateCheck(checkedAt, Ui.ru);
+            }
+            updateVersionPaint.setColor(normalInk());
+            updateCheckPaint.setColor(secondaryInk());
+            canvas.drawText(updateInstalledVersion, logoBounds.centerX(), 845 * k, updateVersionPaint);
+            canvas.drawText(updateCheckShown, logoBounds.centerX(), 889 * k, updateCheckPaint);
+        }
+
+        private static String formatLastUpdateCheck(long checkedAt, boolean russian) {
+            if (checkedAt <= 0) return russian ? "Последняя проверка: ещё не выполнялась" : "Last check: Never";
+            java.text.SimpleDateFormat format = new java.text.SimpleDateFormat(
+                    russian ? "d MMMM yyyy 'г. в' HH:mm:ss" : "MMMM d, yyyy 'at' HH:mm:ss",
+                    russian ? new java.util.Locale("ru", "RU") : java.util.Locale.US);
+            return (russian ? "Последняя проверка: " : "Last check: ")
+                    + format.format(new java.util.Date(checkedAt));
         }
 
         private static int blend(int a, int b, float f) {
@@ -1629,8 +1680,8 @@ public class SettingsActivity extends Activity {
         }
 
         private String[] keyLabels() {
-            return new String[] {Ui.tr("Botão Netflix", "Netflix button"), Ui.tr("Botão YouTube", "YouTube button"),
-                    Ui.tr("Botão Prime Video", "Prime Video button"), Ui.tr("Botão TCL Channel", "TCL Channel button")};
+            return new String[] {Ui.tr("Botão Netflix", "Netflix Button"), Ui.tr("Botão YouTube", "YouTube Button"),
+                    Ui.tr("Botão Prime Video", "Prime Video Button"), Ui.tr("Botão TCL Channel", "TCL Channel Button")};
         }
 
         private String[] keyValues() {

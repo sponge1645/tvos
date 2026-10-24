@@ -105,10 +105,10 @@ final class Russian {
             case "on the shelf, place ": return "в избранном, позиция ";
             case "not on the shelf": return "не в избранном";
             case "Remote Buttons": return "Кнопки пульта";
-            case "Netflix button": return "Кнопка Netflix";
-            case "YouTube button": return "Кнопка YouTube";
-            case "Prime Video button": return "Кнопка Prime Video";
-            case "TCL Channel button": return "Кнопка TCL Channel";
+            case "Netflix button": case "Netflix Button": return "Кнопка Netflix";
+            case "YouTube button": case "YouTube Button": return "Кнопка YouTube";
+            case "Prime Video button": case "Prime Video Button": return "Кнопка Prime Video";
+            case "TCL Channel button": case "TCL Channel Button": return "Кнопка TCL Channel";
             case "Nothing": return "Ничего";
             case "Not installed": return "Не установлено";
             case ", selected": return ", выбрано";
