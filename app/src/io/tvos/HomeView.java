@@ -367,6 +367,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tileFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint dockHighlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path dockHighlightPath = new Path();
+    private final RectF dockHighlightArc = new RectF();
+    private float dockHighlightW = -1, dockHighlightH = -1, dockHighlightRadius = -1, dockHighlightDensity = -1;
     // Reused only on the UI drawing thread to avoid Paint allocations per frame.
     private final Paint ratingTextScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ratingFillScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1517,7 +1521,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /**
      * App icon like the ones in the tvOS 27 Dock: the brand color edge to edge (a soft gradient) with the logo.
      * Focused: it grows 20% from the center, with a deep shadow (it "rises" toward the viewer) and a subtle glow at the
-     * top. No border and no reflection, as Apple does it.
+     * top. A fine upper-edge highlight remains visible at rest and brightens gently with focus.
      */
     private void drawShelfTile(Canvas c, int i) {
         HomeApps.Item it = shelf.get(i);
@@ -1578,7 +1582,50 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } else {
             if (it.tile != null) roundImage(c, it.tile, cell, r);
         }
+        if (it.logo != null || it.tile != null) {
+            c.save();
+            c.translate(cx, cy);
+            c.scale(s, s);
+            drawDockHighlight(c, bw, bh, r0, fc);
+            c.restore();
+        }
         if (lifted) c.restore();
+    }
+
+    /** Cached upper contour: ordinary Canvas paths/gradients work on Android 9+, without offscreen layers. */
+    private void drawDockHighlight(Canvas c, float width, float height, float radius, float focus) {
+        if (dockHighlightW != width || dockHighlightH != height
+                || dockHighlightRadius != radius || dockHighlightDensity != k) {
+            dockHighlightW = width;
+            dockHighlightH = height;
+            dockHighlightRadius = radius;
+            dockHighlightDensity = k;
+            // Keep both strokes inside the tile. Follow only the upper corners, with no bottom rim.
+            float inset = 1.5f * k;
+            float left = -width / 2f + inset, right = width / 2f - inset;
+            float top = -height / 2f + inset;
+            float r = Math.max(0, Math.min(radius - inset, Math.min(width, height) / 2f - inset));
+            dockHighlightPath.rewind();
+            dockHighlightPath.moveTo(left, top + r);
+            dockHighlightArc.set(left, top, left + 2 * r, top + 2 * r);
+            dockHighlightPath.arcTo(dockHighlightArc, 180, 90);
+            dockHighlightPath.lineTo(right - r, top);
+            dockHighlightArc.set(right - 2 * r, top, right, top + 2 * r);
+            dockHighlightPath.arcTo(dockHighlightArc, 270, 90);
+            dockHighlightPaint.setStyle(Paint.Style.STROKE);
+            dockHighlightPaint.setStrokeCap(Paint.Cap.ROUND);
+            dockHighlightPaint.setShader(new LinearGradient(left, 0, right, 0,
+                    new int[] {0x00FFFFFF, 0x70FFFFFF, 0xB8FFFFFF, 0x70FFFFFF, 0x00FFFFFF},
+                    new float[] {0f, 0.2f, 0.5f, 0.8f, 1f}, Shader.TileMode.CLAMP));
+        }
+        // Broad, faint shoulder under a fine bright edge; changing focus needs no new shader or bitmap.
+        float strength = 0.72f + 0.28f * Ui.clamp(focus);
+        dockHighlightPaint.setStrokeWidth(2.8f * k);
+        dockHighlightPaint.setAlpha(Math.round(48 * strength));
+        c.drawPath(dockHighlightPath, dockHighlightPaint);
+        dockHighlightPaint.setStrokeWidth(1.1f * k);
+        dockHighlightPaint.setAlpha(Math.round(255 * strength));
+        c.drawPath(dockHighlightPath, dockHighlightPaint);
     }
 
     /**
