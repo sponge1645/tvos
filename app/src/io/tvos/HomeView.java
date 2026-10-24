@@ -825,7 +825,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         bigTemp = Ui.numbers(Ui.light, 100 * k, 0xFFFFFFFF);
         hourPaint = Ui.numbers(Ui.medium, 22 * k, 0xADFFFFFF);
         hourPaint.setTextAlign(Paint.Align.CENTER);
-        hourTemp = Ui.numbers(Ui.medium, 26 * k, 0xF2FFFFFF);
+        hourTemp = Ui.numbers(Ui.medium, 31.2f * k, 0xF2FFFFFF);
         hourTemp.setTextAlign(Paint.Align.CENTER);
         pricePaint = Ui.numbers(Ui.medium, 26 * k, 0xF2FFFFFF);
         pricePaint.setTextAlign(Paint.Align.RIGHT);
@@ -1843,9 +1843,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float hx = split + 30 * k, hw = (r.right - 30 * k - hx) / 6;
         for (int i = 0; i < wx.hours.size() && i < 6; i++) {
             float hc = hx + hw * (i + 0.5f);
-            c.drawText(hourText[i], hc, r.top + 96 * k, hourPaint);
-            Symbols.draw(getContext(), c, Symbols.weather(wx.hourCode.get(i), wx.hourDay.get(i)), hc, r.top + 142 * k, 30 * k, drawerInk(0.9f));
-            c.drawText(hourTempText[i], hc, r.top + 196 * k, hourTemp);
+            c.drawText(hourText[i], hc, r.top + 54 * k, hourPaint);
+            Symbols.draw(getContext(), c, Symbols.weather(wx.hourCode.get(i), wx.hourDay.get(i)), hc, r.top + 100 * k, 36 * k, drawerInk(0.9f));
+            c.drawText(hourTempText[i], hc, r.top + 154 * k, hourTemp);
         }
         float sx = hx, base = r.top + 258 * k;
         if (wx.sunrise != 0) sx = sunItem(c, "sunrise", sunriseText, sx, base) + 36 * k;
