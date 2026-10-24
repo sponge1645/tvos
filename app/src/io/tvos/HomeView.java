@@ -1659,8 +1659,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /**
      * Logo at its "optical" size (all with the same amount of ink, plus each one's own adjustment, never past 80% × 62%
-     * of the tile), centered and already filtered down to the focused tile size: when focused it is drawn pixel for
-     * pixel, without resampling.
+     * of the tile), centered and filtered down once for the focused tile. Keep fractional coordinates throughout
+     * the spring so settling never switches the logo to a different pixel grid.
      */
     private void drawLogo(Canvas c, HomeApps.Item it, RectF box, float s, int mode) {
         Bitmap logo = crispLogo(it, mode == 2 && it.logoDark != null);
@@ -1675,10 +1675,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 : ("io.gh.reisxd.tizentube.cobalt".equals(it.key) ? 1.05f : 1f));
         float dw = logo.getWidth() * scale * brandBoost, dh = logo.getHeight() * scale * brandBoost;
         float left = box.centerX() - dw / 2, top = box.centerY() - dh / 2;
-        if (scale > 0.998f) {
-            left = Math.round(left);
-            top = Math.round(top);
-        }
+        // Never snap only at the end: that shifts the logo relative to its continuously scaled tile.
         tmp.set(left, top, left + dw, top + dh);
         bitmapPaint.setColorFilter(mode == 1 ? whiteLogo : null);
         c.drawBitmap(logo, null, tmp, bitmapPaint);
