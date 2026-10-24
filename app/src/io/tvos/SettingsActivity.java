@@ -100,7 +100,7 @@ public class SettingsActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:
                 case KeyEvent.KEYCODE_BACK:
-                    if (event.getAction() == KeyEvent.ACTION_UP) closePreview();
+                    if (event.getAction() == KeyEvent.ACTION_UP) preview.fadeExit(this::closePreview);
                     return true;
                 default:
                     return super.dispatchKeyEvent(event);

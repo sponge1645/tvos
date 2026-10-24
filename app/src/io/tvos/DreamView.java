@@ -148,11 +148,18 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         }
     };
 
+    private final android.os.Bundle settings;
+
     DreamView(Context c) {
+        this(c, ScreensaverSettingsProvider.read(c));
+    }
+
+    DreamView(Context c, android.os.Bundle settings) {
         super(c);
+        this.settings = settings;
         data = HomeData.get(c);
         recs = Recs.get(c);
-        String source = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("video_dream_source", "google");
+        String source = settings.getString("video_dream_source", "google");
         gallery = new GalleryPhotos(c, ("na".equals(source) || "nasa".equals(source)) ? "na" : "google");
         Shaders.dream(scene.palette);
         scene.setMotion(0.4f, 0.32f);
@@ -498,8 +505,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     // MARK: - Corner: date and weather, glass clock, prices
 
     private boolean showScreensaverClock() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("aerial_show_clock", false);
+        return settings.getBoolean("aerial_show_clock", false);
     }
 
     private void recordChrome() {
@@ -508,8 +514,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             float right = (w + cornerClock.measureText(clock)) / 2f;
             float x = RIGHT * k;
             HomeData.Weather wx = data.weather;
-            if (!Double.isNaN(wx.temp) && getContext().getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
-                    .getBoolean("screensaver_show_weather", false)) {
+            if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
                 String temp = HomeData.degrees(wx.temp);
                 float tw = cornerDate.measureText(temp);
                 c.drawText(temp, x - tw, DATE_BASE * k, cornerDate);
@@ -761,9 +766,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
         // Identical upper-right weather rendering and shared visibility preference.
         HomeData.Weather wx = data.weather;
-        if (!Double.isNaN(wx.temp) && getContext()
-                .getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("screensaver_show_weather", false)) {
+        if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
             String temp = HomeData.degrees(wx.temp);
             float x = RIGHT * k;
             float tw = cornerDate.measureText(temp);

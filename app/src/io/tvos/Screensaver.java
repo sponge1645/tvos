@@ -26,6 +26,11 @@ public class Screensaver extends DreamService {
         if (view != null) view.start();
     }
 
+    @Override public void onWakeUp() {
+        if (view != null) view.fadeExit(this::finish);
+        else finish();
+    }
+
     @Override public void onDreamingStopped() {
         if (view != null) view.stop();
         super.onDreamingStopped();

@@ -41,7 +41,10 @@ import java.util.Collections;
 final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ArrayList<String> urls = new ArrayList<>();
+    private final android.os.Bundle settings;
     private final SurfaceView surface;
+    private View exitCover;
+    private boolean exiting;
     // TVOS_AERIAL_POLISH_V1: fade only video, keep weather and clock steady.
     private final View videoFade;
     private final GlassClockView clock;
@@ -59,10 +62,10 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private int index, failures, generation;
     private boolean appleMode, loadingCatalog;
     private boolean showAerialClock() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("aerial_show_clock", false);
+        return settings.getBoolean("aerial_show_clock", false);
     }
     private boolean showAerialLocation() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("aerial_show_location", false);
+        return settings.getBoolean("aerial_show_location", false);
     } // TVOS_AERIAL_CONTROLS_V1
     private static final String CATALOG = "https://sylvan.apple.com/Aerials/resources-atv-23J-2.tar";
     private static final String CACHE_NAME = "tvos_aerial_catalog_23J.json";
@@ -84,6 +87,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
 
     VideoDream(Context context) {
         super(context);
+        settings = ScreensaverSettingsProvider.read(context);
         setBackgroundColor(Color.BLACK);
         surface = new SurfaceView(context);
         surface.getHolder().addCallback(this);
@@ -174,24 +178,14 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
 
     private void loadPlaylist() {
-        String source = getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getString("video_dream_source", "google");
-        String file = "apple".equals(source) ? "aerial_apple.txt" : "aerial_nature.txt";
-        if (!"apple".equals(source)) return;
-        appleMode = "apple".equals(source);
-        if (appleMode) return; // Apple playlist is fetched off the UI thread.
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(getContext().getAssets().open(file), "UTF-8"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.startsWith("https://") && !line.contains(" ")) urls.add(line);
-            }
-        } catch (Exception e) { AppLog.w("video playlist: " + e.getMessage()); }
+        appleMode = "apple".equals(settings.getString("video_dream_source", "google"));
+        // Google and National Geographic use DreamView's photo catalogs.
     }
 
     void start() {
         if (running) return;
         running = true;
+        exiting = false;
         weatherData.refreshIfStale();
         // Keep weather hidden until the first video and location fade in.
         aerialWeather.animate().cancel();
@@ -202,8 +196,36 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         else if (surfaceReady) playNext();
     }
 
+    /** Cover the SurfaceView and overlays before releasing the decoder or closing the dream window. */
+    void fadeExit(Runnable finished) {
+        if (exiting) return;
+        if (!running) { finished.run(); return; }
+        exiting = true;
+        generation++;
+        catalogGeneration++;
+        handler.removeCallbacksAndMessages(null);
+        videoFade.animate().cancel();
+        aerialLocation.animate().cancel();
+        aerialWeather.animate().cancel();
+        exitCover = new View(getContext());
+        exitCover.setBackgroundColor(Color.BLACK);
+        exitCover.setAlpha(0f);
+        addView(exitCover, new LayoutParams(-1, -1));
+        // The deadline also finishes if the animator is interrupted by the device firmware.
+        handler.postDelayed(finished, 450);
+        exitCover.animate().alpha(1f).setDuration(300).withEndAction(() -> {
+            handler.removeCallbacks(finished);
+            finished.run();
+        }).start();
+    }
+
     void stop() {
         running = false;
+        if (exitCover != null) {
+            exitCover.animate().cancel();
+            removeView(exitCover);
+            exitCover = null;
+        }
         generation++;
         catalogGeneration++;
         loadingCatalog = false;
@@ -245,7 +267,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             final ArrayList<String> result = found;
             final java.util.HashMap<String, String> resultTitles = titles;
             handler.post(() -> {
-                if (!running || token != catalogGeneration) return;
+                if (!running || exiting || token != catalogGeneration) return;
                 loadingCatalog = false;
                 urls.clear(); urls.addAll(result);
                 locations.clear(); locations.putAll(resultTitles);
@@ -441,8 +463,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
 
     // TVOS_WEATHER_FADE_V1: independent setting shared with photo screensaver.
     private boolean showScreensaverWeather() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("screensaver_show_weather", false);
+        return settings.getBoolean("screensaver_show_weather", false);
     }
 
     private void updateAerialWeather() {
@@ -491,13 +512,13 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialWeather.animate().cancel();
         aerialWeather.setAlpha(0f);
         aerialWeather.setVisibility(View.GONE);
-        fallback = new DreamView(getContext());
+        fallback = new DreamView(getContext(), settings);
         addView(fallback, 0, new LayoutParams(-1, -1));
         fallback.start();
     }
 
     private void playNext() {
-        if (!running || !surfaceReady || urls.isEmpty() || preparing || fallback != null) return;
+        if (!running || exiting || !surfaceReady || urls.isEmpty() || preparing || fallback != null) return;
         releasePlayer();
         preparing = true;
         final int token = ++generation;

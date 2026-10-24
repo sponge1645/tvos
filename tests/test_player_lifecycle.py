@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
       void setDataSource(Object o,String s){}void prepareAsync(){}void reset(){}void release(){released=true;}
      }
      Handler handler=new Handler();MediaPlayer player;Runnable prepareTimeout,fadeOut;final Runnable retryPlayback=this::playNext;
-     boolean running=true,surfaceReady=true,preparing,appleMode=true;Object fallback;
+     boolean running=true,surfaceReady=true,preparing,appleMode=true,exiting;Object fallback;
      int generation,index,failures;List<String> urls=new ArrayList<>(Arrays.asList("one","two","three"));Map<String,String> locations=new HashMap<>();
      Surface surface=new Surface();View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();
      Object getContext(){return this;}boolean showAerialLocation(){return true;}String aerialPlace(String s){return "";}void updateAerialWeather(){}void showFallback(){releasePlayer();fallback=new Object();}
@@ -51,7 +51,8 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
       check(h.player==null && h.index==1 && h.handler.tasks.size()==1,"failure leaves only retry");
       failing.error.fire(failing,1,2);check(h.index==1 && h.handler.tasks.size()==1,"repeated stale error ignored");
       h.releasePlayer();check(h.handler.tasks.isEmpty(),"release clears playback retry");
-      h.running=false;h.playNext();check(h.player==null,"stopped player does not restart");
+      h.exiting=true;h.playNext();check(h.player==null,"exiting player does not restart");
+      h.exiting=false;h.running=false;h.playNext();check(h.player==null,"stopped player does not restart");
       System.out.println("PASS: preparation, timeout/fade cleanup, stale media callbacks, retry cleanup, stopped playback");
      }
     }
