@@ -552,7 +552,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         idle = false;
         Choreographer.getInstance().postFrameCallback(this);
         spoken.readAgain();
-        if (tab == 4 && roulette.isEmpty() && !rouletteLoading) loadRoulette();
+        if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
         if (retrySearchOnResume && searchMode) requestSearch(searchQuery, ++searchSerial);
         retrySearchOnResume = false;
     }
@@ -609,7 +609,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             updatePicks();
         }
         if (searchMode) { cancelSearchWork(); searchMode = false; searchSerial++; searchResults.clear(); }
-        if (tab != 0) selectTab(0);
+        if (Prefs.firstCategory() >= 0 && tab != Prefs.firstCategory()) selectTab(Prefs.firstCategory());
         updateCards();
         retarget(!animated);
         motionDirty = true;
@@ -653,9 +653,24 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return picksOn() ? tab : 0;
     }
 
-    private int lastVisibleTab() {
-        for (int i = 4; i >= 0; i--) if (tabEnabled(i)) return i;
-        return 0;
+    private int lastVisibleTab() { return Math.max(0, Prefs.lastCategory()); }
+
+    private boolean topControlVisible(int id) {
+        return id < 5 ? !searchMode && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
+    }
+
+    /** Follow the configured visual order, not category IDs, when crossing tabs and action buttons. */
+    private int nextTopControl(int current, int direction) {
+        int previous = -1;
+        int[] order = Prefs.categoryOrder();
+        for (int position = 0; position < 10; position++) {
+            int id = position < 5 ? order[position] : position;
+            if (!topControlVisible(id)) continue;
+            if (id == current && direction < 0) return previous < 0 ? current : previous;
+            if (previous == current && direction > 0) return id;
+            previous = id;
+        }
+        return current;
     }
 
     private int availableTopButton(int preferred) {
@@ -686,14 +701,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private static boolean tabEnabled(int i) {
-        return i != 2 || Prefs.detectives() ? (i != 4 || Prefs.randomMovie()) : false;
+        return Prefs.categoryEnabled(i);
     }
 
     private void syncVisibleTabs() {
-        if (!tabEnabled(tab)) selectTab(0);
-        if (topIndex < 5 && !tabEnabled(topIndex)) topIndex = tab;
+        int first = Prefs.firstCategory();
+        if (!tabEnabled(tab) && first >= 0) selectTab(first);
+        if (first < 0) cancelRouletteWork();
+        if (topIndex < 5 && !tabEnabled(topIndex)) topIndex = first >= 0 ? tab : availableTopButton(5);
+        if (first < 0 && zone == Z_CARDS) zone = Z_SHELF;
         if (topIndex == 9 && !clockButtonEnabled()) topIndex = availableTopButton(5);
         else if (topIndex >= 5 && topIndex <= 8 && !topButtonEnabled(topIndex - 5)) topIndex = availableTopButton(topIndex);
+        if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
     }
 
     private static String[] tabs() {
@@ -2951,7 +2970,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchResults.clear();
         cardPage = cardIndex = 0;
         zone = Z_TOP;
-        topIndex = tab;
+        topIndex = Prefs.firstCategory() >= 0 ? tab : availableTopButton(5);
+        if (!topControlVisible(topIndex)) zone = Z_SHELF;
         layoutLight();
         updateCards();
         retarget(false);
@@ -3198,9 +3218,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             for (int i = 0; i < others.size(); i++) out.add(a11yId(GRID, i));
             return;
         }
-        for (int i = picksOn() ? 0 : 5; i < 5 + lightButtons.size(); i++) if (i >= 5 ? topButtonEnabled(i - 5) : tabEnabled(i)) out.add(a11yId(Z_TOP, i));
+        if (picksOn() && !searchMode) for (int id : Prefs.categoryOrder())
+            if (tabEnabled(id)) out.add(a11yId(Z_TOP, id));
+        for (int i = 5; i < 5 + lightButtons.size(); i++) if (topButtonEnabled(i - 5)) out.add(a11yId(Z_TOP, i));
         if (clockButtonEnabled()) out.add(a11yId(Z_TOP, 9));
-        for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
+        if (picksOn()) for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
         for (int i = 0; i < shelf.size(); i++) out.add(a11yId(Z_SHELF, i));
         for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
         if (drawerOpen && weatherBottom()) out.add(a11yId(WIDGETS, 0));
@@ -3216,7 +3238,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             case Z_TOP:
                 if (i == 9) return Ui.ru ? "Часы и профиль" : "Clock and profile";
                 if (i >= 5) return label(lightButtons, i - 5);
-                return tabs()[i] + Ui.tr(", aba ", ", tab ") + (i + 1) + Ui.tr(" de 5", " of 5");
+                return tabs()[i] + Ui.tr(", aba ", ", tab ") + Prefs.categoryPosition(i) + Ui.tr(" de ", " of ") + Prefs.categoryCount();
             case Z_CARDS: return tab == 4 ? (Ui.ru ? "Случайный фильм" : "Random Movie") : i < cards.size() ? pickText(cards.get(i)) : "";
             case Z_SHELF: return label(shelf, i);
             case Z_DRAWER: return label(drawerItems, i);
@@ -3420,7 +3442,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float tabTop = (largePostersWithoutWidgets ? L_BUTTON_CY - L_TABBAR_H / 2f : L_TABBAR_TOP) * k;
         float tabBottom = tabTop + L_TABBAR_H * k;
         float x = MARGIN * k - pad;
-        for (int i = 0; i < 5; i++) {
+        for (int i : Prefs.categoryOrder()) {
             if (!tabEnabled(i)) { topRects[i].setEmpty(); continue; }
             float tw = Math.max(lTabOn.measureText(tabs()[i]), lTab.measureText(tabs()[i]));
             topRects[i].set(x, tabTop, x + tw + 2 * pad, tabBottom);
@@ -3468,6 +3490,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
+        if (!searchMode && Prefs.firstCategory() < 0) {
+            cards.clear();
+            recs.setPosterWindow(java.util.Collections.emptyList());
+            heroDirty = true;
+            return;
+        }
         if (tab == 4 && !searchMode) {
             cards.clear();
             if (!rouletteSpinning && !rouletteFinished) {
@@ -3521,7 +3549,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         cardPage = 0;
         cardIndex = 0;
         updateCards();
-        if (tab == 4 && roulette.isEmpty() && !rouletteLoading) loadRoulette();
+        if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
         heroDirty = true;
     }
 
@@ -3538,7 +3566,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void loadRoulette() {
-        if (!running || rouletteLoading) return;
+        if (!running || !tabEnabled(4) || rouletteLoading) return;
         rouletteLoading = true;
         rouletteRequest = recs.loadAcclaimed((results) -> {
             if (!running || tab != 4) return;
@@ -3895,7 +3923,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean picksOn() {
-        return Recs.hasKey(getContext());
+        return Recs.hasKey(getContext()) && (searchMode || Prefs.categoryCount() > 0);
     }
 
     /**
@@ -4160,7 +4188,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         switch (zone) {
             case Z_SHELF:
                 if (dy >= 0 || shelf.isEmpty()) return false;
-                if (cards.isEmpty() && (tab != 4 || searchMode)) {
+                if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                     zone = Z_TOP;
                     topIndex = picksOn() ? tab : 5;
                 } else {
@@ -4209,26 +4237,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
             case Z_TOP:
                 if (dx != 0) {
-                    int next;
-                    if (topIndex == 9) {
-                        // Clock is now physically to the RIGHT of all actions.
-                        next = dx < 0 ? lastVisibleActionBeforeClock()
-                                : 9;
-                    } else if (topIndex < 5 && dx > 0 && topIndex == lastVisibleTab()) {
-                        next = firstVisibleActionOrClock();
-                    } else if (topIndex >= 5 && topIndex <= 8 && dx > 0
-                            && topIndex == lastVisibleActionBeforeClock() && clockButtonEnabled()) {
-                        next = 9;
-                    } else {
-                        next = topIndex + dx;
-                        while (next >= 0 && next <= 8 && (next < 5 ? !tabEnabled(next) : !topButtonEnabled(next - 5))) next += dx;
-                        if (next == 9 && !clockButtonEnabled()) next = topIndex;
-                    }
-                    if (next < 0 || next > 9 || next == topIndex || (next == 9 && !clockButtonEnabled())) return true;
+                    int next = nextTopControl(topIndex, dx);
+                    if (next == topIndex) return true;
                     topIndex = next;
                     if (topIndex < 5) selectTab(topIndex);   // like Apple TV tabs: focusing a tab selects it
                 } else if (dy > 0) {
-                    if (cards.isEmpty() && (tab != 4 || searchMode)) {
+                    if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                         zone = Z_SHELF;
                     } else {
                         zone = Z_CARDS;

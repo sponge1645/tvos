@@ -179,7 +179,7 @@ public class SettingsActivity extends Activity {
     }
 
     static final class SettingsView extends View implements Choreographer.FrameCallback {
-        private static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, GENERAL = 6, WIDGETS = 7, SYSTEM = 8, ABOUT = 9, SCREENSAVER = 10, WEATHER = 11, DATE_TIME = 12, MENU_BUTTONS = 13, UPDATES = 14, TOP_PANEL = 15, ACCESSIBILITY = 16, RESET = 17, VPN_SETTINGS = 18, APPS_DOWNLOADS = 19;
+        private static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, GENERAL = 6, WIDGETS = 7, SYSTEM = 8, ABOUT = 9, SCREENSAVER = 10, WEATHER = 11, DATE_TIME = 12, MENU_BUTTONS = 13, UPDATES = 14, TOP_PANEL = 15, ACCESSIBILITY = 16, RESET = 17, VPN_SETTINGS = 18, APPS_DOWNLOADS = 19, CATEGORY_EDIT = 20;
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
         private static final int PICK_VISIBLE = 10;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
@@ -214,6 +214,7 @@ public class SettingsActivity extends Activity {
         private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path arrowPath = new Path();
         private final TextPaint shelfMeasurePaint = new TextPaint();
+        private final List<Integer> categoryRows = new ArrayList<>();
         private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private StaticLayout descriptionLayout;
         private String descriptionText;
@@ -394,6 +395,12 @@ public class SettingsActivity extends Activity {
                     return pickLabels.get(at) + (at == pickCurrent ? Ui.tr(", escolhido", ", selected") : "")
                             + ", " + (at + 1) + Ui.tr(" de ", " of ") + pickLabels.size();
                 }
+                case CATEGORY_EDIT: {
+                    if (row < 0 || row >= categoryRows.size()) return "";
+                    int id = categoryRows.get(row);
+                    return categoryLabel(id) + ", " + (Prefs.categoryEnabled(id)
+                            ? tr("Позиция ", "Position ") + Prefs.categoryPosition(id) : tr("Выкл.", "Off"));
+                }
                 case SHELF_EDIT: {
                     int at = pickScroll + row;
                     if (at >= shelfRows.size()) return "";
@@ -571,6 +578,7 @@ public class SettingsActivity extends Activity {
                 case SYSTEM: return 3;
                 case RESET: return 2;
                 case TOP_PANEL: return 2;
+                case CATEGORY_EDIT: return categoryRows.size();
                 case ACCESSIBILITY: return 4;
                 case VPN_SETTINGS: return 2;
                 case MENU_BUTTONS: return 5;
@@ -790,6 +798,7 @@ public class SettingsActivity extends Activity {
                 case HOME_SETTINGS: return settingsGroup == WIDGETS ? (Ui.ru ? "Котировки" : "Quotes") : settingsGroup == SYSTEM ? (Ui.ru ? "Категории" : "Categories") : (Ui.ru ? "Основные" : "General");
                 case REMOTE_KEYS: return tr("Пульты и устройства", "Remotes and Devices");
                 case SHELF_EDIT: return "Dock";
+                case CATEGORY_EDIT: return tr("Категории", "Categories");
                 case PICKER: return pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (Ui.ru ? "Регион" : "Region") : (Ui.ru ? "Выбор приложения" : "Choose app");
                 default: return Ui.ru ? "Настройки" : "Settings";
             }
@@ -988,7 +997,7 @@ public class SettingsActivity extends Activity {
                     return MAIN;
                 case ABOUT: return GENERAL;
                 case HOME_CHOICE: return ACCESSIBILITY;
-                case MENU_BUTTONS: return TOP_PANEL;
+                case MENU_BUTTONS: case CATEGORY_EDIT: return TOP_PANEL;
                 case VPN_SETTINGS: return MENU_BUTTONS;
                 case WEATHER: case DATE_TIME: return WIDGETS;
                 case UPDATES: case RESET: return SYSTEM;
@@ -1008,6 +1017,7 @@ public class SettingsActivity extends Activity {
                 case HOME_CHOICE: drawChoice(c); break;
                 case PICKER: drawPicker(c); break;
                 case SHELF_EDIT: drawShelfEditor(c); break;
+                case CATEGORY_EDIT: drawCategoryEditor(c); break;
                 default: drawList(c); break;
             }
         }
@@ -1223,6 +1233,10 @@ public class SettingsActivity extends Activity {
                 case HOME_CHOICE:
                     info = tr("tvOS — без рекламы, с новой заставкой. Встроенный — заводской главный экран телевизора. Переключение занимает несколько секунд; экран может мигать.",
                             "tvOS has no ads and a new screen saver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
+                    break;
+                case CATEGORY_EDIT:
+                    info = tr("Разделы верхней панели.\nOK — включить или выключить, стрелки — изменить порядок.",
+                            "Menu Bar categories.\nOK turns a category on or off; left and right change its order.");
                     break;
                 case SHELF_EDIT:
                     info = tr("Настройка приложений на панели Dock.\nOK — добавить или убрать, стрелки — изменить порядок.",
@@ -1525,8 +1539,11 @@ public class SettingsActivity extends Activity {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || canAdjustMenu())) tvosClick.move();
-                    if (down && screen == SHELF_EDIT) {
+                    if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || screen == CATEGORY_EDIT || canAdjustMenu())) tvosClick.move();
+                    if (down && screen == CATEGORY_EDIT) {
+                        moveCategory(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                        invalidate();
+                    } else if (down && screen == SHELF_EDIT) {
                         moveShelfApp(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     } else if (down && canAdjustMenu()) {
@@ -1559,6 +1576,7 @@ public class SettingsActivity extends Activity {
                             else if (screen == ABOUT) { screen = GENERAL; focus = 0; }
                             else if (screen == REMOTE_KEYS) { screen = MAIN; focus = 3; }
                             else if (screen == MENU_BUTTONS) { screen = TOP_PANEL; focus = 1; }
+                            else if (screen == CATEGORY_EDIT) { screen = TOP_PANEL; focus = 0; }
                             else if (screen == VPN_SETTINGS) { screen = MENU_BUTTONS; focus = 2; }
                             else if (screen == UPDATES) { screen = SYSTEM; focus = 0; }
                             else if (screen == HOME_SETTINGS) { screen = settingsGroup == SYSTEM ? TOP_PANEL : settingsGroup; focus = settingsGroup == SYSTEM ? 0 : settingsGroup == WIDGETS ? 1 : 0; }
@@ -1913,6 +1931,66 @@ public class SettingsActivity extends Activity {
             return screen == SHELF_EDIT ? shelfRows.size() : pickLabels.size();
         }
 
+        private String categoryLabel(int id) {
+            switch (id) {
+                case 0: return tr("Новинки", "New");
+                case 1: return tr("Фильмы", "Movies");
+                case 2: return tr("Детективы", "Detectives");
+                case 3: return tr("Сериалы", "Shows");
+                default: return tr("Случайный фильм", "Random Movie");
+            }
+        }
+
+        private void rebuildCategoryRows(int selectedId) {
+            categoryRows.clear();
+            for (int id : Prefs.categoryOrder()) if (Prefs.categoryEnabled(id)) categoryRows.add(id);
+            for (int id : Prefs.categoryOrder()) if (!Prefs.categoryEnabled(id)) categoryRows.add(id);
+            focus = Math.max(0, categoryRows.indexOf(selectedId));
+        }
+
+        private void openCategoryEditor() {
+            rebuildCategoryRows(-1);
+            focus = 0;
+            screen = CATEGORY_EDIT;
+        }
+
+        private void toggleCategory() {
+            if (focus < 0 || focus >= categoryRows.size()) return;
+            int id = categoryRows.get(focus);
+            boolean enable = !Prefs.categoryEnabled(id);
+            categoryRows.remove(Integer.valueOf(id));
+            if (enable) categoryRows.add(Prefs.categoryCount(), id);
+            else categoryRows.add(id);
+            Prefs.setCategoryEnabled(id, enable);
+            Prefs.setCategoryOrder(categoryRows);
+            rebuildCategoryRows(id);
+        }
+
+        private void moveCategory(int direction) {
+            if (focus < 0 || focus >= categoryRows.size()) return;
+            int id = categoryRows.get(focus), to = focus + direction;
+            if (!Prefs.categoryEnabled(id) || to < 0 || to >= Prefs.categoryCount()) return;
+            Collections.swap(categoryRows, focus, to);
+            Prefs.setCategoryOrder(categoryRows);
+            focus = to;
+        }
+
+        private void drawCategoryEditor(Canvas c) {
+            for (int row = 0; row < categoryRows.size(); row++) {
+                int id = categoryRows.get(row);
+                setApprovedRowRect(row);
+                float f = drawApprovedCapsule(c, row);
+                rowLabel.setColor(blend(normalInk(), INK, f));
+                rowValue.setColor(ABOUT_SECONDARY_COLOR);
+                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
+                drawTrackedText(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
+                        base, rowLabel, 0.02f);
+                drawTrackedText(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : tr("Выкл.", "Off"),
+                        rowRect.right - 61 * k, base, rowValue, 0.02f);
+                drawApprovedChevron(c);
+            }
+        }
+
         // MARK: - Shelf editor
 
         private void openShelfEditor() {
@@ -2137,6 +2215,10 @@ public class SettingsActivity extends Activity {
                 Prefs.setKeyApp(Prefs.KEYS[pickFor - 1], appPkgs.get(at));
                 focus = pickFor - 1;
                 screen = REMOTE_KEYS;
+            } else if (screen == CATEGORY_EDIT) {
+                toggleCategory();
+                invalidate();
+                return;
             } else if (screen == SHELF_EDIT) {
                 toggleShelfApp();
                 invalidate();
@@ -2203,7 +2285,7 @@ public class SettingsActivity extends Activity {
                 else if (focus == 3) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
                 else if (focus == 4) { pause(); activity.showPreview(); return; }
             } else if (screen == TOP_PANEL) {
-                if (focus == 0) { settingsGroup = SYSTEM; screen = HOME_SETTINGS; focus = 0; }
+                if (focus == 0) { openCategoryEditor(); return; }
                 else if (focus == 1) { screen = MENU_BUTTONS; focus = 0; }
             } else if (screen == ACCESSIBILITY) {
                 if (focus == 0) setLocalFlag("reduce_transparency", !localFlag("reduce_transparency"));

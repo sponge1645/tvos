@@ -148,6 +148,71 @@ final class Prefs {
     static boolean randomMovie() { return sp().getBoolean("showRandomMovie", true); }
     static void setRandomMovie(boolean on) { put("showRandomMovie", on); }
 
+    // Category IDs remain stable: New, Movies, Detectives, Shows, Random Movie.
+    private static int categoryVersion = -1, categoryMask;
+    private static int[] categoryOrderCache;
+
+    private static void readCategories() {
+        if (categoryOrderCache != null && categoryVersion == version) return;
+        int[] order = new int[5];
+        boolean[] seen = new boolean[5];
+        int count = 0;
+        for (String value : sp().getString("category_order", "0,1,2,3,4").split(",")) {
+            try {
+                int id = Integer.parseInt(value);
+                if (id >= 0 && id < 5 && !seen[id]) { order[count++] = id; seen[id] = true; }
+            } catch (NumberFormatException ignored) { }
+        }
+        for (int id = 0; id < 5; id++) if (!seen[id]) order[count++] = id;
+        categoryMask = 0;
+        for (int id = 0; id < 5; id++) {
+            boolean enabled = id == 2 ? detectives() : id == 4 ? randomMovie()
+                    : sp().getBoolean("category_" + id, true);
+            if (enabled) categoryMask |= 1 << id;
+        }
+        categoryOrderCache = order;
+        categoryVersion = version;
+    }
+
+    /** Shared read-only snapshot; rebuilt only after settings change, never during each animation frame. */
+    static int[] categoryOrder() { readCategories(); return categoryOrderCache; }
+    static boolean categoryEnabled(int id) { readCategories(); return id >= 0 && id < 5 && (categoryMask & 1 << id) != 0; }
+    static int firstCategory() { for (int id : categoryOrder()) if (categoryEnabled(id)) return id; return -1; }
+    static int lastCategory() {
+        int result = -1;
+        for (int id : categoryOrder()) if (categoryEnabled(id)) result = id;
+        return result;
+    }
+    static int categoryCount() { readCategories(); return Integer.bitCount(categoryMask); }
+    static int categoryPosition(int id) {
+        int position = 0;
+        for (int candidate : categoryOrder()) if (categoryEnabled(candidate)) {
+            position++;
+            if (candidate == id) return position;
+        }
+        return 0;
+    }
+
+    static void setCategoryEnabled(int id, boolean enabled) {
+        if (id < 0 || id >= 5) throw new IllegalArgumentException("Invalid category");
+        if (id == 2) setDetectives(enabled);
+        else if (id == 4) setRandomMovie(enabled);
+        else put("category_" + id, enabled);
+    }
+
+    static void setCategoryOrder(List<Integer> order) {
+        if (order.size() != 5) throw new IllegalArgumentException("Incomplete categories");
+        boolean[] seen = new boolean[5];
+        StringBuilder value = new StringBuilder();
+        for (Integer id : order) {
+            if (id == null || id < 0 || id >= 5 || seen[id]) throw new IllegalArgumentException("Invalid category order");
+            seen[id] = true;
+            if (value.length() > 0) value.append(',');
+            value.append(id);
+        }
+        put("category_order", value.toString());
+    }
+
     // MARK: - Shelf
 
     /** Packages on the home shelf, in order; null until the user edits it (then the built-in list applies). */
