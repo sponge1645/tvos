@@ -61,7 +61,10 @@ final class Prefs {
         String previous = language();
         put("language", v);
         Ui.applyLanguage();
-        if (!previous.equals(language())) Recs.languageChanged();
+        if (!previous.equals(language())) {
+            Recs.languageChanged();
+            HomeData.get(app).localizeCity(language());
+        }
     }
 
     /** "auto", "C" or "F". */
@@ -86,13 +89,46 @@ final class Prefs {
 
     // MARK: - City
 
-    static String city() { return sp().getString("city", Config.CITY).trim(); }
+    static String cityRaw() { return sp().getString("city", Config.CITY).trim(); }
+    private static String cityPlace() { return latitude() + "," + longitude(); }
+    static long cityId() { return sp().getLong("city_id", 0); }
+    static boolean hasCityName(String language) {
+        return cityPlace().equals(sp().getString("city_names_place", ""))
+                && !sp().getString("city_name_" + language, "").isEmpty();
+    }
+    static String city() {
+        return hasCityName(language()) ? sp().getString("city_name_" + language(), "") : cityRaw();
+    }
     static String latitude() { return sp().getString("latitude", Config.LATITUDE); }
     static String longitude() { return sp().getString("longitude", Config.LONGITUDE); }
 
     static void setCity(String name, String latitude, String longitude) {
-        sp().edit().putString("city", name).putString("latitude", latitude).putString("longitude", longitude).apply();
+        setCity(name, latitude, longitude, 0, language());
+    }
+
+    static void setCity(String name, String latitude, String longitude, long id, String nameLanguage) {
+        sp().edit().putString("city", name).putString("latitude", latitude).putString("longitude", longitude)
+                .putLong("city_id", id).putString("city_names_place", latitude + "," + longitude)
+                .remove("city_name_ru").remove("city_name_en").putString("city_name_" + nameLanguage, name).apply();
         version++;
+        HomeData data = HomeData.get(app);
+        data.localizeCity("ru");
+        data.localizeCity("en");
+    }
+
+    /** A late name response must never relabel a different selected location. */
+    static boolean cacheCityName(String name, String language, String latitude, String longitude, long id) {
+        if (name == null || name.trim().isEmpty() || !cityPlace().equals(latitude + "," + longitude)
+                || (id > 0 && cityId() > 0 && id != cityId())) return false;
+        if (hasCityName(language) && name.equals(sp().getString("city_name_" + language, ""))) return false;
+        SharedPreferences.Editor editor = sp().edit();
+        if (!cityPlace().equals(sp().getString("city_names_place", "")))
+            editor.remove("city_name_ru").remove("city_name_en");
+        editor.putString("city_names_place", cityPlace()).putString("city_name_" + language, name);
+        if (id > 0 && cityId() == 0) editor.putLong("city_id", id);
+        editor.apply();
+        if (language.equals(language())) version++;
+        return true;
     }
 
     // MARK: - Widgets and coins

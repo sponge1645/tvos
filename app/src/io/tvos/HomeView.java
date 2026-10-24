@@ -1802,7 +1802,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         boolean off = it.kind == HomeApps.INPUT && !it.connected;
         int ink = blend(tone(off ? 0xFF8E8E93 : L_INK, off ? 0x6BFFFFFF : 0xF2FFFFFF), INK, f);
-        Symbols.draw(getContext(), c, it.symbol, cx, cell.top + cell.height() * 0.4f, 34 * k * s, ink);
+        Symbols.draw(getContext(), c, it.symbol, cx, cell.top + cell.height() * 0.4f, 37.4f * k * s, ink);
         drawerLabel.setColor(ink);
         drawerLabel.setTextSize(23 * k * s);
         float room = cell.width() - 16 * k, wide = drawerLabel.measureText(it.label);
@@ -3169,7 +3169,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (i == 9) return Ui.ru ? "Часы и профиль" : "Clock and profile";
                 if (i >= 5) return label(lightButtons, i - 5);
                 return tabs()[i] + Ui.tr(", aba ", ", tab ") + (i + 1) + Ui.tr(" de 5", " of 5");
-            case Z_CARDS: return tab == 4 ? (Ui.ru ? "Случайный фильм" : "Random movie") : i < cards.size() ? pickText(cards.get(i)) : "";
+            case Z_CARDS: return tab == 4 ? (Ui.ru ? "Случайный фильм" : "Random Movie") : i < cards.size() ? pickText(cards.get(i)) : "";
             case Z_SHELF: return label(shelf, i);
             case Z_DRAWER: return label(drawerItems, i);
             case WIDGETS: return i == 0 ? weatherText() : quotesText();
@@ -3684,7 +3684,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             p.setTextSize(40.8f * k);
             p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, focus));
             String label = rouletteLoading ? (Ui.ru ? "Загрузка фильмов…" : "Loading movies…")
-                    : (Ui.ru ? "🎲  Случайный фильм" : "🎲  Random movie");
+                    : (Ui.ru ? "🎲  Случайный фильм" : "🎲  Random Movie");
             int saved = c.save();
             c.scale(scale, scale, cx, cy);
             c.drawText(label, cx - p.measureText(label) / 2, cy + Ui.halfCap(p), p);

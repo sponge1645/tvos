@@ -799,7 +799,7 @@ public class SettingsActivity extends Activity {
                 case GENERAL: return new String[] {tr("Об этом устройстве", "About"), tr("Оформление", "Appearance"), tr("Язык", "Language"), tr("Регион", "Region"), tr("Дата и время", "Date & Time"), tr("Температура", "Temperature"), tr("Формат времени", "Time Format"), tr("Щелчки при навигации", "Navigation Clicks")};
                 case WIDGETS: return new String[] {tr("Погода", "Weather"), tr("Котировки", "Quotes"), tr("Дата", "Date")};
                 case DATE_TIME: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar")};
-                case WEATHER: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("Показывать на нижней панели", "Show on bottom panel")};
+                case WEATHER: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("Показывать на нижней панели", "Show in Bottom Menu")};
                 case MENU_BUTTONS: return new String[] {tr("Поиск", "Search"), tr("ТВ", "TV"), "VPN", tr("Настройки", "Settings"), tr("Часы", "Clock")};
                 case UPDATES: return new String[] {tr("Обновление ПО", "Update Software"), tr("Автоматическое обновление", "Automatically Update")};
                 case SYSTEM: return new String[] {tr("Обновления ПО", "Software Updates"), tr("Сброс", "Reset"), tr("Перезагрузить tvOS", "Restart tvOS")};
@@ -807,7 +807,7 @@ public class SettingsActivity extends Activity {
                 case TOP_PANEL: return new String[] {tr("Категории", "Categories"), tr("Кнопки", "Buttons")};
                 case APPS_DOWNLOADS: return new String[] {tr("Загрузить AirPlay", "Download AirPlay"), tr("Загрузить Apple Music", "Download Apple Music"), tr("Загрузить TizenTube", "Download TizenTube"), tr("Загрузить INCY", "Download INCY"), tr("Загрузить Seena", "Download Seena"), tr("Загрузить Lampa", "Download Lampa"), tr("Загрузить KinoPub", "Download KinoPub")};
                 case ACCESSIBILITY: return new String[] {tr("Уменьшение прозрачности", "Reduce Transparency"), tr("Уменьшение анимаций", "Reduce Motion"), tr("Домашний экран", "Default Launcher"), tr("Настройки ТВ", "TV Settings")};
-                case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("VPN-служба", "VPN service")};
+                case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("VPN-служба", "VPN")};
                 case SCREENSAVER: return new String[] {tr("Источник", "Current Selection"), tr("Начало после", "Start After"), tr("Показывать часы", "Show Clock"), tr("Показывать место съёмки", "Show Location"), tr("Показывать погоду", "Show Weather"), tr("Предпросмотр", "Preview")};
                 case ABOUT: return new String[] {tr("Имя", "Name"), tr("Модель", "Model"), tr("Серийный номер", "Serial Number"), "tvOS", tr("ОС", "OS"), tr("Разрешение", "Resolution"), tr("Имя сети Wi-Fi", "Wi-Fi Network Name"), tr("IP-адрес", "IP Address")};
                 default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screen Saver"), "AirPlay", tr("Пульты и устройства", "Remotes and Devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Apps"), tr("Приложения в Dock", "Dock"), tr("Верхняя панель", "Menu Bar"), tr("Виджеты", "Widgets"), tr("Система", "System")};
@@ -1618,13 +1618,13 @@ public class SettingsActivity extends Activity {
             l.add(Ui.tr("Tema", "Theme"));
             l.add(Ui.tr("Widget do clima", "Weather widget"));
             l.add((Ui.ru ? "Город" : Ui.tr("Cidade", "City")));
-            l.add(Ui.ru ? "Показывать на нижней панели" : "Show on bottom panel");
+            l.add(Ui.ru ? "Показывать на нижней панели" : "Show in Bottom Menu");
             l.add("Bitcoin");
             l.add("Ethereum");
             l.add("Solana");
             if (dollar()) l.add(Ui.tr("Dólar", "Dollar"));
             l.add(Ui.ru ? "Детективы" : "Detectives");
-            l.add(Ui.ru ? "Случайный фильм" : "Random movie");
+            l.add(Ui.ru ? "Случайный фильм" : "Random Movie");
             return l.toArray(new String[0]);
         }
 
@@ -2089,7 +2089,7 @@ public class SettingsActivity extends Activity {
                 return;
             } else if (screen == PICKER && pickFor == PICK_CITY) {
                 String[] city = cities.get(pickScroll + focus);
-                Prefs.setCity(city[1], city[2], city[3]);
+                Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);
                 HomeData.get(c).settingsChanged();
                 focus = 3;
                 screen = GENERAL;

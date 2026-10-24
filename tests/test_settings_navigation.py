@@ -46,6 +46,8 @@ tests=r'''
   h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatically Update"}),"update actions naming contract");
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","Default Launcher","TV Settings"}),"accessibility naming contract");
   for(int page:new int[]{WEATHER,DATE_TIME,VPN_SETTINGS}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}
+  h.screen=WEATHER;check(h.menuLabels()[1].equals("Show in Bottom Menu"),"bottom menu naming contract");
+  h.screen=VPN_SETTINGS;check(h.menuLabels()[1].equals("VPN"),"VPN label stays concise");
   Ui.ru=true;h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
   h.screen=SCREENSAVER;check(h.menuLabels()[3].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
