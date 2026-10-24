@@ -1620,7 +1620,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (logo == null) return;
         float scale = s / (1 + FOCUS_GROW);
         // Dock logo adjustments relative to v18: KinoPub +10%, TV Settings -10%, TizenTube +5%.
-        float brandBoost = "com.android.tv.settings".equals(it.pkg) ? 1.26f
+        float brandBoost = ("com.android.vending".equals(it.pkg) || "com.yandex.devices.appstore".equals(it.pkg)) ? 1.2f
+                : "com.android.tv.settings".equals(it.pkg) ? 1.26f
                 : "com.applemusicktv".equals(it.pkg) ? 1.25f
                 : "watch.kino".equals(it.key) ? 1.32f
                 : ("tv-settings".equals(it.key) ? 1.44f

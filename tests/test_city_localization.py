@@ -32,7 +32,7 @@ mid='''}
   final Set<String> cityNameRequests=new HashSet<>();Queue io=new Queue(),main=new Queue();int notices;
   static List<String> urls=new ArrayList<>();static Runnable onGet;static boolean fail;
   void notifyListeners(){notices++;}
-  static String get(String url)throws Exception {urls.add(url);if(onGet!=null){Runnable r=onGet;onGet=null;r.run();}if(fail)throw new IOException("offline");return (url.contains("/get?")?"id-":"search-")+(url.contains("language=ru")?"ru":"en");}
+  static String get(String url)throws Exception {urls.add(url);if(onGet!=null){Runnable r=onGet;onGet=null;r.run();}if(fail)throw new IOException("offline");if(url.contains("/search?") && url.contains("language=en") && url.contains("%D0%91%D0%B5%D1%80%D0%BB%D0%B8%D0%BD"))return "empty";return (url.contains("/get?")?"id-":"search-")+(url.contains("language=ru")?"ru":"en");}
 '''
 databody=''.join(method(data,s) for s in ['    private static String weatherPlace()', '    synchronized void localizeCity(', '    private static String[] findCityName(', '    static List<String[]> findCity(String name)', '    private static List<String[]> findCity(String name, String lang)'])
 tests='''}
@@ -40,12 +40,13 @@ tests='''}
  static void fixture(String lang,String name){JSONObject city=new JSONObject().put("id",2950159L).put("name",name).put("latitude",52.52437).put("longitude",13.41053);JSONObject.all.put("id-"+lang,city);JSONObject.all.put("search-"+lang,new JSONObject().put("results",new JSONArray().put(city)));}
  static void reset(){Prefs.store=new Store();Prefs.version=0;HomeData.current=new HomeData();HomeData.urls.clear();HomeData.fail=false;HomeData.onGet=null;}
  public static void main(String[] args)throws Exception{
-  fixture("en","Berlin");fixture("ru","Берлин");reset();HomeData h=HomeData.current;
+  fixture("en","Berlin");fixture("ru","Берлин");JSONObject.all.put("empty",new JSONObject().put("results",new JSONArray()));
+  reset();HomeData h=HomeData.current;
   Prefs.setLanguage("ru");h.localizeCity("ru");check(h.io.tasks.size()==1,"duplicate lookup deduplicated");
   h.io.drain();h.main.drain();check(Prefs.city().equals("Берлин") && Prefs.cityId()==2950159L,"legacy city localized and migrated to stable ID");
   check(Prefs.latitude().equals(Config.LATITUDE) && Prefs.longitude().equals(Config.LONGITUDE),"label translation never moves weather location");
   check(h.notices==1,"visible language update notifies weather widget");
-  Prefs.setLanguage("en");h.io.drain();h.main.drain();check(Prefs.city().equals("Berlin") && HomeData.urls.get(1).contains("/get?id=2950159"),"second language resolved by same ID");
+  Prefs.setLanguage("en");h.io.drain();h.main.drain();check(Prefs.city().equals("Berlin") && HomeData.urls.get(HomeData.urls.size()-1).contains("/get?id=2950159"),"second language resolved by same ID");
   int calls=HomeData.urls.size();HomeData.fail=true;Prefs.setLanguage("ru");Prefs.setLanguage("en");
   check(Prefs.city().equals("Berlin") && h.io.tasks.isEmpty() && HomeData.urls.size()==calls,"both cached names switch immediately offline");
   int before=Prefs.version;check(!Prefs.cacheCityName("Wrong","en","1","2",2950159L) && Prefs.version==before,"stale coordinates cannot overwrite cache");
@@ -57,6 +58,10 @@ tests='''}
   reset();h=HomeData.current;Prefs.setLanguage("ru");Prefs.store.putString("latitude","1");h.io.drain();h.main.drain();check(HomeData.urls.isEmpty(),"obsolete queued lookup skips network");
   reset();h=HomeData.current;HomeData.fail=true;Prefs.setLanguage("ru");h.io.drain();h.main.drain();check(Prefs.city().equals("Berlin") && h.cityNameRequests.isEmpty(),"network failure retains original label and permits retry");
   HomeData.fail=false;h.localizeCity("ru");h.io.drain();h.main.drain();check(Prefs.city().equals("Берлин"),"retry recovers");
+  reset();h=HomeData.current;Prefs.store.putString("city","Берлин").putString("language","en");
+  h.localizeCity(Prefs.language());h.io.drain();h.main.drain();
+  check(Prefs.city().equals("Berlin") && HomeData.urls.size()==3,"Cyrillic legacy name migrates via Russian search and English ID lookup on resume");
+  check(HomeData.urls.get(0).contains("language=en") && HomeData.urls.get(1).contains("language=ru") && HomeData.urls.get(2).contains("/get?"),"fallback query order matches real geocoder failure");
   check(HomeData.findCityName("Berlin","1","2",0,"ru")==null,"same-named distant result rejected");
   System.out.println("PASS: RU/EN cache, legacy migration, stable ID, unchanged coordinates, offline switching, deduplication, stale responses, retry");
  }

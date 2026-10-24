@@ -431,6 +431,7 @@ public class SettingsActivity extends Activity {
         void resume() {
             if (running) return;
             running = true;
+            HomeData.get(getContext()).localizeCity(Prefs.language());
             SelfUpdate.get(getContext()).addListener(updateListener);
             onSelfUpdate();
             SelfUpdate.get(getContext()).maybeAutomatic(false);

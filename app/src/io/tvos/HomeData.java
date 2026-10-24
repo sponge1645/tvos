@@ -302,12 +302,20 @@ final class HomeData {
         // Existing installations have a name and coordinates but no GeoNames ID yet.
         String[] nearest = null;
         double distance = 0.25 * 0.25;
-        for (String[] city : findCity(name, language)) {
-            double dy = Double.parseDouble(city[2]) - lat, dx = Double.parseDouble(city[3]) - lon;
-            double candidate = dy * dy + dx * dx;
-            if (candidate < distance) { distance = candidate; nearest = city; }
+        // Search indexes may not match a Cyrillic query when English results are requested.
+        // Discover the stable ID in either supported language, then translate through /get.
+        for (String searchLanguage : new String[] {language, "ru".equals(language) ? "en" : "ru"}) {
+            for (String[] city : findCity(name, searchLanguage)) {
+                double dy = Double.parseDouble(city[2]) - lat, dx = Double.parseDouble(city[3]) - lon;
+                double candidate = dy * dy + dx * dx;
+                if (candidate < distance) { distance = candidate; nearest = city; }
+            }
+            if (nearest != null) break;
         }
-        return nearest == null ? null : new String[] {nearest[1], nearest[4]};
+        if (nearest == null) return null;
+        long foundId = Long.parseLong(nearest[4]);
+        if (foundId > 0) return findCityName(name, latitude, longitude, foundId, language);
+        return language.equals(nearest[5]) ? new String[] {nearest[1], nearest[4]} : null;
     }
 
     static List<String[]> findCity(String name) throws Exception {

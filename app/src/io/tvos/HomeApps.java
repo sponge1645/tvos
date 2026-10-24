@@ -905,7 +905,7 @@ final class HomeApps {
                 logoKey = "lampa"; top = 0xFF313130; bottom = 0xFF161613; break;
             case "com.android.vending":
             case "com.yandex.devices.appstore":
-                logoKey = "googleplay"; top = 0xFF009BF6; bottom = 0xFF166CED; break;
+                logoKey = "googleplay"; top = 0xFF009BF6; bottom = 0xFF166CED; boost = 1.2f; break;
             default:
                 return appTile(c, null, pkg, 0);
         }
