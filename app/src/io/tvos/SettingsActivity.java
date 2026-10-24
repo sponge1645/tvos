@@ -54,6 +54,9 @@ import java.util.Set;
  */
 public class SettingsActivity extends Activity {
     private SettingsView view;
+    private android.widget.FrameLayout previewHost;
+    private View previewCover;
+    private boolean previewTransition;
     private VideoDream preview;   // "Screensaver": the screensaver right here, without changing the system setting
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +64,15 @@ public class SettingsActivity extends Activity {
         Watchdog.install(this);
         Ui.init(this);
         view = new SettingsView(this);
-        setContentView(view);
+        previewHost = new android.widget.FrameLayout(this);
+        previewHost.setBackgroundColor(android.graphics.Color.BLACK);
+        previewHost.addView(view, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        previewCover = new View(this);
+        previewCover.setBackgroundColor(android.graphics.Color.BLACK);
+        previewCover.setAlpha(0f);
+        previewCover.setVisibility(View.GONE);
+        previewHost.addView(previewCover, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        setContentView(previewHost);
         WifiPermission.requestOnce(this);
     }
 
@@ -88,6 +99,7 @@ public class SettingsActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (previewTransition) return true;
         if (preview != null) {
             // Like the real screensaver: arrows, OK or Back close it (other keys go on to the system).
             switch (event.getKeyCode()) {
@@ -100,7 +112,7 @@ public class SettingsActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:
                 case KeyEvent.KEYCODE_BACK:
-                    if (event.getAction() == KeyEvent.ACTION_UP) preview.fadeExit(this::closePreview);
+                    if (event.getAction() == KeyEvent.ACTION_UP) preview.fadeExit(this::finishPreview);
                     return true;
                 default:
                     return super.dispatchKeyEvent(event);
@@ -111,16 +123,58 @@ public class SettingsActivity extends Activity {
     }
 
     void showPreview() {
-        preview = new VideoDream(this);
-        setContentView(preview);
-        preview.start();
+        if (preview != null || previewTransition) return;
+        previewTransition = true;
+        previewCover.animate().cancel();
+        previewCover.setVisibility(View.VISIBLE);
+        previewCover.setAlpha(0f);
+        // Keep settings on screen until they have faded completely to black.
+        previewCover.animate().alpha(1f).setDuration(VideoDream.TRANSITION_MS)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    view.setVisibility(View.GONE);
+                    preview = new VideoDream(this);
+                    previewHost.addView(preview, 1, new android.widget.FrameLayout.LayoutParams(-1, -1));
+                    preview.start();
+                    // VideoDream starts black and reveals only ready content, with the same fade.
+                    previewCover.setVisibility(View.GONE);
+                    previewTransition = false;
+                }).start();
     }
 
-    private void closePreview() {
-        if (preview == null) return;
+    private void finishPreview() {
+        if (preview == null || previewTransition) return;
+        previewTransition = true;
+        // Replace the black dream with settings underneath another fully opaque black cover.
+        previewCover.animate().cancel();
+        previewCover.setAlpha(1f);
+        previewCover.setVisibility(View.VISIBLE);
         preview.stop();
+        previewHost.removeView(preview);
         preview = null;
-        setContentView(view);
+        view.setVisibility(View.VISIBLE);
+        view.resume();
+        previewCover.animate().alpha(0f).setDuration(VideoDream.TRANSITION_MS)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    previewCover.setVisibility(View.GONE);
+                    previewTransition = false;
+                }).start();
+    }
+
+    /** Forced Activity pause cancels either leg; no delayed callback may reopen a preview. */
+    private void closePreview() {
+        if (preview == null && !previewTransition) return;
+        previewCover.animate().cancel();
+        previewTransition = false;
+        if (preview != null) {
+            preview.stop();
+            previewHost.removeView(preview);
+            preview = null;
+        }
+        previewCover.setVisibility(View.GONE);
+        previewCover.setAlpha(0f);
+        view.setVisibility(View.VISIBLE);
         view.resume();
     }
 

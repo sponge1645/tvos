@@ -42,7 +42,8 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final android.os.Bundle settings;
     private final SurfaceView surface;
     private final View transitionCover;
-    private static final long TRANSITION_MS = 600;
+    static final long TRANSITION_MS = 600;
+    private long entranceNotBefore;
     private boolean exiting, entered;
     // TVOS_AERIAL_POLISH_V1: fade only video, keep weather and clock steady.
     private final View videoFade;
@@ -203,9 +204,20 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         else if (surfaceReady) playNext();
     }
 
+    /** Let the dream window first fade the previous screen to black. */
+    void startAfterWindowFade() {
+        entranceNotBefore = android.os.SystemClock.uptimeMillis() + TRANSITION_MS;
+        start();
+    }
+
     /** Called only after a first video frame or a photo/fallback frame is ready. */
     private void fadeEntrance() {
         if (!running || exiting || entered) return;
+        long delay = entranceNotBefore - android.os.SystemClock.uptimeMillis();
+        if (delay > 0) {
+            handler.postDelayed(this::fadeEntrance, delay);
+            return;
+        }
         entered = true;
         transitionCover.animate().cancel();
         transitionCover.animate().alpha(0f).setDuration(TRANSITION_MS)

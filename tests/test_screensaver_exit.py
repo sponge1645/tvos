@@ -26,7 +26,7 @@ public class ExitHarness {
  static class Fallback extends View {boolean stopped;void stop(){stopped=true;}}
  Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();final View transitionCover=new View();static final long TRANSITION_MS=600;
  Fallback fallback;MediaPlayer player=new MediaPlayer();boolean running=true,exiting,loadingCatalog,preparing,entered;
- int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
+ long entranceNotBefore;int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
  List<View> children=new ArrayList<>();Object getContext(){return this;}
  void addView(View v,LayoutParams p){children.add(v);}void removeView(View v){children.remove(v);}
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
@@ -58,6 +58,9 @@ tests='''
   ExitHarness photos=new ExitHarness();photos.fallback=new Fallback();Fallback f=photos.fallback;
   photos.fadeExit(()->photos.stop());check(!f.stopped,"photo remains visible during fade");
   photos.transitionCover.animation.end.run();check(f.stopped,"photo stops after fade");
+  ExitHarness delayed=new ExitHarness();delayed.entranceNotBefore=1500;delayed.fadeEntrance();
+  check(!delayed.entered && delayed.handler.tasks.size()==1,"ready content waits for previous screen to fade to black");
+  delayed.entranceNotBefore=0;delayed.handler.tasks.remove(0).run();check(delayed.entered,"entrance follows window fade");
   PhotoReady ready=new PhotoReady();int[] readyCalls={0};ready.contentReady=()->readyCalls[0]++;
   ready.notifyContentReady();ready.notifyContentReady();
   check(ready.posted.size()==1 && readyCalls[0]==0,"photo readiness waits for drawing and notifies once");
@@ -70,5 +73,6 @@ tests='''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'ExitHarness.java';p.write_text(header+method('    private void fadeEntrance(')+method('    void fadeExit(')+method('    void stop()')+method('    private void releasePlayer()')+tests)
  stub=Path(tmp)/'AccelerateDecelerateInterpolator.java';stub.write_text('package android.view.animation;public class AccelerateDecelerateInterpolator {}')
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p),str(stub)],check=True)
+ clock=Path(tmp)/'SystemClock.java';clock.write_text('package android.os;public class SystemClock {public static long uptimeMillis(){return 1000;}}')
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p),str(stub),str(clock)],check=True)
  subprocess.run(['java','-cp',tmp,'ExitHarness'],check=True)
