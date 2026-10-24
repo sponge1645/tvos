@@ -896,7 +896,7 @@ final class HomeApps {
             case "io.gh.reisxd.tizentube.cobalt":
                 logoKey = "tizentube"; top = 0xFFFFFFFF; bottom = 0xFFFFFFFF; break;
             case "com.applemusicktv":
-                logoKey = "music"; top = 0xFFFF4A6E; bottom = 0xFFFE072E; boost = 1.25f; break;
+                logoKey = "music"; top = 0xFFEB576D; bottom = 0xFFEA333C; boost = 1.25f; break;
             case "watch.kino":
                 logoKey = "kinopub"; top = 0xFFFFFFFF; bottom = 0xFFFFFFFF; boost = 1.32f; break;
             case "com.seena.app":

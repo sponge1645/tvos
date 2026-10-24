@@ -244,7 +244,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         TILE_STYLE.put("com.seena.app", new int[] {0xFF007AFF, 0xFF007AFF, 0});
         TILE_STYLE.put("top.rootu.lampa", new int[] {0xFF313130, 0xFF161613, 0});
         TILE_STYLE.put("tv-settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
-        TILE_STYLE.put("com.applemusicktv", new int[] {0xFFFF4A6E, 0xFFFE072E, 0});
+        TILE_STYLE.put("com.applemusicktv", new int[] {0xFFEB576D, 0xFFEA333C, 0});
         TILE_STYLE.put("com.android.tv.settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
         TILE_STYLE.put("io.github.jqssun.airplay", new int[] {0xFFF79E1F, 0xFFFF6933, 0});
         TILE_STYLE.put("llc.itdev.incy", new int[] {0xFF024824, 0xFF0B1B11, 0});
@@ -2373,6 +2373,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void back() {
+        if (rouletteSpinning) cancelRouletteWork();
         if (dockEditing) { finishDockEdit(false); click.move(); return; }
         if (sheetOpen) {
             closeSheet();
@@ -2391,6 +2392,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void move(int dx, int dy) {
+        if (rouletteSpinning) return; // Keep remote focus on the running roulette until it stops.
         if (dockEditing) { if (dx != 0) shiftDock(dx); return; }
         if (sheetOpen) {
             moveGrid(dx, dy);
@@ -2524,6 +2526,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void activate() {
         wake();
+        if (rouletteSpinning) return;
         HomeApps.Item it;
         RectF r;
         if (!sheetOpen && zone == WIDGETS) return;   // a widget is only read
@@ -3267,6 +3270,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** TalkBack moved to an item: the remote's focus goes there (opening or closing the drawer on the way). */
     private void a11yFocus(int id) {
         wake();
+        if (rouletteSpinning) return;
         int group = (id - 1) / 1000, i = (id - 1) % 1000;
         if (group == GRID) {
             if (!sheetOpen || i >= others.size()) return;
@@ -3530,6 +3534,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         roulettePosterSlot = Integer.MIN_VALUE;
         rouletteFinished = false;
         rouletteSpinning = true;
+        zone = Z_CARDS;
+        cardIndex = 0;
+        retarget(false);
         rouletteStarted = SystemClock.uptimeMillis();
         prepareRoulettePosters(57);
         handler.removeCallbacks(rouletteComplete);
