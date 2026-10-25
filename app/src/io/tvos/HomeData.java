@@ -115,6 +115,7 @@ final class HomeData {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Listener> listeners = new ArrayList<>();
+    private final java.util.Set<String> cityNameRequests = new java.util.HashSet<>();
     private volatile boolean fetchingPrices, fetchingWeather;
     private volatile int settingsEpoch;
     private volatile long pricesFailedAt, weatherFailedAt;
@@ -265,8 +266,63 @@ final class HomeData {
         return f.parse(iso).getTime();
     }
 
+    /** Localized labels are cached independently of the forecast and of the current UI language. */
+    synchronized void localizeCity(String language) {
+        if (Prefs.hasCityName(language) || Prefs.cityRaw().isEmpty()) return;
+        final String latitude = Prefs.latitude(), longitude = Prefs.longitude(), name = Prefs.cityRaw();
+        final long id = Prefs.cityId();
+        final String place = latitude + "," + longitude;
+        final String key = place + "|" + id + "|" + language;
+        if (!cityNameRequests.add(key)) return;
+        io.execute(() -> {
+            String[] found = null;
+            try {
+                if (place.equals(weatherPlace())) found = findCityName(name, latitude, longitude, id, language);
+            } catch (Exception e) { AppLog.w("city localization: " + e.getMessage()); }
+            final String[] result = found;
+            main.post(() -> {
+                synchronized (HomeData.this) { cityNameRequests.remove(key); }
+                if (result != null && Prefs.cacheCityName(result[0], language, latitude, longitude,
+                        Long.parseLong(result[1])) && language.equals(Prefs.language())) notifyListeners();
+            });
+        });
+    }
+
+    private static String[] findCityName(String name, String latitude, String longitude,
+                                          long id, String language) throws Exception {
+        double lat = Double.parseDouble(latitude), lon = Double.parseDouble(longitude);
+        if (id > 0) {
+            JSONObject city = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/get?id=" + id
+                    + "&language=" + language));
+            if (city.optString("name", "").isEmpty()
+                    || Math.abs(city.getDouble("latitude") - lat) > 0.25
+                    || Math.abs(city.getDouble("longitude") - lon) > 0.25) return null;
+            return new String[] {city.getString("name"), Long.toString(id)};
+        }
+        // Existing installations have a name and coordinates but no GeoNames ID yet.
+        String[] nearest = null;
+        double distance = 0.25 * 0.25;
+        // Search indexes may not match a Cyrillic query when English results are requested.
+        // Discover the stable ID in either supported language, then translate through /get.
+        for (String searchLanguage : new String[] {language, "ru".equals(language) ? "en" : "ru"}) {
+            for (String[] city : findCity(name, searchLanguage)) {
+                double dy = Double.parseDouble(city[2]) - lat, dx = Double.parseDouble(city[3]) - lon;
+                double candidate = dy * dy + dx * dx;
+                if (candidate < distance) { distance = candidate; nearest = city; }
+            }
+            if (nearest != null) break;
+        }
+        if (nearest == null) return null;
+        long foundId = Long.parseLong(nearest[4]);
+        if (foundId > 0) return findCityName(name, latitude, longitude, foundId, language);
+        return language.equals(nearest[5]) ? new String[] {nearest[1], nearest[4]} : null;
+    }
+
     static List<String[]> findCity(String name) throws Exception {
-        String lang = Prefs.language();
+        return findCity(name, Prefs.language());
+    }
+
+    private static List<String[]> findCity(String name, String lang) throws Exception {
         JSONObject o = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=10&format=json&language=" + lang
                 + "&name=" + URLEncoder.encode(name.trim(), "UTF-8")));
         JSONArray results = o.optJSONArray("results");
@@ -282,7 +338,8 @@ final class HomeData {
             }
             if (!seen.add(label.toString())) continue;
             out.add(new String[] {label.toString(), city,
-                    String.format(Locale.US, "%.4f", r.getDouble("latitude")), String.format(Locale.US, "%.4f", r.getDouble("longitude"))});
+                    String.format(Locale.US, "%.4f", r.getDouble("latitude")), String.format(Locale.US, "%.4f", r.getDouble("longitude")),
+                    Long.toString(r.optLong("id", 0)), lang});
         }
         return out;
     }

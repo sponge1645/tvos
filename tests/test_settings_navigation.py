@@ -12,7 +12,7 @@ def method(signature):
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[start:end]
 body=''.join(method(s) for s in ['        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels('])
-constants=sorted(set(re.findall(r'case ([A-Z_]+):',body)))
+constants=sorted(set(re.findall(r'case ([A-Z_]+):',body)) | {'MAIN'})
 header=r'''import java.util.*;
 public class SettingsHarness {
  static class Ui {static boolean ru;}
@@ -38,8 +38,27 @@ tests=r'''
   h.screen=DATE_TIME;h.focus=0;h.arrow(1);check(!h.store.getBoolean("show_date",true),"date widget accepts arrow");h.arrow(-1);check(h.store.getBoolean("show_date",false),"date widget reverses");
   h.screen=APPS_DOWNLOADS;Ui.ru=false;for(String label:h.menuLabels())check(label.startsWith("Download "),"English download action: "+label);
   Ui.ru=true;for(String label:h.menuLabels())check(label.startsWith("Загрузить "),"Russian download action retained");
+  Ui.ru=false;
+  h.screen=MAIN;check(Arrays.equals(h.menuLabels(),new String[]{"General","Screen Saver","AirPlay","Remotes and Devices","Accessibility","Apps","Dock","Menu Bar","Widgets","System"}),"main menu naming contract");
+  h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Language","Region","Date & Time","Temperature","Time Format","Navigation Clicks"}),"General naming contract");
+  h.screen=ABOUT;check(Arrays.equals(h.menuLabels(),new String[]{"Name","Model","Serial Number","tvOS","OS","Resolution","Wi-Fi Network Name","IP Address"}),"About naming contract");
+  h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
+  h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatically Update"}),"update actions naming contract");
+  h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","Default Launcher","TV Settings"}),"accessibility naming contract");
+  for(int page:new int[]{WEATHER,DATE_TIME,VPN_SETTINGS}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}
+  h.screen=WEATHER;check(h.menuLabels()[1].equals("Show in Bottom Menu"),"bottom menu naming contract");
+  h.screen=VPN_SETTINGS;check(h.menuLabels()[1].equals("VPN"),"VPN label stays concise");
+  Ui.ru=true;h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
+  h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
-  h.screen=SCREENSAVER;h.focus=5;check(!h.canAdjustMenu(),"preview requires OK");
+  h.screen=SCREENSAVER;h.focus=4;check(!h.canAdjustMenu(),"preview requires OK");
+  for(int row:new int[]{0,1,2,3}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
+  String[] overlayKeys={"aerial_show_clock","aerial_show_location","screensaver_show_weather"};
+  for(int i=0;i<overlayKeys.length;i++){
+   h.focus=i+1;h.arrow(1);check(h.store.getBoolean(overlayKeys[i],false),"reindexed overlay toggles its own setting");
+   h.arrow(-1);check(!h.store.getBoolean(overlayKeys[i],true),"reindexed overlay can toggle back");
+  }
+  h.screen=MAIN;Ui.ru=true;check(h.menuLabels()[6].equals("Dock"),"Dock naming matches both languages");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");
  }
 }

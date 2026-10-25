@@ -63,6 +63,7 @@ public class HomeActivity extends Activity {
             return;
         }
         if (home != null) {
+            HomeData.get(this).localizeCity(Prefs.language());
             home.resume();
             SelfUpdate.get(this).addListener(updateListener);
             noticeUpdate();

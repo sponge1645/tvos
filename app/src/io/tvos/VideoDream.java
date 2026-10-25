@@ -18,8 +18,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,7 +39,12 @@ import java.util.Collections;
 final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ArrayList<String> urls = new ArrayList<>();
+    private final android.os.Bundle settings;
     private final SurfaceView surface;
+    private final View transitionCover;
+    static final long TRANSITION_MS = 600;
+    private long entranceNotBefore;
+    private boolean exiting, entered;
     // TVOS_AERIAL_POLISH_V1: fade only video, keep weather and clock steady.
     private final View videoFade;
     private final GlassClockView clock;
@@ -59,10 +62,10 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private int index, failures, generation;
     private boolean appleMode, loadingCatalog;
     private boolean showAerialClock() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("aerial_show_clock", false);
+        return settings.getBoolean("aerial_show_clock", false);
     }
     private boolean showAerialLocation() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("aerial_show_location", false);
+        return settings.getBoolean("aerial_show_location", false);
     } // TVOS_AERIAL_CONTROLS_V1
     private static final String CATALOG = "https://sylvan.apple.com/Aerials/resources-atv-23J-2.tar";
     private static final String CACHE_NAME = "tvos_aerial_catalog_23J.json";
@@ -84,13 +87,14 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
 
     VideoDream(Context context) {
         super(context);
+        settings = ScreensaverSettingsProvider.read(context);
         setBackgroundColor(Color.BLACK);
         surface = new SurfaceView(context);
         surface.getHolder().addCallback(this);
         addView(surface, new LayoutParams(-1, -1));
         videoFade = new View(context);
         videoFade.setBackgroundColor(Color.BLACK);
-        videoFade.setAlpha(0f);
+        videoFade.setAlpha(1f);
         addView(videoFade, new LayoutParams(-1, -1));
         clock = new GlassClockView(context);
         // SFPRO_AERIAL_TEXT
@@ -123,15 +127,24 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialLocation.setTextColor(0xD9F2F2F2);
         aerialLocation.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
         aerialLocation.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        aerialLocation.setShadowLayer(dp(6), 0, dp(2), 0x66000000);
+        // Rasterize the glyph shadow into a transparent text layer, not the video surface.
+        // Padding keeps the blur away from the rectangular layer clip on TV firmware.
+        aerialLocation.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        aerialLocation.setPadding(dp(10), dp(10), dp(10), dp(10));
+        aerialLocation.setShadowLayer(dp(8), 0, dp(2), 0xE6000000);
         LayoutParams lp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT);
-        lp.setMargins(dp(48), 0, 0, dp(42));
+        lp.setMargins(dp(38), 0, 0, dp(32));
         addView(aerialLocation, lp);
         aerialWeather = new AerialWeatherView(context);
         LayoutParams wp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
-        wp.setMargins(0, 0, dp(48), dp(42));
+        wp.setMargins(0, 0, dp(38), dp(32));
         addView(aerialWeather, wp);
         aerialWeather.setVisibility(View.GONE);
+        // One topmost black cover fades the video/photo and every overlay together.
+        transitionCover = new View(context);
+        transitionCover.setBackgroundColor(Color.BLACK);
+        transitionCover.setAlpha(1f);
+        addView(transitionCover, new LayoutParams(-1, -1));
         loadPlaylist();
     }
 
@@ -174,24 +187,17 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
 
     private void loadPlaylist() {
-        String source = getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getString("video_dream_source", "google");
-        String file = "apple".equals(source) ? "aerial_apple.txt" : "aerial_nature.txt";
-        if (!"apple".equals(source)) return;
-        appleMode = "apple".equals(source);
-        if (appleMode) return; // Apple playlist is fetched off the UI thread.
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(getContext().getAssets().open(file), "UTF-8"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.startsWith("https://") && !line.contains(" ")) urls.add(line);
-            }
-        } catch (Exception e) { AppLog.w("video playlist: " + e.getMessage()); }
+        appleMode = "apple".equals(settings.getString("video_dream_source", "google"));
+        // Google and National Geographic use DreamView's photo catalogs.
     }
 
     void start() {
         if (running) return;
         running = true;
+        exiting = false;
+        entered = false;
+        transitionCover.animate().cancel();
+        transitionCover.setAlpha(1f);
         weatherData.refreshIfStale();
         // Keep weather hidden until the first video and location fade in.
         aerialWeather.animate().cancel();
@@ -202,8 +208,52 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         else if (surfaceReady) playNext();
     }
 
+    /** Let the dream window first fade the previous screen to black. */
+    void startAfterWindowFade() {
+        entranceNotBefore = android.os.SystemClock.uptimeMillis() + TRANSITION_MS;
+        start();
+    }
+
+    /** Called only after a first video frame or a photo/fallback frame is ready. */
+    private void fadeEntrance() {
+        if (!running || exiting || entered) return;
+        long delay = entranceNotBefore - android.os.SystemClock.uptimeMillis();
+        if (delay > 0) {
+            handler.postDelayed(this::fadeEntrance, delay);
+            return;
+        }
+        entered = true;
+        transitionCover.animate().cancel();
+        transitionCover.animate().alpha(0f).setDuration(TRANSITION_MS)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).start();
+    }
+
+    /** Use the same cover, duration and easing in both directions, including interrupted entry. */
+    void fadeExit(Runnable finished) {
+        if (exiting) return;
+        if (!running) { finished.run(); return; }
+        exiting = true;
+        generation++;
+        catalogGeneration++;
+        handler.removeCallbacksAndMessages(null);
+        videoFade.animate().cancel();
+        aerialLocation.animate().cancel();
+        aerialWeather.animate().cancel();
+        transitionCover.animate().cancel();
+        // Keep the current cover opacity when entry is interrupted; never flash the full image.
+        handler.postDelayed(finished, TRANSITION_MS + 150);
+        transitionCover.animate().alpha(1f).setDuration(TRANSITION_MS)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    handler.removeCallbacks(finished);
+                    finished.run();
+                }).start();
+    }
+
     void stop() {
         running = false;
+        transitionCover.animate().cancel();
+        transitionCover.setAlpha(1f);
         generation++;
         catalogGeneration++;
         loadingCatalog = false;
@@ -245,7 +295,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             final ArrayList<String> result = found;
             final java.util.HashMap<String, String> resultTitles = titles;
             handler.post(() -> {
-                if (!running || token != catalogGeneration) return;
+                if (!running || exiting || token != catalogGeneration) return;
                 loadingCatalog = false;
                 urls.clear(); urls.addAll(result);
                 locations.clear(); locations.putAll(resultTitles);
@@ -390,59 +440,39 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         return score;
     }
 
-    /** Same weather icon, SF typeface, sizing and color as DreamView.recordChrome(). */
+    /** The same pre-rendered glyph shadow and 24 sp badge used by both photo sources. */
     private static final class AerialWeatherView extends View {
-        private final Paint temperature = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final ScreensaverWeather badge;
         private String symbol = "", degrees = "";
-        private float scale, iconSize, gap, textWidth, iconWidth;
 
         AerialWeatherView(Context context) {
             super(context);
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null); // reliable soft text shadow
+            badge = new ScreensaverWeather(context);
         }
 
         void setWeather(String symbol, String degrees) {
             if (this.symbol.equals(symbol) && this.degrees.equals(degrees)) return;
             this.symbol = symbol;
             this.degrees = degrees;
+            badge.setWeather(symbol, degrees);
             requestLayout();
             invalidate();
         }
 
         @Override protected void onMeasure(int widthSpec, int heightSpec) {
-            scale = getResources().getDisplayMetrics().widthPixels / 1920f;
-            iconSize = 30f * scale;
-            gap = 10f * scale;
-            temperature.setTypeface(Ui.semibold);
-            temperature.setTextSize(30f * scale);
-            temperature.setColor(0xEBFFFFFF);
-            temperature.setShadowLayer(6f * scale, 0, 2f * scale, 0x66000000);
-            iconWidth = Symbols.width(getContext(), symbol, iconSize);
-            textWidth = temperature.measureText(degrees);
-            int width = (int) Math.ceil(iconWidth + gap + textWidth + 12f * scale);
-            int height = (int) Math.ceil(48f * scale);
-            setMeasuredDimension(resolveSize(width, widthSpec), resolveSize(height, heightSpec));
+            badge.setWeather(symbol, degrees);
+            setMeasuredDimension(resolveSize(badge.width(), widthSpec), resolveSize(badge.height(), heightSpec));
         }
 
-        @Override protected void onDraw(Canvas c) {
-            super.onDraw(c);
-            if (degrees.isEmpty()) return;
-            float cap = Ui.cap(temperature);
-            float baseline = (getHeight() + cap) / 2f;
-            float centerY = baseline - Ui.halfCap(temperature);
-            float iconX = 6f * scale + iconWidth / 2f;
-            // Material Symbols icon is exactly the same asset used by DreamView.
-            // Two faint offset copies provide a dark shadow over bright video.
-            Symbols.draw(getContext(), c, symbol, iconX, centerY + 2f * scale, iconSize, 0x44000000);
-            Symbols.draw(getContext(), c, symbol, iconX, centerY, iconSize, 0xEBFFFFFF);
-            c.drawText(degrees, 6f * scale + iconWidth + gap, baseline, temperature);
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if (!degrees.isEmpty()) badge.draw(canvas, 0, 0);
         }
     }
 
     // TVOS_WEATHER_FADE_V1: independent setting shared with photo screensaver.
     private boolean showScreensaverWeather() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("screensaver_show_weather", false);
+        return settings.getBoolean("screensaver_show_weather", false);
     }
 
     private void updateAerialWeather() {
@@ -491,13 +521,14 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialWeather.animate().cancel();
         aerialWeather.setAlpha(0f);
         aerialWeather.setVisibility(View.GONE);
-        fallback = new DreamView(getContext());
+        fallback = new DreamView(getContext(), settings);
+        fallback.setOnContentReadyListener(this::fadeEntrance);
         addView(fallback, 0, new LayoutParams(-1, -1));
         fallback.start();
     }
 
     private void playNext() {
-        if (!running || !surfaceReady || urls.isEmpty() || preparing || fallback != null) return;
+        if (!running || exiting || !surfaceReady || urls.isEmpty() || preparing || fallback != null) return;
         releasePlayer();
         preparing = true;
         final int token = ++generation;
@@ -512,21 +543,32 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             mp.setOnPreparedListener(p -> {
                 AppLog.w("TVOS_STREAM_TEST prepared");
                 if (!running || token != generation || p != player) return;
+                try {
+                    p.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+                    p.start();
+
+                } catch (Exception e) { onFailure(token); }
+            });
+            mp.setOnInfoListener((p, what, extra) -> {
+                if (what != MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) return false;
+                if (!running || exiting || token != generation || p != player) return true;
                 if (prepareTimeout != null) handler.removeCallbacks(prepareTimeout);
                 prepareTimeout = null;
                 preparing = false;
                 failures = 0;
                 try {
-                    p.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
-                    p.start();
                     if (appleMode) {
                         videoFade.animate().cancel();
-                        videoFade.animate().alpha(0f).setDuration(850).start();
+                        if (!entered) videoFade.setAlpha(0f);
+                        else videoFade.animate().alpha(0f).setDuration(850).start();
                         aerialLocation.animate().cancel();
-                        aerialLocation.animate().alpha(1f).setDuration(850).start();
+                        if (!entered) aerialLocation.setAlpha(1f);
+                        else aerialLocation.animate().alpha(1f).setDuration(850).start();
                         aerialWeather.animate().cancel();
-                        if (aerialWeather.getVisibility() == View.VISIBLE)
-                            aerialWeather.animate().alpha(1f).setDuration(850).start();
+                        if (aerialWeather.getVisibility() == View.VISIBLE) {
+                            if (!entered) aerialWeather.setAlpha(1f);
+                            else aerialWeather.animate().alpha(1f).setDuration(850).start();
+                        }
                         int duration = p.getDuration();
                         if (duration > 1800) {
                             fadeOut = () -> {
@@ -542,7 +584,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
                             handler.postDelayed(fadeOut, duration - 700L);
                         }
                     }
+                    fadeEntrance();
                 } catch (Exception e) { onFailure(token); }
+                return true;
             });
             mp.setOnCompletionListener(p -> { if (running && token == generation && p == player) {
                 if (appleMode) {

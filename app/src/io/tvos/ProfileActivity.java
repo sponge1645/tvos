@@ -300,7 +300,7 @@ public final class ProfileActivity extends Activity {
                 for (int i = 0; i < 2; i++) {
                     rim.setStyle(Paint.Style.FILL);
                     rim.setColor(Ui.alpha(ink, i == page ? 0.85f : 0.25f));
-                    c.drawCircle(1380 + i * 80, 945, i == page ? 7 : 5, rim);
+                    c.drawCircle(1400 + i * 40, 945, i == page ? 7 : 5, rim);
                 }
                 rim.setStyle(Paint.Style.STROKE);
             }

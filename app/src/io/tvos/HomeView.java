@@ -235,17 +235,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** Each app's tile like its Apple TV icon: brand colors (top, bottom) and logo (0 = as is, 1 = white, 2 = dark). */
     private static final Map<String, int[]> TILE_STYLE = new HashMap<>();
     static {
-        TILE_STYLE.put("com.android.vending", new int[] {0xFF009BF6, 0xFF166CED, 0});
-        TILE_STYLE.put("com.yandex.devices.appstore", new int[] {0xFF009BF6, 0xFF166CED, 0});
+        TILE_STYLE.put("com.android.vending", new int[] {0xFF52ABEF, 0xFF2D6AD4, 0});
+        TILE_STYLE.put("com.yandex.devices.appstore", new int[] {0xFF52ABEF, 0xFF2D6AD4, 0});
         TILE_STYLE.put("netflix", new int[] {0xFF0A0A0A, 0xFF000000, 0});
         TILE_STYLE.put("youtube", new int[] {0xFF1C1C1E, 0xFF09090A, 0});
         TILE_STYLE.put("io.gh.reisxd.tizentube.cobalt", new int[] {0xFFFFFFFF, 0xFFFFFFFF, 0});
         TILE_STYLE.put("watch.kino", new int[] {0xFFFFFFFF, 0xFFFFFFFF, 0});
         TILE_STYLE.put("com.seena.app", new int[] {0xFF007AFF, 0xFF007AFF, 0});
         TILE_STYLE.put("top.rootu.lampa", new int[] {0xFF313130, 0xFF161613, 0});
-        TILE_STYLE.put("tv-settings", new int[] {0xFFA3A2AB, 0xFF4D4C50, 0});
-        TILE_STYLE.put("com.applemusicktv", new int[] {0xFFFF4A6E, 0xFFFE072E, 0});
-        TILE_STYLE.put("com.android.tv.settings", new int[] {0xFFA1A0A9, 0xFF4D4C4F, 0});
+        TILE_STYLE.put("tv-settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
+        TILE_STYLE.put("com.applemusicktv", new int[] {0xFFEB576D, 0xFFEA333C, 0});
+        TILE_STYLE.put("com.android.tv.settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
         TILE_STYLE.put("io.github.jqssun.airplay", new int[] {0xFFF79E1F, 0xFFFF6933, 0});
         TILE_STYLE.put("llc.itdev.incy", new int[] {0xFF024824, 0xFF0B1B11, 0});
         TILE_STYLE.put("globoplay", new int[] {0xFFFF8A1F, 0xFFFF2D5A, 1});
@@ -367,6 +367,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tileFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint dockHighlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path dockHighlightPath = new Path();
+    private final RectF dockHighlightArc = new RectF();
+    private float dockHighlightW = -1, dockHighlightH = -1, dockHighlightRadius = -1, dockHighlightDensity = -1;
     // Reused only on the UI drawing thread to avoid Paint allocations per frame.
     private final Paint ratingTextScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ratingFillScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -548,7 +552,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         idle = false;
         Choreographer.getInstance().postFrameCallback(this);
         spoken.readAgain();
-        if (tab == 4 && roulette.isEmpty() && !rouletteLoading) loadRoulette();
+        if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
         if (retrySearchOnResume && searchMode) requestSearch(searchQuery, ++searchSerial);
         retrySearchOnResume = false;
     }
@@ -605,7 +609,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             updatePicks();
         }
         if (searchMode) { cancelSearchWork(); searchMode = false; searchSerial++; searchResults.clear(); }
-        if (tab != 0) selectTab(0);
+        if (Prefs.firstCategory() >= 0 && tab != Prefs.firstCategory()) selectTab(Prefs.firstCategory());
         updateCards();
         retarget(!animated);
         motionDirty = true;
@@ -649,9 +653,24 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return picksOn() ? tab : 0;
     }
 
-    private int lastVisibleTab() {
-        for (int i = 4; i >= 0; i--) if (tabEnabled(i)) return i;
-        return 0;
+    private int lastVisibleTab() { return Math.max(0, Prefs.lastCategory()); }
+
+    private boolean topControlVisible(int id) {
+        return id < 5 ? !searchMode && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
+    }
+
+    /** Follow the configured visual order, not category IDs, when crossing tabs and action buttons. */
+    private int nextTopControl(int current, int direction) {
+        int previous = -1;
+        int[] order = Prefs.categoryOrder();
+        for (int position = 0; position < 10; position++) {
+            int id = position < 5 ? order[position] : position;
+            if (!topControlVisible(id)) continue;
+            if (id == current && direction < 0) return previous < 0 ? current : previous;
+            if (previous == current && direction > 0) return id;
+            previous = id;
+        }
+        return current;
     }
 
     private int availableTopButton(int preferred) {
@@ -682,14 +701,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private static boolean tabEnabled(int i) {
-        return i != 2 || Prefs.detectives() ? (i != 4 || Prefs.randomMovie()) : false;
+        return Prefs.categoryEnabled(i);
     }
 
     private void syncVisibleTabs() {
-        if (!tabEnabled(tab)) selectTab(0);
-        if (topIndex < 5 && !tabEnabled(topIndex)) topIndex = tab;
+        int first = Prefs.firstCategory();
+        if (!tabEnabled(tab) && first >= 0) selectTab(first);
+        if (first < 0) cancelRouletteWork();
+        if (topIndex < 5 && !tabEnabled(topIndex)) topIndex = first >= 0 ? tab : availableTopButton(5);
+        if (first < 0 && zone == Z_CARDS) zone = Z_SHELF;
         if (topIndex == 9 && !clockButtonEnabled()) topIndex = availableTopButton(5);
         else if (topIndex >= 5 && topIndex <= 8 && !topButtonEnabled(topIndex - 5)) topIndex = availableTopButton(topIndex);
+        if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
     }
 
     private static String[] tabs() {
@@ -785,7 +808,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         titlePaint.setLetterSpacing(0.005f);
         metaPaint = Ui.text(Ui.medium, 29 * k, 0xD1FFFFFF);
         metaPaint.setLetterSpacing(0.014f);
-        clockPaint = Ui.numbers(Ui.thin, 176 * k, 0xFFFFFFFF);
+        clockPaint = Ui.numbers(Ui.displaySemibold, 176 * k, 0xFFFFFFFF);
         clockPaint.setLetterSpacing(-0.01f);
         for (Paint p : new Paint[] {labelPaint, titlePaint, metaPaint, clockPaint}) p.setShadowLayer(22 * k, 0, 2 * k, 0x59000000);
         lTitle = Ui.text(Ui.displaySemibold, 76 * k, L_INK);
@@ -825,7 +848,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         bigTemp = Ui.numbers(Ui.light, 100 * k, 0xFFFFFFFF);
         hourPaint = Ui.numbers(Ui.medium, 22 * k, 0xADFFFFFF);
         hourPaint.setTextAlign(Paint.Align.CENTER);
-        hourTemp = Ui.numbers(Ui.medium, 26 * k, 0xF2FFFFFF);
+        hourTemp = Ui.numbers(Ui.medium, 31.2f * k, 0xF2FFFFFF);
         hourTemp.setTextAlign(Paint.Align.CENTER);
         pricePaint = Ui.numbers(Ui.medium, 26 * k, 0xF2FFFFFF);
         pricePaint.setTextAlign(Paint.Align.RIGHT);
@@ -1517,7 +1540,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /**
      * App icon like the ones in the tvOS 27 Dock: the brand color edge to edge (a soft gradient) with the logo.
      * Focused: it grows 20% from the center, with a deep shadow (it "rises" toward the viewer) and a subtle glow at the
-     * top. No border and no reflection, as Apple does it.
+     * top. A fine upper-edge highlight remains visible at rest and brightens gently with focus.
      */
     private void drawShelfTile(Canvas c, int i) {
         HomeApps.Item it = shelf.get(i);
@@ -1578,7 +1601,50 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } else {
             if (it.tile != null) roundImage(c, it.tile, cell, r);
         }
+        if (it.logo != null || it.tile != null) {
+            c.save();
+            c.translate(cx, cy);
+            c.scale(s, s);
+            drawDockHighlight(c, bw, bh, r0, fc);
+            c.restore();
+        }
         if (lifted) c.restore();
+    }
+
+    /** Cached upper contour: ordinary Canvas paths/gradients work on Android 9+, without offscreen layers. */
+    private void drawDockHighlight(Canvas c, float width, float height, float radius, float focus) {
+        if (dockHighlightW != width || dockHighlightH != height
+                || dockHighlightRadius != radius || dockHighlightDensity != k) {
+            dockHighlightW = width;
+            dockHighlightH = height;
+            dockHighlightRadius = radius;
+            dockHighlightDensity = k;
+            // Keep both strokes inside the tile. Follow only the upper corners, with no bottom rim.
+            float inset = 1.5f * k;
+            float left = -width / 2f + inset, right = width / 2f - inset;
+            float top = -height / 2f + inset;
+            float r = Math.max(0, Math.min(radius - inset, Math.min(width, height) / 2f - inset));
+            dockHighlightPath.rewind();
+            dockHighlightPath.moveTo(left, top + r);
+            dockHighlightArc.set(left, top, left + 2 * r, top + 2 * r);
+            dockHighlightPath.arcTo(dockHighlightArc, 180, 90);
+            dockHighlightPath.lineTo(right - r, top);
+            dockHighlightArc.set(right - 2 * r, top, right, top + 2 * r);
+            dockHighlightPath.arcTo(dockHighlightArc, 270, 90);
+            dockHighlightPaint.setStyle(Paint.Style.STROKE);
+            dockHighlightPaint.setStrokeCap(Paint.Cap.ROUND);
+            dockHighlightPaint.setShader(new LinearGradient(left, 0, right, 0,
+                    new int[] {0x00FFFFFF, 0x70FFFFFF, 0xB8FFFFFF, 0x70FFFFFF, 0x00FFFFFF},
+                    new float[] {0f, 0.2f, 0.5f, 0.8f, 1f}, Shader.TileMode.CLAMP));
+        }
+        // Broad, faint shoulder under a fine bright edge; changing focus needs no new shader or bitmap.
+        float strength = 0.72f + 0.28f * Ui.clamp(focus);
+        dockHighlightPaint.setStrokeWidth(2.8f * k);
+        dockHighlightPaint.setAlpha(Math.round(48 * strength));
+        c.drawPath(dockHighlightPath, dockHighlightPaint);
+        dockHighlightPaint.setStrokeWidth(1.1f * k);
+        dockHighlightPaint.setAlpha(Math.round(255 * strength));
+        c.drawPath(dockHighlightPath, dockHighlightPaint);
     }
 
     /**
@@ -1612,25 +1678,23 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /**
      * Logo at its "optical" size (all with the same amount of ink, plus each one's own adjustment, never past 80% × 62%
-     * of the tile), centered and already filtered down to the focused tile size: when focused it is drawn pixel for
-     * pixel, without resampling.
+     * of the tile), centered and filtered down once for the focused tile. Keep fractional coordinates throughout
+     * the spring so settling never switches the logo to a different pixel grid.
      */
     private void drawLogo(Canvas c, HomeApps.Item it, RectF box, float s, int mode) {
         Bitmap logo = crispLogo(it, mode == 2 && it.logoDark != null);
         if (logo == null) return;
         float scale = s / (1 + FOCUS_GROW);
         // Dock logo adjustments relative to v18: KinoPub +10%, TV Settings -10%, TizenTube +5%.
-        float brandBoost = "com.android.tv.settings".equals(it.pkg) ? 1.26f
+        float brandBoost = ("com.android.vending".equals(it.pkg) || "com.yandex.devices.appstore".equals(it.pkg)) ? 1.2f
+                : "com.android.tv.settings".equals(it.pkg) ? 1.323f
                 : "com.applemusicktv".equals(it.pkg) ? 1.25f
                 : "watch.kino".equals(it.key) ? 1.32f
-                : ("tv-settings".equals(it.key) ? 1.44f
+                : ("tv-settings".equals(it.key) ? 1.512f
                 : ("io.gh.reisxd.tizentube.cobalt".equals(it.key) ? 1.05f : 1f));
         float dw = logo.getWidth() * scale * brandBoost, dh = logo.getHeight() * scale * brandBoost;
         float left = box.centerX() - dw / 2, top = box.centerY() - dh / 2;
-        if (scale > 0.998f) {
-            left = Math.round(left);
-            top = Math.round(top);
-        }
+        // Never snap only at the end: that shifts the logo relative to its continuously scaled tile.
         tmp.set(left, top, left + dw, top + dh);
         bitmapPaint.setColorFilter(mode == 1 ? whiteLogo : null);
         c.drawBitmap(logo, null, tmp, bitmapPaint);
@@ -1802,7 +1866,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         boolean off = it.kind == HomeApps.INPUT && !it.connected;
         int ink = blend(tone(off ? 0xFF8E8E93 : L_INK, off ? 0x6BFFFFFF : 0xF2FFFFFF), INK, f);
-        Symbols.draw(getContext(), c, it.symbol, cx, cell.top + cell.height() * 0.4f, 34 * k * s, ink);
+        Symbols.draw(getContext(), c, it.symbol, cx, cell.top + cell.height() * 0.4f, 37.4f * k * s, ink);
         drawerLabel.setColor(ink);
         drawerLabel.setTextSize(23 * k * s);
         float room = cell.width() - 16 * k, wide = drawerLabel.measureText(it.label);
@@ -1843,9 +1907,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float hx = split + 30 * k, hw = (r.right - 30 * k - hx) / 6;
         for (int i = 0; i < wx.hours.size() && i < 6; i++) {
             float hc = hx + hw * (i + 0.5f);
-            c.drawText(hourText[i], hc, r.top + 96 * k, hourPaint);
-            Symbols.draw(getContext(), c, Symbols.weather(wx.hourCode.get(i), wx.hourDay.get(i)), hc, r.top + 142 * k, 30 * k, drawerInk(0.9f));
-            c.drawText(hourTempText[i], hc, r.top + 196 * k, hourTemp);
+            c.drawText(hourText[i], hc, r.top + 54 * k, hourPaint);
+            String hourSymbol = Symbols.weather(wx.hourCode.get(i), wx.hourDay.get(i));
+            Bitmap hourIcon = Symbols.get(getContext(), hourSymbol);
+            float iconSize = 36 * k;
+            float iconHeight = hourIcon == null ? 0 : Symbols.width(getContext(), hourSymbol, iconSize)
+                    * hourIcon.getHeight() / hourIcon.getWidth();
+            // Center the combined icon + temperature on the card, independently of the hour heading.
+            float iconY = r.centerY() - (54 * k - iconHeight / 2) / 2;
+            float temperatureBase = hourIcon == null ? r.centerY() + Ui.halfCap(hourTemp) : iconY + 54 * k;
+            Symbols.draw(getContext(), c, hourSymbol, hc, iconY, iconSize, drawerInk(0.9f));
+            c.drawText(hourTempText[i], hc, temperatureBase, hourTemp);
         }
         float sx = hx, base = r.top + 258 * k;
         if (wx.sunrise != 0) sx = sunItem(c, "sunrise", sunriseText, sx, base) + 36 * k;
@@ -2364,6 +2436,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void back() {
+        if (rouletteSpinning) cancelRouletteWork();
         if (dockEditing) { finishDockEdit(false); click.move(); return; }
         if (sheetOpen) {
             closeSheet();
@@ -2382,6 +2455,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void move(int dx, int dy) {
+        if (rouletteSpinning) return; // Keep remote focus on the running roulette until it stops.
         if (dockEditing) { if (dx != 0) shiftDock(dx); return; }
         if (sheetOpen) {
             moveGrid(dx, dy);
@@ -2515,6 +2589,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void activate() {
         wake();
+        if (rouletteSpinning) return;
         HomeApps.Item it;
         RectF r;
         if (!sheetOpen && zone == WIDGETS) return;   // a widget is only read
@@ -2895,7 +2970,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchResults.clear();
         cardPage = cardIndex = 0;
         zone = Z_TOP;
-        topIndex = tab;
+        topIndex = Prefs.firstCategory() >= 0 ? tab : availableTopButton(5);
+        if (!topControlVisible(topIndex)) zone = Z_SHELF;
         layoutLight();
         updateCards();
         retarget(false);
@@ -3142,9 +3218,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             for (int i = 0; i < others.size(); i++) out.add(a11yId(GRID, i));
             return;
         }
-        for (int i = picksOn() ? 0 : 5; i < 5 + lightButtons.size(); i++) if (i >= 5 ? topButtonEnabled(i - 5) : tabEnabled(i)) out.add(a11yId(Z_TOP, i));
+        if (picksOn() && !searchMode) for (int id : Prefs.categoryOrder())
+            if (tabEnabled(id)) out.add(a11yId(Z_TOP, id));
+        for (int i = 5; i < 5 + lightButtons.size(); i++) if (topButtonEnabled(i - 5)) out.add(a11yId(Z_TOP, i));
         if (clockButtonEnabled()) out.add(a11yId(Z_TOP, 9));
-        for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
+        if (picksOn()) for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
         for (int i = 0; i < shelf.size(); i++) out.add(a11yId(Z_SHELF, i));
         for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
         if (drawerOpen && weatherBottom()) out.add(a11yId(WIDGETS, 0));
@@ -3160,8 +3238,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             case Z_TOP:
                 if (i == 9) return Ui.ru ? "Часы и профиль" : "Clock and profile";
                 if (i >= 5) return label(lightButtons, i - 5);
-                return tabs()[i] + Ui.tr(", aba ", ", tab ") + (i + 1) + Ui.tr(" de 5", " of 5");
-            case Z_CARDS: return tab == 4 ? (Ui.ru ? "Случайный фильм" : "Random movie") : i < cards.size() ? pickText(cards.get(i)) : "";
+                return tabs()[i] + Ui.tr(", aba ", ", tab ") + Prefs.categoryPosition(i) + Ui.tr(" de ", " of ") + Prefs.categoryCount();
+            case Z_CARDS: return tab == 4 ? (Ui.ru ? "Случайный фильм" : "Random Movie") : i < cards.size() ? pickText(cards.get(i)) : "";
             case Z_SHELF: return label(shelf, i);
             case Z_DRAWER: return label(drawerItems, i);
             case WIDGETS: return i == 0 ? weatherText() : quotesText();
@@ -3258,6 +3336,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** TalkBack moved to an item: the remote's focus goes there (opening or closing the drawer on the way). */
     private void a11yFocus(int id) {
         wake();
+        if (rouletteSpinning) return;
         int group = (id - 1) / 1000, i = (id - 1) % 1000;
         if (group == GRID) {
             if (!sheetOpen || i >= others.size()) return;
@@ -3363,7 +3442,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float tabTop = (largePostersWithoutWidgets ? L_BUTTON_CY - L_TABBAR_H / 2f : L_TABBAR_TOP) * k;
         float tabBottom = tabTop + L_TABBAR_H * k;
         float x = MARGIN * k - pad;
-        for (int i = 0; i < 5; i++) {
+        for (int i : Prefs.categoryOrder()) {
             if (!tabEnabled(i)) { topRects[i].setEmpty(); continue; }
             float tw = Math.max(lTabOn.measureText(tabs()[i]), lTab.measureText(tabs()[i]));
             topRects[i].set(x, tabTop, x + tw + 2 * pad, tabBottom);
@@ -3411,6 +3490,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
+        if (!searchMode && Prefs.firstCategory() < 0) {
+            cards.clear();
+            recs.setPosterWindow(java.util.Collections.emptyList());
+            heroDirty = true;
+            return;
+        }
         if (tab == 4 && !searchMode) {
             cards.clear();
             if (!rouletteSpinning && !rouletteFinished) {
@@ -3464,7 +3549,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         cardPage = 0;
         cardIndex = 0;
         updateCards();
-        if (tab == 4 && roulette.isEmpty() && !rouletteLoading) loadRoulette();
+        if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
         heroDirty = true;
     }
 
@@ -3481,7 +3566,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void loadRoulette() {
-        if (!running || rouletteLoading) return;
+        if (!running || !tabEnabled(4) || rouletteLoading) return;
         rouletteLoading = true;
         rouletteRequest = recs.loadAcclaimed((results) -> {
             if (!running || tab != 4) return;
@@ -3521,6 +3606,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         roulettePosterSlot = Integer.MIN_VALUE;
         rouletteFinished = false;
         rouletteSpinning = true;
+        zone = Z_CARDS;
+        cardIndex = 0;
+        retarget(false);
         rouletteStarted = SystemClock.uptimeMillis();
         prepareRoulettePosters(57);
         handler.removeCallbacks(rouletteComplete);
@@ -3676,7 +3764,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             p.setTextSize(40.8f * k);
             p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, focus));
             String label = rouletteLoading ? (Ui.ru ? "Загрузка фильмов…" : "Loading movies…")
-                    : (Ui.ru ? "🎲  Случайный фильм" : "🎲  Random movie");
+                    : (Ui.ru ? "🎲  Случайный фильм" : "🎲  Random Movie");
             int saved = c.save();
             c.scale(scale, scale, cx, cy);
             c.drawText(label, cx - p.measureText(label) / 2, cy + Ui.halfCap(p), p);
@@ -3835,7 +3923,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean picksOn() {
-        return Recs.hasKey(getContext());
+        return Recs.hasKey(getContext()) && (searchMode || Prefs.categoryCount() > 0);
     }
 
     /**
@@ -4100,7 +4188,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         switch (zone) {
             case Z_SHELF:
                 if (dy >= 0 || shelf.isEmpty()) return false;
-                if (cards.isEmpty() && (tab != 4 || searchMode)) {
+                if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                     zone = Z_TOP;
                     topIndex = picksOn() ? tab : 5;
                 } else {
@@ -4149,26 +4237,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
             case Z_TOP:
                 if (dx != 0) {
-                    int next;
-                    if (topIndex == 9) {
-                        // Clock is now physically to the RIGHT of all actions.
-                        next = dx < 0 ? lastVisibleActionBeforeClock()
-                                : 9;
-                    } else if (topIndex < 5 && dx > 0 && topIndex == lastVisibleTab()) {
-                        next = firstVisibleActionOrClock();
-                    } else if (topIndex >= 5 && topIndex <= 8 && dx > 0
-                            && topIndex == lastVisibleActionBeforeClock() && clockButtonEnabled()) {
-                        next = 9;
-                    } else {
-                        next = topIndex + dx;
-                        while (next >= 0 && next <= 8 && (next < 5 ? !tabEnabled(next) : !topButtonEnabled(next - 5))) next += dx;
-                        if (next == 9 && !clockButtonEnabled()) next = topIndex;
-                    }
-                    if (next < 0 || next > 9 || next == topIndex || (next == 9 && !clockButtonEnabled())) return true;
+                    int next = nextTopControl(topIndex, dx);
+                    if (next == topIndex) return true;
                     topIndex = next;
                     if (topIndex < 5) selectTab(topIndex);   // like Apple TV tabs: focusing a tab selects it
                 } else if (dy > 0) {
-                    if (cards.isEmpty() && (tab != 4 || searchMode)) {
+                    if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                         zone = Z_SHELF;
                     } else {
                         zone = Z_CARDS;

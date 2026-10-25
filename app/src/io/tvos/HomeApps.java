@@ -896,7 +896,7 @@ final class HomeApps {
             case "io.gh.reisxd.tizentube.cobalt":
                 logoKey = "tizentube"; top = 0xFFFFFFFF; bottom = 0xFFFFFFFF; break;
             case "com.applemusicktv":
-                logoKey = "music"; top = 0xFFFF4A6E; bottom = 0xFFFE072E; boost = 1.25f; break;
+                logoKey = "music"; top = 0xFFEB576D; bottom = 0xFFEA333C; boost = 1.25f; break;
             case "watch.kino":
                 logoKey = "kinopub"; top = 0xFFFFFFFF; bottom = 0xFFFFFFFF; boost = 1.32f; break;
             case "com.seena.app":
@@ -905,7 +905,7 @@ final class HomeApps {
                 logoKey = "lampa"; top = 0xFF313130; bottom = 0xFF161613; break;
             case "com.android.vending":
             case "com.yandex.devices.appstore":
-                logoKey = "googleplay"; top = 0xFF009BF6; bottom = 0xFF166CED; break;
+                logoKey = "googleplay"; top = 0xFF52ABEF; bottom = 0xFF2D6AD4; boost = 1.2f; break;
             default:
                 return appTile(c, null, pkg, 0);
         }
@@ -1008,11 +1008,11 @@ final class HomeApps {
         Canvas canvas = new Canvas(b);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         paint.setShader(new LinearGradient(0, 0, 0, TILE_H,
-                0xFFA3A2AB, 0xFF4D4C50, Shader.TileMode.CLAMP));
+                0xFFA5A6AB, 0xFF656368, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, TILE_W, TILE_H, paint);
         Bitmap logo = ownLogoCached(c, "settings");
         if (logo != null) {
-            float maxW = TILE_W * 0.516f, maxH = TILE_H * 0.744f;
+            float maxW = TILE_W * (0.516f * 1.05f), maxH = TILE_H * (0.744f * 1.05f);
             float scale = Math.min(maxW / logo.getWidth(), maxH / logo.getHeight());
             float w = logo.getWidth() * scale, h = logo.getHeight() * scale;
             Paint image = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);

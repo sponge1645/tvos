@@ -148,11 +148,31 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         }
     };
 
+    private final ScreensaverWeather weatherBadge;
+    private final android.os.Bundle settings;
+    private Runnable contentReady;
+    private boolean parentPhotoEntrance;
+
+    void setOnContentReadyListener(Runnable listener) { contentReady = listener; }
+
+    private void notifyContentReady() {
+        if (!running || contentReady == null) return;
+        Runnable ready = contentReady;
+        contentReady = null;
+        post(() -> { if (running) ready.run(); });
+    }
+
     DreamView(Context c) {
+        this(c, ScreensaverSettingsProvider.read(c));
+    }
+
+    DreamView(Context c, android.os.Bundle settings) {
         super(c);
+        this.settings = settings;
+        weatherBadge = new ScreensaverWeather(c);
         data = HomeData.get(c);
         recs = Recs.get(c);
-        String source = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("video_dream_source", "google");
+        String source = settings.getString("video_dream_source", "google");
         gallery = new GalleryPhotos(c, ("na".equals(source) || "nasa".equals(source)) ? "na" : "google");
         Shaders.dream(scene.palette);
         scene.setMotion(0.4f, 0.32f);
@@ -191,6 +211,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     void stop() {
         if (!running) return;
         running = false;
+        contentReady = null;
         generation++;
         decoding = false;
         Choreographer.getInstance().removeFrameCallback(this);
@@ -422,12 +443,17 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         if (running) advance(up);
         if (!glassFor.equals(clock)) buildGlass(clock);
 
-        float first = current == null ? 0 : fadeIn(up - firstAt, FIRST_MS);
+        // The parent owns initial fade for every source. Keep later photo crossfades unchanged.
+        if (current != null && contentReady != null) parentPhotoEntrance = true;
+        float first = current == null ? 0 : parentPhotoEntrance ? 1 : fadeIn(up - firstAt, FIRST_MS);
         if (current == null || first < 1) {
             if (fallback) drawFallback(canvas, up, current == null ? 1 : 1 - first);
             else canvas.drawRect(0, 0, w, h, black);
         }
-        if (current == null) return;
+        if (current == null) {
+            if (fallback) notifyContentReady();
+            return;
+        }
         if (fallback && first >= 1) fallback = false;
 
         place(current, up, placeA);
@@ -442,6 +468,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         chrome.setAlpha(first);
         chrome.draw(canvas);
         drawGlass(canvas, first, e);
+        notifyContentReady();
         // Captions hidden: keep photo, glass clock and weather
     }
 
@@ -498,8 +525,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     // MARK: - Corner: date and weather, glass clock, prices
 
     private boolean showScreensaverClock() {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("aerial_show_clock", false);
+        return settings.getBoolean("aerial_show_clock", false);
     }
 
     private void recordChrome() {
@@ -508,16 +534,9 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             float right = (w + cornerClock.measureText(clock)) / 2f;
             float x = RIGHT * k;
             HomeData.Weather wx = data.weather;
-            if (!Double.isNaN(wx.temp) && getContext().getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
-                    .getBoolean("screensaver_show_weather", false)) {
-                String temp = HomeData.degrees(wx.temp);
-                float tw = cornerDate.measureText(temp);
-                c.drawText(temp, x - tw, DATE_BASE * k, cornerDate);
-                x -= tw + 10 * k;
-                String symbol = Symbols.weather(wx.code, wx.isDay);
-                float size = 30 * k, sw = Symbols.width(getContext(), symbol, size);
-                Symbols.draw(getContext(), c, symbol, x - sw / 2, DATE_BASE * k - Ui.halfCap(cornerDate), size, 0xEBFFFFFF);
-                x -= sw + 26 * k;
+            if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
+                weatherBadge.setWeather(Symbols.weather(wx.code, wx.isDay), HomeData.degrees(wx.temp));
+                weatherBadge.drawRightAligned(c, x, DATE_BASE * k);
             }
             // Date intentionally hidden on all screensavers.
 
@@ -761,19 +780,9 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
         // Identical upper-right weather rendering and shared visibility preference.
         HomeData.Weather wx = data.weather;
-        if (!Double.isNaN(wx.temp) && getContext()
-                .getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("screensaver_show_weather", false)) {
-            String temp = HomeData.degrees(wx.temp);
-            float x = RIGHT * k;
-            float tw = cornerDate.measureText(temp);
-            canvas.drawText(temp, x - tw, DATE_BASE * k, cornerDate);
-            x -= tw + 10 * k;
-            String symbol = Symbols.weather(wx.code, wx.isDay);
-            float size = 30 * k;
-            float sw = Symbols.width(getContext(), symbol, size);
-            Symbols.draw(getContext(), canvas, symbol, x - sw / 2,
-                    DATE_BASE * k - Ui.halfCap(cornerDate), size, 0xEBFFFFFF);
+        if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
+            weatherBadge.setWeather(Symbols.weather(wx.code, wx.isDay), HomeData.degrees(wx.temp));
+            weatherBadge.drawRightAligned(canvas, RIGHT * k, DATE_BASE * k);
         }
         canvas.restoreToCount(save);
     }
