@@ -2,6 +2,7 @@ package io.tvos;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -25,7 +26,7 @@ final class ScreensaverWeather {
         this.degrees = degrees;
         textSize = size;
         density = metrics.density;
-        padding = 10 * density; // 8 dp blur + 2 dp downward offset, with no rectangular clipping
+        padding = 10 * density; // Expanded below to include the actual blurred alpha bounds.
 
         Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
         text.setTypeface(Ui.semibold);
@@ -38,6 +39,23 @@ final class ScreensaverWeather {
         float iconWidth = iconHeight * aspect;
         float gap = aspect == 0 ? 0 : 10 * density;
         Bitmap icon = Symbols.mask(context, symbol, (int) Math.ceil(iconWidth), (int) Math.ceil(iconHeight));
+        Bitmap shadow = null;
+        int[] offset = new int[2];
+        float sx = 1f, sy = 1f;
+        if (icon != null) {
+            // Bitmap shadow layers can shadow the bitmap rectangle on older renderers.
+            // Blur only the symbol's alpha, then composite that mask behind the glyph.
+            Paint blur = new Paint(Paint.ANTI_ALIAS_FLAG);
+            blur.setMaskFilter(new BlurMaskFilter(8 * density, BlurMaskFilter.Blur.NORMAL));
+            shadow = icon.extractAlpha(blur, offset);
+            sx = iconWidth / icon.getWidth();
+            sy = iconHeight / icon.getHeight();
+            float horizontal = Math.max(-offset[0] * sx,
+                    (offset[0] + shadow.getWidth() - icon.getWidth()) * sx);
+            float vertical = Math.max(-offset[1] * sy - 2 * density,
+                    (offset[1] + shadow.getHeight() - icon.getHeight()) * sy + 2 * density);
+            padding = (float) Math.ceil(Math.max(padding, Math.max(horizontal, vertical)));
+        }
         baseline = padding - text.ascent();
         int width = Math.max(1, (int) Math.ceil(padding * 2 + iconWidth + gap + text.measureText(degrees)));
         int height = Math.max(1, (int) Math.ceil(padding * 2 + text.descent() - text.ascent()));
@@ -48,8 +66,13 @@ final class ScreensaverWeather {
         if (icon != null) {
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
             paint.setColor(0xEBFFFFFF);
-            paint.setShadowLayer(8 * density, 0, 2 * density, 0xE6000000);
             float top = baseline - iconHeight;
+            Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            shade.setColor(0xE6000000);
+            float left = padding + offset[0] * sx;
+            float shadowTop = top + 2 * density + offset[1] * sy;
+            canvas.drawBitmap(shadow, null, new RectF(left, shadowTop,
+                    left + shadow.getWidth() * sx, shadowTop + shadow.getHeight() * sy), shade);
             canvas.drawBitmap(icon, null, new RectF(padding, top, padding + iconWidth, baseline), paint);
         }
         canvas.drawText(degrees, padding + iconWidth + gap, baseline, text);

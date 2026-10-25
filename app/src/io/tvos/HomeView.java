@@ -2862,7 +2862,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         // WATCH_APPS_ONLY_V4: show only supported video applications.
         java.util.Set<String> allowed = new java.util.HashSet<>(java.util.Arrays.asList(
-                "top.rootu.lampa", "com.seena.app", "watch.kino", "com.vk.tv"));
+                "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv"));
         apps.keySet().retainAll(allowed);
         if (apps.isEmpty()) {
             showToast(Ui.ru ? "Не установлены Lampa, Seena, VK Видео или kino.watch" : "No launchable apps found");
@@ -2906,8 +2906,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         openVkVideoSearch(pick.title);
                         return;
                     }
-                    if ("watch.kino".equals(selected.getKey())) {
-                        openKinoPub(pick);
+                    if (KinoPubLink.supports(selected.getKey())) {
+                        openKinoPub(pick, selected.getKey());
                         return;
                     }
                     HomeApps.Item app = HomeApps.app(selected.getKey(), selected.getValue());
@@ -2937,7 +2937,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     /** KinoPub autocomplete: exact title first; type is a preference, not a hard filter (TV shows can be tagged differently). */
-    private void openKinoPub(Recs.Pick pick) {
+    private void openKinoPub(Recs.Pick pick, String targetPackage) {
         final int epoch = workEpoch;
         if (pick == null || pick.title == null || pick.title.trim().isEmpty()) return;
         final String title = pick.title.trim();
@@ -2949,7 +2949,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         final String cacheKey = kind + ":" + pick.id;
         final int cached = cache.getInt(cacheKey, -1);
         if (cached > 0) {
-            launchKinoPub(cached);
+            launchKinoPub(cached, targetPackage);
             return;
         }
         showToast(Ui.ru ? "Ищем в KinoPub…" : "Searching KinoPub…");
@@ -3037,7 +3037,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (!running || epoch != workEpoch) return;
                 if (resolved > 0) {
                     cache.edit().putInt(cacheKey, resolved).apply();
-                    launchKinoPub(resolved);
+                    launchKinoPub(resolved, targetPackage);
                 } else {
                     showToast(Ui.ru ? "Точное совпадение в KinoPub не найдено" : "No exact KinoPub match");
                 }
@@ -3050,16 +3050,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 .replaceAll("[^\\p{L}\\p{N}]+", " ").trim().replaceAll(" +", " ");
     }
 
-    private void launchKinoPub(int id) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW,
-                    android.net.Uri.parse("https://kino.watch/item/view/" + id));
-            intent.setClassName("watch.kino", "watch.kino.activity.InfoActivity");
-            activity.startActivity(intent);
-        } catch (Exception e) {
-            android.util.Log.w("FreeMyTV", "KinoPub card launch failed", e);
-            showToast(Ui.ru ? "Не удалось открыть карточку KinoPub" : "Couldn't open KinoPub card");
+    private void launchKinoPub(int id, String targetPackage) {
+        Exception failure = null;
+        for (Intent intent : KinoPubLink.candidates(targetPackage, id)) {
+            try {
+                activity.startActivity(intent);
+                return;
+            } catch (Exception e) {
+                failure = e;
+            }
         }
+        android.util.Log.w("FreeMyTV", "KinoPub card launch failed for " + targetPackage, failure);
+        showToast(Ui.ru ? "Не удалось открыть карточку KinoPub" : "Couldn't open KinoPub card");
     }
 
     // MARK: - TalkBack: every reachable item as a virtual node (Spoken). Id = group * 1000 + index + 1.
