@@ -60,10 +60,12 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.2` (versionCode 8), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.3` (versionCode 9), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 
 Run `python3 tests/test_svg_symbols.py` and `python3 tests/test_screensaver_weather.py` for SVG rendering / sizing and weather badge checks. Real-device performance checks are still required, especially on Android 9 TVs. The rest of 1.1 remains in `docs/ROADMAP.md`.
 
 The next step centralizes app tile styles in `AppBranding` and moves prepared Dock logos into `DockLogoRenderer`. `watch.kino.mod` shares the standard KinoPub logo, colors and visual scales while retaining its own launch package and stored identity. The renderer keeps one normal and one dark prepared logo per app, reuses them through focus motion and invalidates on source/layout/optical changes without building a source-ID string every frame. See `docs/REFACTORING.md`.
+
+Search scheduling now lives in `SearchController`: the 400 ms debounce, request cancellation, generation checks, pending-query submission on Done/back and interrupted-query retry on resume. `HomeView` retains results, layout, heading animation and remote focus. The deterministic lifecycle test exercises the production controller and view callbacks, including late responses and Unicode query length.

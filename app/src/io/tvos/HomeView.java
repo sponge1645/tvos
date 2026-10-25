@@ -189,11 +189,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
     private String searchQuery = "";
     private List<Recs.Pick> searchResults = new ArrayList<>();
-    private int searchSerial;
     private int workEpoch;
-    private UiRequest searchRequest, rouletteRequest;
-    private Runnable pendingSearch;
-    private boolean retrySearchOnResume;
+    private UiRequest rouletteRequest;
+    private final SearchController searchWork;
     private final java.util.List<Recs.Pick> roulette = new java.util.ArrayList<>();
     private boolean rouletteLoading, rouletteSpinning, rouletteFinished;
     private long rouletteStarted;
@@ -451,6 +449,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         activity = a;
         data = HomeData.get(a);
         recs = Recs.get(a);
+        searchWork = new SearchController(handler, recs, () -> running && searchMode,
+                this::acceptSearchResults);
         click = new Click(a);
         ui = a.getSharedPreferences("home-ui", Context.MODE_PRIVATE);
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
@@ -537,8 +537,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         Choreographer.getInstance().postFrameCallback(this);
         spoken.readAgain();
         if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
-        if (retrySearchOnResume && searchMode) requestSearch(searchQuery, ++searchSerial);
-        retrySearchOnResume = false;
+        searchWork.resume(searchQuery);
     }
 
     void pause() {
@@ -546,9 +545,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         running = false;
         networkStatus.stop();
         workEpoch++;
-        retrySearchOnResume = searchMode && (searchRequest != null || pendingSearch != null);
-        searchSerial++;
-        cancelSearchWork();
+        searchWork.pause(searchMode);
         cancelRouletteWork();
         handler.removeCallbacks(dockHold);
         dockHoldArmed = false;
@@ -593,7 +590,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             pickIndex = 0;
             updatePicks();
         }
-        if (searchMode) { cancelSearchWork(); searchMode = false; searchSerial++; searchResults.clear(); }
+        if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
         if (Prefs.firstCategory() >= 0 && tab != Prefs.firstCategory()) selectTab(Prefs.firstCategory());
         updateCards();
         retarget(!animated);
@@ -2625,9 +2622,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void restoreSearchRequest() {
-        if (searchResults.isEmpty() && searchRequest == null && pendingSearch == null
-                && searchQuery.codePointCount(0, searchQuery.length()) >= 3)
-            requestSearch(searchQuery, ++searchSerial);
+        searchWork.restore(searchQuery, !searchResults.isEmpty());
     }
 
     /** A translucent in-app search field; Android TV supplies only the text keyboard. */
@@ -2743,21 +2738,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String query = s.toString().trim();
                 if (query.equals(searchQuery)) return;
-                cancelSearchWork();
                 searchQuery = query;
-                int serial = ++searchSerial;
                 searchResults = new ArrayList<>();
                 cardPage = cardIndex = 0;
                 layoutLight();
                 updateCards();
                 heroDirty = statusDirty = true;
                 wake();
-                if (query.codePointCount(0, query.length()) < 3) return;
-                pendingSearch = () -> {
-                    pendingSearch = null;
-                    requestSearch(query, serial);
-                };
-                handler.postDelayed(pendingSearch, 400);
+                searchWork.changed(query);
             }
             @Override public void afterTextChanged(android.text.Editable e) { }
         });
@@ -2779,13 +2767,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             searchGlassLayer.setScaleY(1f);
             searchGlassLayer.setTranslationY(0f);
             searchGlassLayer.setVisibility(INVISIBLE);
-            if (pendingSearch != null) {
-                Runnable submit = pendingSearch;
-                handler.removeCallbacks(submit);
-                pendingSearch = null;
-                // Done/back may close the keyboard before the debounce expires; keep the requested search.
-                if (running && searchMode) submit.run();
-            }
+            searchWork.flush();
             zone = searchResults.isEmpty() ? Z_TOP : Z_CARDS;
             if (zone == Z_TOP) topIndex = availableTopButton(5);
             retarget(false);
@@ -2829,26 +2811,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void cancelSearchWork() {
-        if (pendingSearch != null) handler.removeCallbacks(pendingSearch);
-        pendingSearch = null;
-        if (searchRequest != null) searchRequest.cancel();
-        searchRequest = null;
+        searchWork.cancel();
     }
 
-    private void requestSearch(String query, int serial) {
-        if (!running || !searchMode || serial != searchSerial
-                || query.codePointCount(0, query.length()) < 3) return;
-        searchRequest = recs.search(query, found -> {
-            if (!running || !searchMode || serial != searchSerial) return;
-            searchRequest = null;
-            searchResults = found;
-            cardPage = cardIndex = 0;
-            layoutLight();
-            updateCards();
-            retarget(false);
-            heroDirty = statusDirty = true;
-            wake();
-        });
+    private void acceptSearchResults(List<Recs.Pick> found) {
+        searchResults = found;
+        cardPage = cardIndex = 0;
+        layoutLight();
+        updateCards();
+        retarget(false);
+        heroDirty = statusDirty = true;
+        wake();
     }
 
     /** Input intent is known before the dialog has its first layout, avoiding a heading flash. */
@@ -2870,7 +2843,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void closeSearch() {
         cancelSearchWork();
         searchMode = false;
-        searchSerial++;
         searchResults.clear();
         cardPage = cardIndex = 0;
         zone = Z_TOP;
@@ -3441,7 +3413,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void selectTab(int index) {
-        if (searchMode) { cancelSearchWork(); searchMode = false; searchSerial++; searchResults.clear(); }
+        if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
         if (index == tab || !tabEnabled(index)) return;
         if (tab == 4 || index == 4) {
             cancelRouletteWork();
