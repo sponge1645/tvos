@@ -2265,7 +2265,7 @@ public class SettingsActivity extends Activity {
                 if (focus == 0) {
                     updateRequested = true;
                     SelfUpdate updater = SelfUpdate.get(getContext());
-                    if (updater.status().kind != SelfUpdate.READY) updater.check(false);
+                    updater.check(false);
                     onSelfUpdate();
                 } else toggleAutomaticUpdates();
             } else if (screen == MENU_BUTTONS) {
