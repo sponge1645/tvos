@@ -4227,7 +4227,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (dy >= 0 || shelf.isEmpty()) return false;
                 if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                     zone = Z_TOP;
-                    topIndex = picksOn() ? tab : 5;
+                    topIndex = searchMode || !picksOn() ? availableTopButton(5) : tab;
                 } else {
                     zone = Z_CARDS;
                     cardIndex = nearest(cardRects, cards.size(), tileRects[shelfIndex].centerX());
