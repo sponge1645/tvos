@@ -16,6 +16,10 @@ public class PreviewHarness {
   Animation withEndAction(Runnable r){end=r;return this;}void start(){}void cancel(){end=null;}
   void complete(){view.alpha=target;Runnable r=end;end=null;if(r!=null)r.run();}
  }
+ static class ScreensaverFade {
+  View view;ScreensaverFade(View v){view=v;}void cancel(){view.animate().cancel();}
+  void start(float a,long d,Runnable r){view.animate().alpha(a).setDuration(d).withEndAction(r).start();}
+ }
  static class View {
   static int VISIBLE=0,GONE=8;float alpha;int visibility=VISIBLE;Animation animation=new Animation(this);
   Animation animate(){return animation;}void setAlpha(float a){alpha=a;}void setVisibility(int v){visibility=v;}
@@ -26,6 +30,7 @@ public class PreviewHarness {
   static long TRANSITION_MS=600;boolean started,stopped;VideoDream(Object c){}void start(){started=true;}void stop(){stopped=true;}
  }
  SettingsView view=new SettingsView();View previewCover=new View();Host previewHost=new Host();
+ ScreensaverFade previewFade=new ScreensaverFade(previewCover);
  VideoDream preview;boolean previewTransition;
  PreviewHarness(){previewHost.children.add(view);previewHost.children.add(previewCover);previewCover.visibility=View.GONE;}
  static void check(boolean b,String s){if(!b)throw new AssertionError(s);}

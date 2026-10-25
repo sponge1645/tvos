@@ -56,6 +56,7 @@ public class SettingsActivity extends Activity {
     private SettingsView view;
     private android.widget.FrameLayout previewHost;
     private View previewCover;
+    private ScreensaverFade previewFade;
     private boolean previewTransition;
     private VideoDream preview;   // "Screen Saver": the screensaver right here, without changing the system setting
 
@@ -71,6 +72,7 @@ public class SettingsActivity extends Activity {
         previewCover.setBackgroundColor(android.graphics.Color.BLACK);
         previewCover.setAlpha(0f);
         previewCover.setVisibility(View.GONE);
+        previewFade = new ScreensaverFade(previewCover);
         previewHost.addView(previewCover, new android.widget.FrameLayout.LayoutParams(-1, -1));
         setContentView(previewHost);
         WifiPermission.requestOnce(this);
@@ -125,28 +127,26 @@ public class SettingsActivity extends Activity {
     void showPreview() {
         if (preview != null || previewTransition) return;
         previewTransition = true;
-        previewCover.animate().cancel();
+        previewFade.cancel();
         previewCover.setVisibility(View.VISIBLE);
         previewCover.setAlpha(0f);
         // Keep settings on screen until they have faded completely to black.
-        previewCover.animate().alpha(1f).setDuration(VideoDream.TRANSITION_MS)
-                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                .withEndAction(() -> {
-                    view.setVisibility(View.GONE);
-                    preview = new VideoDream(this);
-                    previewHost.addView(preview, 1, new android.widget.FrameLayout.LayoutParams(-1, -1));
-                    preview.start();
-                    // VideoDream starts black and reveals only ready content, with the same fade.
-                    previewCover.setVisibility(View.GONE);
-                    previewTransition = false;
-                }).start();
+        previewFade.start(1f, VideoDream.TRANSITION_MS, () -> {
+            view.setVisibility(View.GONE);
+            preview = new VideoDream(this);
+            previewHost.addView(preview, 1, new android.widget.FrameLayout.LayoutParams(-1, -1));
+            preview.start();
+            // VideoDream starts black and reveals only ready content, with the same fade.
+            previewCover.setVisibility(View.GONE);
+            previewTransition = false;
+        });
     }
 
     private void finishPreview() {
         if (preview == null || previewTransition) return;
         previewTransition = true;
         // Replace the black dream with settings underneath another fully opaque black cover.
-        previewCover.animate().cancel();
+        previewFade.cancel();
         previewCover.setAlpha(1f);
         previewCover.setVisibility(View.VISIBLE);
         preview.stop();
@@ -154,18 +154,16 @@ public class SettingsActivity extends Activity {
         preview = null;
         view.setVisibility(View.VISIBLE);
         view.resume();
-        previewCover.animate().alpha(0f).setDuration(VideoDream.TRANSITION_MS)
-                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                .withEndAction(() -> {
-                    previewCover.setVisibility(View.GONE);
-                    previewTransition = false;
-                }).start();
+        previewFade.start(0f, VideoDream.TRANSITION_MS, () -> {
+            previewCover.setVisibility(View.GONE);
+            previewTransition = false;
+        });
     }
 
     /** Forced Activity pause cancels either leg; no delayed callback may reopen a preview. */
     private void closePreview() {
         if (preview == null && !previewTransition) return;
-        previewCover.animate().cancel();
+        previewFade.cancel();
         previewTransition = false;
         if (preview != null) {
             preview.stop();
@@ -215,6 +213,7 @@ public class SettingsActivity extends Activity {
         private final Path arrowPath = new Path();
         private final TextPaint shelfMeasurePaint = new TextPaint();
         private final List<Integer> categoryRows = new ArrayList<>();
+        private final List<Integer> menuButtonRows = new ArrayList<>();
         private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private StaticLayout descriptionLayout;
         private String descriptionText;
@@ -372,7 +371,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case MENU_BUTTONS: case TOP_PANEL: {
+                case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = menuValues();
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -394,6 +393,13 @@ public class SettingsActivity extends Activity {
                     if (at >= pickLabels.size()) return "";
                     return pickLabels.get(at) + (at == pickCurrent ? Ui.tr(", escolhido", ", selected") : "")
                             + ", " + (at + 1) + Ui.tr(" de ", " of ") + pickLabels.size();
+                }
+                case MENU_BUTTONS: {
+                    if (row == menuButtonRows.size()) return tr("Приложение VPN", "VPN App");
+                    if (row < 0 || row >= menuButtonRows.size()) return "";
+                    int id = menuButtonRows.get(row);
+                    return menuButtonLabel(id) + ", " + (Prefs.topButtonEnabled(id)
+                            ? tr("Позиция ", "Position ") + Prefs.topButtonPosition(id) : tr("Выкл.", "Off"));
                 }
                 case CATEGORY_EDIT: {
                     if (row < 0 || row >= categoryRows.size()) return "";
@@ -581,7 +587,7 @@ public class SettingsActivity extends Activity {
                 case CATEGORY_EDIT: return categoryRows.size();
                 case ACCESSIBILITY: return 4;
                 case VPN_SETTINGS: return 2;
-                case MENU_BUTTONS: return 5;
+                case MENU_BUTTONS: return menuButtonRows.size() + 1;
                 case UPDATES: return 2;
                 case ABOUT: return 8;
                 case HOME_CHOICE: return 2;
@@ -810,7 +816,7 @@ public class SettingsActivity extends Activity {
                 case WIDGETS: return new String[] {tr("Погода", "Weather"), tr("Котировки", "Quotes"), tr("Дата", "Date")};
                 case DATE_TIME: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar")};
                 case WEATHER: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("Показывать на нижней панели", "Show in Bottom Menu")};
-                case MENU_BUTTONS: return new String[] {tr("Поиск", "Search"), tr("ТВ", "TV"), "VPN", tr("Настройки", "Settings"), tr("Часы", "Clock")};
+                case MENU_BUTTONS: return menuButtonLabels();
                 case UPDATES: return new String[] {tr("Обновление ПО", "Update Software"), tr("Автоматическое обновление", "Automatically Update")};
                 case SYSTEM: return new String[] {tr("Обновления ПО", "Software Updates"), tr("Сброс", "Reset"), tr("Перезагрузить tvOS", "Restart tvOS")};
                 case RESET: return new String[] {tr("Очистить кеш", "Clear cache"), tr("Сброс tvOS", "Reset tvOS")};
@@ -855,8 +861,8 @@ public class SettingsActivity extends Activity {
             invalidate();
         }
         private String tr(String ru, String en) { return Ui.ru ? ru : en; }
-        private boolean vpnTopEnabled() { return localPrefs().getBoolean("top_button_2", false); }
-        private void toggleVpnTop() { setLocalFlag("top_button_2", !vpnTopEnabled()); }
+        private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
+        private void toggleVpnTop() { Prefs.setTopButtonEnabled(2, !vpnTopEnabled()); invalidate(); }
         private String[] menuValues() {
             String[] v = new String[rowCount()];
             java.util.Arrays.fill(v, "");
@@ -882,7 +888,10 @@ public class SettingsActivity extends Activity {
                 if (vpn.isEmpty()) v[1] = tr("Не выбрано", "Not selected");
                 else { try { v[1] = String.valueOf(getContext().getPackageManager().getApplicationLabel(getContext().getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = tr("Не найдено", "Not found"); } }
             } else if (screen == MENU_BUTTONS) {
-                for (int i = 0; i < 5; i++) v[i] = i == 2 ? "" : onOff(localPrefs().getBoolean("top_button_" + i, i != 2));
+                for (int i = 0; i < menuButtonRows.size(); i++) {
+                    int id = menuButtonRows.get(i);
+                    v[i] = Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : tr("Выкл.", "Off");
+                }
             } else if (screen == SCREENSAVER) {
                 String src = localPrefs().getString("video_dream_source", "google");
                 v[0] = "apple".equals(src) ? "Apple" : "na".equals(src) ? "National Geographic" : "Google";
@@ -915,38 +924,22 @@ public class SettingsActivity extends Activity {
                 v[5] = tr("Недоступно", "Unavailable");
                 v[6] = "—";
                 v[7] = localPrefs().getString("device_name", "ТВ");
-                try {
-                    java.util.Enumeration<java.net.NetworkInterface> nets = java.net.NetworkInterface.getNetworkInterfaces();
-                    while (nets != null && nets.hasMoreElements()) {
-                        java.net.NetworkInterface net = nets.nextElement();
-                        if (!net.isUp() || net.isLoopback()) continue;
-                        java.util.Enumeration<java.net.InetAddress> ips = net.getInetAddresses();
-                        while (ips.hasMoreElements()) {
-                            java.net.InetAddress ip = ips.nextElement();
-                            if (ip instanceof java.net.Inet4Address && !ip.isLoopbackAddress()) {
-                                v[6] = ip.getHostAddress();
-                                break;
-                            }
-                        }
-                        if (!"—".equals(v[6])) break;
-                    }
-                } catch (Exception ignored) {}
-                try {
-                    android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                            getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-                    android.net.NetworkInfo ni = cm == null ? null : cm.getActiveNetworkInfo();
-                    if (ni != null && ni.isConnected()) {
-                        if (ni.getType() == android.net.ConnectivityManager.TYPE_ETHERNET) v[5] = "Ethernet";
-                        else if (ni.getType() == android.net.ConnectivityManager.TYPE_WIFI) {
+                LocalNetwork.Info network = LocalNetwork.read(getContext());
+                if (network != null) {
+                    v[6] = network.address;
+                    if (network.ethernet) v[5] = "Ethernet";
+                    else {
+                        v[5] = tr("Wi-Fi (имя недоступно)", "Wi-Fi (name unavailable)");
+                        try {
                             android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
                                     getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                             android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
                             String ssid = wi == null ? null : wi.getSSID();
-                            v[5] = ssid == null || ssid.contains("unknown ssid") || ssid.equals("<unknown ssid>")
-                                    ? tr("Wi-Fi (имя недоступно)", "Wi-Fi (name unavailable)") : ssid.replace("\"", "");
-                        }
+                            if (ssid != null && !ssid.isEmpty() && !ssid.contains("unknown ssid"))
+                                v[5] = ssid.replace("\"", "");
+                        } catch (Exception ignored) {}
                     }
-                } catch (Exception ignored) {}
+                }
                 // Show device name first, preserving all other values.
                 String deviceName = v[7];
                 System.arraycopy(v, 0, v, 1, 7);
@@ -1011,13 +1004,14 @@ public class SettingsActivity extends Activity {
         private void drawScreenContent(Canvas c) {
             switch (screen) {
                 case MAIN: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
-                case MENU_BUTTONS: case SYSTEM: case RESET: case TOP_PANEL:
+                case SYSTEM: case RESET: case TOP_PANEL:
                 case ACCESSIBILITY: case APPS_DOWNLOADS: case VPN_SETTINGS: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
                 case HOME_CHOICE: drawChoice(c); break;
                 case PICKER: drawPicker(c); break;
                 case SHELF_EDIT: drawShelfEditor(c); break;
                 case CATEGORY_EDIT: drawCategoryEditor(c); break;
+                case MENU_BUTTONS: drawMenuButtonEditor(c); break;
                 default: drawList(c); break;
             }
         }
@@ -1256,7 +1250,10 @@ public class SettingsActivity extends Activity {
                     if (focus == 1) info = tr("Настройка кнопок быстрого доступа на верхней панели.", "Configure quick-access buttons in the Menu Bar.");
                     break;
                 case MENU_BUTTONS:
-                    info = tr("Настройте кнопки быстрого доступа на верхней панели.", "Configure quick-access buttons in the Menu Bar.");
+                    info = focus == menuButtonRows.size()
+                            ? tr("Выберите приложение для кнопки VPN.", "Choose the app opened by the VPN button.")
+                            : tr("OK — включить или выключить, стрелки — изменить порядок.",
+                                    "OK turns a button on or off; left and right change its order.");
                     break;
                 case RESET:
                     info = tr("Очистка кеша не удаляет настройки. Сброс tvOS удалит все данные приложения.", "Clearing cache preserves settings. Reset tvOS erases all app data.");
@@ -1540,7 +1537,10 @@ public class SettingsActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
                     if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || screen == CATEGORY_EDIT || canAdjustMenu())) tvosClick.move();
-                    if (down && screen == CATEGORY_EDIT) {
+                    if (down && screen == MENU_BUTTONS && focus < menuButtonRows.size()) {
+                        moveMenuButton(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                        invalidate();
+                    } else if (down && screen == CATEGORY_EDIT) {
                         moveCategory(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     } else if (down && screen == SHELF_EDIT) {
@@ -1577,7 +1577,7 @@ public class SettingsActivity extends Activity {
                             else if (screen == REMOTE_KEYS) { screen = MAIN; focus = 3; }
                             else if (screen == MENU_BUTTONS) { screen = TOP_PANEL; focus = 1; }
                             else if (screen == CATEGORY_EDIT) { screen = TOP_PANEL; focus = 0; }
-                            else if (screen == VPN_SETTINGS) { screen = MENU_BUTTONS; focus = 2; }
+                            else if (screen == VPN_SETTINGS) { rebuildMenuButtonRows(-1); screen = MENU_BUTTONS; focus = menuButtonRows.size(); }
                             else if (screen == UPDATES) { screen = SYSTEM; focus = 0; }
                             else if (screen == HOME_SETTINGS) { screen = settingsGroup == SYSTEM ? TOP_PANEL : settingsGroup; focus = settingsGroup == SYSTEM ? 0 : settingsGroup == WIDGETS ? 1 : 0; }
                             else if (screen == RESET) { screen = SYSTEM; focus = 1; }
@@ -1772,9 +1772,69 @@ public class SettingsActivity extends Activity {
                     android.widget.Toast.LENGTH_SHORT).show();
         }
 
+        private String[] menuButtonLabels() {
+            String[] labels = new String[menuButtonRows.size() + 1];
+            for (int i = 0; i < menuButtonRows.size(); i++) labels[i] = menuButtonLabel(menuButtonRows.get(i));
+            labels[menuButtonRows.size()] = tr("Приложение VPN", "VPN App");
+            return labels;
+        }
+
+        private String menuButtonLabel(int id) {
+            switch (id) {
+                case 0: return tr("Поиск", "Search");
+                case 1: return tr("ТВ", "TV");
+                case 2: return "VPN";
+                case 3: return tr("Настройки", "Settings");
+                case 4: return tr("Часы", "Clock");
+                default: return tr("Сеть", "Network");
+            }
+        }
+
+        private void rebuildMenuButtonRows(int selectedId) {
+            menuButtonRows.clear();
+            for (int id : Prefs.topButtonOrder()) if (Prefs.topButtonEnabled(id)) menuButtonRows.add(id);
+            for (int id : Prefs.topButtonOrder()) if (!Prefs.topButtonEnabled(id)) menuButtonRows.add(id);
+            focus = Math.max(0, menuButtonRows.indexOf(selectedId));
+        }
+        private void openMenuButtonEditor() {
+            rebuildMenuButtonRows(-1);
+            focus = 0;
+            screen = MENU_BUTTONS;
+        }
         private void toggleMenuButton() {
-            String key = "top_button_" + focus;
-            setLocalFlag(key, !localPrefs().getBoolean(key, focus != 2));
+            if (focus < 0 || focus >= menuButtonRows.size()) return;
+            int id = menuButtonRows.get(focus);
+            boolean enable = !Prefs.topButtonEnabled(id);
+            menuButtonRows.remove(Integer.valueOf(id));
+            if (enable) menuButtonRows.add(Prefs.topButtonCount(), id);
+            else menuButtonRows.add(id);
+            Prefs.setTopButtonEnabled(id, enable);
+            Prefs.setTopButtonOrder(menuButtonRows);
+            rebuildMenuButtonRows(id);
+        }
+        private void moveMenuButton(int direction) {
+            if (focus < 0 || focus >= menuButtonRows.size()) return;
+            int id = menuButtonRows.get(focus), to = focus + direction;
+            if (!Prefs.topButtonEnabled(id) || to < 0 || to >= Prefs.topButtonCount()) return;
+            Collections.swap(menuButtonRows, focus, to);
+            Prefs.setTopButtonOrder(menuButtonRows);
+            focus = to;
+        }
+        private void drawMenuButtonEditor(Canvas c) {
+            for (int row = 0; row <= menuButtonRows.size(); row++) {
+                setApprovedRowRect(row);
+                float f = drawApprovedCapsule(c, row);
+                rowLabel.setColor(blend(normalInk(), INK, f));
+                rowValue.setColor(ABOUT_SECONDARY_COLOR);
+                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
+                boolean vpnApp = row == menuButtonRows.size();
+                int id = vpnApp ? -1 : menuButtonRows.get(row);
+                drawTrackedText(c, vpnApp ? tr("Приложение VPN", "VPN App") : menuButtonLabel(id),
+                        rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : tr("Выкл.", "Off"),
+                        rowRect.right - 61 * k, base, rowValue, 0.02f);
+                drawApprovedChevron(c);
+            }
         }
 
         private void toggleDateTime() {
@@ -1791,7 +1851,7 @@ public class SettingsActivity extends Activity {
                 case UPDATES: return focus == 1;
                 case ACCESSIBILITY: return focus < 2;
                 case VPN_SETTINGS: return focus == 0;
-                case MENU_BUTTONS: return focus != 2;
+                case MENU_BUTTONS: return focus < menuButtonRows.size();
                 default: return false;
             }
         }
@@ -1811,7 +1871,7 @@ public class SettingsActivity extends Activity {
             if (screen == UPDATES) { if (focus == 1) toggleAutomaticUpdates(); return; }
             if (screen == ACCESSIBILITY) { if (focus == 0) setLocalFlag("reduce_transparency", !localFlag("reduce_transparency")); else if (focus == 1) setLocalFlag("reduce_motion", !localFlag("reduce_motion")); return; }
             if (screen == VPN_SETTINGS) { if (focus == 0) toggleVpnTop(); return; }
-            if (screen == MENU_BUTTONS) { if (focus != 2) toggleMenuButton(); return; }
+            if (screen == MENU_BUTTONS) { moveMenuButton(dir); return; }
             if (screen == GENERAL) {
                 if (focus == 1) { int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme()); Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]); }
                 else if (focus == 2) { int at = java.util.Arrays.asList(LANGUAGES).indexOf(Prefs.language()); Prefs.setLanguage(LANGUAGES[(at + dir + LANGUAGES.length) % LANGUAGES.length]); }
@@ -2269,7 +2329,7 @@ public class SettingsActivity extends Activity {
                     onSelfUpdate();
                 } else toggleAutomaticUpdates();
             } else if (screen == MENU_BUTTONS) {
-                if (focus == 2) { screen = VPN_SETTINGS; focus = 0; }
+                if (focus == menuButtonRows.size()) { screen = VPN_SETTINGS; focus = 0; }
                 else toggleMenuButton();
             } else if (screen == VPN_SETTINGS) {
                 if (focus == 0) toggleVpnTop();
@@ -2286,7 +2346,7 @@ public class SettingsActivity extends Activity {
                 else if (focus == 4) { pause(); activity.showPreview(); return; }
             } else if (screen == TOP_PANEL) {
                 if (focus == 0) { openCategoryEditor(); return; }
-                else if (focus == 1) { screen = MENU_BUTTONS; focus = 0; }
+                else if (focus == 1) { openMenuButtonEditor(); return; }
             } else if (screen == ACCESSIBILITY) {
                 if (focus == 0) setLocalFlag("reduce_transparency", !localFlag("reduce_transparency"));
                 else if (focus == 1) setLocalFlag("reduce_motion", !localFlag("reduce_motion"));

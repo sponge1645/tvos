@@ -218,12 +218,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int marqueeCard = -1, marqueePage = -1, marqueeTab = -1;
     private long marqueeSince;
     private boolean marqueeNeeded; // Set by drawing the focused title/metadata, using their actual available widths.
-    private final Spring[] topFocus = new Spring[10];
+    private final Spring[] topFocus = new Spring[11];
     private final Spring rouletteButtonFocus = new Spring(0.26f, 0.85f, 0);
-    private final RectF[] topRects = new RectF[10];
+    private final RectF[] topRects = new RectF[11];
     private final Spring[] cardFocus = new Spring[8];
     private final RectF[] cardRects = new RectF[8];
     private final List<HomeApps.Item> lightButtons = new ArrayList<>();
+    private final NetworkStatus networkStatus;
     private Paint lTitle, lTab, lTabOn, lCardTitle, lCardMeta, lQuote, lTip, lDate, lClock, lWeather, lClockQuote;
     private Shader lightGradient;
 
@@ -507,6 +508,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             cardFocus[i] = new Spring(0.32f, 0.78f, 0);
             cardRects[i] = new RectF();
         }
+        networkStatus = new NetworkStatus(a, () -> {
+            statusDirty = heroDirty = true;
+            status.invalidate();
+            spoken.readAgain();
+            wake();
+        });
         makeLightButtons();
         recs.setLight(true);
         checkNight(false);
@@ -527,6 +534,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         profileAvatarIndex = nextAvatar;
         if (running) return;
         running = true;
+        if (topButtonEnabled(5)) networkStatus.start();
         checkNight(false);
         syncVisibleTabs();
         // SettingsActivity runs separately; the old button rectangles remain cached.
@@ -560,6 +568,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
+        networkStatus.stop();
         workEpoch++;
         retrySearchOnResume = searchMode && (searchRequest != null || pendingSearch != null);
         searchSerial++;
@@ -624,47 +633,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", Ui.tr("Configurações", "Settings"), "settings"));
     }
 
-    private boolean topButtonEnabled(int index) {
-        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("top_button_" + index, index != 2);
-    }
-
+    private boolean topButtonEnabled(int index) { return Prefs.topButtonEnabled(index); }
     private boolean clockButtonEnabled() { return topButtonEnabled(4); }
-
-    private int firstVisibleActionOrClock() {
-        for (int i = 0; i < 4; i++) if (topButtonEnabled(i)) return 5 + i;
-        if (clockButtonEnabled()) return 9;
-        return picksOn() ? tab : 0;
-    }
-
-    private int firstVisibleAction() {
-        for (int i = 0; i < 4; i++) if (topButtonEnabled(i)) return 5 + i;
-        return clockButtonEnabled() ? 9 : -1;
-    }
-
-    private int lastVisibleActionBeforeClock() {
-        for (int i = 3; i >= 0; i--) if (topButtonEnabled(i)) return 5 + i;
-        return picksOn() && !searchMode ? lastVisibleTab() : 9;
-    }
-
-    private int lastVisibleActionOrClock() {
-        if (clockButtonEnabled()) return 9;
-        for (int i = 3; i >= 0; i--) if (topButtonEnabled(i)) return 5 + i;
-        return picksOn() ? tab : 0;
-    }
-
-    private int lastVisibleTab() { return Math.max(0, Prefs.lastCategory()); }
 
     private boolean topControlVisible(int id) {
         return id < 5 ? !searchMode && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
     }
 
-    /** Follow the configured visual order, not category IDs, when crossing tabs and action buttons. */
+    /** Tabs and actions follow their saved visual order, independently of stable IDs. */
     private int nextTopControl(int current, int direction) {
         int previous = -1;
-        int[] order = Prefs.categoryOrder();
-        for (int position = 0; position < 10; position++) {
-            int id = position < 5 ? order[position] : position;
+        int[] categories = Prefs.categoryOrder(), buttons = Prefs.topButtonOrder();
+        for (int position = 0; position < categories.length + buttons.length; position++) {
+            int id = position < categories.length ? categories[position] : 5 + buttons[position - categories.length];
             if (!topControlVisible(id)) continue;
             if (id == current && direction < 0) return previous < 0 ? current : previous;
             if (previous == current && direction > 0) return id;
@@ -674,30 +655,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private int availableTopButton(int preferred) {
-        if (preferred == 9 && clockButtonEnabled()) return 9;
-        if (preferred < 5 || (preferred <= 8 && topButtonEnabled(preferred - 5))) return preferred;
-        for (int i = 5; i <= 8; i++) if (topButtonEnabled(i - 5)) return i;
-        if (clockButtonEnabled()) return 9;
+        if (preferred < 5 || (preferred <= 10 && topButtonEnabled(preferred - 5))) return preferred;
+        for (int id : Prefs.topButtonOrder()) if (topButtonEnabled(id)) return 5 + id;
         return picksOn() ? tab : 0;
     }
 
-    /** Poster navigation uses the leftmost and rightmost *visible* corner controls.
-     * The clock/avatar capsule is always at the far right when enabled.
-     */
+    /** Poster shortcuts use the first/last visible action in the saved layout. */
     private int posterCornerTarget(boolean rightmost) {
         int first = -1, last = -1;
-        for (int i = 0; i < 4; i++) {
-            if (!topButtonEnabled(i)) continue;
-            int target = 5 + i;
-            if (first < 0) first = target;
-            last = target;
+        for (int id : Prefs.topButtonOrder()) if (topButtonEnabled(id)) {
+            if (first < 0) first = 5 + id;
+            last = 5 + id;
         }
-        if (clockButtonEnabled()) {
-            if (first < 0) first = 9;
-            last = 9;
-        }
-        if (last >= 0) return rightmost ? last : first;
-        return picksOn() ? tab : 0;
+        return last >= 0 ? (rightmost ? last : first) : picksOn() ? tab : 0;
     }
 
     private static boolean tabEnabled(int i) {
@@ -710,8 +680,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (first < 0) cancelRouletteWork();
         if (topIndex < 5 && !tabEnabled(topIndex)) topIndex = first >= 0 ? tab : availableTopButton(5);
         if (first < 0 && zone == Z_CARDS) zone = Z_SHELF;
-        if (topIndex == 9 && !clockButtonEnabled()) topIndex = availableTopButton(5);
-        else if (topIndex >= 5 && topIndex <= 8 && !topButtonEnabled(topIndex - 5)) topIndex = availableTopButton(topIndex);
+        if (topIndex >= 5 && !topButtonEnabled(topIndex - 5)) topIndex = availableTopButton(5);
         if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
     }
 
@@ -1480,6 +1449,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // The corner buttons' names appear in this row: the quotes fade out while one of them has focus.
         float fade = 1;
         for (int i = 5; i < 9 && !clock; i++) fade = Math.min(fade, 1 - Ui.clamp(topFocus[i].value));
+        if (!clock) fade = Math.min(fade, 1 - Ui.clamp(topFocus[10].value));
         if (fade <= 0.01f) return;
         int textColor = text.getColor();
         text.setColor(Ui.alpha(textColor, fade));
@@ -2616,6 +2586,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 selectTab(topIndex);
                 return;
             }
+            if (topIndex >= 5 && !topButtonEnabled(topIndex - 5)) return;
+            if (topIndex == 10) {
+                click.open();
+                openNetworkSettings();
+                return;
+            }
             if (topIndex == 9) {
                 click.open();
                 ProfileActivity.open(activity, profileBackground());
@@ -2804,7 +2780,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
         // Measure the former capsule before removing its vertical padding and themed input minimum.
         // Keep 60% of that height, with enough room for the text at the user's font scale.
-        int searchWidth = (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f);
+        int searchWidth = (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.336f);
         panel.measure(View.MeasureSpec.makeMeasureSpec(searchWidth, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         Paint.FontMetricsInt searchMetrics = input.getPaint().getFontMetricsInt();
@@ -2825,7 +2801,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             window.setBackgroundDrawableResource(android.R.color.transparent);
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             window.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
-            window.setLayout((int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f),
+            window.setLayout(searchWidth,
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
             window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
                     | android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
@@ -2891,7 +2867,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         dialog.show();
         window = dialog.getWindow();
         if (window != null) {
-            window.setLayout((int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f),
+            window.setLayout(searchWidth,
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
             android.view.WindowManager.LayoutParams attrs = window.getAttributes();
             attrs.y = Math.round(L_BUTTON_CY * k - searchHeight / 2f);
@@ -3220,8 +3196,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (picksOn() && !searchMode) for (int id : Prefs.categoryOrder())
             if (tabEnabled(id)) out.add(a11yId(Z_TOP, id));
-        for (int i = 5; i < 5 + lightButtons.size(); i++) if (topButtonEnabled(i - 5)) out.add(a11yId(Z_TOP, i));
-        if (clockButtonEnabled()) out.add(a11yId(Z_TOP, 9));
+        for (int id : Prefs.topButtonOrder()) if (topButtonEnabled(id)) out.add(a11yId(Z_TOP, 5 + id));
         if (picksOn()) for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
         for (int i = 0; i < shelf.size(); i++) out.add(a11yId(Z_SHELF, i));
         for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
@@ -3236,6 +3211,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (i >= others.size()) return "";
                 return label(others, i) + ", " + (i + 1) + Ui.tr(" de ", " of ") + others.size();
             case Z_TOP:
+                if (i == 10) return networkLabel();
                 if (i == 9) return Ui.ru ? "Часы и профиль" : "Clock and profile";
                 if (i >= 5) return label(lightButtons, i - 5);
                 return tabs()[i] + Ui.tr(", aba ", ", tab ") + Prefs.categoryPosition(i) + Ui.tr(" de ", " of ") + Prefs.categoryCount();
@@ -3265,8 +3241,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
             }
             case Z_TOP:
-                if (i == 9) { if (!clockButtonEnabled()) return false; }
-                else if (i >= 5 + lightButtons.size() || (i >= 5 && !topButtonEnabled(i - 5))) return false;
+                if (i >= topRects.length || !topControlVisible(i)) return false;
                 a11yRect.set(topRects[i]);
                 dy = (i < 5 ? heroLayer : status).getTranslationY();
                 break;
@@ -3358,8 +3333,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 widgetIndex = i;
                 break;
             case Z_TOP:
-                if (i == 9) { if (!clockButtonEnabled()) return; }
-                else if (i >= 5 + lightButtons.size() || (i >= 5 && !topButtonEnabled(i - 5)) || (i < 5 && (!picksOn() || !tabEnabled(i)))) return;
+                if (i >= topRects.length || !topControlVisible(i)) return;
                 if (drawerOpen) closeDrawer();
                 topIndex = i;
                 if (i < 5) selectTab(i);
@@ -3449,29 +3423,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             x = topRects[i].right + 4 * k;
         }
         float b = L_BUTTON * k, right = CONTENT_R * k, cy = L_BUTTON_CY * k;
-        // The clock/profile capsule owns the rightmost slot. Other visible
-        // actions pack immediately to its left with the same standard gap.
-        if (clockButtonEnabled()) {
-            Paint clockMeasure = new Paint(Paint.ANTI_ALIAS_FLAG);
-            clockMeasure.setTypeface(Ui.displayMedium);
-            clockMeasure.setTextSize(27 * k);
-            Paint.FontMetrics fm = clockMeasure.getFontMetrics();
-            float glyphHeight = fm.descent - fm.ascent;
-            float textInset = Math.max(5 * k, (b - glyphHeight) / 2f);
-            float avatarDiameter = b - 10 * k;
-            float capsuleWidth = textInset + 5 * k + clockMeasure.measureText(clockText) + 10 * k
-                    + avatarDiameter + 5 * k + 5 * k;
-            topRects[9].set(right - capsuleWidth, cy - b / 2f, right, cy + b / 2f);
-            right = topRects[9].left - L_BUTTON_GAP * k;
-        } else topRects[9].setEmpty();
-        for (int i = 3; i >= 0; i--) {
-            if (topButtonEnabled(i)) {
-                topRects[5 + i].set(right - b, cy - b / 2, right, cy + b / 2);
-                right -= b + L_BUTTON_GAP * k;
-            } else {
-                topRects[5 + i].setEmpty();
-            }
-        }
+        layoutTopActions(b, right, cy);
         float regularW = ((CONTENT_R - MARGIN) * k - 5 * 18 * k) / 6f;
         // 10% wider and taller while keeping the poster bottom and metadata fixed.
         // The larger posters grow upwards into the unused header-widget space.
@@ -3486,6 +3438,31 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             cardRects[i].set(px, top, px + posterW, top + posterH);
         }
         heroDirty = statusDirty = true;
+    }
+
+    private void layoutTopActions(float b, float right, float cy) {
+        // Pack variable-width clock and fixed-width actions together in the configured order.
+        int[] buttons = Prefs.topButtonOrder();
+        for (int position = buttons.length - 1; position >= 0; position--) {
+            int id = buttons[position], control = 5 + id;
+            if (!topButtonEnabled(id)) { topRects[control].setEmpty(); continue; }
+            if (id == 4) {
+                Paint clockMeasure = new Paint(Paint.ANTI_ALIAS_FLAG);
+                clockMeasure.setTypeface(Ui.displayMedium);
+                clockMeasure.setTextSize(27 * k);
+                Paint.FontMetrics fm = clockMeasure.getFontMetrics();
+                float glyphHeight = fm.descent - fm.ascent;
+                float textInset = Math.max(5 * k, (b - glyphHeight) / 2f);
+                float avatarDiameter = b - 10 * k;
+                float capsuleWidth = textInset + 5 * k + clockMeasure.measureText(clockText) + 10 * k
+                        + avatarDiameter + 5 * k + 5 * k;
+                topRects[9].set(right - capsuleWidth, cy - b / 2f, right, cy + b / 2f);
+                right = topRects[9].left - L_BUTTON_GAP * k;
+            } else {
+                topRects[control].set(right - b, cy - b / 2, right, cy + b / 2);
+                right -= b + L_BUTTON_GAP * k;
+            }
+        }
     }
 
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
@@ -4169,9 +4146,35 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.restoreToCount(saved);
     }
 
+    private String networkLabel() {
+        String state = networkStatus.state() == NetworkStatus.WIFI
+                ? (Ui.ru ? "Wi-Fi, интернет доступен" : "Wi-Fi, internet available")
+                : networkStatus.state() == NetworkStatus.ETHERNET
+                ? (Ui.ru ? "Ethernet, интернет доступен" : "Ethernet, internet available")
+                : (Ui.ru ? "Нет интернета" : "No internet");
+        return state + (Ui.ru ? ". Открыть настройки сети" : ". Open network settings");
+    }
+
+    private void openNetworkSettings() {
+        for (String action : new String[] {android.provider.Settings.ACTION_WIRELESS_SETTINGS,
+                android.provider.Settings.ACTION_WIFI_SETTINGS, android.provider.Settings.ACTION_SETTINGS}) {
+            try { activity.startActivity(new Intent(action)); return; }
+            catch (android.content.ActivityNotFoundException | SecurityException ignored) {}
+        }
+        showToast(Ui.ru ? "Не удалось открыть настройки сети" : "Could not open network settings");
+    }
+
     private void drawLightButtons(Canvas c) {
         applyTone();
         drawClockProfileCapsule(c);
+        if (topButtonEnabled(5)) {
+            float networkFocus = Ui.clamp(topFocus[10].value);
+            float networkScale = drawActionSurface(c, topRects[10], networkFocus);
+            String networkSymbol = networkStatus.state() == NetworkStatus.WIFI ? "wifi"
+                    : networkStatus.state() == NetworkStatus.ETHERNET ? "ethernet" : "nonetwork";
+            Symbols.draw(getContext(), c, networkSymbol, cell.centerX(), cell.centerY(),
+                    30 * k * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));
+        }
         for (int i = 0; i < lightButtons.size(); i++) {
             if (!topButtonEnabled(i)) continue;
             RectF r = topRects[5 + i];
@@ -4190,7 +4193,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (dy >= 0 || shelf.isEmpty()) return false;
                 if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                     zone = Z_TOP;
-                    topIndex = picksOn() ? tab : 5;
+                    topIndex = searchMode || !picksOn() ? availableTopButton(5) : tab;
                 } else {
                     zone = Z_CARDS;
                     cardIndex = nearest(cardRects, cards.size(), tileRects[shelfIndex].centerX());
@@ -4255,6 +4258,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             default:
                 return false;
         }
+        if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
         retarget(false);
         click.move();
         return true;

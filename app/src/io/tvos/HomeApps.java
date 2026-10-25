@@ -433,45 +433,68 @@ final class HomeApps {
         return "hdmi";
     }
 
-    /** Installed, enabled TV apps that are not on the home screen (the TV's Settings is among them), plus our own. */
+    /** All enabled launchable apps, including apps that also appear in Dock or Sources. */
     static List<Item> others(Context c) {
         PackageManager pm = c.getPackageManager();
-        Set<String> skip = new HashSet<>();
-        for (String[] d : SHELF) skip.add(d[2]);
-        skip.addAll(java.util.Arrays.asList(LIVE_TV_APPS));
-        skip.add(c.getPackageName());
-        skip.addAll(HIDDEN);
+        String settingsPkg = settingsPackage(pm);
         List<Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        seen.add(c.getPackageName());
+        seen.addAll(HIDDEN);
+        // A single system action works even when Settings has no launcher activity.
+        if (settingsPkg != null) seen.add(settingsPkg);
         for (ResolveInfo ri : launcherActivities(pm)) {
             String pkg = ri.activityInfo.packageName;
-            if (skip.contains(pkg) || !seen.add(pkg)) continue;
+            if (!seen.add(pkg)) continue;
             Item it = new Item();
             it.kind = APP;
-            it.pkg = pkg;
-            it.key = pkg;
+            it.pkg = it.key = pkg;
             it.label = String.valueOf(ri.loadLabel(pm));
-            it.tile = "com.android.tv.settings".equals(pkg)
-                    ? tvSettingsFavoriteTile(c) : brandedAllAppsTile(c, pkg);
+            it.tile = brandedAllAppsTile(c, pkg);
             items.add(it);
+        }
+        // Some TV firmwares omit known apps from launcher queries, but resolve their package launch intent.
+        for (String[] app : SHELF) addAllAppsPackage(c, pm, app[2], seen, items);
+        for (String pkg : new String[] {"com.google.android.youtube", "com.android.vending",
+                "com.seena.app", "watch.kino", "top.rootu.lampa", "io.gh.reisxd.tizentube.cobalt",
+                "llc.itdev.incy", "io.github.jqssun.airplay", "com.applemusicktv"})
+            addAllAppsPackage(c, pm, pkg, seen, items);
+        if (settingsPkg != null) {
+            Item settings = shortcut(ANDROID_SETTINGS, "tv-settings",
+                    Ui.ru ? "Настройки ТВ" : Ui.tr("Ajustes da TV", "TV Settings"), "tv_settings");
+            settings.pkg = settingsPkg;
+            settings.tile = tvSettingsFavoriteTile(c);
+            items.add(settings);
         }
         Collections.sort(items, (a, b) -> a.label.toLowerCase(Locale.ROOT).compareTo(b.label.toLowerCase(Locale.ROOT)));
         synchronized (HomeApps.class) {
             TILES.keySet().removeIf(k -> k.contains(".") && !seen.contains(k));
         }
-        // Android TV Settings is a system activity and may not advertise a TV launcher icon.
-        // Always expose it as a normal All Apps tile, using the same action as the TV Settings shortcut.
-        boolean tvSettingsPresent = false;
-        for (Item item : items) {
-            if ("com.android.tv.settings".equals(item.pkg)) {
-                tvSettingsPresent = true;
-                break;
-            }
-        }
-        if (!tvSettingsPresent) {
-            items.add(special(c, ANDROID_SETTINGS, "tv-settings", "Настройки ТВ", "tv_settings"));
-        }
         return items;
+    }
+
+    private static String settingsPackage(PackageManager pm) {
+        try {
+            ResolveInfo ri = pm.resolveActivity(new Intent(Settings.ACTION_SETTINGS), 0);
+            return ri != null && ri.activityInfo != null && ri.activityInfo.enabled
+                    ? ri.activityInfo.packageName : null;
+        } catch (RuntimeException ignored) { return null; }
+    }
+
+    private static void addAllAppsPackage(Context c, PackageManager pm, String pkg,
+                                           Set<String> seen, List<Item> items) {
+        if (seen.contains(pkg)) return;
+        try {
+            ApplicationInfo app = pm.getApplicationInfo(pkg, 0);
+            if (!app.enabled || launchIntent(pm, pkg) == null) return;
+            Item it = new Item();
+            it.kind = APP;
+            it.pkg = it.key = pkg;
+            it.label = String.valueOf(pm.getApplicationLabel(app));
+            it.tile = brandedAllAppsTile(c, pkg);
+            items.add(it);
+            seen.add(pkg);
+        } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {}
     }
 
     private static Item special(Context c, int kind, String key, String label, String symbol) {

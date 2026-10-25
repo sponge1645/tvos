@@ -42,6 +42,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final android.os.Bundle settings;
     private final SurfaceView surface;
     private final View transitionCover;
+    private final ScreensaverFade coverFade;
     static final long TRANSITION_MS = 600;
     private long entranceNotBefore;
     private boolean exiting, entered;
@@ -145,6 +146,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         transitionCover.setBackgroundColor(Color.BLACK);
         transitionCover.setAlpha(1f);
         addView(transitionCover, new LayoutParams(-1, -1));
+        coverFade = new ScreensaverFade(transitionCover);
         loadPlaylist();
     }
 
@@ -196,7 +198,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         running = true;
         exiting = false;
         entered = false;
-        transitionCover.animate().cancel();
+        coverFade.cancel();
         transitionCover.setAlpha(1f);
         weatherData.refreshIfStale();
         // Keep weather hidden until the first video and location fade in.
@@ -223,9 +225,8 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             return;
         }
         entered = true;
-        transitionCover.animate().cancel();
-        transitionCover.animate().alpha(0f).setDuration(TRANSITION_MS)
-                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).start();
+        coverFade.cancel();
+        coverFade.start(0f, TRANSITION_MS, null);
     }
 
     /** Use the same cover, duration and easing in both directions, including interrupted entry. */
@@ -239,20 +240,18 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         videoFade.animate().cancel();
         aerialLocation.animate().cancel();
         aerialWeather.animate().cancel();
-        transitionCover.animate().cancel();
+        coverFade.cancel();
         // Keep the current cover opacity when entry is interrupted; never flash the full image.
         handler.postDelayed(finished, TRANSITION_MS + 150);
-        transitionCover.animate().alpha(1f).setDuration(TRANSITION_MS)
-                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                .withEndAction(() -> {
-                    handler.removeCallbacks(finished);
-                    finished.run();
-                }).start();
+        coverFade.start(1f, TRANSITION_MS, () -> {
+            handler.removeCallbacks(finished);
+            finished.run();
+        });
     }
 
     void stop() {
         running = false;
-        transitionCover.animate().cancel();
+        coverFade.cancel();
         transitionCover.setAlpha(1f);
         generation++;
         catalogGeneration++;

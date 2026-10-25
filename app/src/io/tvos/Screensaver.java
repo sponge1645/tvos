@@ -10,6 +10,8 @@ import android.service.dreams.DreamService;
 public class Screensaver extends DreamService {
     private VideoDream view;
     private boolean dreaming;
+    private ScreensaverFade legacyWindowFade;
+    private boolean finishing, waking;
 
     private android.app.Activity dreamActivity() {
         if (getWindow() == null) return null;
@@ -25,6 +27,12 @@ public class Screensaver extends DreamService {
 
     private void finishWithFade() {
         android.app.Activity activity = dreamActivity();
+        if (finishing) return;
+        finishing = true;
+        if (legacyWindowFade != null) {
+            legacyWindowFade.start(0f, VideoDream.TRANSITION_MS, this::finish);
+            return;
+        }
         finish();
         // DreamActivity supplies its own animations; override after its finishAndRemoveTask call.
         if (activity != null) activity.overridePendingTransition(0, R.anim.screensaver_window_exit);
@@ -37,12 +45,25 @@ public class Screensaver extends DreamService {
         setInteractive(false);
         setFullscreen(true);
         setScreenBright(true);
+        android.util.Log.i("tvOS-Dream", "Attached SDK=" + android.os.Build.VERSION.SDK_INT
+                + " frameFade=" + (android.os.Build.VERSION.SDK_INT <= 29)
+                + " animatorsEnabled=" + android.animation.ValueAnimator.areAnimatorsEnabled());
         view = new VideoDream(this);
         setContentView(view);
         // Older Android versions use a dream window without DreamActivity.
         if (getWindow() != null) {
             android.view.WindowManager.LayoutParams attrs = getWindow().getAttributes();
-            attrs.windowAnimations = R.style.ScreensaverWindowAnimations;
+            if (android.os.Build.VERSION.SDK_INT <= 29) {
+                // A TYPE_DREAM window on Android 9/10, without DreamActivity transitions.
+                attrs.windowAnimations = 0;
+                attrs.alpha = 0f;
+                legacyWindowFade = new ScreensaverFade(getWindow().getDecorView(), value -> {
+                    if (getWindow() == null) return;
+                    android.view.WindowManager.LayoutParams current = getWindow().getAttributes();
+                    current.alpha = value;
+                    getWindow().setAttributes(current);
+                }, 0f);
+            } else attrs.windowAnimations = R.style.ScreensaverWindowAnimations;
             getWindow().setAttributes(attrs);
         }
     }
@@ -50,27 +71,34 @@ public class Screensaver extends DreamService {
     @Override public void onDreamingStarted() {
         super.onDreamingStarted();
         dreaming = true;
+        finishing = false;
+        waking = false;
         if (view != null) view.post(() -> {
-            if (!dreaming) return;
+            if (!dreaming || waking) return;
             android.app.Activity activity = dreamActivity();
             if (activity != null) activity.overridePendingTransition(R.anim.screensaver_window_enter, 0);
+            if (legacyWindowFade != null)
+                legacyWindowFade.start(1f, VideoDream.TRANSITION_MS, null);
             view.startAfterWindowFade();
         });
     }
 
     @Override public void onWakeUp() {
+        waking = true;
         if (view != null) view.fadeExit(this::finishWithFade);
         else finishWithFade();
     }
 
     @Override public void onDreamingStopped() {
         dreaming = false;
+        if (legacyWindowFade != null) legacyWindowFade.cancel();
         if (view != null) view.stop();
         super.onDreamingStopped();
     }
 
     @Override public void onDetachedFromWindow() {
         dreaming = false;
+        if (legacyWindowFade != null) legacyWindowFade.cancel();
         if (view != null) view.stop();
         super.onDetachedFromWindow();
     }

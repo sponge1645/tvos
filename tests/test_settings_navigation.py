@@ -11,7 +11,7 @@ def method(signature):
     while depth:
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[start:end]
-body=''.join(method(s) for s in ['        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels('])
+body=''.join(method(s) for s in ['        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels(', '        private String[] menuButtonLabels(', '        private String menuButtonLabel('])
 constants=sorted(set(re.findall(r'case ([A-Z_]+):',body)) | {'MAIN'})
 header=r'''import java.util.*;
 public class SettingsHarness {
@@ -19,10 +19,11 @@ public class SettingsHarness {
  static class Prefs {static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
  static class HomeData {static HomeData get(Object c){return new HomeData();}void settingsChanged(){}}
  static class Store {Map<String,Object> m=new HashMap<>();boolean contains(String k){return m.containsKey(k);}boolean getBoolean(String k,boolean d){return m.containsKey(k)?(Boolean)m.get(k):d;}int getInt(String k,int d){return m.containsKey(k)?(Integer)m.get(k):d;}Store edit(){return this;}Store putBoolean(String k,boolean v){m.put(k,v);return this;}Store putInt(String k,int v){m.put(k,v);return this;}void apply(){}}
- Store store=new Store();int screen,focus,adjusted;
+ List<Integer> menuButtonRows=new ArrayList<>(Arrays.asList(0,1,3,5,4,2));
+ Store store=new Store();int screen,focus,adjusted,moved;
  static final String[] THEMES={"auto","light","dark"},LANGUAGES={"ru","en"},UNITS={"auto","C","F"};
  Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Object getContext(){return this;}void invalidate(){}
- String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleVpnTop(){}void toggleMenuButton(){}
+ String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleVpnTop(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
  void arrow(int direction){if(canAdjustMenu())adjustMenu(direction);}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
@@ -58,6 +59,10 @@ tests=r'''
    h.focus=i+1;h.arrow(1);check(h.store.getBoolean(overlayKeys[i],false),"reindexed overlay toggles its own setting");
    h.arrow(-1);check(!h.store.getBoolean(overlayKeys[i],true),"reindexed overlay can toggle back");
   }
+  h.screen=MENU_BUTTONS;h.focus=3;h.arrow(1);check(h.moved==1,"Menu Bar arrows reorder instead of toggling");
+  h.focus=6;check(!h.canAdjustMenu(),"VPN app configuration is an OK-only action");
+  Ui.ru=false;check(h.menuLabels()[3].equals("Network")&&h.menuLabels()[6].equals("VPN App"),"Menu Bar labels follow saved rows");
+  Ui.ru=true;check(h.menuLabels()[3].equals("Сеть"),"network button has Russian label");
   h.screen=MAIN;Ui.ru=true;check(h.menuLabels()[6].equals("Dock"),"Dock naming matches both languages");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");
  }

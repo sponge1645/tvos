@@ -26,6 +26,7 @@ nav_body=''.join(method(home,s) for s in [
  '    private void syncVisibleTabs(', '    private int availableTopButton(', '    private boolean clockButtonEnabled('])
 harness='''import java.util.*;
 class Prefs {
+ static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}
  static int version;private static int categoryVersion=-1,categoryMask;private static int[] categoryOrderCache;
  static class Store {
   final Map<String,Object> values=new HashMap<>();
@@ -46,7 +47,7 @@ class CategoryEditor {
  void open(){openCategoryEditor();}void toggle(){toggleCategory();}void move(int d){moveCategory(d);}
 }
 class HomeNavigation {
- boolean searchMode;int actions=31,tab,topIndex,zone,cancels;
+ boolean searchMode;int actions=63,tab,topIndex,zone,cancels;
  static final int Z_TOP=1,Z_CARDS=2,Z_SHELF=3;
  void selectTab(int id){tab=id;}void cancelRouletteWork(){cancels++;}
  void sync(){syncVisibleTabs();}
@@ -70,10 +71,10 @@ public class CategoriesHarness {
    check(Prefs.firstCategory()==(visible.isEmpty()?-1:visible.get(0)),"first enabled follows configured order");
    check(Prefs.lastCategory()==(visible.isEmpty()?-1:visible.get(visible.size()-1)),"last enabled follows configured order");
    for(int i=0;i<visible.size();i++)check(Prefs.categoryPosition(visible.get(i))==i+1,"visible position ignores disabled entries");
-   for(int actions:new int[]{0,1,8,16,21,31})for(boolean search:new boolean[]{false,true}){
+   for(int actions:new int[]{0,1,8,16,21,31,32,63})for(boolean search:new boolean[]{false,true}){
     HomeNavigation nav=new HomeNavigation();nav.actions=actions;nav.searchMode=search;
     List<Integer> controls=new ArrayList<>();if(!search)controls.addAll(visible);
-    for(int id=5;id<10;id++)if((actions&(1<<(id-5)))!=0)controls.add(id);
+    for(int id:Prefs.topButtonOrder())if((actions&(1<<id))!=0)controls.add(5+id);
     for(int i=0;i<controls.size();i++){
      int current=controls.get(i);
      check(nav.next(current,-1)==controls.get(Math.max(0,i-1)),"left follows visual order, skips hidden categories/actions");
@@ -111,7 +112,7 @@ public class CategoriesHarness {
   nav.zone=HomeNavigation.Z_CARDS;nav.sync();
   check(nav.zone==HomeNavigation.Z_SHELF&&nav.cancels>0,"all-off cancels hidden roulette and exits cards focus");
   nav.actions=16;nav.zone=HomeNavigation.Z_TOP;nav.topIndex=0;nav.sync();
-  check(nav.topIndex==9,"all-off can still reach the clock action");
+  check(nav.topIndex==9,"all-off can still reach enabled clock action");
   nav.actions=0;nav.zone=HomeNavigation.Z_TOP;nav.sync();
   check(nav.zone==HomeNavigation.Z_SHELF,"no visible top controls returns focus to Dock");
   permutation(new ArrayList<>(Arrays.asList(0,1,2,3,4)),0);
