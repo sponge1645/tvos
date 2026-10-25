@@ -51,7 +51,6 @@ final class Recs {
 
     interface Listener { void onRecs(); }
 
-    private static final String API = "https://api.themoviedb.org/3";
     private static final String IMAGES = "https://image.tmdb.org/t/p/original";
     private static final long LIST_EVERY = 6 * 3600_000L;
     /** Bump when what is saved for each title changes (the saved list is discarded and fetched again). */
@@ -160,7 +159,7 @@ final class Recs {
     void removeListener(Listener l) { listeners.remove(l); }
 
     static boolean hasKey(Context c) {
-        return !Config.TMDB_KEY.trim().isEmpty();
+        return TmdbClient.hasKey();
     }
 
     /** Last fetch, for the settings screen: {count, error, at}. Written by the home screen (another process). */
@@ -1009,28 +1008,7 @@ final class Recs {
     }
 
     private JSONObject get(String path) throws IOException, org.json.JSONException {
-        String key = readKey();
-        if (key == null) throw new IOException("no TMDB key");
-        boolean bearer = key.startsWith("eyJ");   // read access token (v4) or API key (v3)
-        String url = API + path + (bearer ? "" : (path.contains("?") ? "&" : "?") + "api_key=" + URLEncoder.encode(key, "UTF-8"));
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setConnectTimeout(8000);
-        c.setReadTimeout(8000);
-        c.setRequestProperty("Accept", "application/json");
-        if (bearer) c.setRequestProperty("Authorization", "Bearer " + key);
-        try {
-            int code = c.getResponseCode();
-            if (code == 401) throw new IOException("TMDB rejected the key");
-            if (code != 200) throw new IOException("TMDB returned HTTP " + code);
-            return new JSONObject(read(c.getInputStream()));
-        } finally {
-            c.disconnect();
-        }
-    }
-
-    private String readKey() {
-        String key = Config.TMDB_KEY.trim();
-        return key.isEmpty() ? null : key;
+        return TmdbClient.get(path);
     }
 
     // MARK: - Images (TMDB originals on disk, up to 24 so the whole list fits; this hour's kept ready in memory)
