@@ -1879,13 +1879,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             float hc = hx + hw * (i + 0.5f);
             c.drawText(hourText[i], hc, r.top + 54 * k, hourPaint);
             String hourSymbol = Symbols.weather(wx.hourCode.get(i), wx.hourDay.get(i));
-            Bitmap hourIcon = Symbols.get(getContext(), hourSymbol);
             float iconSize = 36 * k;
-            float iconHeight = hourIcon == null ? 0 : Symbols.width(getContext(), hourSymbol, iconSize)
-                    * hourIcon.getHeight() / hourIcon.getWidth();
+            float iconHeight = Symbols.height(getContext(), hourSymbol, iconSize);
             // Center the combined icon + temperature on the card, independently of the hour heading.
             float iconY = r.centerY() - (54 * k - iconHeight / 2) / 2;
-            float temperatureBase = hourIcon == null ? r.centerY() + Ui.halfCap(hourTemp) : iconY + 54 * k;
+            float temperatureBase = iconHeight == 0 ? r.centerY() + Ui.halfCap(hourTemp) : iconY + 54 * k;
             Symbols.draw(getContext(), c, hourSymbol, hc, iconY, iconSize, drawerInk(0.9f));
             c.drawText(hourTempText[i], hc, temperatureBase, hourTemp);
         }

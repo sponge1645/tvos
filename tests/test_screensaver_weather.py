@@ -11,7 +11,7 @@ sources={
 'android/graphics/RectF.java':'package android.graphics;public class RectF {public float left,top,right,bottom;public RectF(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}}',
 'android/graphics/Canvas.java':'''package android.graphics;public class Canvas {public static Canvas raster;public Paint iconPaint,textPaint;public RectF iconRect;public float textBaseline;public Canvas(){}public Canvas(Bitmap b){raster=this;}public void drawBitmap(Bitmap b,Object src,RectF dst,Paint p){iconRect=dst;iconPaint=p;}public void drawBitmap(Bitmap b,float x,float y,Paint p){}public void drawText(String s,float x,float y,Paint p){textPaint=p;textBaseline=y;}}''',
 'io/tvos/Ui.java':'package io.tvos;final class Ui {static Object semibold=new Object();static float cap(android.graphics.Paint p){return p.size*.7f;}}',
-'io/tvos/Symbols.java':'package io.tvos;final class Symbols {static android.graphics.Bitmap icon=new android.graphics.Bitmap(100,50);static android.graphics.Bitmap get(android.content.Context c,String n){return n.equals("missing")?null:icon;}}',
+'io/tvos/Symbols.java':'package io.tvos;final class Symbols {static android.graphics.Bitmap icon=new android.graphics.Bitmap(100,50);static float aspect(android.content.Context c,String n){return n.equals("missing")?0:2;}static android.graphics.Bitmap mask(android.content.Context c,String n,int w,int h){return n.equals("missing")?null:android.graphics.Bitmap.createBitmap(w,h,android.graphics.Bitmap.Config.ARGB_8888);}}',
 'io/tvos/WeatherBadgeHarness.java':'''package io.tvos;import android.graphics.*;import android.content.Context;
 public class WeatherBadgeHarness {
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
@@ -25,7 +25,7 @@ public class WeatherBadgeHarness {
   check(c.iconRect.left==20 && badge.height()-c.textBaseline>=20,"transparent blur padding on both sides");
   int allocations=Bitmap.allocations;for(int i=0;i<100;i++)badge.setWeather("cloud","+10°");
   check(Bitmap.allocations==allocations,"stable weather does not allocate each frame");
-  badge.setWeather("cloud","+11°");check(Bitmap.allocations==allocations+1,"changed temperature rebuilds badge once");
+  badge.setWeather("cloud","+11°");check(Bitmap.allocations==allocations+2,"changed temperature rebuilds badge and output-sized vector mask once");
   context.resources.metrics.scaledDensity=3;badge.setWeather("cloud","+11°");
   check(Canvas.raster.textPaint.size==72,"font scale follows location label");
   badge.setWeather("missing","+11°");check(Canvas.raster.iconPaint==null && Canvas.raster.textPaint!=null,"missing icon keeps temperature");

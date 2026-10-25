@@ -57,3 +57,11 @@ These do not replace Android compilation or device UI/media tests.
 
 Never commit config.properties, signing keys, generated out/ files, personal tokens,
 or backup directories. APKs are distributed as release assets rather than source files.
+
+## tvOS 1.1 development
+
+Branch `dev-1.1`, preview `1.1.0-dev.1` (versionCode 7), based on stable 1.0.3.
+
+The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
+
+Run `python3 tests/test_svg_symbols.py` and `python3 tests/test_screensaver_weather.py` for SVG rendering / sizing and weather badge checks. Real-device performance checks are still required, especially on Android 9 TVs. The rest of 1.1 remains in `docs/ROADMAP.md`.

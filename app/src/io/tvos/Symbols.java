@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Monochrome PNG icons in assets/symbols. Drawn
+ * Cached monochrome SVG paths in assets/symbols, with PNG fallback. Drawn
  * like text: `pointSize` is the size of the font next to the icon, and the icon is centered on that font's cap height.
  */
 final class Symbols {
@@ -23,34 +23,54 @@ final class Symbols {
      * Reference pixels per em. Each symbol keeps its original layout size even when replaced by a larger PNG.
      */
     private static final float PX_PER_POINT = 96 * 1.5f;
-    private static final Map<String, Bitmap> CACHE = new HashMap<>();
+    private static final Map<String, Icon> CACHE = new HashMap<>();
+    private static final class Icon {
+        final SvgSymbol svg;
+        final Bitmap png;
+        final float width, height;
+        Icon(SvgSymbol svg) { this.svg = svg; png = null; width = svg.width; height = svg.height; }
+        Icon(Bitmap png) { this.png = png; svg = null; width = png.getWidth(); height = png.getHeight(); }
+    }
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private static final RectF RECT = new RectF();
 
-    static Bitmap get(Context c, String name) {
+    private static Icon get(Context c, String name) {
         synchronized (CACHE) {
             if (CACHE.containsKey(name)) return CACHE.get(name);
-            Bitmap b = null;
-            try (InputStream in = c.getAssets().open("symbols/" + name + ".png")) {
-                b = BitmapFactory.decodeStream(in);
-                if (b != null) {
-                    b = b.extractAlpha();
-                    b.setHasMipMap(true);
-                }
-            } catch (IOException ignored) {
+            Icon icon = null;
+            try (InputStream in = c.getAssets().open("symbols/" + name + ".svg")) {
+                icon = new Icon(SvgSymbol.read(in));
+            } catch (IOException e) {
+                // Existing PNGs remain a fallback if an asset is missing or unsupported.
             }
-            CACHE.put(name, b);
-            return b;
+            if (icon == null) {
+                try (InputStream in = c.getAssets().open("symbols/" + name + ".png")) {
+                    Bitmap b = BitmapFactory.decodeStream(in);
+                    if (b != null) { b = b.extractAlpha(); b.setHasMipMap(true); icon = new Icon(b); }
+                } catch (IOException ignored) { }
+            }
+            CACHE.put(name, icon);
+            return icon;
         }
     }
 
     static float width(Context c, String name, float pointSize) {
-        Bitmap b = get(c, name);
-        return b == null ? 0 : b.getWidth() * scale(name, b, pointSize);
+        Icon icon = get(c, name);
+        return icon == null ? 0 : icon.width * scale(name, icon, pointSize);
     }
 
-    private static float scale(String name, Bitmap b, float pointSize) {
-        return referenceSize(name) * pointSize / PX_PER_POINT / Math.max(b.getWidth(), b.getHeight());
+    static float height(Context c, String name, float pointSize) {
+        Icon icon = get(c, name);
+        return icon == null ? 0 : icon.height * scale(name, icon, pointSize);
+    }
+
+    static float aspect(Context c, String name) {
+        Icon icon = get(c, name);
+        return icon == null ? 0 : icon.width / icon.height;
+    }
+
+    private static float scale(String name, Icon icon, float pointSize) {
+        return referenceSize(name) * pointSize / PX_PER_POINT / Math.max(icon.width, icon.height);
     }
 
     private static int referenceSize(String name) {
@@ -77,18 +97,32 @@ final class Symbols {
 
     /** Draws centered at (cx, cy) in the given color (lighter, translucent parts of the symbol stay lighter). */
     static void draw(Context c, Canvas canvas, String name, float cx, float cy, float pointSize, int color) {
-        Bitmap b = get(c, name);
-        if (b == null) return;
-        synchronized (PAINT) {   // card loading (another thread) also draws symbols
-            drawLocked(canvas, b, cx, cy, scale(name, b, pointSize), color);
+        Icon icon = get(c, name);
+        if (icon == null) return;
+        float scale = scale(name, icon, pointSize);
+        synchronized (PAINT) { // Card loading also draws symbols on a background thread.
+            float w = icon.width * scale, h = icon.height * scale;
+            drawLocked(canvas, icon, cx - w / 2, cy - h / 2, w, h, color);
         }
     }
 
-    private static void drawLocked(Canvas canvas, Bitmap b, float cx, float cy, float scale, int color) {
-        float w = b.getWidth() * scale, h = b.getHeight() * scale;
-        PAINT.setColor(color);
-        RECT.set(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
-        canvas.drawBitmap(b, null, RECT, PAINT);
+    /** Rasterize at the actual output size only for the cached, glyph-shadow screensaver badge. */
+    static Bitmap mask(Context c, String name, int width, int height) {
+        Icon icon = get(c, name);
+        if (icon == null || width <= 0 || height <= 0) return null;
+        Bitmap result = Bitmap.createBitmap(width, height, Bitmap.Config.ALPHA_8);
+        Canvas canvas = new Canvas(result);
+        synchronized (PAINT) { drawLocked(canvas, icon, 0, 0, width, height, 0xFFFFFFFF); }
+        return result;
+    }
+
+    private static void drawLocked(Canvas canvas, Icon icon, float left, float top, float width, float height, int color) {
+        if (icon.svg != null) icon.svg.draw(canvas, left, top, width, height, color, PAINT);
+        else {
+            PAINT.setColor(color);
+            RECT.set(left, top, left + width, top + height);
+            canvas.drawBitmap(icon.png, null, RECT, PAINT);
+        }
     }
 
     /** Weather symbol for an Open-Meteo WMO weather code. */

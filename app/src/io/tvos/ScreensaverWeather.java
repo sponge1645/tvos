@@ -32,11 +32,12 @@ final class ScreensaverWeather {
         text.setTextSize(textSize); // exactly the location label's 24 sp
         text.setColor(0xEBFFFFFF);
         text.setShadowLayer(8 * density, 0, 2 * density, 0xE6000000);
-        Bitmap icon = Symbols.get(context, symbol);
+        float aspect = Symbols.aspect(context, symbol);
         // Normalize every weather symbol to the letters' cap height, including wide clouds.
         float iconHeight = Ui.cap(text);
-        float iconWidth = icon == null ? 0 : iconHeight * icon.getWidth() / icon.getHeight();
-        float gap = icon == null ? 0 : 10 * density;
+        float iconWidth = iconHeight * aspect;
+        float gap = aspect == 0 ? 0 : 10 * density;
+        Bitmap icon = Symbols.mask(context, symbol, (int) Math.ceil(iconWidth), (int) Math.ceil(iconHeight));
         baseline = padding - text.ascent();
         int width = Math.max(1, (int) Math.ceil(padding * 2 + iconWidth + gap + text.measureText(degrees)));
         int height = Math.max(1, (int) Math.ceil(padding * 2 + text.descent() - text.ascent()));
