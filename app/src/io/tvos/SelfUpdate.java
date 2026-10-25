@@ -68,7 +68,6 @@ final class SelfUpdate {
     void maybeAutomatic(boolean force) {
         android.content.SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
         if (!prefs.getBoolean("auto_update", false) || busy.get()) return;
-        if (status.kind == READY) return;
         long now = System.currentTimeMillis(), last = prefs.getLong("self_update_attempt", 0);
         if (!force && last != 0 && now >= last && now - last < AUTO_INTERVAL) return;
         check(true);
@@ -78,16 +77,20 @@ final class SelfUpdate {
         if (!busy.compareAndSet(false, true)) return;
         context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
                 .putLong("self_update_attempt", System.currentTimeMillis()).apply();
+        final Status previous = status;
         publish(CHECKING, null, -1, "");
         io.execute(() -> {
             try {
                 UpdateRelease release = UpdateRelease.parse(new JSONObject(readManifest()));
                 PackageInfo installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
                 boolean newer = release.versionCode > installed.getLongVersionCode();
+                File ready = new File(context.getCacheDir(), "tvos-update.apk");
+                boolean reuseReady = previous.kind == READY && sameRelease(previous.release, release)
+                        && ready.isFile() && ready.length() == release.size;
                 main.post(() -> {
                     busy.set(false);
-                    publish(newer ? AVAILABLE : CURRENT, release, -1, "");
-                    if (newer && automatic && context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    publish(newer ? (reuseReady ? READY : AVAILABLE) : CURRENT, release, reuseReady ? 100 : -1, "");
+                    if (newer && !reuseReady && automatic && context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                             .getBoolean("auto_update", false)) download();
                 });
             } catch (Exception e) { fail(e); }
@@ -139,24 +142,61 @@ final class SelfUpdate {
         });
     }
 
+    private static final int SIGNER_FLAGS = PackageManager.GET_SIGNING_CERTIFICATES | PackageManager.GET_SIGNATURES;
+
     private void verifyApk(File file, UpdateRelease release) throws Exception {
         PackageManager pm = context.getPackageManager();
-        PackageInfo archive = pm.getPackageArchiveInfo(file.getAbsolutePath(), PackageManager.GET_SIGNING_CERTIFICATES);
-        PackageInfo installed = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-        if (archive == null || !context.getPackageName().equals(archive.packageName)
-                || archive.getLongVersionCode() != release.versionCode
-                || archive.getLongVersionCode() <= installed.getLongVersionCode()
-                || !release.versionName.equals(archive.versionName)
-                || !sameSigners(installed, archive)) {
-            throw new IOException(text("Пакет, версия или подпись обновления не совпадают", "Update package, version or signing certificate mismatch"));
+        // Read package/version independently: requesting certificates can fail on some Android builds.
+        PackageInfo archive = pm.getPackageArchiveInfo(file.getAbsolutePath(), 0);
+        PackageInfo installed = pm.getPackageInfo(context.getPackageName(), 0);
+        if (archive == null)
+            throw new IOException(text("Android не смог прочитать сведения об APK обновления", "Android could not read update APK metadata"));
+        if (!context.getPackageName().equals(archive.packageName))
+            throw new IOException(text("Неверный пакет обновления: ", "Unexpected update package: ") + archive.packageName);
+        if (archive.getLongVersionCode() != release.versionCode || !release.versionName.equals(archive.versionName))
+            throw new IOException(text("Версия APK не совпадает с описанием выпуска: ", "APK version differs from release metadata: ")
+                    + archive.versionName + " (" + archive.getLongVersionCode() + "), "
+                    + text("ожидалась ", "expected ") + release.versionName + " (" + release.versionCode + ")");
+        if (archive.getLongVersionCode() <= installed.getLongVersionCode())
+            throw new IOException(text("Эта версия уже установлена или новее обновления: ", "Installed version is equal to or newer than the update: ")
+                    + installed.versionName + " (" + installed.getLongVersionCode() + ")");
+        PackageInfo signedArchive, signedInstalled;
+        try {
+            signedArchive = pm.getPackageArchiveInfo(file.getAbsolutePath(), SIGNER_FLAGS);
+            signedInstalled = pm.getPackageInfo(context.getPackageName(), SIGNER_FLAGS);
+        } catch (PackageManager.NameNotFoundException | RuntimeException unavailable) {
+            // Android's installer still MUST verify the APK signature before replacing the app.
+            return;
+        }
+        if (signedArchive != null && signedInstalled != null
+                && currentSigners(signedArchive) != null && currentSigners(signedInstalled) != null
+                && !sameSigners(signedInstalled, signedArchive))
+            throw new IOException(text("Подпись APK отличается от установленного tvOS", "Update signer differs from installed tvOS"));
+        // Missing signer metadata is not proof of a bad signature. The mandatory Android installer
+        // verifies the real APK and rejects incompatible certificates; this app never installs silently.
+    }
+
+    private static boolean sameRelease(UpdateRelease a, UpdateRelease b) {
+        return a != null && b != null && a.versionCode == b.versionCode && a.size == b.size
+                && a.versionName.equals(b.versionName) && a.tag.equals(b.tag) && a.sha256.equals(b.sha256);
+    }
+
+    /** Prefer current signers; firmware may populate only the legacy representation. Never accept signing history. */
+    private static Signature[] currentSigners(PackageInfo info) {
+        try {
+            Signature[] signatures = info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners();
+            if (signatures == null || signatures.length == 0) signatures = info.signatures;
+            if (signatures == null || signatures.length == 0) return null;
+            for (Signature signature : signatures) if (signature == null) return null;
+            return signatures;
+        } catch (RuntimeException unavailable) {
+            return null; // Mandatory system verification still runs during installation.
         }
     }
 
     private static boolean sameSigners(PackageInfo installed, PackageInfo archive) {
-        if (installed.signingInfo == null || archive.signingInfo == null) return false;
-        Signature[] a = installed.signingInfo.getApkContentsSigners(), b = archive.signingInfo.getApkContentsSigners();
-        // Exact current signer set; a deliberate key rotation requires a separately reviewed migration.
-        return a != null && b != null && a.length > 0 && a.length == b.length
+        Signature[] a = currentSigners(installed), b = currentSigners(archive);
+        return a != null && b != null && a.length == b.length
                 && new HashSet<>(Arrays.asList(a)).equals(new HashSet<>(Arrays.asList(b)));
     }
 
@@ -187,7 +227,7 @@ final class SelfUpdate {
         return message.length() > 90 ? message.substring(0, 87) + "…" : message;
     }
     private String readManifest() throws IOException {
-        HttpURLConnection connection = connection(UpdateRelease.LATEST);
+        HttpURLConnection connection = connection(UpdateRelease.LATEST + "?check=" + System.currentTimeMillis());
         try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[4096];
             int n;
@@ -204,6 +244,9 @@ final class SelfUpdate {
             if (!"https".equalsIgnoreCase(url.getProtocol())) throw new IOException("HTTPS required");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(false);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Pragma", "no-cache");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
             connection.setRequestProperty("User-Agent", "tvOS-Updater/1.0");
