@@ -213,6 +213,62 @@ final class Prefs {
         put("category_order", value.toString());
     }
 
+    // Menu Bar action IDs: Search, TV, VPN, Settings, Clock, Network.
+    private static final int[] DEFAULT_TOP_BUTTON_ORDER = {0, 1, 2, 3, 5, 4};
+    private static int topButtonVersion = -1, topButtonMask;
+    private static int[] topButtonOrderCache;
+
+    private static void readTopButtons() {
+        if (topButtonOrderCache != null && topButtonVersion == version) return;
+        int[] order = new int[6];
+        boolean[] seen = new boolean[6];
+        int count = 0;
+        for (String value : sp().getString("top_button_order", "0,1,2,3,5,4").split(",")) {
+            try {
+                int id = Integer.parseInt(value);
+                if (id >= 0 && id < 6 && !seen[id]) { order[count++] = id; seen[id] = true; }
+            } catch (NumberFormatException ignored) {}
+        }
+        for (int id : DEFAULT_TOP_BUTTON_ORDER) if (!seen[id]) order[count++] = id;
+        topButtonMask = 0;
+        for (int id = 0; id < 6; id++)
+            if (sp().getBoolean("top_button_" + id, id != 2)) topButtonMask |= 1 << id;
+        topButtonOrderCache = order;
+        topButtonVersion = version;
+    }
+
+    static int[] topButtonOrder() { readTopButtons(); return topButtonOrderCache; }
+    static boolean topButtonEnabled(int id) {
+        readTopButtons();
+        return id >= 0 && id < 6 && (topButtonMask & 1 << id) != 0;
+    }
+    static int topButtonCount() { readTopButtons(); return Integer.bitCount(topButtonMask); }
+    static int topButtonPosition(int id) {
+        int position = 0;
+        for (int candidate : topButtonOrder()) if (topButtonEnabled(candidate)) {
+            position++;
+            if (candidate == id) return position;
+        }
+        return 0;
+    }
+    static void setTopButtonEnabled(int id, boolean enabled) {
+        if (id < 0 || id >= 6) throw new IllegalArgumentException("Invalid Menu Bar button");
+        put("top_button_" + id, enabled);
+    }
+    static void setTopButtonOrder(List<Integer> order) {
+        if (order.size() != 6) throw new IllegalArgumentException("Incomplete Menu Bar buttons");
+        boolean[] seen = new boolean[6];
+        StringBuilder value = new StringBuilder();
+        for (Integer id : order) {
+            if (id == null || id < 0 || id >= 6 || seen[id])
+                throw new IllegalArgumentException("Invalid Menu Bar button order");
+            seen[id] = true;
+            if (value.length() > 0) value.append(',');
+            value.append(id);
+        }
+        put("top_button_order", value.toString());
+    }
+
     // MARK: - Shelf
 
     /** Packages on the home shelf, in order; null until the user edits it (then the built-in list applies). */
