@@ -11,7 +11,9 @@ public class SearchFocusHarness {
  static class Prefs {static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}}
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;
  int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,shelfIndex,actions=63;
- boolean searchMode=true,enabled=true,rouletteFinished;int retargets,clicks;
+ boolean searchMode=true,enabled=true;int retargets,clicks;
+ static class Roulette {boolean finished(){return false;}}
+ final Roulette rouletteWork=new Roulette();
  List<Object> shelf=new ArrayList<>(Arrays.asList(new Object())),cards=new ArrayList<>(),searchResults=new ArrayList<>();
  static class RectF {float centerX(){return 10;}}
  RectF[] tileRects={new RectF()},cardRects={new RectF(),new RectF(),new RectF(),new RectF(),new RectF()},topRects=new RectF[11];

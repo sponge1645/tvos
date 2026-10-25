@@ -184,30 +184,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final RectF searchGlassBounds = new RectF();
     private boolean searchGlassVisible;
     private android.app.Dialog searchDialog;
-    private int roulettePosterSlot = Integer.MIN_VALUE;
     private boolean searchMode;
     private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
     private String searchQuery = "";
     private List<Recs.Pick> searchResults = new ArrayList<>();
     private int workEpoch;
-    private UiRequest rouletteRequest;
     private final SearchController searchWork;
-    private final java.util.List<Recs.Pick> roulette = new java.util.ArrayList<>();
-    private boolean rouletteLoading, rouletteSpinning, rouletteFinished;
-    private long rouletteStarted;
-    private int rouletteWinner;
-    private final java.util.Random rouletteRandom = new java.util.Random();
-    private final Runnable rouletteComplete = () -> {
-        if (!this.running || tab != 4 || !rouletteSpinning) return;
-        rouletteSpinning = false;
-        rouletteFinished = true;
-        // The winning poster becomes the focused, actionable card.
-        zone = Z_CARDS;
-        cardIndex = 0;
-        retarget(false);
-        heroDirty = true;
-        wake();
-    };
+    private final RouletteController rouletteWork;
 
     private int widgetIndex;    // with TalkBack on, the drawer's weather (0) or quotes (1) card can take the focus
     private List<Recs.Pick> cards = new ArrayList<>();
@@ -451,6 +434,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs = Recs.get(a);
         searchWork = new SearchController(handler, recs, () -> running && searchMode,
                 this::acceptSearchResults);
+        rouletteWork = new RouletteController(handler, recs, () -> running,
+                () -> tabEnabled(4), () -> tab == 4,
+                () -> { heroDirty = true; wake(); }, this::finishRoulette);
         click = new Click(a);
         ui = a.getSharedPreferences("home-ui", Context.MODE_PRIVATE);
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
@@ -536,7 +522,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         idle = false;
         Choreographer.getInstance().postFrameCallback(this);
         spoken.readAgain();
-        if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
+        if (tab == 4 && tabEnabled(4) && rouletteWork.picks().isEmpty() && !rouletteWork.loading()) loadRoulette();
         searchWork.resume(searchQuery);
     }
 
@@ -557,7 +543,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         data.removeListener(this);
         recs.removeListener(this);
         recs.setPosterWindow(java.util.Collections.emptyList());
-        roulettePosterSlot = Integer.MIN_VALUE;
+        rouletteWork.invalidatePosters();
         imageShaders.clear();
         dockLogos.clear();
         shadows.clear();
@@ -837,7 +823,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             heroDirty = true;
         }
         boolean marqueeActive = focusedPoster >= 0 && marqueeNeeded && up - marqueeSince >= 1000;
-        if (marqueeActive || rouletteSpinning) heroDirty = true;
+        if (marqueeActive || rouletteWork.spinning()) heroDirty = true;
         boolean dockMoving = step(dockSlide, dt) | dockLift.step(dt);
         if (dockEditing || dockLift.value > 0.001f) dockMoving = true;
         dockAnimating = dockMoving;
@@ -886,7 +872,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // Busy: something is moving, or the sheet or the drawer is open.
         boolean busy = tilesMoving || statusMoving || heroMoving || drawerItemsMoving || gridMoving || drawerMoving
                 || sheetMoving || toastFading || heroFading || bgFading || nightMoving || searchHeadingMoving
-                || toast != null || !toasts.isEmpty() || rouletteSpinning || dockMoving;
+                || toast != null || !toasts.isEmpty() || rouletteWork.spinning() || dockMoving;
         idle = !busy;
         if (busy) Choreographer.getInstance().postFrameCallback(this);
         else {
@@ -2331,7 +2317,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void back() {
-        if (rouletteSpinning) cancelRouletteWork();
+        if (rouletteWork.spinning()) cancelRouletteWork();
         if (dockEditing) { finishDockEdit(false); click.move(); return; }
         if (sheetOpen) {
             closeSheet();
@@ -2350,7 +2336,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void move(int dx, int dy) {
-        if (rouletteSpinning) return; // Keep remote focus on the running roulette until it stops.
+        if (rouletteWork.spinning()) return; // Keep remote focus on the running roulette until it stops.
         if (dockEditing) { if (dx != 0) shiftDock(dx); return; }
         if (sheetOpen) {
             moveGrid(dx, dy);
@@ -2484,7 +2470,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void activate() {
         wake();
-        if (rouletteSpinning) return;
+        if (rouletteWork.spinning()) return;
         HomeApps.Item it;
         RectF r;
         if (!sheetOpen && zone == WIDGETS) return;   // a widget is only read
@@ -2528,7 +2514,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             r = topRects[topIndex];
         } else if (zone == Z_CARDS) {
             if (tab == 4 && !searchMode) {
-                if (rouletteFinished && !roulette.isEmpty()) chooseWatchApp(roulette.get(rouletteWinner));
+                if (rouletteWork.finished() && !rouletteWork.picks().isEmpty()) chooseWatchApp(rouletteWork.picks().get(rouletteWork.winner()));
                 else spinRoulette();
                 return;
             }
@@ -3211,7 +3197,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** TalkBack moved to an item: the remote's focus goes there (opening or closing the drawer on the way). */
     private void a11yFocus(int id) {
         wake();
-        if (rouletteSpinning) return;
+        if (rouletteWork.spinning()) return;
         int group = (id - 1) / 1000, i = (id - 1) % 1000;
         if (group == GRID) {
             if (!sheetOpen || i >= others.size()) return;
@@ -3375,8 +3361,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (tab == 4 && !searchMode) {
             cards.clear();
-            if (!rouletteSpinning && !rouletteFinished) {
-                roulettePosterSlot = Integer.MIN_VALUE;
+            if (!rouletteWork.spinning() && !rouletteWork.finished()) {
+                rouletteWork.invalidatePosters();
                 recs.setPosterWindow(java.util.Collections.emptyList());
             }
             cardPage = 0;
@@ -3416,80 +3402,47 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
         if (index == tab || !tabEnabled(index)) return;
         if (tab == 4 || index == 4) {
-            cancelRouletteWork();
-            rouletteSpinning = false;
-            rouletteFinished = false;
-            rouletteStarted = 0L;
+            rouletteWork.reset();
         }
         tab = index;
         layoutLight();
         cardPage = 0;
         cardIndex = 0;
         updateCards();
-        if (tab == 4 && tabEnabled(4) && roulette.isEmpty() && !rouletteLoading) loadRoulette();
+        if (tab == 4 && tabEnabled(4) && rouletteWork.picks().isEmpty() && !rouletteWork.loading()) loadRoulette();
         heroDirty = true;
     }
 
     private void cancelRouletteWork() {
-        if (rouletteRequest != null) rouletteRequest.cancel();
-        rouletteRequest = null;
-        rouletteLoading = false;
-        handler.removeCallbacks(rouletteComplete);
-        if (rouletteSpinning) {
-            rouletteSpinning = false;
-            rouletteFinished = false;
-            rouletteStarted = 0L;
-        }
+        rouletteWork.cancel();
     }
 
     private void loadRoulette() {
-        if (!running || !tabEnabled(4) || rouletteLoading) return;
-        rouletteLoading = true;
-        rouletteRequest = recs.loadAcclaimed((results) -> {
-            if (!running || tab != 4) return;
-            rouletteRequest = null;
-            rouletteLoading = false;
-            roulette.clear();
-            roulette.addAll(results);
-            heroDirty = true;
-            wake();
-        });
+        rouletteWork.load();
     }
 
-    /** Advance a small poster window with the strip, rather than retaining the whole roulette catalog. */
     private void prepareRoulettePosters(int slot) {
-        if (!running || roulette.isEmpty() || slot == roulettePosterSlot) return;
-        roulettePosterSlot = slot;
-        List<Recs.Pick> window = new ArrayList<>(14);
-        // Fetch and retain the eventual winner first, even while it is still outside the moving strip.
-        window.add(roulette.get(rouletteWinner));
-        int center = rouletteWinner - slot, count = roulette.size();
-        for (int distance = 0; distance <= 6; distance++) {
-            window.add(roulette.get(Math.floorMod(center + distance, count)));
-            if (distance != 0) window.add(roulette.get(Math.floorMod(center - distance, count)));
-        }
-        recs.setPosterWindow(window);
-        for (Recs.Pick pick : window) recs.poster(pick);
+        rouletteWork.preparePosters(slot);
     }
 
-    private void spinRoulette() {
-        if (rouletteSpinning) return;
-        if (roulette.isEmpty()) {
-            loadRoulette();
-            showToast(Ui.ru ? "Загружаем фильмы…" : "Loading movies…");
-            return;
-        }
-        rouletteWinner = rouletteRandom.nextInt(roulette.size());
-        roulettePosterSlot = Integer.MIN_VALUE;
-        rouletteFinished = false;
-        rouletteSpinning = true;
+    private void finishRoulette() {
+        // The winning poster becomes the focused, actionable card.
         zone = Z_CARDS;
         cardIndex = 0;
         retarget(false);
-        rouletteStarted = SystemClock.uptimeMillis();
-        prepareRoulettePosters(57);
-        handler.removeCallbacks(rouletteComplete);
-        handler.postDelayed(rouletteComplete, 5000);
+        heroDirty = true;
+        wake();
+    }
+
+    private void spinRoulette() {
+        if (rouletteWork.spinning()) return;
+        if (!rouletteWork.spin()) {
+            showToast(Ui.ru ? "Загружаем фильмы…" : "Loading movies…");
+            return;
+        }
+        zone = Z_CARDS;
+        cardIndex = 0;
+        retarget(false);
         heroDirty = true;
         wake();
     }
@@ -3631,7 +3584,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void drawRoulette(Canvas c) {
         final float cx = (MARGIN + CONTENT_R) * k / 2f;
         final float cy = 480 * k;
-        if (!rouletteSpinning && !rouletteFinished) {
+        if (!rouletteWork.spinning() && !rouletteWork.finished()) {
             setRouletteButtonRect(rouletteButtonRect);
             RectF button = rouletteButtonRect;
             float focus = Ui.clamp(rouletteButtonFocus.value);
@@ -3640,7 +3593,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             Paint p = rouletteTextPaint;
             p.setTextSize(40.8f * k);
             p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, focus));
-            String label = rouletteLoading ? (Ui.ru ? "Загрузка фильмов…" : "Loading movies…")
+            String label = rouletteWork.loading() ? (Ui.ru ? "Загрузка фильмов…" : "Loading movies…")
                     : (Ui.ru ? "🎲  Случайный фильм" : "🎲  Random Movie");
             int saved = c.save();
             c.scale(scale, scale, cx, cy);
@@ -3648,8 +3601,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             c.restoreToCount(saved);
             return;
         }
-        if (roulette.isEmpty()) return;
-        final float elapsed = Math.min(1f, (SystemClock.uptimeMillis() - rouletteStarted) / 5000f);
+        if (rouletteWork.picks().isEmpty()) return;
+        final float elapsed = Math.min(1f, (SystemClock.uptimeMillis() - rouletteWork.started()) / 5000f);
         // 5 seconds at the same average poster speed, with smooth acceleration and braking.
         // Integrate a trapezoidal speed profile to avoid sudden jumps in position.
         final float accel = 0.08f, brake = 0.16f;
@@ -3668,14 +3621,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         final float travel = totalStrides * distance / area;
         final float cardW = 238 * k, cardH = 357 * k, gap = 28 * k;
         // Short posters while spinning; the winning poster grows as the strip settles.
-        final float grow = rouletteFinished ? 1f : Math.max(0f, Math.min(1f, (elapsed - 0.91f) / 0.09f));
+        final float grow = rouletteWork.finished() ? 1f : Math.max(0f, Math.min(1f, (elapsed - 0.91f) / 0.09f));
         final float winnerGrow = grow * grow * (3f - 2f * grow);
         // Focus is independent of the result: moving up/down removes the rim,
         // returning to the poster restores it without changing the winner.
-        final float winnerFocus = rouletteFinished && zone == Z_CARDS && !sheetOpen
+        final float winnerFocus = rouletteWork.finished() && zone == Z_CARDS && !sheetOpen
                 ? Ui.clamp(cardFocus[0].value) : 0f;
         final float stride = cardW + gap;
-        final int count = roulette.size();
+        final int count = rouletteWork.picks().size();
         final float left = MARGIN * k, right = CONTENT_R * k;
         // The strip starts at the right edge and scrolls left; fade both ends like the title marquee.
         // Leave room for the focused card's blurred shadow below the poster.
@@ -3694,7 +3647,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             RectF rect = roulettePosterRect;
             rect.set(posterX - posterWidth / 2, cy - posterHeight / 2,
                     posterX + posterWidth / 2, cy + posterHeight / 2);
-            Recs.Pick pick = roulette.get(Math.floorMod(rouletteWinner + i, count));
+            Recs.Pick pick = rouletteWork.picks().get(Math.floorMod(rouletteWork.winner() + i, count));
             Bitmap bmp = recs.poster(pick);
             // Same resting shadow as unselected cards in drawLightCard().
             // The winning card gradually receives the stronger focused shadow.
@@ -3707,7 +3660,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             shadows.draw(c, shadowRect, 18 * k, DEEP_BLUR * k, shadowDeep);
             if (bmp != null) {
                 // Lightweight directional trails only while moving.
-                float speed = rouletteSpinning ? (elapsed < accel ? elapsed / accel
+                float speed = rouletteWork.spinning() ? (elapsed < accel ? elapsed / accel
                         : elapsed > cruiseEnd ? (1f - elapsed) / brake : 1f) * 12f : 0f;
                 if (speed > 0.5f) {
                     for (int trail = 2; trail >= 1; trail--) {
@@ -3755,8 +3708,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.drawRect(left, layerTop, right, layerBottom, edgeMask);
         edgeMask.setXfermode(null);
         c.restore();
-        if (rouletteFinished) {
-            Recs.Pick chosen = roulette.get(rouletteWinner);
+        if (rouletteWork.finished()) {
+            Recs.Pick chosen = rouletteWork.picks().get(rouletteWork.winner());
             Paint p = rouletteTitleScratch;
             p.set(lCardTitle);
             p.setColor(tone(L_INK, WHITE));
@@ -4101,7 +4054,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
             case Z_CARDS:
                 if (tab == 4 && !searchMode) {
-                    if (dx > 0 && rouletteFinished) spinRoulette();
+                    if (dx > 0 && rouletteWork.finished()) spinRoulette();
                     else if (dy < 0) { zone = Z_TOP; topIndex = searchMode ? availableTopButton(5) : tab; }
                     else if (dy > 0) zone = Z_SHELF;
                     break;

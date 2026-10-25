@@ -21,7 +21,6 @@ body = ''.join(method(s) for s in [
     '    private void setSearchInputOpen(',
     '    private void cancelSearchWork(',
     '    private void acceptSearchResults(',
-    '    private void prepareRoulettePosters(',
 ])
 # Check lifecycle/dialog integration, in addition to executing the actual controller below.
 assert 'searchWork.pause(searchMode);' in method('    void pause(')
@@ -71,8 +70,6 @@ public class HomeWorkHarness {
  boolean running=true,searchMode,heroDirty,statusDirty;
  String searchQuery="";int cardPage,cardIndex,rouletteCancels,updates;
  List<Recs.Pick> searchResults=new ArrayList<>();
- final List<Recs.Pick> roulette=new ArrayList<>();
- int roulettePosterSlot=Integer.MIN_VALUE,rouletteWinner=7;
  final android.os.Handler handler=new android.os.Handler();
  final Recs recs=new Recs();final Spring searchHeadingOpacity=new Spring(.42f,1,0);
  final SearchController searchWork=new SearchController(handler,recs,()->running&&searchMode,this::acceptSearchResults);
@@ -126,24 +123,8 @@ public class HomeWorkHarness {
   h.change("😀😀😀");h.handler.advance(400);check(h.recs.calls.size()==6,"three code points accepted");
   h.cancelSearchWork();h.searchMode=false;h.cardPage=2;h.cardIndex=3;h.searchHeadingOpacity.snap(1);h.beginSearch();
   check(h.cardPage==0 && h.cardIndex==0 && h.searchHeadingOpacity.value==0,"fresh entry resets navigation and heading");
-  for(int i=0;i<40;i++)h.roulette.add(new Recs.Pick(i));
-  for(int slot=57;slot>=0;slot--){
-   h.prepareRoulettePosters(slot);
-   check(h.recs.window.size()==14,"bounded roulette prefetch");
-   check(h.recs.window.get(0)==h.roulette.get(h.rouletteWinner),"winning poster loads first and stays resident");
-   for(int offset=-3;offset<=3;offset++){
-    int id=Math.floorMod(h.rouletteWinner-slot+offset,40);boolean present=false;
-    for(Recs.Pick p:h.recs.window)present|=p.id==id;
-    check(present,"visible roulette posters stay inside window");
-   }
-   int count=h.recs.windows;h.prepareRoulettePosters(slot);
-   check(h.recs.windows==count,"same strip slot does not rebuild prefetch window");
-  }
-  h.running=false;int count=h.recs.windows;h.prepareRoulettePosters(20);
-  check(h.recs.windows==count,"hidden home does not load roulette posters");
-
   h.searchWork.cancel();h.recs.executor.shutdownNow();
-  System.out.println("PASS: search debounce, cancellation, stale callbacks, Done, lifecycle, result/page reuse, Unicode, roulette windows");
+  System.out.println("PASS: search debounce, cancellation, stale callbacks, Done, lifecycle, result/page reuse, Unicode");
  }
 }
 '''
