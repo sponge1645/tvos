@@ -232,31 +232,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private List<HomeApps.Item> shelf = new ArrayList<>();
     private Spring[] tileFocus = new Spring[0];
     private RectF[] tileRects = new RectF[0];
-    private final Map<String, Bitmap> crispLogos = new HashMap<>();   // logos already sized for the focused tile
-    /** Each app's tile like its Apple TV icon: brand colors (top, bottom) and logo (0 = as is, 1 = white, 2 = dark). */
-    private static final Map<String, int[]> TILE_STYLE = new HashMap<>();
-    static {
-        TILE_STYLE.put("com.android.vending", new int[] {0xFF52ABEF, 0xFF2D6AD4, 0});
-        TILE_STYLE.put("com.yandex.devices.appstore", new int[] {0xFF52ABEF, 0xFF2D6AD4, 0});
-        TILE_STYLE.put("netflix", new int[] {0xFF0A0A0A, 0xFF000000, 0});
-        TILE_STYLE.put("youtube", new int[] {0xFF1C1C1E, 0xFF09090A, 0});
-        TILE_STYLE.put("io.gh.reisxd.tizentube.cobalt", new int[] {0xFFFFFFFF, 0xFFFFFFFF, 0});
-        TILE_STYLE.put("watch.kino", new int[] {0xFFFFFFFF, 0xFFFFFFFF, 0});
-        TILE_STYLE.put("com.seena.app", new int[] {0xFF007AFF, 0xFF007AFF, 0});
-        TILE_STYLE.put("top.rootu.lampa", new int[] {0xFF313130, 0xFF161613, 0});
-        TILE_STYLE.put("tv-settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
-        TILE_STYLE.put("com.applemusicktv", new int[] {0xFFEB576D, 0xFFEA333C, 0});
-        TILE_STYLE.put("com.android.tv.settings", new int[] {0xFFA5A6AB, 0xFF656368, 0});
-        TILE_STYLE.put("io.github.jqssun.airplay", new int[] {0xFFF79E1F, 0xFFFF6933, 0});
-        TILE_STYLE.put("llc.itdev.incy", new int[] {0xFF024824, 0xFF0B1B11, 0});
-        TILE_STYLE.put("globoplay", new int[] {0xFFFF8A1F, 0xFFFF2D5A, 1});
-        TILE_STYLE.put("prime", new int[] {0xFF2AA8FF, 0xFF0A68D4, 1});
-        TILE_STYLE.put("disney", new int[] {0xFF173584, 0xFF08143F, 0});
-        TILE_STYLE.put("max", new int[] {0xFF5C30E8, 0xFF221684, 0});
-        TILE_STYLE.put("appletv", new int[] {0xFF1C1C1E, 0xFF000000, 0});
-    }
-    private final android.graphics.PorterDuffColorFilter whiteLogo =
-            new android.graphics.PorterDuffColorFilter(0xFFFFFFFF, android.graphics.PorterDuff.Mode.SRC_IN);
+    private final DockLogoRenderer dockLogos = new DockLogoRenderer();
     private final RectF platterRect = new RectF();
     private int shelfIndex;
     // Lightweight Dock editing: hold OK, move with left/right, OK saves, Back restores.
@@ -586,7 +562,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.setPosterWindow(java.util.Collections.emptyList());
         roulettePosterSlot = Integer.MIN_VALUE;
         imageShaders.clear();
-        crispLogos.clear();
+        dockLogos.clear();
         shadows.clear();
         weatherSnapshot.clear();
         quotesSnapshot.clear();
@@ -1389,7 +1365,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             tileRects[i].set(x, y, x + tw, y + th);
             x += tw + gap;
         }
-        crispLogos.clear();
+        dockLogos.clear();
     }
 
     /** Shelf layer: the glass bar and its shadow (it only changes with the background). */
@@ -1537,7 +1513,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         shadowDeep.setColor(Ui.alpha(0xFF000000, tone(0.14f, 0.3f) + tone(0.18f, 0.3f) * fc));
         shadows.draw(c, tmp, r0, DEEP_BLUR * k, shadowDeep);
         c.restore();
-        int[] style = TILE_STYLE.get(it.key);
+        AppBranding.Style style = AppBranding.get(it.key);
         if (it.logo != null && style != null) {
             if (tileShaders.length != shelf.size() || tileShaderH != bh) {
                 tileShaders = new LinearGradient[shelf.size()];
@@ -1545,7 +1521,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 tileGlow = new LinearGradient(0, -bh / 2, 0, 0, 0x14FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
             }
             if (tileShaders[i] == null) {
-                tileShaders[i] = new LinearGradient(0, -bh / 2, 0, bh / 2, style[0], style[1], Shader.TileMode.CLAMP);
+                tileShaders[i] = new LinearGradient(0, -bh / 2, 0, bh / 2, style.top, style.bottom, Shader.TileMode.CLAMP);
             }
             c.save();
             c.translate(cx, cy);
@@ -1562,7 +1538,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
             tileFill.setShader(null);
             c.restore();
-            drawLogo(c, it, cell, s, style[2]);
+            drawLogo(c, it, cell, s, style.mode);
         } else if (it.logo != null) {
             tileFill.setShader(null);
             tileFill.setColor(0xFF161618);
@@ -1652,53 +1628,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
      * the spring so settling never switches the logo to a different pixel grid.
      */
     private void drawLogo(Canvas c, HomeApps.Item it, RectF box, float s, int mode) {
-        Bitmap logo = crispLogo(it, mode == 2 && it.logoDark != null);
-        if (logo == null) return;
-        float scale = s / (1 + FOCUS_GROW);
-        // Dock logo adjustments relative to v18: KinoPub +10%, TV Settings -10%, TizenTube +5%.
-        float brandBoost = ("com.android.vending".equals(it.pkg) || "com.yandex.devices.appstore".equals(it.pkg)) ? 1.2f
-                : "com.android.tv.settings".equals(it.pkg) ? 1.323f
-                : "com.applemusicktv".equals(it.pkg) ? 1.25f
-                : "watch.kino".equals(it.key) ? 1.32f
-                : ("tv-settings".equals(it.key) ? 1.512f
-                : ("io.gh.reisxd.tizentube.cobalt".equals(it.key) ? 1.05f : 1f));
-        float dw = logo.getWidth() * scale * brandBoost, dh = logo.getHeight() * scale * brandBoost;
-        float left = box.centerX() - dw / 2, top = box.centerY() - dh / 2;
-        // Never snap only at the end: that shifts the logo relative to its continuously scaled tile.
-        tmp.set(left, top, left + dw, top + dh);
-        bitmapPaint.setColorFilter(mode == 1 ? whiteLogo : null);
-        c.drawBitmap(logo, null, tmp, bitmapPaint);
-        bitmapPaint.setColorFilter(null);
-    }
-
-    private Bitmap crispLogo(HomeApps.Item it, boolean dark) {
-        Bitmap src = dark ? it.logoDark : it.logo;
-        if (tileRects.length == 0) return src;
-        String key = it.key + "@" + System.identityHashCode(src) + "@" + Math.round(tileRects[0].width());
-        Bitmap cached = crispLogos.get(key);
-        if (cached != null) return cached;
-        float bw = tileRects[0].width() * (1 + FOCUS_GROW), bh = tileRects[0].height() * (1 + FOCUS_GROW);
-        float lw = src.getWidth(), lh = src.getHeight();
-        float scale = (float) Math.sqrt(bw * bh * 0.085f / (lw * lh * Math.max(0.08f, it.logoInk))) * it.logoScale;
-        scale = Math.min(scale, Math.min(bw * 0.76f / lw, bh * 0.58f / lh));
-        Bitmap out = downscale(src, Math.round(lw * scale), Math.round(lh * scale));
-        crispLogos.put(key, out);
-        return out;
-    }
-
-    /** Halves the size while it can (a 2×2 average, no aliasing), then finishes at the exact size. */
-    private static Bitmap downscale(Bitmap src, int w, int h) {
-        w = Math.max(1, w);
-        h = Math.max(1, h);
-        Bitmap b = src;
-        while (b.getWidth() / 2 >= w && b.getHeight() / 2 >= h) {
-            Bitmap half = Bitmap.createScaledBitmap(b, b.getWidth() / 2, b.getHeight() / 2, true);
-            if (b != src) b.recycle();
-            b = half;
-        }
-        Bitmap out = Bitmap.createScaledBitmap(b, w, h, true);
-        if (b != src && b != out) b.recycle();
-        return out;
+        dockLogos.draw(c, it, box, s, mode, tileRects.length == 0 ? null : tileRects[0], FOCUS_GROW);
     }
 
     // MARK: - Bottom drawer

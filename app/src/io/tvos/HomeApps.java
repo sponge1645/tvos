@@ -147,82 +147,15 @@ final class HomeApps {
                 // An app picked in Settings > Shelf that isn't in SHELF: its own name and TV art.
                 it.key = pkg;
                 it.label = ri != null ? String.valueOf(ri.loadLabel(pm)) : pkg;
-                if ("com.android.vending".equals(pkg) || "com.yandex.devices.appstore".equals(pkg)) {
-                    // Google Play: bundled transparent logo on the blue Dock gradient.
-                    it.logo = ownLogoCached(c, "googleplay");
+                AppBranding.Style brand = AppBranding.forPackage(pkg);
+                if (brand != null) {
+                    it.logo = "io.gh.reisxd.tizentube.cobalt".equals(pkg)
+                            ? shelfLogo(c, brand.logo, pkg, "play", extract) : ownLogoCached(c, brand.logo);
                     if (it.logo != null) {
                         it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("io.gh.reisxd.tizentube.cobalt".equals(pkg)) {
-                    it.logo = shelfLogo(c, "tizentube", pkg, "play", extract);
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("watch.kino".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "kinopub");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("com.seena.app".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "seena");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("top.rootu.lampa".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "lampa");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("com.applemusicktv".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "music");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("com.android.tv.settings".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "settings");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 2.4f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("io.github.jqssun.airplay".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "airplay");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else if ("llc.itdev.incy".equals(pkg)) {
-                    it.logo = ownLogoCached(c, "incy");
-                    if (it.logo != null) {
-                        it.logoInk = ink(it.logo);
-                        it.logoScale = 1.0f;
-                    } else {
-                        it.tile = appTile(c, null, pkg, 0);
-                    }
-                } else {
-                    it.tile = appTile(c, null, pkg, 0);
-                }
+                        it.logoScale = brand.logoScale;
+                    } else it.tile = appTile(c, null, pkg, 0);
+                } else it.tile = appTile(c, null, pkg, 0);
             } else {
                 it.key = d[0];
                 it.label = d[1];
@@ -456,7 +389,7 @@ final class HomeApps {
         // Some TV firmwares omit known apps from launcher queries, but resolve their package launch intent.
         for (String[] app : SHELF) addAllAppsPackage(c, pm, app[2], seen, items);
         for (String pkg : new String[] {"com.google.android.youtube", "com.android.vending",
-                "com.seena.app", "watch.kino", "top.rootu.lampa", "io.gh.reisxd.tizentube.cobalt",
+                "com.seena.app", "watch.kino", "watch.kino.mod", "top.rootu.lampa", "io.gh.reisxd.tizentube.cobalt",
                 "llc.itdev.incy", "io.github.jqssun.airplay", "com.applemusicktv"})
             addAllAppsPackage(c, pm, pkg, seen, items);
         if (settingsPkg != null) {
@@ -908,30 +841,11 @@ final class HomeApps {
 
     /** Use the same bundled logos and vertical brand gradients as the home Dock in All Apps. */
     private static synchronized Bitmap brandedAllAppsTile(Context c, String pkg) {
-        String logoKey;
-        int top, bottom;
-        float boost = 1f;
-        switch (pkg) {
-            case "io.github.jqssun.airplay":
-                logoKey = "airplay"; top = 0xFFF79E1F; bottom = 0xFFFF6933; break;
-            case "llc.itdev.incy":
-                logoKey = "incy"; top = 0xFF024824; bottom = 0xFF0B1B11; break;
-            case "io.gh.reisxd.tizentube.cobalt":
-                logoKey = "tizentube"; top = 0xFFFFFFFF; bottom = 0xFFFFFFFF; break;
-            case "com.applemusicktv":
-                logoKey = "music"; top = 0xFFEB576D; bottom = 0xFFEA333C; boost = 1.25f; break;
-            case "watch.kino":
-                logoKey = "kinopub"; top = 0xFFFFFFFF; bottom = 0xFFFFFFFF; boost = 1.32f; break;
-            case "com.seena.app":
-                logoKey = "seena"; top = 0xFF007AFF; bottom = 0xFF007AFF; break;
-            case "top.rootu.lampa":
-                logoKey = "lampa"; top = 0xFF313130; bottom = 0xFF161613; break;
-            case "com.android.vending":
-            case "com.yandex.devices.appstore":
-                logoKey = "googleplay"; top = 0xFF52ABEF; bottom = 0xFF2D6AD4; boost = 1.2f; break;
-            default:
-                return appTile(c, null, pkg, 0);
-        }
+        AppBranding.Style brand = AppBranding.forAllApps(pkg);
+        if (brand == null) return appTile(c, null, pkg, 0);
+        String logoKey = brand.logo;
+        int top = brand.top, bottom = brand.bottom;
+        float boost = brand.allAppsBoost;
         String cacheKey = "allapps-brand:" + pkg;
         Bitmap cached = TILES.get(cacheKey);
         if (cached != null) return cached;
