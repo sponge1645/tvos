@@ -2781,7 +2781,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
         // Measure the former capsule before removing its vertical padding and themed input minimum.
         // Keep 60% of that height, with enough room for the text at the user's font scale.
-        int searchWidth = (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f);
+        int searchWidth = (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.336f);
         panel.measure(View.MeasureSpec.makeMeasureSpec(searchWidth, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         Paint.FontMetricsInt searchMetrics = input.getPaint().getFontMetricsInt();
@@ -2802,7 +2802,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             window.setBackgroundDrawableResource(android.R.color.transparent);
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             window.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
-            window.setLayout((int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f),
+            window.setLayout(searchWidth,
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
             window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
                     | android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
@@ -2868,7 +2868,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         dialog.show();
         window = dialog.getWindow();
         if (window != null) {
-            window.setLayout((int) (activity.getResources().getDisplayMetrics().widthPixels * 0.42f),
+            window.setLayout(searchWidth,
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
             android.view.WindowManager.LayoutParams attrs = window.getAttributes();
             attrs.y = Math.round(L_BUTTON_CY * k - searchHeight / 2f);
