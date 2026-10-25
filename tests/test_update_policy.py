@@ -19,8 +19,8 @@ import java.util.*;import java.io.*;
 public class UpdatePolicyHarness {
  static class Signature {String value;Signature(String v){value=v;}public boolean equals(Object o){return o instanceof Signature && value.equals(((Signature)o).value);}public int hashCode(){return value.hashCode();}}
  static class SigningInfo {Signature[] signers;Signature[] getApkContentsSigners(){return signers;}}
- static class PackageInfo {String packageName="io.tvos",versionName="1.2";long code=3;SigningInfo signingInfo=new SigningInfo();long getLongVersionCode(){return code;}}
- static class PackageManager {static final int GET_SIGNING_CERTIFICATES=1;PackageInfo installed,archive;PackageInfo getPackageInfo(String p,int f){return installed;}PackageInfo getPackageArchiveInfo(String p,int f){return archive;}}
+ static class PackageInfo {String packageName="io.tvos",versionName="1.2";long code=3;Signature[] signatures;SigningInfo signingInfo=new SigningInfo();long getLongVersionCode(){return code;}}
+ static class PackageManager {static final int GET_SIGNING_CERTIFICATES=1,GET_SIGNATURES=2;PackageInfo installed,archive;void flags(int f){if(f!=(GET_SIGNING_CERTIFICATES|GET_SIGNATURES))throw new AssertionError("both signer flags required");}PackageInfo getPackageInfo(String p,int f){flags(f);return installed;}PackageInfo getPackageArchiveInfo(String p,int f){flags(f);return archive;}}
  static class Context {PackageManager pm=new PackageManager();PackageManager getPackageManager(){return pm;}String getPackageName(){return "io.tvos";}}
  Context context=new Context();static String text(String r,String e){return e;}
  static Map<String,Object> manifest(){Map<String,Object> m=new HashMap<>();m.put("packageName","io.tvos");m.put("versionName","1.2");m.put("versionCode",3L);m.put("tag","v1.2");m.put("asset","tvOS.apk");m.put("sha256",String.join("",Collections.nCopies(64,"a")));m.put("size",20000L);return m;}
@@ -41,8 +41,22 @@ tests = r'''
   archive.code=2;h.rejects(r);archive.code=4;h.rejects(r);archive.code=3;
   archive.versionName="wrong";h.rejects(r);archive.versionName="1.2";
   archive.signingInfo.signers=new Signature[0];h.rejects(r);archive.signingInfo=null;h.rejects(r);
+  archive.signatures=new Signature[]{new Signature("owner")};h.verifyApk(new File("test.apk"),r);
+  installed.signingInfo=null;installed.signatures=new Signature[]{new Signature("owner")};h.verifyApk(new File("test.apk"),r);
+  archive.signatures=new Signature[]{new Signature("attacker")};h.rejects(r);
+  archive.signatures=new Signature[]{new Signature("owner"),new Signature("attacker")};h.rejects(r);
+  archive.signatures=new Signature[]{null};h.rejects(r);
+  archive.signatures=new Signature[]{new Signature("owner")};archive.signingInfo=new SigningInfo();
+  archive.signingInfo.signers=new Signature[0];h.verifyApk(new File("test.apk"),r);
+  archive.signingInfo.signers=new Signature[]{new Signature("attacker")};h.rejects(r);
+  archive.signingInfo.signers=null;archive.signatures=null;
+  try{h.verifyApk(new File("test.apk"),r);throw new AssertionError("missing certificate accepted");}
+  catch(IOException expected){check(expected.getMessage().contains("no update APK signing"),"missing archive signer has a distinct error");}
+  h.context.pm.archive=null;
+  try{h.verifyApk(new File("test.apk"),r);throw new AssertionError("missing metadata accepted");}
+  catch(IOException expected){check(expected.getMessage().contains("metadata"),"parse error is distinct from signer mismatch");}
   check(hex(new byte[]{0,15,(byte)255}).equals("000fff"),"digest encoding");
-  System.out.println("PASS: manifest validation, pinned tag URL, package/version/signature rejection, digest encoding");
+  System.out.println("PASS: manifest validation, pinned URL, package/version/signature rejection, compatible certificate reads, distinct errors, digest encoding");
  }
 }
 '''
@@ -50,7 +64,7 @@ json_stub = '''package org.json;import java.util.Map;public class JSONObject {pr
 with tempfile.TemporaryDirectory(prefix='tvos-update-policy-') as directory:
     root = Path(directory)
     (root / 'JSONObject.java').write_text(json_stub)
-    (root / 'UpdatePolicyHarness.java').write_text(header + method('    private void verifyApk(') + method('    private static boolean sameSigners(') + method('    private static String hex(') + tests)
+    (root / 'UpdatePolicyHarness.java').write_text(header + ' private static final int SIGNER_FLAGS=PackageManager.GET_SIGNING_CERTIFICATES|PackageManager.GET_SIGNATURES;\n' + method('    private void verifyApk(') + method('    private static Signature[] currentSigners(') + method('    private static boolean sameSigners(') + method('    private static String hex(') + tests)
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/UpdateRelease.java', str(root / 'JSONObject.java'), str(root / 'UpdatePolicyHarness.java')], check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.UpdatePolicyHarness'], check=True)

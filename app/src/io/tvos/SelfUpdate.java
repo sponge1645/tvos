@@ -139,24 +139,43 @@ final class SelfUpdate {
         });
     }
 
+    private static final int SIGNER_FLAGS = PackageManager.GET_SIGNING_CERTIFICATES | PackageManager.GET_SIGNATURES;
+
     private void verifyApk(File file, UpdateRelease release) throws Exception {
         PackageManager pm = context.getPackageManager();
-        PackageInfo archive = pm.getPackageArchiveInfo(file.getAbsolutePath(), PackageManager.GET_SIGNING_CERTIFICATES);
-        PackageInfo installed = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-        if (archive == null || !context.getPackageName().equals(archive.packageName)
-                || archive.getLongVersionCode() != release.versionCode
-                || archive.getLongVersionCode() <= installed.getLongVersionCode()
-                || !release.versionName.equals(archive.versionName)
-                || !sameSigners(installed, archive)) {
-            throw new IOException(text("Пакет, версия или подпись обновления не совпадают", "Update package, version or signing certificate mismatch"));
-        }
+        PackageInfo archive = pm.getPackageArchiveInfo(file.getAbsolutePath(), SIGNER_FLAGS);
+        PackageInfo installed = pm.getPackageInfo(context.getPackageName(), SIGNER_FLAGS);
+        if (archive == null)
+            throw new IOException(text("Android не смог прочитать сведения об APK обновления", "Android could not read update APK metadata"));
+        if (!context.getPackageName().equals(archive.packageName))
+            throw new IOException(text("Неверный пакет обновления: ", "Unexpected update package: ") + archive.packageName);
+        if (archive.getLongVersionCode() != release.versionCode || !release.versionName.equals(archive.versionName))
+            throw new IOException(text("Версия APK не совпадает с описанием выпуска: ", "APK version differs from release metadata: ")
+                    + archive.versionName + " (" + archive.getLongVersionCode() + "), "
+                    + text("ожидалась ", "expected ") + release.versionName + " (" + release.versionCode + ")");
+        if (archive.getLongVersionCode() <= installed.getLongVersionCode())
+            throw new IOException(text("Эта версия уже установлена или новее обновления: ", "Installed version is equal to or newer than the update: ")
+                    + installed.versionName + " (" + installed.getLongVersionCode() + ")");
+        if (currentSigners(archive) == null)
+            throw new IOException(text("Android не вернул сертификаты APK обновления", "Android returned no update APK signing certificates"));
+        if (currentSigners(installed) == null)
+            throw new IOException(text("Android не вернул сертификаты установленного tvOS", "Android returned no installed tvOS signing certificates"));
+        if (!sameSigners(installed, archive))
+            throw new IOException(text("Подпись APK отличается от установленного tvOS", "Update signer differs from installed tvOS"));
+    }
+
+    /** Prefer current signers; firmware may populate only the legacy representation. Never accept signing history. */
+    private static Signature[] currentSigners(PackageInfo info) {
+        Signature[] signatures = info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners();
+        if (signatures == null || signatures.length == 0) signatures = info.signatures;
+        if (signatures == null || signatures.length == 0) return null;
+        for (Signature signature : signatures) if (signature == null) return null;
+        return signatures;
     }
 
     private static boolean sameSigners(PackageInfo installed, PackageInfo archive) {
-        if (installed.signingInfo == null || archive.signingInfo == null) return false;
-        Signature[] a = installed.signingInfo.getApkContentsSigners(), b = archive.signingInfo.getApkContentsSigners();
-        // Exact current signer set; a deliberate key rotation requires a separately reviewed migration.
-        return a != null && b != null && a.length > 0 && a.length == b.length
+        Signature[] a = currentSigners(installed), b = currentSigners(archive);
+        return a != null && b != null && a.length == b.length
                 && new HashSet<>(Arrays.asList(a)).equals(new HashSet<>(Arrays.asList(b)));
     }
 
