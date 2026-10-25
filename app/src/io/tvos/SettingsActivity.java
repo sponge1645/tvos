@@ -56,6 +56,7 @@ public class SettingsActivity extends Activity {
     private SettingsView view;
     private android.widget.FrameLayout previewHost;
     private View previewCover;
+    private ScreensaverFade previewFade;
     private boolean previewTransition;
     private VideoDream preview;   // "Screen Saver": the screensaver right here, without changing the system setting
 
@@ -71,6 +72,7 @@ public class SettingsActivity extends Activity {
         previewCover.setBackgroundColor(android.graphics.Color.BLACK);
         previewCover.setAlpha(0f);
         previewCover.setVisibility(View.GONE);
+        previewFade = new ScreensaverFade(previewCover);
         previewHost.addView(previewCover, new android.widget.FrameLayout.LayoutParams(-1, -1));
         setContentView(previewHost);
         WifiPermission.requestOnce(this);
@@ -125,28 +127,26 @@ public class SettingsActivity extends Activity {
     void showPreview() {
         if (preview != null || previewTransition) return;
         previewTransition = true;
-        previewCover.animate().cancel();
+        previewFade.cancel();
         previewCover.setVisibility(View.VISIBLE);
         previewCover.setAlpha(0f);
         // Keep settings on screen until they have faded completely to black.
-        previewCover.animate().alpha(1f).setDuration(VideoDream.TRANSITION_MS)
-                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                .withEndAction(() -> {
-                    view.setVisibility(View.GONE);
-                    preview = new VideoDream(this);
-                    previewHost.addView(preview, 1, new android.widget.FrameLayout.LayoutParams(-1, -1));
-                    preview.start();
-                    // VideoDream starts black and reveals only ready content, with the same fade.
-                    previewCover.setVisibility(View.GONE);
-                    previewTransition = false;
-                }).start();
+        previewFade.start(1f, VideoDream.TRANSITION_MS, () -> {
+            view.setVisibility(View.GONE);
+            preview = new VideoDream(this);
+            previewHost.addView(preview, 1, new android.widget.FrameLayout.LayoutParams(-1, -1));
+            preview.start();
+            // VideoDream starts black and reveals only ready content, with the same fade.
+            previewCover.setVisibility(View.GONE);
+            previewTransition = false;
+        });
     }
 
     private void finishPreview() {
         if (preview == null || previewTransition) return;
         previewTransition = true;
         // Replace the black dream with settings underneath another fully opaque black cover.
-        previewCover.animate().cancel();
+        previewFade.cancel();
         previewCover.setAlpha(1f);
         previewCover.setVisibility(View.VISIBLE);
         preview.stop();
@@ -154,18 +154,16 @@ public class SettingsActivity extends Activity {
         preview = null;
         view.setVisibility(View.VISIBLE);
         view.resume();
-        previewCover.animate().alpha(0f).setDuration(VideoDream.TRANSITION_MS)
-                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                .withEndAction(() -> {
-                    previewCover.setVisibility(View.GONE);
-                    previewTransition = false;
-                }).start();
+        previewFade.start(0f, VideoDream.TRANSITION_MS, () -> {
+            previewCover.setVisibility(View.GONE);
+            previewTransition = false;
+        });
     }
 
     /** Forced Activity pause cancels either leg; no delayed callback may reopen a preview. */
     private void closePreview() {
         if (preview == null && !previewTransition) return;
-        previewCover.animate().cancel();
+        previewFade.cancel();
         previewTransition = false;
         if (preview != null) {
             preview.stop();

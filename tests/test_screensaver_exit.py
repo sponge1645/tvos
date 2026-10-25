@@ -17,6 +17,10 @@ public class ExitHarness {
   Animation alpha(float a){target=a;return this;}Animation setInterpolator(Object i){easing=i;return this;}Animation setDuration(long n){duration=n;return this;}
   Animation withEndAction(Runnable r){end=r;return this;}void start(){}void cancel(){cancels++;end=null;}
  }
+ static class ScreensaverFade {
+  View view;ScreensaverFade(View v){view=v;}void cancel(){view.animate().cancel();}
+  void start(float a,long d,Runnable r){view.animate().alpha(a).setDuration(d).withEndAction(r).start();}
+ }
  static class View {
   static int VISIBLE=0,GONE=8;Animation animation=new Animation();float alpha;
   View(){}View(Object c){}Animation animate(){return animation;}void setAlpha(float a){alpha=a;}
@@ -25,6 +29,7 @@ public class ExitHarness {
  static class MediaPlayer {boolean released;void reset(){}void release(){released=true;}}
  static class Fallback extends View {boolean stopped;void stop(){stopped=true;}}
  Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();final View transitionCover=new View();static final long TRANSITION_MS=600;
+ ScreensaverFade coverFade=new ScreensaverFade(transitionCover);
  Fallback fallback;MediaPlayer player=new MediaPlayer();boolean running=true,exiting,loadingCatalog,preparing,entered;
  long entranceNotBefore;int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
  List<View> children=new ArrayList<>();Object getContext(){return this;}
