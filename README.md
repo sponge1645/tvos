@@ -60,7 +60,7 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.5` (versionCode 11), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.6` (versionCode 12), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 
@@ -73,3 +73,5 @@ Search scheduling now lives in `SearchController`: the 400 ms debounce, request 
 `RouletteController` owns random-movie catalog loading/cancellation, winner selection, spin state, the five-second completion and bounded poster prefetch. `HomeView` keeps the existing strip drawing and remote focus callbacks. Cancelling a spin removes its completion; completed winners survive pause, while changing categories resets their presentation. `test_roulette_focus.py` runs the production controller and remote handlers with virtual time.
 
 KinoPub card opening supports both `watch.kino` and `watch.kino.mod`, retaining the selected package through cached and online ID lookup. All fallback intents stay scoped to that package. Screensaver weather shadows are baked from explicitly blurred symbol alpha, with padding derived from the returned blur bounds; bitmap rectangle shadow layers are no longer used for icons.
+
+`AppArtwork` owns bundled/extracted logo processing, image caches and card preparation; `HomeApps` retains discovery, ordering, labels and launching. The artwork implementation, cache keys/version, dimensions and loader call sites are preserved. `test_app_artwork.py` exercises production pixel and cache methods with deterministic graphics and real temporary PNG files.

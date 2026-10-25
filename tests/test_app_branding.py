@@ -4,7 +4,7 @@ import subprocess, tempfile
 from dock_graphics_fixture import GRAPHICS
 
 source=Path('app/src/io/tvos/HomeApps.java').read_text()
-def method(signature):
+def method(signature, source=source):
     a=source.index(signature);b=source.index('{',a);depth=1;end=b+1
     while depth:depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[a:end]
@@ -24,13 +24,16 @@ final class HomeApps {
  static String[] known(String pkg){return null;}
  static Intent launchIntent(PackageManager pm,String pkg){return new Intent(pkg);}
  static Item shortcut(int kind,String key,String label,String symbol){Item i=new Item();i.kind=kind;i.key=key;i.label=label;return i;}
+ static class AppArtwork {
  static Bitmap ownLogoCached(Context c,String key){return LOGOS.computeIfAbsent(key,k->{Bitmap b=new Bitmap(540,252);b.asset=k;return b;});}
  static Bitmap shelfLogo(Context c,String key,String pkg,String mode,boolean extract){return ownLogoCached(c,key);}
  static float ink(Bitmap b){return .3f;}
  static Bitmap appTile(Context c,String key,String pkg,int brand){Bitmap b=new Bitmap(TILE_W,TILE_H);b.asset="fallback:"+pkg;return b;}
  static Bitmap tvSettingsFavoriteTile(Context c){return appTile(c,null,"settings",0);}
-'''+method('    static List<Item> shelf(')+method('    private static synchronized Bitmap brandedAllAppsTile(')+'''
- static Bitmap all(Context c,String pkg){return brandedAllAppsTile(c,pkg);}
+'''+method('    static synchronized Bitmap brandedAllAppsTile(', Path('app/src/io/tvos/AppArtwork.java').read_text())+'''
+ }
+'''+method('    static List<Item> shelf(')+'''
+ static Bitmap all(Context c,String pkg){return AppArtwork.brandedAllAppsTile(c,pkg);}
 }
 '''
 
