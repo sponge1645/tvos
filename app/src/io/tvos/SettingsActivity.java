@@ -913,38 +913,22 @@ public class SettingsActivity extends Activity {
                 v[5] = tr("Недоступно", "Unavailable");
                 v[6] = "—";
                 v[7] = localPrefs().getString("device_name", "ТВ");
-                try {
-                    java.util.Enumeration<java.net.NetworkInterface> nets = java.net.NetworkInterface.getNetworkInterfaces();
-                    while (nets != null && nets.hasMoreElements()) {
-                        java.net.NetworkInterface net = nets.nextElement();
-                        if (!net.isUp() || net.isLoopback()) continue;
-                        java.util.Enumeration<java.net.InetAddress> ips = net.getInetAddresses();
-                        while (ips.hasMoreElements()) {
-                            java.net.InetAddress ip = ips.nextElement();
-                            if (ip instanceof java.net.Inet4Address && !ip.isLoopbackAddress()) {
-                                v[6] = ip.getHostAddress();
-                                break;
-                            }
-                        }
-                        if (!"—".equals(v[6])) break;
-                    }
-                } catch (Exception ignored) {}
-                try {
-                    android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                            getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-                    android.net.NetworkInfo ni = cm == null ? null : cm.getActiveNetworkInfo();
-                    if (ni != null && ni.isConnected()) {
-                        if (ni.getType() == android.net.ConnectivityManager.TYPE_ETHERNET) v[5] = "Ethernet";
-                        else if (ni.getType() == android.net.ConnectivityManager.TYPE_WIFI) {
+                LocalNetwork.Info network = LocalNetwork.read(getContext());
+                if (network != null) {
+                    v[6] = network.address;
+                    if (network.ethernet) v[5] = "Ethernet";
+                    else {
+                        v[5] = tr("Wi-Fi (имя недоступно)", "Wi-Fi (name unavailable)");
+                        try {
                             android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
                                     getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                             android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
                             String ssid = wi == null ? null : wi.getSSID();
-                            v[5] = ssid == null || ssid.contains("unknown ssid") || ssid.equals("<unknown ssid>")
-                                    ? tr("Wi-Fi (имя недоступно)", "Wi-Fi (name unavailable)") : ssid.replace("\"", "");
-                        }
+                            if (ssid != null && !ssid.isEmpty() && !ssid.contains("unknown ssid"))
+                                v[5] = ssid.replace("\"", "");
+                        } catch (Exception ignored) {}
                     }
-                } catch (Exception ignored) {}
+                }
                 // Show device name first, preserving all other values.
                 String deviceName = v[7];
                 System.arraycopy(v, 0, v, 1, 7);
