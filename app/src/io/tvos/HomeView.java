@@ -218,12 +218,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int marqueeCard = -1, marqueePage = -1, marqueeTab = -1;
     private long marqueeSince;
     private boolean marqueeNeeded; // Set by drawing the focused title/metadata, using their actual available widths.
-    private final Spring[] topFocus = new Spring[10];
+    private final Spring[] topFocus = new Spring[11];
     private final Spring rouletteButtonFocus = new Spring(0.26f, 0.85f, 0);
-    private final RectF[] topRects = new RectF[10];
+    private final RectF[] topRects = new RectF[11];
     private final Spring[] cardFocus = new Spring[8];
     private final RectF[] cardRects = new RectF[8];
     private final List<HomeApps.Item> lightButtons = new ArrayList<>();
+    private final NetworkIcon networkIcon = new NetworkIcon();
+    private final NetworkStatus networkStatus;
     private Paint lTitle, lTab, lTabOn, lCardTitle, lCardMeta, lQuote, lTip, lDate, lClock, lWeather, lClockQuote;
     private Shader lightGradient;
 
@@ -507,6 +509,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             cardFocus[i] = new Spring(0.32f, 0.78f, 0);
             cardRects[i] = new RectF();
         }
+        networkStatus = new NetworkStatus(a, () -> {
+            statusDirty = heroDirty = true;
+            status.invalidate();
+            spoken.readAgain();
+            wake();
+        });
         makeLightButtons();
         recs.setLight(true);
         checkNight(false);
@@ -527,6 +535,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         profileAvatarIndex = nextAvatar;
         if (running) return;
         running = true;
+        networkStatus.start();
         checkNight(false);
         syncVisibleTabs();
         // SettingsActivity runs separately; the old button rectangles remain cached.
@@ -560,6 +569,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
+        networkStatus.stop();
         workEpoch++;
         retrySearchOnResume = searchMode && (searchRequest != null || pendingSearch != null);
         searchSerial++;
@@ -633,29 +643,24 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private int firstVisibleActionOrClock() {
         for (int i = 0; i < 4; i++) if (topButtonEnabled(i)) return 5 + i;
-        if (clockButtonEnabled()) return 9;
-        return picksOn() ? tab : 0;
+        return 10;
     }
 
     private int firstVisibleAction() {
         for (int i = 0; i < 4; i++) if (topButtonEnabled(i)) return 5 + i;
-        return clockButtonEnabled() ? 9 : -1;
+        return 10;
     }
 
-    private int lastVisibleActionBeforeClock() {
-        for (int i = 3; i >= 0; i--) if (topButtonEnabled(i)) return 5 + i;
-        return picksOn() && !searchMode ? lastVisibleTab() : 9;
-    }
+    private int lastVisibleActionBeforeClock() { return 10; }
 
     private int lastVisibleActionOrClock() {
-        if (clockButtonEnabled()) return 9;
-        for (int i = 3; i >= 0; i--) if (topButtonEnabled(i)) return 5 + i;
-        return picksOn() ? tab : 0;
+        return clockButtonEnabled() ? 9 : 10;
     }
 
     private int lastVisibleTab() { return Math.max(0, Prefs.lastCategory()); }
 
     private boolean topControlVisible(int id) {
+        if (id == 10) return true;
         return id < 5 ? !searchMode && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
     }
 
@@ -663,8 +668,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int nextTopControl(int current, int direction) {
         int previous = -1;
         int[] order = Prefs.categoryOrder();
-        for (int position = 0; position < 10; position++) {
-            int id = position < 5 ? order[position] : position;
+        for (int position = 0; position < 11; position++) {
+            int id = position < 5 ? order[position] : position == 9 ? 10 : position == 10 ? 9 : position;
             if (!topControlVisible(id)) continue;
             if (id == current && direction < 0) return previous < 0 ? current : previous;
             if (previous == current && direction > 0) return id;
@@ -674,11 +679,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private int availableTopButton(int preferred) {
+        if (preferred == 10) return 10;
         if (preferred == 9 && clockButtonEnabled()) return 9;
         if (preferred < 5 || (preferred <= 8 && topButtonEnabled(preferred - 5))) return preferred;
         for (int i = 5; i <= 8; i++) if (topButtonEnabled(i - 5)) return i;
-        if (clockButtonEnabled()) return 9;
-        return picksOn() ? tab : 0;
+        return 10;
     }
 
     /** Poster navigation uses the leftmost and rightmost *visible* corner controls.
@@ -692,12 +697,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             if (first < 0) first = target;
             last = target;
         }
-        if (clockButtonEnabled()) {
-            if (first < 0) first = 9;
-            last = 9;
-        }
-        if (last >= 0) return rightmost ? last : first;
-        return picksOn() ? tab : 0;
+        if (first < 0) first = 10;
+        last = 10;
+        if (clockButtonEnabled()) last = 9;
+        return rightmost ? last : first;
     }
 
     private static boolean tabEnabled(int i) {
@@ -1480,6 +1483,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // The corner buttons' names appear in this row: the quotes fade out while one of them has focus.
         float fade = 1;
         for (int i = 5; i < 9 && !clock; i++) fade = Math.min(fade, 1 - Ui.clamp(topFocus[i].value));
+        if (!clock) fade = Math.min(fade, 1 - Ui.clamp(topFocus[10].value));
         if (fade <= 0.01f) return;
         int textColor = text.getColor();
         text.setColor(Ui.alpha(textColor, fade));
@@ -2616,6 +2620,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 selectTab(topIndex);
                 return;
             }
+            if (topIndex == 10) {
+                click.open();
+                openNetworkSettings();
+                return;
+            }
             if (topIndex == 9) {
                 click.open();
                 ProfileActivity.open(activity, profileBackground());
@@ -3221,6 +3230,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (picksOn() && !searchMode) for (int id : Prefs.categoryOrder())
             if (tabEnabled(id)) out.add(a11yId(Z_TOP, id));
         for (int i = 5; i < 5 + lightButtons.size(); i++) if (topButtonEnabled(i - 5)) out.add(a11yId(Z_TOP, i));
+        out.add(a11yId(Z_TOP, 10));
         if (clockButtonEnabled()) out.add(a11yId(Z_TOP, 9));
         if (picksOn()) for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
         for (int i = 0; i < shelf.size(); i++) out.add(a11yId(Z_SHELF, i));
@@ -3236,6 +3246,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (i >= others.size()) return "";
                 return label(others, i) + ", " + (i + 1) + Ui.tr(" de ", " of ") + others.size();
             case Z_TOP:
+                if (i == 10) return networkLabel();
                 if (i == 9) return Ui.ru ? "Часы и профиль" : "Clock and profile";
                 if (i >= 5) return label(lightButtons, i - 5);
                 return tabs()[i] + Ui.tr(", aba ", ", tab ") + Prefs.categoryPosition(i) + Ui.tr(" de ", " of ") + Prefs.categoryCount();
@@ -3265,7 +3276,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
             }
             case Z_TOP:
-                if (i == 9) { if (!clockButtonEnabled()) return false; }
+                if (i == 10) { /* Network is always reachable. */ }
+                else if (i == 9) { if (!clockButtonEnabled()) return false; }
                 else if (i >= 5 + lightButtons.size() || (i >= 5 && !topButtonEnabled(i - 5))) return false;
                 a11yRect.set(topRects[i]);
                 dy = (i < 5 ? heroLayer : status).getTranslationY();
@@ -3358,7 +3370,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 widgetIndex = i;
                 break;
             case Z_TOP:
-                if (i == 9) { if (!clockButtonEnabled()) return; }
+                if (i == 10) { /* Network is always reachable. */ }
+                else if (i == 9) { if (!clockButtonEnabled()) return; }
                 else if (i >= 5 + lightButtons.size() || (i >= 5 && !topButtonEnabled(i - 5)) || (i < 5 && (!picksOn() || !tabEnabled(i)))) return;
                 if (drawerOpen) closeDrawer();
                 topIndex = i;
@@ -3464,6 +3477,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             topRects[9].set(right - capsuleWidth, cy - b / 2f, right, cy + b / 2f);
             right = topRects[9].left - L_BUTTON_GAP * k;
         } else topRects[9].setEmpty();
+        topRects[10].set(right - b, cy - b / 2, right, cy + b / 2);
+        right -= b + L_BUTTON_GAP * k;
         for (int i = 3; i >= 0; i--) {
             if (topButtonEnabled(i)) {
                 topRects[5 + i].set(right - b, cy - b / 2, right, cy + b / 2);
@@ -4169,9 +4184,31 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.restoreToCount(saved);
     }
 
+    private String networkLabel() {
+        String state = networkStatus.state() == NetworkStatus.WIFI
+                ? (Ui.ru ? "Wi-Fi, интернет доступен" : "Wi-Fi, internet available")
+                : networkStatus.state() == NetworkStatus.ETHERNET
+                ? (Ui.ru ? "Ethernet, интернет доступен" : "Ethernet, internet available")
+                : (Ui.ru ? "Нет интернета" : "No internet");
+        return state + (Ui.ru ? ". Открыть настройки сети" : ". Open network settings");
+    }
+
+    private void openNetworkSettings() {
+        for (String action : new String[] {android.provider.Settings.ACTION_WIRELESS_SETTINGS,
+                android.provider.Settings.ACTION_WIFI_SETTINGS, android.provider.Settings.ACTION_SETTINGS}) {
+            try { activity.startActivity(new Intent(action)); return; }
+            catch (android.content.ActivityNotFoundException | SecurityException ignored) {}
+        }
+        showToast(Ui.ru ? "Не удалось открыть настройки сети" : "Could not open network settings");
+    }
+
     private void drawLightButtons(Canvas c) {
         applyTone();
         drawClockProfileCapsule(c);
+        float networkFocus = Ui.clamp(topFocus[10].value);
+        float networkScale = drawActionSurface(c, topRects[10], networkFocus);
+        networkIcon.draw(c, networkStatus.state(), cell.centerX(), cell.centerY(),
+                30 * k * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));
         for (int i = 0; i < lightButtons.size(); i++) {
             if (!topButtonEnabled(i)) continue;
             RectF r = topRects[5 + i];

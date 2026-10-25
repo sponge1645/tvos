@@ -42,9 +42,10 @@ public class NetworkHarness {
   System.out.println("PASS: Ethernet/Wi-Fi with VPN on/off, multi-transport VPN rejection, active preference, LAN without internet, address filtering, disconnect races, permission errors, query cache");
  }
 }'''}
-with tempfile.TemporaryDirectory() as d:
- root=Path(d);stubs['io/tvos/LocalNetwork.java']=Path('app/src/io/tvos/LocalNetwork.java').read_text()
- for name,s in stubs.items():
-  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(s)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,root.rglob('*.java'))],check=True)
- subprocess.run(['java','-cp',d,'io.tvos.NetworkHarness'],check=True)
+if __name__ == '__main__':
+ with tempfile.TemporaryDirectory() as d:
+  root=Path(d);stubs['io/tvos/LocalNetwork.java']=Path('app/src/io/tvos/LocalNetwork.java').read_text()
+  for name,s in stubs.items():
+   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(s)
+  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,root.rglob('*.java'))],check=True)
+  subprocess.run(['java','-cp',d,'io.tvos.NetworkHarness'],check=True)

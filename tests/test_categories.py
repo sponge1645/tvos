@@ -73,7 +73,8 @@ public class CategoriesHarness {
    for(int actions:new int[]{0,1,8,16,21,31})for(boolean search:new boolean[]{false,true}){
     HomeNavigation nav=new HomeNavigation();nav.actions=actions;nav.searchMode=search;
     List<Integer> controls=new ArrayList<>();if(!search)controls.addAll(visible);
-    for(int id=5;id<10;id++)if((actions&(1<<(id-5)))!=0)controls.add(id);
+    for(int id=5;id<9;id++)if((actions&(1<<(id-5)))!=0)controls.add(id);
+    controls.add(10);if((actions&16)!=0)controls.add(9);
     for(int i=0;i<controls.size();i++){
      int current=controls.get(i);
      check(nav.next(current,-1)==controls.get(Math.max(0,i-1)),"left follows visual order, skips hidden categories/actions");
@@ -111,9 +112,9 @@ public class CategoriesHarness {
   nav.zone=HomeNavigation.Z_CARDS;nav.sync();
   check(nav.zone==HomeNavigation.Z_SHELF&&nav.cancels>0,"all-off cancels hidden roulette and exits cards focus");
   nav.actions=16;nav.zone=HomeNavigation.Z_TOP;nav.topIndex=0;nav.sync();
-  check(nav.topIndex==9,"all-off can still reach the clock action");
+  check(nav.topIndex==10,"all-off can still reach network settings before the clock");
   nav.actions=0;nav.zone=HomeNavigation.Z_TOP;nav.sync();
-  check(nav.zone==HomeNavigation.Z_SHELF,"no visible top controls returns focus to Dock");
+  check(nav.zone==HomeNavigation.Z_TOP&&nav.topIndex==10,"network remains reachable with all optional controls off");
   permutation(new ArrayList<>(Arrays.asList(0,1,2,3,4)),0);
   check(permutations==120,"all category permutations covered");
   System.out.println("PASS: category migration, persistence, editor reorder/toggle/focus, all-off, 120 orders x 32 visibility masks, home/search navigation");
