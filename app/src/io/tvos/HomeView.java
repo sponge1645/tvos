@@ -224,7 +224,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Spring[] cardFocus = new Spring[8];
     private final RectF[] cardRects = new RectF[8];
     private final List<HomeApps.Item> lightButtons = new ArrayList<>();
-    private final NetworkIcon networkIcon = new NetworkIcon();
     private final NetworkStatus networkStatus;
     private Paint lTitle, lTab, lTabOn, lCardTitle, lCardMeta, lQuote, lTip, lDate, lClock, lWeather, lClockQuote;
     private Shader lightGradient;
@@ -4171,7 +4170,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (topButtonEnabled(5)) {
             float networkFocus = Ui.clamp(topFocus[10].value);
             float networkScale = drawActionSurface(c, topRects[10], networkFocus);
-            networkIcon.draw(c, networkStatus.state(), cell.centerX(), cell.centerY(),
+            String networkSymbol = networkStatus.state() == NetworkStatus.WIFI ? "wifi"
+                    : networkStatus.state() == NetworkStatus.ETHERNET ? "ethernet" : "nonetwork";
+            Symbols.draw(getContext(), c, networkSymbol, cell.centerX(), cell.centerY(),
                     30 * k * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));
         }
         for (int i = 0; i < lightButtons.size(); i++) {
