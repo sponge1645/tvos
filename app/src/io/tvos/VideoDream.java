@@ -6,7 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.LinearGradient;
 import android.graphics.Shader;
-import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -124,10 +123,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         date.setVisibility(View.GONE);
         weatherData = HomeData.get(context);
         aerialLocation = new TextView(context);
-        aerialLocation.setTypeface(sfAerial(context, "sf_display_light.otf"));
+        aerialLocation.setTypeface(sfAerial(context, "sf_display_medium.otf"));
         aerialLocation.setTextColor(0xD9F2F2F2);
         aerialLocation.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        aerialLocation.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
         // Rasterize the glyph shadow into a transparent text layer, not the video surface.
         // Padding keeps the blur away from the rectangular layer clip on TV firmware.
         aerialLocation.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
