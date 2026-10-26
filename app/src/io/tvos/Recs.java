@@ -127,7 +127,10 @@ final class Recs {
             listAt = cache.getLong("listAt", 0);
             listLanguage = cache.getString("language", cache.getBoolean("english", false) ? "en" : "pt");
             keyStamp = cache.getLong("keyStamp", 0);
-        } catch (Exception ignored) {
+        } catch (org.json.JSONException | ClassCastException e) {
+            AppLog.w("recommendations cache read: " + e.getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            AppLog.unexpected("recommendations cache read", e);
         }
     }
 
@@ -144,7 +147,11 @@ final class Recs {
         if (!f.exists() || !hasKey(c)) return new JSONObject();
         try (FileInputStream in = new FileInputStream(f)) {
             return new JSONObject(read(in));
-        } catch (Exception e) {
+        } catch (IOException | org.json.JSONException e) {
+            AppLog.w("recommendations status read: " + e.getClass().getSimpleName());
+            return new JSONObject();
+        } catch (RuntimeException e) {
+            AppLog.unexpected("recommendations status read", e);
             return new JSONObject();
         }
     }
@@ -153,7 +160,10 @@ final class Recs {
         try (FileOutputStream out = new FileOutputStream(new File(context.getFilesDir(), "recs-status.json"))) {
             out.write(new JSONObject().put("count", picks.size()).put("error", error).put("at", System.currentTimeMillis())
                     .toString().getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ignored) {
+        } catch (IOException | org.json.JSONException e) {
+            AppLog.w("recommendations status write: " + e.getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            AppLog.unexpected("recommendations status write", e);
         }
     }
 
@@ -258,8 +268,11 @@ final class Recs {
                 if (!origin.isEmpty()) p.movieOrigin = origin;
                 save();
                 notifyListeners();
-            } catch (Exception e) {
+            } catch (IOException | org.json.JSONException e) {
                 AppLog.w("movie metadata: " + e.getMessage());
+                synchronized (durationRequested) { durationLastAttempt.remove(id); }
+            } catch (RuntimeException e) {
+                AppLog.unexpected("movie metadata", e);
                 synchronized (durationRequested) { durationLastAttempt.remove(id); }
             } finally {
                 synchronized (durationRequested) { durationRequested.remove(id); }
@@ -364,7 +377,7 @@ final class Recs {
                     loaded = true;
                     notifyListeners();
                 }
-            } catch (Exception | OutOfMemoryError e) {
+            } catch (IOException | IllegalArgumentException | SecurityException | OutOfMemoryError e) {
                 AppLog.w("poster: " + e.getMessage());
             } finally {
                 if (tmp != null && tmp.exists()) tmp.delete();
@@ -455,9 +468,13 @@ final class Recs {
                     try {
                         if (!pick.detailed) fetchDetails(pick);
                         if (pick.backdrop != null) download(pick);
-                    } catch (Exception e) {
+                    } catch (IOException | org.json.JSONException e) {
                         failures++;
                         last = e.getMessage() == null ? e.toString() : e.getMessage();
+                    } catch (RuntimeException e) {
+                        AppLog.unexpected("recommendation title", e);
+                        failures++;
+                        last = e.getClass().getSimpleName();
                     }
                 }
                 if (!language.equals(Ui.language)) return;
@@ -465,11 +482,17 @@ final class Recs {
                 if (tried > 0 && failures == tried) throw new IOException(last);
                 error = "";
                 failedAt = 0;
-            } catch (Exception e) {
+            } catch (IOException | org.json.JSONException e) {
                 if (language.equals(Ui.language)) {
                     error = e.getMessage() == null ? e.toString() : e.getMessage();
                     failedAt = System.currentTimeMillis();
                     AppLog.w("recommendations: " + error);
+                }
+            } catch (RuntimeException e) {
+                AppLog.unexpected("recommendation refresh", e);
+                if (language.equals(Ui.language)) {
+                    error = e.getClass().getSimpleName();
+                    failedAt = System.currentTimeMillis();
                 }
             } finally {
                 fetching = false;
@@ -531,9 +554,13 @@ final class Recs {
                     try {
                         if (!p.detailed) fetchDetails(p);
                         if (p.backdrop != null) download(p);
-                    } catch (Exception e) {
+                    } catch (IOException | org.json.JSONException e) {
                         failures++;
                         last = e.getMessage() == null ? e.toString() : e.getMessage();
+                    } catch (RuntimeException e) {
+                        AppLog.unexpected("recommendation title", e);
+                        failures++;
+                        last = e.getClass().getSimpleName();
                     }
                 }
                 save();
@@ -570,7 +597,7 @@ final class Recs {
 
     // MARK: - TMDB
 
-    private boolean fetchList(int p, String language) throws Exception {
+    private boolean fetchList(int p, String language) throws IOException, org.json.JSONException {
         String apiLanguage = "ru".equals(language) ? "ru-RU" : "en-US";
         // Popularity is TMDB's global popularity score, filtered by Russian release context.
         // It is NOT a measurement of viewing figures in Russia.
@@ -654,9 +681,12 @@ final class Recs {
                     add(detectives, item, "movie");
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException | org.json.JSONException e) {
             if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
             AppLog.w("detective recommendations: " + e.getMessage());
+        } catch (RuntimeException e) {
+            AppLog.unexpected("detective recommendations", e);
+            if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
         }
         synchronized (this) {
             if (!language.equals(Ui.language)) return false;
@@ -695,7 +725,11 @@ final class Recs {
                     }
                 }
                 java.util.Collections.shuffle(result);
-            } catch (Exception ignored) { }
+            } catch (IOException | org.json.JSONException e) {
+                AppLog.w("random recommendations: " + e.getClass().getSimpleName());
+            } catch (RuntimeException e) {
+                AppLog.unexpected("random recommendations", e);
+            }
             if (request.active()) main.post(() -> {
                 if (request.active()) callback.accept(result);
             });
@@ -741,8 +775,10 @@ final class Recs {
                         if (page >= response.optInt("total_pages", 1)) break;
                     }
                 }
-            } catch (Exception e) {
+            } catch (IOException | org.json.JSONException e) {
                 android.util.Log.w("FreeMyTV", "TMDB search failed", e);
+            } catch (RuntimeException e) {
+                AppLog.unexpected("TMDB search", e);
             }
             if (request.active()) main.post(() -> {
                 if (request.active()) callback.accept(new ArrayList<>(found.values()));
@@ -796,7 +832,7 @@ final class Recs {
     }
 
     /** Genre, runtime (or seasons) and the service it's on, among the ones the TV has. */
-    private void fetchDetails(Pick p) throws Exception {
+    private void fetchDetails(Pick p) throws IOException, org.json.JSONException {
         JSONObject o = get("/" + p.kind + "/" + p.id
                 + "?language=" + lang() + "&append_to_response=watch/providers,images&include_image_language=null," + Ui.language + ",en");
         TmdbMetadata.applyDetails(p, o, REGION, this::installed);
@@ -807,7 +843,12 @@ final class Recs {
      * (larger only costs download, disk and decoding) and, on a tie, the highest rated.
      */
     private boolean installed(String pkg) {
-        return HomeApps.launchIntent(context.getPackageManager(), pkg) != null;
+        try {
+            return HomeApps.launchIntent(context.getPackageManager(), pkg) != null;
+        } catch (SecurityException e) {
+            AppLog.w("recommendations provider lookup: " + e.getClass().getSimpleName());
+            return false;
+        }
     }
 
     private long sourceStamp() {
@@ -886,7 +927,12 @@ final class Recs {
         } catch (IOException | RuntimeException | OutOfMemoryError e) {
             //noinspection ResultOfMethodCallIgnored
             f.delete();
-            AppLog.w("recommendation image: " + e.getMessage());
+            // TV bitmap/shader implementations can fail at runtime; keep the visual fallback,
+            // but make unexpected code/platform faults visible without logging private payloads.
+            if (e instanceof RuntimeException && !(e instanceof IllegalArgumentException)
+                    && !(e instanceof SecurityException))
+                AppLog.unexpected("recommendation image", (RuntimeException) e);
+            else AppLog.w("recommendation image: " + e.getMessage());
         }
     }
 
@@ -956,7 +1002,10 @@ final class Recs {
             cache.edit().putString("newPicks", n.toString()).putString("detectivePicks", d.toString()).putString("picks", a.toString()).putInt("period", period).putLong("listAt", listAt)
                     .putString("language", listLanguage)
                     .putLong("keyStamp", keyStamp).putInt("version", CACHE_VERSION).apply();
-        } catch (Exception ignored) {
+        } catch (org.json.JSONException e) {
+            AppLog.w("recommendations cache write: " + e.getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            AppLog.unexpected("recommendations cache write", e);
         }
     }
 

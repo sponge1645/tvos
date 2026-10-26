@@ -33,7 +33,10 @@ final class AppArtwork {
     private static final Map<String, Bitmap> LOGOS = new HashMap<>();
 
     static synchronized void pruneTiles(Set<String> seen) {
-        TILES.keySet().removeIf(k -> k.contains(".") && !seen.contains(k));
+        TILES.keySet().removeIf(key -> {
+            String pkg = key.startsWith("allapps-brand:") ? key.substring("allapps-brand:".length()) : key;
+            return pkg.contains(".") && !seen.contains(pkg);
+        });
     }
 
     // MARK: - Colored logos (shelf)

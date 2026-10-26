@@ -29,6 +29,8 @@ final class LocalNetwork {
         return cached;
     }
 
+    // Enumerate physical networks even when a VPN owns the default route.
+    @SuppressWarnings("deprecation")
     static Info query(ConnectivityManager manager) {
         if (manager == null) return null;
         Info best = null;

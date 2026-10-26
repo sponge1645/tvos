@@ -87,6 +87,8 @@ final class Spoken extends AccessibilityNodeProvider {
         return keyAt - talkBackAt > SAME_PRESS_MS;
     }
 
+    // Retain the existing pooled-node path on supported Android 9 TV firmware.
+    @SuppressWarnings("deprecation")
     @Override public AccessibilityNodeInfo createAccessibilityNodeInfo(int id) {
         if (id == HOST_VIEW_ID) {
             AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain(host);
@@ -164,6 +166,8 @@ final class Spoken extends AccessibilityNodeProvider {
         lastText = lastFocused < 0 ? "" : source.text(lastFocused);
     }
 
+    // Retain the existing pooled-event path on supported Android 9 TV firmware.
+    @SuppressWarnings("deprecation")
     private void send(int id, int type) {
         ViewParent parent = host.getParent();
         if (parent == null || !manager.isEnabled()) return;

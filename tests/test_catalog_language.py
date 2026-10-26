@@ -16,13 +16,13 @@ header = r'''package io.tvos;
 import java.util.*;import java.io.*;import org.json.*;import io.tvos.Recs.Pick;import static io.tvos.TmdbMetadata.countryName;
 public class CatalogHarness {
  static class Config {static String TMDB_KEY="test";}static final String REGION="RU";
- static class AppLog {static void w(String s){}}
+ static class AppLog {static void w(String s){}static void unexpected(String stage,RuntimeException e){}}
  List<Pick> picks=new ArrayList<>(),newPicks=new ArrayList<>(),detectivePicks=new ArrayList<>();String listLanguage="";long listAt,failedAt,keyStamp;int period,notices,refreshes;String error="";
  Set<String> durationRequested=new HashSet<>();Map<String,Long> durationLastAttempt=new HashMap<>();
  List<String> requests=new ArrayList<>();Runnable onGet;boolean failDetectives;
  void notifyListeners(){notices++;}void refreshIfStale(){refreshes++;}
  static String day(int offset){return offset<0?"2026-04-27":"2026-10-24";}
- JSONObject get(String path)throws Exception {
+ JSONObject get(String path)throws IOException, org.json.JSONException {
   requests.add(path);if(onGet!=null)onGet.run();
   if(failDetectives && path.contains("with_genres"))throw new IOException("detectives unavailable");
   boolean movie=path.contains("/movie?");boolean en=path.contains("language=en-US");

@@ -1,4 +1,5 @@
 """Exercise production menu focus timing, rapid navigation, reduced motion and update timestamps."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import re,subprocess,tempfile
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
@@ -56,5 +57,6 @@ with tempfile.TemporaryDirectory() as tmp:
  content=root/'SettingsContent.java';content.write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
  spring=root/'Spring.java';spring.write_text(Path('app/src/io/tvos/Spring.java').read_text())
  russian=root/'Russian.java';russian.write_text(Path('app/src/io/tvos/Russian.java').read_text())
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p),str(spring),str(russian),str(content)],check=True)
+ write_strings(root)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.SettingsTransitionHarness'],check=True)

@@ -825,6 +825,8 @@ public class SettingsActivity extends Activity {
         private String tr(String ru, String en) { return Ui.ru ? ru : en; }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
         private void toggleVpnTop() { Prefs.setTopButtonEnabled(2, !vpnTopEnabled()); invalidate(); }
+        // Legacy display/Wi-Fi information remains available on older TV firmware.
+        @SuppressWarnings("deprecation")
         private String[] menuValues() {
             String[] v = new String[rowCount()];
             java.util.Arrays.fill(v, "");
@@ -1165,6 +1167,8 @@ public class SettingsActivity extends Activity {
         }
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
+        // Preserve existing StaticLayout wrapping/metrics pending a separately verified migration.
+        @SuppressWarnings("deprecation")
         private void drawTileDescription(Canvas c) {
             String info = screen == UPDATES ? updateDetailsText()
                     : SettingsContent.description(screen, focus, pickFor, settingsGroup, menuButtonRows.size(), Ui.ru);

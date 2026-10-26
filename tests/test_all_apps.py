@@ -31,7 +31,7 @@ class HomeApps {
  static class Context {PackageManager pm=new PackageManager();PackageManager getPackageManager(){return pm;}String getPackageName(){return "io.tvos";}}
  static Intent launchIntent(PackageManager pm,String pkg){ApplicationInfo a=pm.installed.get(pkg);return a!=null&&a.enabled&&a.launchable?new Intent(pkg):null;}
  static Item shortcut(int kind,String key,String label,String symbol){Item i=new Item();i.kind=kind;i.key=key;i.label=label;i.symbol=symbol;return i;}
- static class AppArtwork {static Object brandedAllAppsTile(Context c,String p){return p;}static Object tvSettingsFavoriteTile(Context c){return "settings-art";}static void pruneTiles(Set<String> seen){TILES.keySet().removeIf(k->k.contains(".")&&!seen.contains(k));}}
+ static class AppArtwork {static Object brandedAllAppsTile(Context c,String p){return p;}static Object tvSettingsFavoriteTile(Context c){return "settings-art";}static void pruneTiles(Set<String> seen){}}
 '''
 tests='''
  static void add(Context c,String p,String name,boolean query){ApplicationInfo a=new ApplicationInfo();a.pkg=p;a.label=name;c.pm.installed.put(p,a);if(query)c.pm.tv.add(new ResolveInfo(p,name));}

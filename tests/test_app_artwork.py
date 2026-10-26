@@ -143,8 +143,9 @@ public class ArtworkHarness {
   check(new File(c.cache,"logos/no-banner-456-v2.png.none").exists(),"failed extraction saved as negative disk marker");
   AppArtwork.LOGOS.clear();check(AppArtwork.shelfLogo(c,"no-banner","absent","",true)==null&&c.bannerLoads==loads+1,"negative marker avoids repeated background work");
   Bitmap tile=AppArtwork.appTile(c,null,"example.app",0);check(tile.mipmap&&AppArtwork.appTile(c,null,"example.app",0)==tile&&c.tileLoads==1,"fallback tile prepared once with mipmaps");
-  AppArtwork.TILES.put("gone.app",tile);AppArtwork.TILES.put("symbol",tile);AppArtwork.pruneTiles(new HashSet<>(Arrays.asList("example.app")));
-  check(!AppArtwork.TILES.containsKey("gone.app")&&AppArtwork.TILES.containsKey("example.app")&&AppArtwork.TILES.containsKey("symbol"),"existing tile prune rule preserved");
+  AppArtwork.TILES.put("allapps-brand:example.app",tile);AppArtwork.TILES.put("allapps-brand:gone.app",tile);AppArtwork.TILES.put("gone.app",tile);AppArtwork.TILES.put("symbol",tile);AppArtwork.pruneTiles(new HashSet<>(Arrays.asList("example.app")));
+  check(!AppArtwork.TILES.containsKey("gone.app")&&AppArtwork.TILES.containsKey("example.app")&&AppArtwork.TILES.containsKey("symbol"),"uninstalled package and symbol pruning preserved");
+  check(AppArtwork.TILES.containsKey("allapps-brand:example.app")&&!AppArtwork.TILES.containsKey("allapps-brand:gone.app"),"branded keys are matched by their package before pruning");
   System.out.println("PASS: artwork trim/ink/holes, gradient extraction, tint, bounded decoding, memory/disk/negative caches, deferred loading, versioned files, tile reuse");
  }
 }

@@ -142,6 +142,8 @@ final class SelfUpdate {
         });
     }
 
+    // Retain legacy signer metadata as a fallback for older TV package managers.
+    @SuppressWarnings("deprecation")
     private static final int SIGNER_FLAGS = PackageManager.GET_SIGNING_CERTIFICATES | PackageManager.GET_SIGNATURES;
 
     private void verifyApk(File file, UpdateRelease release) throws Exception {
@@ -182,6 +184,8 @@ final class SelfUpdate {
     }
 
     /** Prefer current signers; firmware may populate only the legacy representation. Never accept signing history. */
+    // Some TV firmware exposes legacy signatures instead of SigningInfo.
+    @SuppressWarnings("deprecation")
     private static Signature[] currentSigners(PackageInfo info) {
         try {
             Signature[] signatures = info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners();

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_weather" formatted="false">Weather</string>
+    <string name="settings_date" formatted="false">Date</string>
+    <string name="settings_reset" formatted="false">Reset</string>
+    <string name="settings_menu_bar" formatted="false">Menu Bar</string>
+    <string name="settings_accessibility" formatted="false">Accessibility</string>
+    <string name="settings_apps" formatted="false">Apps</string>
+    <string name="settings_buttons" formatted="false">Buttons</string>
+    <string name="settings_software_updates" formatted="false">Software Updates</string>
+    <string name="settings_screen_saver" formatted="false">Screen Saver</string>
+    <string name="settings_default_launcher" formatted="false">Default Launcher</string>
+    <string name="settings_remotes_and_devices" formatted="false">Remotes and Devices</string>
+    <string name="settings_categories" formatted="false">Categories</string>
+    <string name="settings_about" formatted="false">About</string>
+    <string name="settings_appearance" formatted="false">Appearance</string>
+    <string name="settings_language" formatted="false">Language</string>
+    <string name="settings_region" formatted="false">Region</string>
+    <string name="settings_date_time" formatted="false">Date &amp; Time</string>
+    <string name="settings_temperature" formatted="false">Temperature</string>
+    <string name="settings_time_format" formatted="false">Time Format</string>
+    <string name="settings_navigation_clicks" formatted="false">Navigation Clicks</string>
+    <string name="settings_quotes" formatted="false">Quotes</string>
+    <string name="settings_show_in_menu_bar" formatted="false">Show in Menu Bar</string>
+    <string name="settings_show_in_bottom_menu" formatted="false">Show in Bottom Menu</string>
+    <string name="settings_update_software" formatted="false">Update Software</string>
+    <string name="settings_automatically_update" formatted="false">Automatically Update</string>
+    <string name="settings_restart_tvos" formatted="false">Restart tvOS</string>
+    <string name="settings_clear_cache" formatted="false">Clear cache</string>
+    <string name="settings_reset_tvos" formatted="false">Reset tvOS</string>
+    <string name="settings_download_airplay" formatted="false">Download AirPlay</string>
+    <string name="settings_download_apple_music" formatted="false">Download Apple Music</string>
+    <string name="settings_download_tizentube" formatted="false">Download TizenTube</string>
+    <string name="settings_download_incy" formatted="false">Download INCY</string>
+    <string name="settings_download_seena" formatted="false">Download Seena</string>
+    <string name="settings_download_lampa" formatted="false">Download Lampa</string>
+    <string name="settings_download_kinopub" formatted="false">Download KinoPub</string>
+    <string name="settings_reduce_transparency" formatted="false">Reduce Transparency</string>
+    <string name="settings_reduce_motion" formatted="false">Reduce Motion</string>
+    <string name="settings_tv_settings" formatted="false">TV Settings</string>
+    <string name="settings_vpn" formatted="false">VPN</string>
+    <string name="settings_current_selection" formatted="false">Current Selection</string>
+    <string name="settings_show_clock" formatted="false">Show Clock</string>
+    <string name="settings_show_location" formatted="false">Show Location</string>
+    <string name="settings_show_weather" formatted="false">Show Weather</string>
+    <string name="settings_preview" formatted="false">Preview</string>
+    <string name="settings_name" formatted="false">Name</string>
+    <string name="settings_model" formatted="false">Model</string>
+    <string name="settings_serial_number" formatted="false">Serial Number</string>
+    <string name="settings_os" formatted="false">OS</string>
+    <string name="settings_resolution" formatted="false">Resolution</string>
+    <string name="settings_wi_fi_network_name" formatted="false">Wi-Fi Network Name</string>
+    <string name="settings_ip_address" formatted="false">IP Address</string>
+    <string name="settings_general" formatted="false">General</string>
+    <string name="settings_widgets" formatted="false">Widgets</string>
+    <string name="settings_system" formatted="false">System</string>
+    <string name="settings_help_airplay" formatted="false">AirPlay requires an additional app.\nInstall it from the Apps section.</string>
+    <string name="settings_help_dock" formatted="false">Choose the apps shown in the Dock.</string>
+    <string name="settings_help_region" formatted="false">The city used for weather forecasts.</string>
+    <string name="settings_help_weather_city" formatted="false">Set the weather city in Region.</string>
+    <string name="settings_help_launcher" formatted="false">tvOS has no ads and a new screen saver. Built-in uses the TV\'s original home screen. Switching can take a few seconds.</string>
+    <string name="settings_help_categories" formatted="false">Menu Bar categories.\nOK turns a category on or off; left and right change its order.</string>
+    <string name="settings_help_dock_editor" formatted="false">Choose the apps shown in the Dock.\nOK adds or removes an app; left and right change its order.</string>
+    <string name="settings_help_picker" formatted="false">Press OK to select. Back to cancel.</string>
+    <string name="settings_help_value_controls" formatted="false">Press OK or the arrow keys to change a setting.</string>
+    <string name="settings_help_sections" formatted="false">Enable or disable home screen sections.</string>
+    <string name="settings_help_menu_buttons" formatted="false">Configure quick-access buttons in the Menu Bar.</string>
+    <string name="settings_help_vpn_app" formatted="false">Choose the app opened by the VPN button.</string>
+    <string name="settings_help_button_editor" formatted="false">OK turns a button on or off; left and right change its order.</string>
+    <string name="settings_help_reset" formatted="false">Clearing cache preserves settings. Reset tvOS erases all app data.</string>
+    <string name="settings_help_remote" formatted="false">Choose remote button actions. Some buttons may be controlled by the TV.</string>
+    <string name="settings_app_airplay_description" formatted="false">Share your screen, videos and music\nfrom iPhone, iPad or Mac to your TV.</string>
+    <string name="settings_app_music_description" formatted="false">Music, albums and playlists on your TV.\nA third-party client; Apple Music subscription required.</string>
+    <string name="settings_app_tizentube_description" formatted="false">An alternative YouTube client\nwith a TV interface and remote control support.</string>
+    <string name="settings_app_incy_description" formatted="false">A VPN client for connecting to your own servers.\nImport configurations and subscription links.</string>
+    <string name="settings_app_seena_description" formatted="false">Movies, series and cartoons\nin an app designed for your TV remote.</string>
+    <string name="settings_app_lampa_description" formatted="false">A movie and series catalog for your TV.\nPlayback sources are configured separately.</string>
+    <string name="settings_app_kinopub_description" formatted="false">Movies and series from KinoPub.\nAn account with viewing access is required.</string>
+    <string name="settings_choose_app" formatted="false">Choose app</string>
+    <string name="settings_settings" formatted="false">Settings</string>
+</resources>

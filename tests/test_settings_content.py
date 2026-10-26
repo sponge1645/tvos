@@ -1,4 +1,5 @@
 """Exercise production settings content and view delegation in both supported languages."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess
 import tempfile
@@ -64,5 +65,6 @@ public class ContentHarness {
 with tempfile.TemporaryDirectory(prefix='tvos-settings-content-') as tmp:
  root=Path(tmp);(root/'ContentHarness.java').write_text(harness)
  (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.glob('*.java'))],check=True)
+ write_strings(root)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.ContentHarness'],check=True)

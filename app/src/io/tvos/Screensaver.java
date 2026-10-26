@@ -25,6 +25,8 @@ public class Screensaver extends DreamService {
         return null;
     }
 
+    // DreamActivity transition overrides must also work before Android 14.
+    @SuppressWarnings("deprecation")
     private void finishWithFade() {
         android.app.Activity activity = dreamActivity();
         if (finishing) return;
@@ -68,6 +70,8 @@ public class Screensaver extends DreamService {
         }
     }
 
+    // Preserve DreamActivity entry fades on Android 9-13.
+    @SuppressWarnings("deprecation")
     @Override public void onDreamingStarted() {
         super.onDreamingStarted();
         dreaming = true;

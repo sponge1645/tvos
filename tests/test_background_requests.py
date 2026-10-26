@@ -12,6 +12,7 @@ def method(signature):
  return s[start:i]
 header='''package io.tvos;
 import java.util.*;
+import java.io.IOException;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.net.URLEncoder;
@@ -30,8 +31,9 @@ public class AsyncHarness {
   void post(Runnable r){queue.add(r);} void drain(){while(!queue.isEmpty())queue.remove(0).run();}
  }
  final ThreadPoolExecutor requestIo=new ThreadPoolExecutor(1,1,0,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>());
- final Main main=new Main();final AtomicInteger calls=new AtomicInteger(); volatile Runnable onGet;
- JSONObject get(String s){calls.incrementAndGet();Runnable hook=onGet;if(hook!=null)hook.run();return new JSONObject();}
+ final Main main=new Main();final AtomicInteger calls=new AtomicInteger(); volatile Runnable onGet;boolean failNetwork;
+ static class AppLog {static int warnings,unexpected;static void w(String message){warnings++;}static void unexpected(String stage,RuntimeException e){unexpected++;}}
+ JSONObject get(String s)throws java.io.IOException,org.json.JSONException{calls.incrementAndGet();if(failNetwork)throw new IOException("offline");Runnable hook=onGet;if(hook!=null)hook.run();return new JSONObject();}
  String lang(){return "en-US";} void add(List<Pick> list,JSONObject item,String kind){}
  void flush()throws Exception{requestIo.submit(()->{}).get(3,TimeUnit.SECONDS);}
  static void check(boolean value,String label){if(!value)throw new AssertionError(label);}
@@ -66,6 +68,13 @@ tests='''
    h.onGet=null;
    UiRequest beforeStart=new UiRequest(h.requestIo);beforeStart.cancel();baseline=h.calls.get();
    beforeStart.start(()->h.calls.incrementAndGet());h.flush();check(h.calls.get()==baseline,"cancel before start");
+   h.failNetwork=true;int warnings=AppLog.warnings;delivered.set(0);
+   h.loadAcclaimed(r->delivered.incrementAndGet());h.flush();h.main.drain();
+   check(delivered.get()==1&&AppLog.warnings==warnings+1,"network error logs once and delivers partial roulette response");
+   h.failNetwork=false;h.onGet=()->{throw new IllegalStateException("unexpected");};int faults=AppLog.unexpected;delivered.set(0);
+   h.search("broken",r->delivered.incrementAndGet());h.flush();h.main.drain();
+   check(delivered.get()==1&&AppLog.unexpected==faults+1,"unexpected query fault is diagnosed and retains fallback delivery");
+   h.onGet=null;
    System.out.println("PASS: cancelled queue removal, latest query, delivery guard, in-flight search/roulette cancellation, cancel-before-start");
   }finally{h.requestIo.shutdownNow();}
  }
@@ -75,6 +84,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-background-test-') as directory:
     root=Path(directory)
     (root/'AsyncHarness.java').write_text(header+method('    UiRequest loadAcclaimed(')+method('    UiRequest search(')+tests)
     (root/'Log.java').write_text('package android.util; public class Log {public static int w(String t,String s,Throwable e){return 0;}}')
+    (root/'JSONException.java').write_text('package org.json;public class JSONException extends Exception {}')
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UiRequest.java',str(root/'AsyncHarness.java'),str(root/'Log.java')],check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UiRequest.java',str(root/'AsyncHarness.java'),str(root/'Log.java'),str(root/'JSONException.java')],check=True)
     subprocess.run([java,'-cp',directory,'io.tvos.AsyncHarness'],check=True)

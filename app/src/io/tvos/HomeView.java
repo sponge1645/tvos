@@ -2640,6 +2640,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 }
                 return super.dispatchKeyEvent(event);
             }
+            // Dialog Back handling must remain available on Android 9 TV keyboards.
+            @SuppressWarnings("deprecation")
             @Override public void onBackPressed() {
                 if (closing) return;
                 closing = true;

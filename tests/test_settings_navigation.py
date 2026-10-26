@@ -1,4 +1,5 @@
 """Exercise production value-row routing, widget toggles and application labels on JVM."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import os
 import subprocess
@@ -73,5 +74,6 @@ with tempfile.TemporaryDirectory(prefix='tvos-settings-test-') as directory:
     (root/'SettingsActions.java').write_text(Path('app/src/io/tvos/SettingsActions.java').read_text())
     (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,str(root/'SettingsHarness.java'),str(root/'SettingsContent.java'),str(root/'SettingsActions.java')],check=True)
+    write_strings(root)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
     subprocess.run([java,'-cp',directory,'io.tvos.SettingsHarness'],check=True)

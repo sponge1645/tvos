@@ -27,9 +27,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/tvos-android-sdk/licenses"
           cp -R "$ANDROID_HOME/licenses/." "$RUNNER_TEMP/tvos-android-sdk/licenses/"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$RUNNER_TEMP/tvos-android-sdk" "platforms;android-34" "build-tools;34.0.0"
-      - name: Compile Android APK with disposable CI key
+      - name: Strict javac checks and compile APK with disposable CI key
         env:
           ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
           ANDROID_SDK_ROOT: ${{ runner.temp }}/tvos-android-sdk
+          TVOS_STRICT_JAVA: '1'
         run: bash build.sh
       # No production signing key or TMDB key is used; this APK is deliberately not published.

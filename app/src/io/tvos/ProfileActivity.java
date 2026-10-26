@@ -26,6 +26,8 @@ import java.util.List;
 public final class ProfileActivity extends Activity {
     private ProfileView profile;
 
+    // The replacement transition API requires Android 14; keep the tested legacy fade.
+    @SuppressWarnings("deprecation")
     static void open(Activity activity, int[] frost) {
         Intent intent = new Intent(activity, ProfileActivity.class);
         // Only the already blurred 192x108 pixels cross the activity boundary, never a full screenshot.
@@ -54,6 +56,8 @@ public final class ProfileActivity extends Activity {
         super.onSaveInstanceState(state);
     }
 
+    // Keep the same exit transition on Android 9 through current TV firmware.
+    @SuppressWarnings("deprecation")
     @Override public void finish() {
         super.finish();
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);

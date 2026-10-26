@@ -79,6 +79,8 @@ final class NetworkStatus {
         }
     }
 
+    // Inspect validated physical networks behind a VPN; the default route alone is insufficient.
+    @SuppressWarnings("deprecation")
     static int detect(ConnectivityManager manager) {
         if (manager == null) return OFFLINE;
         try {

@@ -526,6 +526,8 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         fallback.start();
     }
 
+    // Preserve TV media-stream routing pending device checks of AudioAttributes.
+    @SuppressWarnings("deprecation")
     private void playNext() {
         if (!running || exiting || !surfaceReady || urls.isEmpty() || preparing || fallback != null) return;
         releasePlayer();

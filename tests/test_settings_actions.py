@@ -1,4 +1,5 @@
 """Exercise pure settings routing and actual view activation/back effects without Android drawing."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess,tempfile
 from settings_action_fixture import method,view,SOURCE
@@ -48,5 +49,6 @@ production=view('ActionView').replace('private void activate()', 'void activate(
 with tempfile.TemporaryDirectory(prefix='tvos-settings-actions-') as tmp:
  root=Path(tmp);(root/'ActionView.java').write_text(production);(root/'ActionsTest.java').write_text(harness)
  for name in ('SettingsContent','SettingsActions'):(root/(name+'.java')).write_text(Path('app/src/io/tvos/'+name+'.java').read_text())
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.glob('*.java'))],check=True)
+ write_strings(root)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.ActionsTest'],check=True)

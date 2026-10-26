@@ -16,6 +16,8 @@ final class ApkTrust {
     private ApkTrust() {}
 
     // Request both representations: some TV firmware leaves SigningInfo empty for archives.
+    // Retain the reviewed legacy-signature fallback; do not weaken APK trust checks.
+    @SuppressWarnings("deprecation")
     private static final int SIGNER_FLAGS = PackageManager.GET_SIGNING_CERTIFICATES | PackageManager.GET_SIGNATURES;
 
     static PackageInfo installed(PackageManager manager, String packageName) {
@@ -49,6 +51,8 @@ final class ApkTrust {
                 && signers(installed).equals(Collections.singleton(app.signerSha256));
     }
 
+    // Some TV package managers still expose only the legacy signature array.
+    @SuppressWarnings("deprecation")
     private static Set<String> signers(PackageInfo info) {
         Set<String> result = new HashSet<>();
         // Prefer the full current signer set. Never use signing history or merge legacy data.

@@ -8,46 +8,46 @@ final class SettingsContent {
 
     static String screenTitle(int screen, int settingsGroup, int pickFor, boolean russian) {
         switch (screen) {
-            case GENERAL: return russian ? "Основные" : "General";
-            case WIDGETS: return russian ? "Виджеты" : "Widgets";
-            case WEATHER: return tr(russian, "Погода", "Weather");
-            case DATE_TIME: return tr(russian, "Дата", "Date");
-            case SYSTEM: return russian ? "Система" : "System";
-            case RESET: return tr(russian, "Сброс", "Reset");
-            case TOP_PANEL: return tr(russian, "Верхняя панель", "Menu Bar");
-            case ACCESSIBILITY: return tr(russian, "Универсальный доступ", "Accessibility");
-            case APPS_DOWNLOADS: return tr(russian, "Приложения", "Apps");
-            case MENU_BUTTONS: return tr(russian, "Кнопки", "Buttons");
-            case UPDATES: return tr(russian, "Обновления ПО", "Software Updates");
-            case ABOUT: return russian ? "Об этом устройстве" : "About";
-            case SCREENSAVER: return tr(russian, "Заставка", "Screen Saver");
-            case HOME_CHOICE: return tr(russian, "Домашний экран", "Default Launcher");
+            case GENERAL: return AppStrings.get(R.string.settings_general, russian);
+            case WIDGETS: return AppStrings.get(R.string.settings_widgets, russian);
+            case WEATHER: return AppStrings.get(R.string.settings_weather, russian);
+            case DATE_TIME: return AppStrings.get(R.string.settings_date, russian);
+            case SYSTEM: return AppStrings.get(R.string.settings_system, russian);
+            case RESET: return AppStrings.get(R.string.settings_reset, russian);
+            case TOP_PANEL: return AppStrings.get(R.string.settings_menu_bar, russian);
+            case ACCESSIBILITY: return AppStrings.get(R.string.settings_accessibility, russian);
+            case APPS_DOWNLOADS: return AppStrings.get(R.string.settings_apps, russian);
+            case MENU_BUTTONS: return AppStrings.get(R.string.settings_buttons, russian);
+            case UPDATES: return AppStrings.get(R.string.settings_software_updates, russian);
+            case ABOUT: return AppStrings.get(R.string.settings_about, russian);
+            case SCREENSAVER: return AppStrings.get(R.string.settings_screen_saver, russian);
+            case HOME_CHOICE: return AppStrings.get(R.string.settings_default_launcher, russian);
             case VPN_SETTINGS: return "VPN";
-            case HOME_SETTINGS: return settingsGroup == WIDGETS ? (russian ? "Котировки" : "Quotes") : settingsGroup == SYSTEM ? (russian ? "Категории" : "Categories") : (russian ? "Основные" : "General");
-            case REMOTE_KEYS: return tr(russian, "Пульты и устройства", "Remotes and Devices");
+            case HOME_SETTINGS: return settingsGroup == WIDGETS ? (AppStrings.get(R.string.settings_quotes, russian)) : settingsGroup == SYSTEM ? (AppStrings.get(R.string.settings_categories, russian)) : (AppStrings.get(R.string.settings_general, russian));
+            case REMOTE_KEYS: return AppStrings.get(R.string.settings_remotes_and_devices, russian);
             case SHELF_EDIT: return "Dock";
-            case CATEGORY_EDIT: return tr(russian, "Категории", "Categories");
-            case PICKER: return pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (russian ? "Регион" : "Region") : (russian ? "Выбор приложения" : "Choose app");
-            default: return russian ? "Настройки" : "Settings";
+            case CATEGORY_EDIT: return AppStrings.get(R.string.settings_categories, russian);
+            case PICKER: return pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (AppStrings.get(R.string.settings_region, russian)) : (AppStrings.get(R.string.settings_choose_app, russian));
+            default: return AppStrings.get(R.string.settings_settings, russian);
         }
     }
 
     static String[] menuLabels(int screen, boolean russian) {
         switch (screen) {
-            case GENERAL: return new String[] {tr(russian, "Об этом устройстве", "About"), tr(russian, "Оформление", "Appearance"), tr(russian, "Язык", "Language"), tr(russian, "Регион", "Region"), tr(russian, "Дата и время", "Date & Time"), tr(russian, "Температура", "Temperature"), tr(russian, "Формат времени", "Time Format"), tr(russian, "Щелчки при навигации", "Navigation Clicks")};
-            case WIDGETS: return new String[] {tr(russian, "Погода", "Weather"), tr(russian, "Котировки", "Quotes"), tr(russian, "Дата", "Date")};
-            case DATE_TIME: return new String[] {tr(russian, "Показывать на верхней панели", "Show in Menu Bar")};
-            case WEATHER: return new String[] {tr(russian, "Показывать на верхней панели", "Show in Menu Bar"), tr(russian, "Показывать на нижней панели", "Show in Bottom Menu")};
-            case UPDATES: return new String[] {tr(russian, "Обновление ПО", "Update Software"), tr(russian, "Автоматическое обновление", "Automatically Update")};
-            case SYSTEM: return new String[] {tr(russian, "Обновления ПО", "Software Updates"), tr(russian, "Сброс", "Reset"), tr(russian, "Перезагрузить tvOS", "Restart tvOS")};
-            case RESET: return new String[] {tr(russian, "Очистить кеш", "Clear cache"), tr(russian, "Сброс tvOS", "Reset tvOS")};
-            case TOP_PANEL: return new String[] {tr(russian, "Категории", "Categories"), tr(russian, "Кнопки", "Buttons")};
-            case APPS_DOWNLOADS: return new String[] {tr(russian, "Загрузить AirPlay", "Download AirPlay"), tr(russian, "Загрузить Apple Music", "Download Apple Music"), tr(russian, "Загрузить TizenTube", "Download TizenTube"), tr(russian, "Загрузить INCY", "Download INCY"), tr(russian, "Загрузить Seena", "Download Seena"), tr(russian, "Загрузить Lampa", "Download Lampa"), tr(russian, "Загрузить KinoPub", "Download KinoPub")};
-            case ACCESSIBILITY: return new String[] {tr(russian, "Уменьшение прозрачности", "Reduce Transparency"), tr(russian, "Уменьшение анимаций", "Reduce Motion"), tr(russian, "Домашний экран", "Default Launcher"), tr(russian, "Настройки ТВ", "TV Settings")};
-            case VPN_SETTINGS: return new String[] {tr(russian, "Показывать на верхней панели", "Show in Menu Bar"), tr(russian, "VPN-служба", "VPN")};
-            case SCREENSAVER: return new String[] {tr(russian, "Источник", "Current Selection"), tr(russian, "Показывать часы", "Show Clock"), tr(russian, "Показывать место съёмки", "Show Location"), tr(russian, "Показывать погоду", "Show Weather"), tr(russian, "Предпросмотр", "Preview")};
-            case ABOUT: return new String[] {tr(russian, "Имя", "Name"), tr(russian, "Модель", "Model"), tr(russian, "Серийный номер", "Serial Number"), "tvOS", tr(russian, "ОС", "OS"), tr(russian, "Разрешение", "Resolution"), tr(russian, "Имя сети Wi-Fi", "Wi-Fi Network Name"), tr(russian, "IP-адрес", "IP Address")};
-            default: return new String[] {tr(russian, "Основные", "General"), tr(russian, "Заставка", "Screen Saver"), "AirPlay", tr(russian, "Пульты и устройства", "Remotes and Devices"), tr(russian, "Универсальный доступ", "Accessibility"), tr(russian, "Приложения", "Apps"), "Dock", tr(russian, "Верхняя панель", "Menu Bar"), tr(russian, "Виджеты", "Widgets"), tr(russian, "Система", "System")};
+            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, russian), AppStrings.get(R.string.settings_appearance, russian), AppStrings.get(R.string.settings_language, russian), AppStrings.get(R.string.settings_region, russian), AppStrings.get(R.string.settings_date_time, russian), AppStrings.get(R.string.settings_temperature, russian), AppStrings.get(R.string.settings_time_format, russian), AppStrings.get(R.string.settings_navigation_clicks, russian)};
+            case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, russian), AppStrings.get(R.string.settings_quotes, russian), AppStrings.get(R.string.settings_date, russian)};
+            case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, russian)};
+            case WEATHER: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, russian), AppStrings.get(R.string.settings_show_in_bottom_menu, russian)};
+            case UPDATES: return new String[] {AppStrings.get(R.string.settings_update_software, russian), AppStrings.get(R.string.settings_automatically_update, russian)};
+            case SYSTEM: return new String[] {AppStrings.get(R.string.settings_software_updates, russian), AppStrings.get(R.string.settings_reset, russian), AppStrings.get(R.string.settings_restart_tvos, russian)};
+            case RESET: return new String[] {AppStrings.get(R.string.settings_clear_cache, russian), AppStrings.get(R.string.settings_reset_tvos, russian)};
+            case TOP_PANEL: return new String[] {AppStrings.get(R.string.settings_categories, russian), AppStrings.get(R.string.settings_buttons, russian)};
+            case APPS_DOWNLOADS: return new String[] {AppStrings.get(R.string.settings_download_airplay, russian), AppStrings.get(R.string.settings_download_apple_music, russian), AppStrings.get(R.string.settings_download_tizentube, russian), AppStrings.get(R.string.settings_download_incy, russian), AppStrings.get(R.string.settings_download_seena, russian), AppStrings.get(R.string.settings_download_lampa, russian), AppStrings.get(R.string.settings_download_kinopub, russian)};
+            case ACCESSIBILITY: return new String[] {AppStrings.get(R.string.settings_reduce_transparency, russian), AppStrings.get(R.string.settings_reduce_motion, russian), AppStrings.get(R.string.settings_default_launcher, russian), AppStrings.get(R.string.settings_tv_settings, russian)};
+            case VPN_SETTINGS: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, russian), AppStrings.get(R.string.settings_vpn, russian)};
+            case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, russian), AppStrings.get(R.string.settings_show_clock, russian), AppStrings.get(R.string.settings_show_location, russian), AppStrings.get(R.string.settings_show_weather, russian), AppStrings.get(R.string.settings_preview, russian)};
+            case ABOUT: return new String[] {AppStrings.get(R.string.settings_name, russian), AppStrings.get(R.string.settings_model, russian), AppStrings.get(R.string.settings_serial_number, russian), "tvOS", AppStrings.get(R.string.settings_os, russian), AppStrings.get(R.string.settings_resolution, russian), AppStrings.get(R.string.settings_wi_fi_network_name, russian), AppStrings.get(R.string.settings_ip_address, russian)};
+            default: return new String[] {AppStrings.get(R.string.settings_general, russian), AppStrings.get(R.string.settings_screen_saver, russian), "AirPlay", AppStrings.get(R.string.settings_remotes_and_devices, russian), AppStrings.get(R.string.settings_accessibility, russian), AppStrings.get(R.string.settings_apps, russian), "Dock", AppStrings.get(R.string.settings_menu_bar, russian), AppStrings.get(R.string.settings_widgets, russian), AppStrings.get(R.string.settings_system, russian)};
         }
     }
 
@@ -56,57 +56,50 @@ final class SettingsContent {
         String info = null;
         switch (screen) {
             case MAIN:
-                if (focus == 2) info = tr(russian, "Для AirPlay нужно дополнительное приложение.\nУстановите его в разделе «Приложения».",
-                        "AirPlay requires an additional app.\nInstall it from the Apps section.");
-                else if (focus == 6) info = tr(russian, "Настройка приложений на панели Dock.", "Choose the apps shown in the Dock.");
+                if (focus == 2) info = AppStrings.get(R.string.settings_help_airplay, russian);
+                else if (focus == 6) info = AppStrings.get(R.string.settings_help_dock, russian);
                 break;
             case GENERAL:
-                if (focus == 3) info = tr(russian, "Город для прогноза погоды.", "The city used for weather forecasts.");
+                if (focus == 3) info = AppStrings.get(R.string.settings_help_region, russian);
                 break;
             case SCREENSAVER:
-                if (focus == 3) info = tr(russian, "Город для погоды указывается в пункте «Регион».",
-                        "Set the weather city in Region.");
+                if (focus == 3) info = AppStrings.get(R.string.settings_help_weather_city, russian);
                 break;
             case APPS_DOWNLOADS:
                 info = appDownloadDescription(focus, russian);
                 break;
             case HOME_CHOICE:
-                info = tr(russian, "tvOS — без рекламы, с новой заставкой. Встроенный — заводской главный экран телевизора. Переключение занимает несколько секунд; экран может мигать.",
-                        "tvOS has no ads and a new screen saver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
+                info = AppStrings.get(R.string.settings_help_launcher, russian);
                 break;
             case CATEGORY_EDIT:
-                info = tr(russian, "Разделы верхней панели.\nOK — включить или выключить, стрелки — изменить порядок.",
-                        "Menu Bar categories.\nOK turns a category on or off; left and right change its order.");
+                info = AppStrings.get(R.string.settings_help_categories, russian);
                 break;
             case SHELF_EDIT:
-                info = tr(russian, "Настройка приложений на панели Dock.\nOK — добавить или убрать, стрелки — изменить порядок.",
-                        "Choose the apps shown in the Dock.\nOK adds or removes an app; left and right change its order.");
+                info = AppStrings.get(R.string.settings_help_dock_editor, russian);
                 break;
             case PICKER:
                 info = pickFor == PICK_CITY
-                        ? tr(russian, "Город для прогноза погоды.", "The city used for weather forecasts.")
-                        : tr(russian, "Нажмите OK для выбора. Назад — отмена.", "Press OK to select. Back to cancel.");
+                        ? AppStrings.get(R.string.settings_help_region, russian)
+                        : AppStrings.get(R.string.settings_help_picker, russian);
                 break;
             case HOME_SETTINGS:
-                info = tr(russian, "OK или стрелки изменяют выбранный параметр.", "Press OK or the arrow keys to change a setting.");
+                info = AppStrings.get(R.string.settings_help_value_controls, russian);
                 if (screen == HOME_SETTINGS && settingsGroup == SYSTEM)
-                    info = tr(russian, "Включайте и выключайте разделы главного экрана.", "Enable or disable home screen sections.");
+                    info = AppStrings.get(R.string.settings_help_sections, russian);
                 break;
             case TOP_PANEL:
-                if (focus == 1) info = tr(russian, "Настройка кнопок быстрого доступа на верхней панели.", "Configure quick-access buttons in the Menu Bar.");
+                if (focus == 1) info = AppStrings.get(R.string.settings_help_menu_buttons, russian);
                 break;
             case MENU_BUTTONS:
                 info = focus == menuButtonCount
-                        ? tr(russian, "Выберите приложение для кнопки VPN.", "Choose the app opened by the VPN button.")
-                        : tr(russian, "OK — включить или выключить, стрелки — изменить порядок.",
-                                "OK turns a button on or off; left and right change its order.");
+                        ? AppStrings.get(R.string.settings_help_vpn_app, russian)
+                        : AppStrings.get(R.string.settings_help_button_editor, russian);
                 break;
             case RESET:
-                info = tr(russian, "Очистка кеша не удаляет настройки. Сброс tvOS удалит все данные приложения.", "Clearing cache preserves settings. Reset tvOS erases all app data.");
+                info = AppStrings.get(R.string.settings_help_reset, russian);
                 break;
             case REMOTE_KEYS:
-                info = tr(russian, "Выберите назначение кнопок пульта. Некоторые кнопки могут управляться самим телевизором.",
-                        "Choose remote button actions. Some buttons may be controlled by the TV.");
+                info = AppStrings.get(R.string.settings_help_remote, russian);
                 break;
         }
         return info;
@@ -114,23 +107,15 @@ final class SettingsContent {
 
     private static String appDownloadDescription(int index, boolean russian) {
         switch (index) {
-            case 0: return tr(russian, "Трансляция экрана, видео и музыки\nс iPhone, iPad и Mac на телевизор.",
-                    "Share your screen, videos and music\nfrom iPhone, iPad or Mac to your TV.");
-            case 1: return tr(russian, "Музыка, альбомы и плейлисты на телевизоре.\nСторонний клиент; нужна подписка Apple Music.",
-                    "Music, albums and playlists on your TV.\nA third-party client; Apple Music subscription required.");
-            case 2: return tr(russian, "Альтернативный клиент YouTube\nс интерфейсом для телевизора и управлением с пульта.",
-                    "An alternative YouTube client\nwith a TV interface and remote control support.");
-            case 3: return tr(russian, "VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.",
-                    "A VPN client for connecting to your own servers.\nImport configurations and subscription links.");
-            case 4: return tr(russian, "Фильмы, сериалы и мультфильмы\nв приложении с управлением с пульта.",
-                    "Movies, series and cartoons\nin an app designed for your TV remote.");
-            case 5: return tr(russian, "Каталог фильмов и сериалов для телевизора.\nИсточники просмотра настраиваются отдельно.",
-                    "A movie and series catalog for your TV.\nPlayback sources are configured separately.");
-            case 6: return tr(russian, "Фильмы и сериалы из сервиса KinoPub.\nДля просмотра нужен аккаунт с доступом.",
-                    "Movies and series from KinoPub.\nAn account with viewing access is required.");
+            case 0: return AppStrings.get(R.string.settings_app_airplay_description, russian);
+            case 1: return AppStrings.get(R.string.settings_app_music_description, russian);
+            case 2: return AppStrings.get(R.string.settings_app_tizentube_description, russian);
+            case 3: return AppStrings.get(R.string.settings_app_incy_description, russian);
+            case 4: return AppStrings.get(R.string.settings_app_seena_description, russian);
+            case 5: return AppStrings.get(R.string.settings_app_lampa_description, russian);
+            case 6: return AppStrings.get(R.string.settings_app_kinopub_description, russian);
             default: return null;
         }
     }
 
-    private static String tr(boolean russian, String ru, String en) { return russian ? ru : en; }
 }

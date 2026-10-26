@@ -30,7 +30,7 @@ final class HomeApps {
  static float ink(Bitmap b){return .3f;}
  static Bitmap appTile(Context c,String key,String pkg,int brand){Bitmap b=new Bitmap(TILE_W,TILE_H);b.asset="fallback:"+pkg;return b;}
  static Bitmap tvSettingsFavoriteTile(Context c){return appTile(c,null,"settings",0);}
-'''+method('    static synchronized Bitmap brandedAllAppsTile(', Path('app/src/io/tvos/AppArtwork.java').read_text())+'''
+'''+method('    static synchronized void pruneTiles(', Path('app/src/io/tvos/AppArtwork.java').read_text())+method('    static synchronized Bitmap brandedAllAppsTile(', Path('app/src/io/tvos/AppArtwork.java').read_text())+'''
  }
 '''+method('    static List<Item> shelf(')+'''
  static Bitmap all(Context c,String pkg){return AppArtwork.brandedAllAppsTile(c,pkg);}
@@ -65,6 +65,11 @@ public class BrandingHarness {
   check(b.top==-1&&b.bottom==-1&&m.top==b.top&&m.bottom==b.bottom,"identical white All Apps background");
   check(b.asset.equals("kinopub")&&m.asset.equals(b.asset),"same All Apps artwork");close(b.logoWidth,m.logoWidth);close(b.logoHeight,m.logoHeight);
   check(HomeApps.all(c,"watch.kino.mod")==m,"existing tile cache retained");
+  HomeApps.AppArtwork.pruneTiles(new HashSet<>(Arrays.asList("watch.kino","watch.kino.mod")));
+  check(HomeApps.all(c,"watch.kino")==b&&HomeApps.all(c,"watch.kino.mod")==m,"refresh retains live branded tiles instead of rebuilding");
+  HomeApps.AppArtwork.pruneTiles(new HashSet<>(Arrays.asList("watch.kino")));
+  check(HomeApps.TILES.containsKey("allapps-brand:watch.kino")&&!HomeApps.TILES.containsKey("allapps-brand:watch.kino.mod"),"removed package drops only its branded tile");
+  check(HomeApps.all(c,"watch.kino")==b,"other package cache remains resident");
   System.out.println("PASS: 18 baseline styles, package/key scale precedence, KinoPub alias on Dock and All Apps, launch identity and fallback");
  }
 }
