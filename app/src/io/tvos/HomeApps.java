@@ -107,7 +107,7 @@ final class HomeApps {
         for (String pkg : shelfPackages(c)) {
             if (items.size() >= MAX_SHELF) break;
             if (TV_SETTINGS_FAVORITE.equals(pkg)) {
-                Item settings = shortcut(ANDROID_SETTINGS, "tv-settings", "Настройки ТВ", "tv_settings");
+                Item settings = shortcut(ANDROID_SETTINGS, "tv-settings", AppStrings.get(R.string.settings_tv_settings), "tv_settings");
                 // Use the bundled settings.png artwork on the requested gray gradient.
                 settings.logo = AppArtwork.ownLogoCached(c, "settings");
                 if (settings.logo != null) {

@@ -77,15 +77,10 @@ final class TmdbMetadata {
         if (code == null || code.length() != 2) return "";
         code = code.toUpperCase(Locale.ROOT);
         AppLanguage language = AppLanguage.current();
-        if (language == AppLanguage.RUSSIAN) {
-            if ("US".equals(code)) return "США";
-            if ("GB".equals(code)) return "Великобритания";
-            if ("ZA".equals(code)) return "ЮАР";
-            if ("KR".equals(code)) return "Южная Корея";
-        } else if (language == AppLanguage.ENGLISH) {
-            if ("US".equals(code)) return "USA";
-            if ("GB".equals(code)) return "UK";
-        }
+        if ("US".equals(code)) return AppStrings.get(R.string.runtime_country_us);
+        if ("GB".equals(code)) return AppStrings.get(R.string.runtime_country_gb);
+        if ("ZA".equals(code)) return AppStrings.get(R.string.runtime_country_za);
+        if ("KR".equals(code)) return AppStrings.get(R.string.runtime_country_kr);
         String name = new Locale("", code).getDisplayCountry(language.locale);
         return name.equalsIgnoreCase(code) ? "" : name;
     }

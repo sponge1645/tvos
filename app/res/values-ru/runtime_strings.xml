@@ -234,4 +234,8 @@
   </plurals>
   <string name="runtime_mode_enabled" formatted="false">"tvOS включён: новый главный экран и заставка; отключено приложений: %1$d."</string>
   <string name="runtime_aerial_test_location" formatted="false">Корея и Япония · Ночь</string>
+  <string name="runtime_country_us" formatted="false">США</string>
+  <string name="runtime_country_gb" formatted="false">Великобритания</string>
+  <string name="runtime_country_za" formatted="false">ЮАР</string>
+  <string name="runtime_country_kr" formatted="false">Южная Корея</string>
 </resources>
