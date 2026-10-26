@@ -1,3 +1,4 @@
+from settings_strings_fixture import sources as string_sources
 """Production branding plus real shelf/All Apps paths: aliases affect visuals only."""
 from pathlib import Path
 import subprocess, tempfile
@@ -79,6 +80,7 @@ files=dict(GRAPHICS)
 files['io/tvos/HomeApps.java']=home
 files['io/tvos/BrandingHarness.java']=harness
 files['io/tvos/AppBranding.java']=Path('app/src/io/tvos/AppBranding.java').read_text()
+files.update(string_sources())
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
     for name,text in files.items():
