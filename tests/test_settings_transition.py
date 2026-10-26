@@ -56,7 +56,6 @@ with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp);p=root/'SettingsTransitionHarness.java';p.write_text(header+''.join(method(s) for s in ['        private void syncMenuTransition(', '        private void stepRowFocus(', '        private int parentScreen(', '        private String[] keyLabels()', '        private String screenTitle()', '        private static String formatLastUpdateCheck('])+tests)
  content=root/'SettingsContent.java';content.write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
  spring=root/'Spring.java';spring.write_text(Path('app/src/io/tvos/Spring.java').read_text())
- russian=root/'Russian.java';russian.write_text(Path('app/src/io/tvos/Russian.java').read_text())
  write_strings(root)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.SettingsTransitionHarness'],check=True)

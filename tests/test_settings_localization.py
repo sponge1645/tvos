@@ -62,7 +62,6 @@ tests='''
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-localized-settings-') as tmp:
  root=Path(tmp);write(root)
- (root/'Russian.java').write_text(Path('app/src/io/tvos/Russian.java').read_text())
  (root/'LocalizedSettingsHarness.java').write_text(header+methods+popup()+tests)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.LocalizedSettingsHarness'],check=True)

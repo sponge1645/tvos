@@ -51,6 +51,5 @@ static String quantity(int id,AppLanguage language,int n){return quantity(id,lan
 
 def write(root, package=True):
  for name,text in sources().items():
-  if name.endswith("/Russian.java") and (root/"Russian.java").exists():continue
   if not package:name=Path(name).name;text=text.replace('package io.tvos;','')
   path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
