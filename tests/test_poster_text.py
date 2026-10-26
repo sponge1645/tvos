@@ -3,13 +3,14 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 
-view=Path('app/src/io/tvos/HomeView.java').read_text()
+home=Path('app/src/io/tvos/HomeView.java').read_text()
+view=Path('app/src/io/tvos/PosterRenderer.java').read_text()
 assert 'PosterText.Entry text = posterText.get(p);' in view
 assert 'String detail = text.detail(tab == 0 && !searchMode);' in view
 assert 'String rating = text.rating;' in view
 assert 'badgeFill.setColor(text.badgeColor);' in view
-pause=block(view,'    void pause(')
-assert 'posterText.clear();' in pause
+assert 'posters.clear();' in block(home,'    void pause(')
+assert 'posterText.clear();' in block(view,'    void clear(')
 pick=block(Path('app/src/io/tvos/Recs.java').read_text(),'    static final class Pick {')
 
 harness='''package io.tvos;

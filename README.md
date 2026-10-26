@@ -60,7 +60,7 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.38` (versionCode 44), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.39` (versionCode 45), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 
@@ -99,3 +99,5 @@ External launch boundaries: `AppLaunch` distinguishes expected Android refusals 
 Language ownership: `AppLanguage` is the shared catalog for supported codes, native labels, locales, date/weather-hour patterns, API language tags, picker order and city-lookup language order. `Prefs` preserves existing storage and invalidation; `Ui` retains the canonical code used for data/cache identity checks. Home/settings resource calls use the current selection automatically, and resource/tab caches use enum keys rather than fixed RU/EN slots. No languages are added in this preview. See `docs/LOCALIZATION.md` for the remaining migration and adding-language checklist.
 
 Structured notices (dev.22): persisted resource names and arguments support language switching, including nested known ADB errors and lists. Legacy text records migrate lazily without dropping timestamps, unknown text or extra fields; the original text remains a fallback. Russian.java and legacyText are removed. See docs/LOCALIZATION.md for schema ownership and migration persistence.
+
+The planned HomeView extraction is complete in dev.39: HomeBackground owns background/glass/day-night transitions; PosterRenderer owns cards/rating/marquee; HomeAppsRenderer draws Dock/drawer/All Apps; HomeHeaderRenderer draws the header/actions; HomeNotices owns the notice queue/presentation and read cursor; RoundedImages shares the existing old/new Android bitmap paths. HomeView retains layout, layer lifecycle/invalidation, navigation/focus and catalog presentation coordination. See docs/REFACTORING.md for validation and device-check limits.

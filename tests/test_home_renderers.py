@@ -1,0 +1,75 @@
+"""Whole-class regression for remaining home rendering responsibilities and their owned caches."""
+from pathlib import Path
+import subprocess,tempfile
+from settings_strings_fixture import write as write_strings
+from home_renderers_fixture import files
+harness='''package io.tvos;
+import android.graphics.*;import android.os.*;import android.content.*;import java.util.*;import org.json.*;
+public class HomeRenderHarness {
+ static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
+ static void near(float a,float b,String why){check(Math.abs(a-b)<.02f,why+" "+a+" != "+b);}
+ static List<Canvas.Entry> entries(Canvas c,String kind){List<Canvas.Entry> out=new ArrayList<>();for(Canvas.Entry e:c.entries)if(e.kind.equals(kind))out.add(e);return out;}
+ static Canvas.Entry text(Canvas c,String value){for(Canvas.Entry e:entries(c,"text"))if(e.text.equals(value))return e;throw new AssertionError("missing text "+value);}
+ static Object field(Object o,String name)throws Exception{java.lang.reflect.Field f=o.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(o);}
+ static Paint paint(float size){return Ui.text(Ui.medium,size,0xFF1D1D1F);}
+ static void background(){
+  Scene scene=new Scene();int[] changes={0};HomeBackground b=new HomeBackground(scene,()->changes[0]++);b.resize(1920,1080);SystemClock.now=100;
+  Canvas c=new Canvas();b.draw(c,0);check(entries(c,"rect").size()==1,"day gradient without photo");int gradients=LinearGradient.allocations;b.draw(new Canvas(),0);check(LinearGradient.allocations==gradients,"gradient reused");
+  Backdrop a=new Backdrop(10),next=new Backdrop(20);b.show(a);check(scene.glass==a.lightGlass&&scene.frost==a.frost,"first photo populates glass immediately");check(b.tickFade(900,true),"first transition completes");
+  SystemClock.now=1000;b.show(next);check(scene.from==a.lightGlass&&scene.to==next.lightGlass,"photo crossfade pair");b.tickFade(1400,true);near(scene.mix,.5f,"halfway glass mix");check(scene.frost[0]==0xFFCCCCCC,"frost pixels blended");
+  c=new Canvas();SystemClock.now=1400;b.draw(c,1);check(entries(c,"bitmap").size()==2,"both photos in transition");check(entries(c,"bitmap").get(0).filter instanceof ColorMatrixColorFilter,"drawer veil applied in bitmap drawing");
+  b.tickFade(1800,true);check(scene.glass==next.lightGlass&&!b.tickFade(1801,true),"settled target no longer retains active transition");
+  b.checkNight(true,false);check(b.night()==1&&scene.glass==next.nightGlass&&changes[0]==1,"immediate night updates glass");
+  c=new Canvas();b.draw(c,0);check(entries(c,"bitmap").size()==1&&entries(c,"bitmap").get(0).text.equals("21"),"night image");check(b.profilePixels()==next.nightFrost,"profile uses existing tiny night pixels");
+  SystemClock.now=2000;b.checkNight(false,true);check(b.tickNight(4000)&&b.night()==0&&!b.tickNight(4001),"day transition settles and stops ticking");
+  SystemClock.now=4100;b.show(null);b.tickFade(4900,true);check(scene.glass!=null&&b.profilePixels()==null,"gradient restores neutral glass");
+  int count=LinearGradient.allocations;b.resize(1280,720);b.draw(new Canvas(),0);check(LinearGradient.allocations==count+2,"gradients rebuilt for resize");
+ }
+ static void images()throws Exception{
+  RoundedImages images=new RoundedImages();Bitmap bitmap=new Bitmap(1);RectF rect=new RectF(10,20,110,170);Ui.LEGACY=false;Canvas c=new Canvas();images.draw(c,bitmap,rect,12);check(entries(c,"bitmap").size()==1&&c.depth==0,"modern clipped bitmap path");
+  Ui.LEGACY=true;c=new Canvas();images.draw(c,bitmap,rect,12);int count=BitmapShader.created;check(entries(c,"round").size()==1,"legacy shader path");images.draw(new Canvas(),bitmap,rect,12);check(BitmapShader.created==count,"shader reused");images.clear();images.draw(new Canvas(),bitmap,rect,12);check(BitmapShader.created==count+1,"pause releases shader cache");
+  check(((Map<?,?>)field(images,"imageShaders")).size()==1,"one live bitmap entry");Ui.LEGACY=false;
+ }
+ static void posters()throws Exception{
+  Recs recs=new Recs();PosterRenderer p=new PosterRenderer(recs,new Shadows(),new RoundedImages(),8);Paint title=paint(31),meta=paint(25);RectF base=new RectF(80,262,318,619);Recs.Pick pick=new Recs.Pick();pick.id=42;pick.title="A very long title that should scroll across the card";pick.kind="movie";pick.movieOrigin="2024, US";pick.duration="120 min";pick.meta="Drama";pick.rating=8;
+  p.focus(0,0,1,100);p.begin(1,0,1,0,false,true,title,meta);SystemClock.now=100;Canvas c=new Canvas();p.draw(c,pick,base,1,0);check(entries(c,"bitmap").size()==1&&c.depth==0,"poster and balanced layer");text(c,"8.0");check(!p.marqueeActive(1099)&&p.nextDelay(100)==1000,"one-second marquee dwell");
+  SystemClock.now=1600;p.begin(1,0,1,0,false,true,title,meta);c=new Canvas();p.draw(c,pick,base,1,0);check(p.marqueeActive(1600)&&p.nextDelay(1600)==50,"marquee wakes at existing cadence");check(entries(c,"rect").stream().anyMatch(e->e.mode!=null),"letter edge mask");
+  p.focus(-1,0,1,1700);p.begin(1,1,1,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(!p.marqueeActive(9999)&&p.nextDelay(9999)==1000,"losing focus stops marquee");
+  recs.missing=true;p.begin(.5f,1,0,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(entries(c,"bitmap").isEmpty()&&entries(c,"round").size()>0,"missing poster placeholder");
+  p.clear();check(((Map<?,?>)field(field(p,"posterText"),"entries")).isEmpty(),"poster text cache released");check(title.getTextSize()==31&&meta.getTextSize()==25,"caller fonts unmodified");
+ }
+ static HomeAppsRenderer.Frame appsFrame(){
+  HomeAppsRenderer.Frame f=new HomeAppsRenderer.Frame();f.k=1;f.w=1920;f.h=1080;f.dockLiftIndex=-1;f.platterRect=new RectF(40,780,700,980);f.weatherCard=new RectF(80,708,1840,1008);f.focusedCell=new RectF();
+  HomeApps.Item a=new HomeApps.Item("watch.kino"),b=new HomeApps.Item("com.seena.app");a.logo=new Bitmap(10);b.logo=new Bitmap(11);f.shelf=new ArrayList<>(Arrays.asList(a,b));f.tileRects=new RectF[]{new RectF(80,814,304,940),new RectF(352,814,576,940)};f.tileFocus=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,1)};f.dockSlide=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,0)};
+  HomeApps.Item input=new HomeApps.Item("HDMI");input.kind=HomeApps.INPUT;input.connected=false;f.drawerItems=Arrays.asList(input);f.drawerInputs=1;f.drawerRects=new RectF[]{new RectF(80,540,250,666)};f.drawerFocus=new Spring[]{new Spring(.3f,1,0)};f.weatherBottom=true;f.others=Arrays.asList(a,b);f.gridFocus=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,1)};f.sheetOpen=true;f.gridIndex=1;return f;
+ }
+ static void apps()throws Exception{
+  HomeWidgets weather=new HomeWidgets();HomeAppsRenderer a=new HomeAppsRenderer(new Context(),new Scene(),new Shadows(),weather,new RoundedImages());a.resize(1);HomeAppsRenderer.Frame f=appsFrame();Canvas c=new Canvas();a.drawTiles(c,f);check(entries(c,"logo").size()==2&&entries(c,"logo").get(1).text.equals("com.seena.app"),"focused Dock item drawn last");check(entries(c,"path").size()==4&&c.depth==0,"two highlight strokes per tile");
+  Object[] gradients=(Object[])field(a,"tileShaders");Object first=gradients[0],second=gradients[1];a.swapDock(0,1,2);check(gradients[1]==first,"gradient follows Dock item");a.restoreDock(f.shelf,Arrays.asList(f.shelf.get(1),f.shelf.get(0)));check(((Object[])field(a,"tileShaders"))[0]==first,"rollback restores gradient identity");
+  c=new Canvas();a.drawPlatter(c,f);check(entries(c,"glass").size()==1,"Dock platter glass");c=new Canvas();a.drawDrawer(c,f);check(weather.draws==1&&entries(c,"symbol").get(0).color==0xFF8E8E93,"disconnected input dim and weather drawn");
+  c=new Canvas();a.drawSheet(c,f);text(c,"All Apps");check(entries(c,"bitmap").size()==2&&!f.focusedCell.isEmpty(),"app sheet geometry and focused launch rect");
+  f.dockLift=1;f.dockLiftIndex=0;f.dockWiggleAt=0;SystemClock.now=100;c=new Canvas();a.drawTiles(c,f);check(entries(c,"rotate").size()==1&&entries(c,"logo").get(1).text.equals("watch.kino"),"lifted Dock item draws last with wiggle");
+  a.invalidateLabels();a.resize(.5f);a.clear();check(field(a,"frame")==null,"renderer releases borrowed frame");a.invalidateDock();check(((Object[])field(a,"tileShaders")).length==0,"list reload invalidates Dock gradients");
+ }
+ static void header(){
+  HomeHeaderRenderer h=new HomeHeaderRenderer(new Context(),new HomeData(),new ActionSurface(new Scene(),new Shadows()),new Shadows());h.resize(1);HomeHeaderRenderer.Frame f=new HomeHeaderRenderer.Frame();f.k=1;f.tab=0;f.clockText="12:34";f.dateText="monday";f.searchQuery="Film";f.showDate=f.weatherTop=true;f.lDate=paint(34);f.lTab=paint(30);f.lTabOn=paint(30);f.tabs=new String[]{"New","Movies","Detectives","Shows","Dice"};f.topRects=new RectF[11];f.topFocus=new Spring[11];for(int i=0;i<11;i++){f.topRects[i]=new RectF(80+i*120,46,180+i*120,114);f.topFocus[i]=new Spring(.3f,1,0);}f.lightButtons=Arrays.asList(new HomeApps.Item("Search"));f.networkState=1;
+  h.resume();Canvas c=new Canvas();h.drawDateWeather(c,f);text(c,"Monday");text(c,"10°");check(entries(c,"symbol").get(0).text.equals("sun"),"date and weather header");
+  c=new Canvas();h.drawButtons(c,f);text(c,"12:34");check(entries(c,"symbol").stream().anyMatch(e->e.text.equals("wifi")),"Wi-Fi state");
+  f.networkState=2;c=new Canvas();h.drawButtons(c,f);check(entries(c,"symbol").stream().anyMatch(e->e.text.equals("ethernet")),"Ethernet state");
+  ProfileAvatar.selected=3;h.resume();c=new Canvas();h.drawButtons(c,f);check(entries(c,"avatar").size()==1&&ProfileAvatar.clears==1,"avatar invalidates only when selection changes");h.resume();check(ProfileAvatar.clears==1,"unchanged avatar reused");
+  f.searchMode=true;f.headingOpacity=1;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==1,"search replaces category titles");
+  f.searchMode=false;Prefs.categories[2]=false;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==4,"disabled category skipped");Prefs.categories[2]=true;h.clearFrame();
+ }
+ static void notices(){
+  Context ctx=new Context();Handler handler=new Handler();List<Runnable> worker=new ArrayList<>();int[] invalidates={0},wakes={0},announces={0};HomeNotices n=new HomeNotices(ctx,new Scene(),worker::add,handler,()->invalidates[0]++,()->wakes[0]++,text->announces[0]++);n.resize(1,1920);n.add("First");n.add("Second");check(n.busy()&&!n.visible()&&announces[0]==2&&wakes[0]==2,"queue announcement and wake");SystemClock.now=100;check(n.tick(100)&&n.visible(),"initial fade begins");Canvas c=new Canvas();SystemClock.now=500;n.draw(c);text(c,"First");check(c.depth==0,"toast layers balanced");check(!n.tick(1000),"stable toast no fade invalidation");n.tick(6101);c=new Canvas();SystemClock.now=6600;n.draw(c);text(c,"Second");n.tick(12102);check(!n.busy(),"queue drains in order");
+  long now=System.currentTimeMillis();HomeMode.state=new JSONObject().put("notices",new JSONArray().put(new JSONObject().put("at",now).put("text","Newest")).put(new JSONObject().put("at",now-1000).put("text","Older")).put(new JSONObject().put("at",now-100_000_000).put("text","Expired")));
+  n.check();worker.remove(0).run();check(ctx.prefs.getLong("seenNotice",0)==now&&!n.busy(),"worker persists cursor before UI delivery");handler.drain();check(n.busy(),"fresh notices delivered on main handler");n.check();worker.remove(0).run();check(handler.work.isEmpty(),"seen cursor avoids duplicate delivery");
+ }
+ public static void main(String[] args)throws Exception{AppLanguage.select("en");background();images();posters();apps();header();notices();System.out.println("PASS: whole background/images/poster/apps/header/notices classes, drawing geometry, focus, cache identities, theme/resize, marquee timing, queue and persisted notice cursor");}
+}'''
+with tempfile.TemporaryDirectory(prefix='tvos-home-renderers-') as tmp:
+ root=Path(tmp);write_strings(root);sources=files();sources['io/tvos/HomeRenderHarness.java']=harness
+ for name,value in sources.items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','-cp',tmp,'io.tvos.HomeRenderHarness'],check=True)

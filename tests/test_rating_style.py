@@ -2,12 +2,13 @@
 from pathlib import Path
 import subprocess,tempfile
 
-home=Path('app/src/io/tvos/HomeView.java').read_text()
-assert 'new RatingStyle(cardRects.length)' in home
+view=Path('app/src/io/tvos/HomeView.java').read_text()
+home=Path('app/src/io/tvos/PosterRenderer.java').read_text()
+assert 'new RatingStyle(capacity)' in home
 assert 'ratingText.setTypeface(ratingStyle.bold(lCardMeta.getTypeface()));' in home
 assert 'ratingStyle.sheen(i, badge.left, badge.top, badge.bottom,' in home
 assert 'blend(0x20FFFFFF, 0x32FFFFFF, night)' in home
-pause=home[home.index('    void pause()'):home.index('    void destroy()')]
+pause=home[home.index('    void clear()'):home.index('    boolean focus(')]
 assert 'ratingStyle.clear();' in pause
 
 fixtures={

@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
+app=Path('app/src/io/tvos/HomeAppsRenderer.java').read_text()
 handler='''package android.os;import java.util.*;public class Handler {
  public long now;Map<Runnable,Long> queue=new LinkedHashMap<>();
  public void postDelayed(Runnable r,long delay){queue.put(r,now+delay);}public void removeCallbacks(Runnable r){queue.remove(r);}
@@ -35,7 +36,7 @@ public class DockHarness implements HomeDockEditor.Host {
  void key(int code,boolean down){editor.onKey(new KeyEvent(code,down?0:1,0,false));}
  void enter(){editor.arm();handler.advance(500);check(editor.editing(),"hold enters");}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
-'''+block(home,'    private void shiftDockTiles(')+block(home,'    private void finishDockTiles(')+'''
+'''+' class Surfaces {'+block(app,'    void swapDock(')+block(app,'    void restoreDock(')+'} final Surfaces appSurfaces=new Surfaces();'+block(home,'    private void shiftDockTiles(')+block(home,'    private void finishDockTiles(')+'''
  public static void main(String[] ignored){
   DockHarness h=new DockHarness();h.editor.arm();h.handler.advance(499);check(!h.editor.editing(),"500ms threshold");
   h.editor.cancelHold();h.handler.advance(1);check(h.begins==0,"short press canceled");

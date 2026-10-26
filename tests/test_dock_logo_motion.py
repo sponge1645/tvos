@@ -3,10 +3,10 @@ from pathlib import Path
 import subprocess, tempfile
 from dock_graphics_fixture import GRAPHICS
 
-source=Path('app/src/io/tvos/HomeView.java').read_text()
+source=Path('app/src/io/tvos/HomeAppsRenderer.java').read_text()
 a=source.index('    private void drawLogo(');b=source.index('{',a);depth=1;end=b+1
 while depth:depth+=(source[end]=='{')-(source[end]=='}');end+=1
-wrapper=source[a:end]
+wrapper=source[a:end].replace('frame.tileRects','tileRects')
 harness='''package io.tvos;import android.graphics.*;
 public class DockLogoHarness {
  static final float FOCUS_GROW=.2f;private final DockLogoRenderer dockLogos=new DockLogoRenderer();private RectF[] tileRects=new RectF[0];
