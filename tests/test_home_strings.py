@@ -9,9 +9,11 @@ assert 'Ui.tr(' not in source
 assert 'TABS_RU' not in source
 fields=next(line for line in source.splitlines() if 'private static final EnumMap<AppLanguage, String[]> tabLabels' in line)
 methods=''.join(block(source,s) for s in [
- '    private static String[] tabs()', '    private String networkLabel()',
- '    private String weatherText()'
+ '    private static String[] tabs()'
 ])
+access=Path('app/src/io/tvos/HomeAccessibility.java').read_text()
+methods+=block(access,'    private String weatherText()')
+methods+=block(access,'    private static String networkLabel(').replace('private static String networkLabel(int networkState)', 'private String networkLabel()').replace('networkState ==', 'networkStatus.state() ==')
 methods+=block(Path('app/src/io/tvos/HomeWidgets.java').read_text(),'    private void refreshDrawerText()')
 harness='''package io.tvos;
 import java.util.*;

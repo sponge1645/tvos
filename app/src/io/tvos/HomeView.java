@@ -1,6 +1,5 @@
 package io.tvos;
 
-import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;
@@ -15,7 +14,6 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Path;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.media.tv.TvInputManager;
@@ -30,7 +28,6 @@ import android.view.Choreographer;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeProvider;
 
 import org.json.JSONArray;
@@ -81,8 +78,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // Bottom drawer (measured with it open; everything moves up by SHIFT).
     private static final float SHIFT = 560, ROW_TITLE = 518, ROW_TOP = 540, ROW_H = 126, CARDS_TOP = 708, CARDS_H = 300;
     // "All Apps" sheet.
-    private static final int COLUMNS = 5, VISIBLE_ROWS = 3;
-    private static final float GRID_W = 300, GRID_H = 169, GRID_GAP = 40, GRID_ROW = 239, GRID_TOP = 196, GRID_RADIUS = 22;
+    private static final int COLUMNS = HomeAccessibility.COLUMNS, VISIBLE_ROWS = 3;
+    private static final float GRID_W = HomeAccessibility.GRID_W, GRID_H = HomeAccessibility.GRID_H,
+            GRID_GAP = HomeAccessibility.GRID_GAP, GRID_ROW = HomeAccessibility.GRID_ROW,
+            GRID_TOP = HomeAccessibility.GRID_TOP, GRID_RADIUS = 22;
     private static final int SMOKE = 0xFF111113, INK = 0xFF1C1C1E, WHITE = 0xFFF5F5F7;
     private static final long TOAST_MS = 6000, FADE_MS = 800;
     /** Blur radii of the shadow and shadowDeep paints (Shadows needs them to draw the same blur on older TVs). */
@@ -111,15 +110,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final SharedPreferences ui;
     private final TvInputManager tvInputs;
-    private final Spoken spoken = new Spoken(this, new Spoken.Source() {
-        @Override public void items(List<Integer> out) { a11yItems(out); }
-        @Override public String text(int id) { return a11yText(id); }
-        @Override public boolean bounds(int id, Rect out) { return a11yBounds(id, out); }
-        @Override public int focused() { return a11yFocused(); }
-        @Override public void focus(int id) { a11yFocus(id); }
-        @Override public void click(int id) { activate(); }
-        @Override public boolean clickable(int id) { return (id - 1) / 1000 != WIDGETS; }
-    });
+    private final HomeAccessibility accessibility;
+    private final Spoken spoken;
     // UI-thread drawing scratch: independent paints avoid carrying state between helpers.
     private final Paint headerDateScratch = new Paint();
     private final Paint headerWeatherScratch = new Paint();
@@ -127,28 +119,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Paint.FontMetrics headerMetricsScratch = new Paint.FontMetrics();
     private final Paint.FontMetrics clockMetricsScratch = new Paint.FontMetrics();
     private final TextPaint ellipsizeScratch = new TextPaint();
-    private final Paint rouletteTitleScratch = new Paint();
-    private final Paint rouletteHintScratch = new Paint();
-    private final Paint rouletteWinnerSheenScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint rouletteWinnerRimScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint rouletteEdgeScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint marqueeMaskScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PorterDuffXfermode textEdgeMode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
-    private float rouletteEdgeLeft = Float.NaN, rouletteEdgeRight = Float.NaN;
     private final RectF ratingBadgeScratch = new RectF();
     private final RectF ratingInsetScratch = new RectF();
     private final RectF avatarShouldersScratch = new RectF();
-    private final RectF rouletteHintOneScratch = new RectF();
-    private final RectF rouletteHintTwoScratch = new RectF();
-    private final RectF a11yRect = new RectF();
-    // Reused only by drawRoulette on the UI thread; image helpers do not retain them.
-    private final RectF roulettePosterRect = new RectF();
-    private final RectF rouletteShadowRect = new RectF();
-    private final RectF rouletteGhostRect = new RectF();
-    private final Paint rouletteGhostPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    { rouletteGhostPaint.setAlpha(25); }
-    private final RectF rouletteButtonRect = new RectF();
-    private final Paint rouletteTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Layer sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer;
     private int zone = Z_SHELF;
 
@@ -174,6 +149,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int workEpoch;
     private final SearchController searchWork;
     private final RouletteController rouletteWork;
+    private final RouletteRenderer rouletteRenderer;
     private final MovieAppLauncher movieApps;
     private final HomeDockEditor dockEditor;
 
@@ -406,6 +382,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         rouletteWork = new RouletteController(handler, recs, () -> running,
                 () -> tabEnabled(4), () -> tab == 4,
                 () -> { heroDirty = true; wake(); }, this::finishRoulette);
+        accessibility = new HomeAccessibility(a, data, new HomeAccessibility.Host() {
+            @Override public void read(HomeAccessibility.State state) { readAccessibilityState(state); }
+            @Override public void wake() { HomeView.this.wake(); }
+            @Override public void focus(int group, int index) { focusAccessibleItem(group, index); }
+            @Override public void activate() { HomeView.this.activate(); }
+        });
+        spoken = new Spoken(this, accessibility);
+        rouletteRenderer = new RouletteRenderer(rouletteWork, recs, scene, shadows, actionSurface, this::roundImage);
         movieApps = new MovieAppLauncher(a, this, LOADER, handler, new MovieAppLauncher.Host() {
             @Override public boolean running() { return running; }
             @Override public int epoch() { return workEpoch; }
@@ -541,6 +525,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         ratingStyle.clear();
         shadows.clear();
         widgets.clear();
+        accessibility.clear();
         if (tvInputs != null) tvInputs.unregisterCallback(inputCallback);
     }
 
@@ -2104,7 +2089,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     drawerIndex = next;
                 } else if (dy < 0) {
                     closeDrawer();
-                } else if (talkBack() && !widgets().isEmpty()) {
+                } else if (accessibility.talkBack() && !widgets().isEmpty()) {
                     // Only with TalkBack: the widgets are there to be read, and this is how it gets to them.
                     zone = WIDGETS;
                     widgetIndex = widgets().get(0);
@@ -2368,174 +2353,51 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         wake();
     }
 
-    // MARK: - TalkBack: every reachable item as a virtual node (Spoken). Id = group * 1000 + index + 1.
+    // MARK: - Accessibility navigation; virtual-node presentation lives in HomeAccessibility.
 
-    /** The drawer's weather card: read by TalkBack, never focused by the remote. */
-    private static final int GRID = 9, WIDGETS = 8;
+    private static final int GRID = HomeAccessibility.GRID, WIDGETS = HomeAccessibility.WIDGETS;
 
-    private static int a11yId(int group, int index) {
-        return group * 1000 + index + 1;
+    @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() { return spoken; }
+
+    private void readAccessibilityState(HomeAccessibility.State s) {
+        s.sheetOpen = sheetOpen; s.searchMode = searchMode; s.drawerOpen = drawerOpen;
+        s.picksOn = picksOn(); s.weatherBottom = weatherBottom(); s.spinning = rouletteWork.spinning();
+        s.tab = tab; s.zone = zone; s.gridIndex = gridIndex; s.topIndex = topIndex;
+        s.cardIndex = cardIndex; s.shelfIndex = shelfIndex; s.drawerIndex = drawerIndex; s.widgetIndex = widgetIndex;
+        s.others = others; s.shelf = shelf; s.drawerItems = drawerItems; s.lightButtons = lightButtons; s.cards = cards;
+        s.topRects = topRects; s.cardRects = cardRects; s.tileRects = tileRects; s.drawerRects = drawerRects;
+        s.weatherCard = weatherCard; s.tabs = tabs(); s.networkState = networkStatus.state();
+        s.k = k; s.h = h; s.scroll = scroll.target;
+        s.heroY = heroLayer.getTranslationY(); s.statusY = status.getTranslationY(); s.tilesY = tiles.getTranslationY();
+        for (int i = 0; i < s.topVisible.length; i++) s.topVisible[i] = topControlVisible(i);
     }
 
-    @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() {
-        return spoken;
-    }
-
-    private void a11yItems(List<Integer> out) {
-        if (sheetOpen) {
-            for (int i = 0; i < others.size(); i++) out.add(a11yId(GRID, i));
-            return;
-        }
-        if (picksOn() && !searchMode) for (int id : Prefs.categoryOrder())
-            if (tabEnabled(id)) out.add(a11yId(Z_TOP, id));
-        for (int id : Prefs.topButtonOrder()) if (topButtonEnabled(id)) out.add(a11yId(Z_TOP, 5 + id));
-        if (picksOn()) for (int i = 0; i < (tab == 4 ? 1 : Math.min(5, cards.size())); i++) out.add(a11yId(Z_CARDS, i));
-        for (int i = 0; i < shelf.size(); i++) out.add(a11yId(Z_SHELF, i));
-        for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
-        if (drawerOpen && weatherBottom()) out.add(a11yId(WIDGETS, 0));
-    }
-
-    private String a11yText(int id) {
-        int group = (id - 1) / 1000, i = (id - 1) % 1000;
-        switch (group) {
-            case GRID:
-                if (i >= others.size()) return "";
-                return label(others, i) + ", " + (i + 1) + AppStrings.get(R.string.home_spoken_of) + others.size();
-            case Z_TOP:
-                if (i == 10) return networkLabel();
-                if (i == 9) return AppStrings.get(R.string.home_clock_and_profile);
-                if (i >= 5) return label(lightButtons, i - 5);
-                return tabs()[i] + AppStrings.get(R.string.home_spoken_tab) + Prefs.categoryPosition(i) + AppStrings.get(R.string.home_spoken_of) + Prefs.categoryCount();
-            case Z_CARDS: return tab == 4 ? (AppStrings.get(R.string.home_random_movie)) : i < cards.size() ? pickText(cards.get(i)) : "";
-            case Z_SHELF: return label(shelf, i);
-            case Z_DRAWER: return label(drawerItems, i);
-            case WIDGETS: return i == 0 ? weatherText() : "";
-            default: return "";
-        }
-    }
-
-    /**
-     * Where the item is now. Items off screen (the closed drawer, the sheet's hidden rows, the top while the drawer is
-     * open) get a thin strip at that edge, so TalkBack's arrows can still reach them; going there brings them in.
-     */
-    private boolean a11yBounds(int id, Rect out) {
-        int group = (id - 1) / 1000, i = (id - 1) % 1000;
-        float dy;
-        switch (group) {
-            case GRID: {
-                if (!sheetOpen || i >= others.size()) return false;
-                float gridWidth = COLUMNS * GRID_W + (COLUMNS - 1) * GRID_GAP;
-                float x = ((1920 - gridWidth) / 2 + (i % COLUMNS) * (GRID_W + GRID_GAP)) * k;
-                float y = (GRID_TOP + (i / COLUMNS - scroll.target) * GRID_ROW) * k;
-                a11yRect.set(x, y, x + GRID_W * k, y + GRID_H * k);
-                dy = 0;
-                break;
-            }
-            case Z_TOP:
-                if (i >= topRects.length || !topControlVisible(i)) return false;
-                a11yRect.set(topRects[i]);
-                dy = (i < 5 ? heroLayer : status).getTranslationY();
-                break;
-            case Z_CARDS:
-                if (i >= (tab == 4 ? 1 : Math.min(5, cards.size()))) return false;
-                if (tab == 4) {
-                    setRouletteButtonRect(a11yRect);
-                } else {
-                    a11yRect.set(cardRects[i]);
-                }
-                dy = heroLayer.getTranslationY();
-                break;
-            case Z_SHELF:
-                if (i >= tileRects.length) return false;
-                a11yRect.set(tileRects[i]);
-                dy = tiles.getTranslationY();
-                break;
-            case Z_DRAWER:
-                if (i >= drawerRects.length) return false;
-                a11yRect.set(drawerRects[i]);
-                dy = drawerOpen ? 0 : h;
-                break;
-            case WIDGETS:
-                if (!drawerOpen) return false;
-                if (i != 0) return false;
-                a11yRect.set(weatherCard);
-                dy = 0;
-                break;
-            default:
-                return false;
-        }
-        a11yRect.offset(0, dy);
-        float edge = 24 * k;
-        if (a11yRect.top >= h - edge) a11yRect.set(a11yRect.left, h - edge, a11yRect.right, h);
-        else if (a11yRect.bottom <= edge) a11yRect.set(a11yRect.left, 0, a11yRect.right, edge);
-        a11yRect.round(out);
-        return out.width() > 0 && out.height() > 0;
-    }
-
-    private int a11yFocused() {
-        if (sheetOpen) return others.isEmpty() ? -1 : a11yId(GRID, gridIndex);
-        switch (zone) {
-            case Z_TOP: return a11yId(Z_TOP, topIndex);
-            case Z_CARDS: return tab == 4 ? a11yId(Z_CARDS, 0) : cardIndex < cards.size() ? a11yId(Z_CARDS, cardIndex) : -1;
-            case Z_SHELF: return shelf.isEmpty() ? -1 : a11yId(Z_SHELF, shelfIndex);
-            case Z_DRAWER: return drawerItems.isEmpty() ? -1 : a11yId(Z_DRAWER, drawerIndex);
-            case WIDGETS: return a11yId(WIDGETS, widgetIndex);
-            default: return -1;
-        }
-    }
-
-    /** The weather widget when enabled, with the drawer open. */
-    private List<Integer> widgets() {
-        List<Integer> out = new ArrayList<>();
-        if (!drawerOpen) return out;
-        if (weatherBottom()) out.add(0);
-        return out;
-    }
-
-    /** A spoken-feedback service (TalkBack) is on. */
-    private boolean talkBack() {
-        AccessibilityManager am = (AccessibilityManager) getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
-        return am != null && am.isEnabled()
-                && !am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_SPOKEN).isEmpty();
-    }
-
-    /** TalkBack moved to an item: the remote's focus goes there (opening or closing the drawer on the way). */
-    private void a11yFocus(int id) {
-        wake();
-        if (rouletteWork.spinning()) return;
-        int group = (id - 1) / 1000, i = (id - 1) % 1000;
+    private void focusAccessibleItem(int group, int i) {
         if (group == GRID) {
-            if (!sheetOpen || i >= others.size()) return;
             gridIndex = i;
             retargetGrid(false);
             gridDirty = true;
             click.move();
             return;
         }
-        if (sheetOpen) return;
         switch (group) {
             case Z_DRAWER:
-                if (i >= drawerItems.size()) return;
                 if (!drawerOpen) openDrawer();
                 drawerIndex = i;
                 break;
             case WIDGETS:
-                if (!widgets().contains(i)) return;
                 widgetIndex = i;
                 break;
             case Z_TOP:
-                if (i >= topRects.length || !topControlVisible(i)) return;
                 if (drawerOpen) closeDrawer();
                 topIndex = i;
                 if (i < 5) selectTab(i);
                 break;
             case Z_CARDS:
-                if (i >= (tab == 4 ? 1 : cards.size())) return;
                 if (drawerOpen) closeDrawer();
                 cardIndex = i;
                 break;
             case Z_SHELF:
-                if (i >= shelf.size()) return;
                 if (drawerOpen) closeDrawer();
                 shelfIndex = i;
                 break;
@@ -2547,36 +2409,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         click.move();
     }
 
-    private static String label(List<HomeApps.Item> list, int i) {
-        return i >= 0 && i < list.size() && list.get(i).label != null ? list.get(i).label : "";
-    }
-
-    /** A recommendation: title, details and the app that plays it. */
-    private static String pickText(Recs.Pick p) {
-        if (p == null) return "";
-        StringBuilder s = new StringBuilder(p.title == null ? "" : p.title);
-        if (p.meta != null && !p.meta.isEmpty()) s.append(", ").append(p.meta);
-        String app = Recs.serviceName(p);
-        if (app != null && !app.isEmpty()) s.append(". App: ").append(app);
-        return s.toString();
-    }
-
-    /** The weather card as TalkBack reads it: what it shows, in the same words and units. */
-    private String weatherText() {
-        StringBuilder s = new StringBuilder(Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather) : Prefs.city());
-        HomeData.Weather wx = data.weather;
-        if (Double.isNaN(wx.temp)) return s.append(". ").append(AppStrings.get(R.string.home_no_weather_data_right_now)).toString();
-        s.append(". ").append(HomeData.degrees(wx.temp)).append(", ").append(HomeData.condition(wx.code, wx.isDay))
-                .append(AppStrings.get(R.string.home_spoken_high)).append(HomeData.degrees(wx.max))
-                .append(AppStrings.get(R.string.home_spoken_low)).append(HomeData.degrees(wx.min)).append('.');
-        int hours = Math.min(6, wx.hours.size());
-        if (hours > 0) s.append(AppStrings.get(R.string.home_spoken_next_hours));
-        for (int i = 0; i < hours; i++) {
-            s.append(HomeData.hour(wx.hours.get(i))).append(' ').append(HomeData.degrees(wx.hourTemp.get(i))).append(i < hours - 1 ? ", " : ".");
-        }
-        if (wx.sunrise != 0) s.append(AppStrings.get(R.string.home_spoken_sunrise)).append(Ui.time(wx.sunrise)).append('.');
-        if (wx.sunset != 0) s.append(AppStrings.get(R.string.home_spoken_sunset)).append(Ui.time(wx.sunset)).append('.');
-        return s.toString();
+    private List<Integer> widgets() {
+        List<Integer> out = new ArrayList<>();
+        if (!drawerOpen) return out;
+        if (weatherBottom()) out.add(0);
+        return out;
     }
 
     // MARK: - Light design: title, tabs, cards and icon-only buttons
@@ -2713,10 +2550,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         rouletteWork.load();
     }
 
-    private void prepareRoulettePosters(int slot) {
-        rouletteWork.preparePosters(slot);
-    }
-
     private void finishRoulette() {
         // The winning poster becomes the focused, actionable card.
         zone = Z_CARDS;
@@ -2820,7 +2653,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     (largePostersWithoutWidgets ? L_BUTTON_CY + 14 : L_TABBAR_TOP + 48) * k, heading);
         }
         if (tab == 4 && !searchMode) {
-            drawRoulette(c);
+            rouletteRenderer.draw(c, k, night, lCardTitle, rouletteButtonFocus.value,
+                    zone == Z_CARDS && !sheetOpen ? cardFocus[0].value : 0f);
             return;
         }
         int top = -1;
@@ -2862,183 +2696,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         Symbols.draw(getContext(), c, symbol, nextX + sw / 2f - 3f,
                 cy, iconSize, weatherPaint.getColor());
         c.drawText(HomeData.degrees(wx.temp), nextX + sw + 10 * k, baseline, weatherPaint);
-    }
-
-    private void setRouletteButtonRect(RectF out) {
-        float cx = (MARGIN + CONTENT_R) * k / 2f;
-        float cy = 480 * k;
-        out.set(cx - 295 * k, cy - 63 * k, cx + 295 * k, cy + 63 * k);
-    }
-
-    private void drawRoulette(Canvas c) {
-        final float cx = (MARGIN + CONTENT_R) * k / 2f;
-        final float cy = 480 * k;
-        if (!rouletteWork.spinning() && !rouletteWork.finished()) {
-            setRouletteButtonRect(rouletteButtonRect);
-            RectF button = rouletteButtonRect;
-            float focus = Ui.clamp(rouletteButtonFocus.value);
-            float scale = drawActionSurface(c, button, focus);
-            rouletteTextPaint.set(lCardTitle);
-            Paint p = rouletteTextPaint;
-            p.setTextSize(40.8f * k);
-            p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, focus));
-            String label = rouletteWork.loading() ? (AppStrings.get(R.string.home_roulette_loading))
-                    : (AppStrings.get(R.string.home_roulette_title));
-            int saved = c.save();
-            c.scale(scale, scale, cx, cy);
-            c.drawText(label, cx - p.measureText(label) / 2, cy + Ui.halfCap(p), p);
-            c.restoreToCount(saved);
-            return;
-        }
-        if (rouletteWork.picks().isEmpty()) return;
-        final float elapsed = Math.min(1f, (SystemClock.uptimeMillis() - rouletteWork.started()) / 5000f);
-        // 5 seconds at the same average poster speed, with smooth acceleration and braking.
-        // Integrate a trapezoidal speed profile to avoid sudden jumps in position.
-        final float accel = 0.08f, brake = 0.16f;
-        final float cruiseEnd = 1f - brake;
-        final float area = 1f - (accel + brake) * 0.5f;
-        final float distance;
-        if (elapsed < accel) {
-            distance = elapsed * elapsed / (2f * accel);
-        } else if (elapsed < cruiseEnd) {
-            distance = accel * 0.5f + elapsed - accel;
-        } else {
-            float t = elapsed - cruiseEnd;
-            distance = accel * 0.5f + cruiseEnd - accel + t - t * t / (2f * brake);
-        }
-        final float totalStrides = 57f;
-        final float travel = totalStrides * distance / area;
-        final float cardW = 238 * k, cardH = 357 * k, gap = 28 * k;
-        // Short posters while spinning; the winning poster grows as the strip settles.
-        final float grow = rouletteWork.finished() ? 1f : Math.max(0f, Math.min(1f, (elapsed - 0.91f) / 0.09f));
-        final float winnerGrow = grow * grow * (3f - 2f * grow);
-        // Focus is independent of the result: moving up/down removes the rim,
-        // returning to the poster restores it without changing the winner.
-        final float winnerFocus = rouletteWork.finished() && zone == Z_CARDS && !sheetOpen
-                ? Ui.clamp(cardFocus[0].value) : 0f;
-        final float stride = cardW + gap;
-        final int count = rouletteWork.picks().size();
-        final float left = MARGIN * k, right = CONTENT_R * k;
-        // The strip starts at the right edge and scrolls left; fade both ends like the title marquee.
-        // Leave room for the focused card's blurred shadow below the poster.
-        final float layerTop = cy - cardH / 2 - 55 * k;
-        final float layerBottom = cy + cardH / 2 + 85 * k;
-        prepareRoulettePosters(Math.round(totalStrides - travel));
-        c.saveLayer(left, layerTop, right, layerBottom, null);
-        for (int i = -62; i <= 5; i++) {
-            float pos = i + totalStrides - travel;
-            // Scale both dimensions together: keep the original 238:357 poster aspect ratio.
-            float posterScale = (255f + (i == 0 ? 102f * winnerGrow : 0f)) / 357f;
-            float posterWidth = cardW * posterScale;
-            float posterHeight = cardH * posterScale;
-            float posterX = cx + pos * stride;
-            if (posterX + posterWidth / 2 < left || posterX - posterWidth / 2 > right) continue;
-            RectF rect = roulettePosterRect;
-            rect.set(posterX - posterWidth / 2, cy - posterHeight / 2,
-                    posterX + posterWidth / 2, cy + posterHeight / 2);
-            Recs.Pick pick = rouletteWork.picks().get(Math.floorMod(rouletteWork.winner() + i, count));
-            Bitmap bmp = recs.poster(pick);
-            // Same resting shadow as unselected cards in drawLightCard().
-            // The winning card gradually receives the stronger focused shadow.
-            float shadowFocus = i == 0 ? winnerGrow * winnerFocus : 0f;
-            RectF shadowRect = rouletteShadowRect;
-            shadowRect.set(rect);
-            shadowRect.offset(0, (10f + 14f * shadowFocus) * k);
-            shadowDeep.setColor(Ui.alpha(0xFF000000,
-                    tone(0.14f, 0.32f) + tone(0.2f, 0.28f) * shadowFocus));
-            shadows.draw(c, shadowRect, 18 * k, DEEP_BLUR * k, shadowDeep);
-            if (bmp != null) {
-                // Lightweight directional trails only while moving.
-                float speed = rouletteWork.spinning() ? (elapsed < accel ? elapsed / accel
-                        : elapsed > cruiseEnd ? (1f - elapsed) / brake : 1f) * 12f : 0f;
-                if (speed > 0.5f) {
-                    for (int trail = 2; trail >= 1; trail--) {
-                        Paint ghostPaint = rouletteGhostPaint;
-                        c.saveLayer(rect.left - 50 * k, rect.top, rect.right, rect.bottom, ghostPaint);
-                        RectF ghost = rouletteGhostRect;
-                        ghost.set(rect);
-                        ghost.offset(trail * speed * 4 * k, 0);
-                        roundImage(c, bmp, ghost, 16 * k);
-                        c.restore();
-                    }
-                }
-                roundImage(c, bmp, rect, 16 * k);
-            } else {
-                fill.setColor(tone(0xFFDADADF, 0xFF2C2C2E));
-                c.drawRoundRect(rect, 16 * k, 16 * k, fill);
-            }
-            // Same highlight sheen and white gradient rim as drawLightCard().
-            if (i == 0 && winnerFocus > 0.01f) {
-                Paint winnerSheen = rouletteWinnerSheenScratch;
-                winnerSheen.setShader(new LinearGradient(rect.left, rect.top,
-                        rect.centerX(), rect.bottom,
-                        0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
-                winnerSheen.setAlpha(Math.round(255f * winnerFocus));
-                c.drawRoundRect(rect, 16 * k, 16 * k, winnerSheen);
-                Paint winnerRim = rouletteWinnerRimScratch;
-                winnerRim.setStyle(Paint.Style.STROKE);
-                winnerRim.setStrokeWidth(2.5f * k);
-                winnerRim.setShader(new LinearGradient(rect.centerX(), rect.top,
-                        rect.centerX(), rect.bottom,
-                        0xE6FFFFFF, 0x59FFFFFF, Shader.TileMode.CLAMP));
-                winnerRim.setAlpha(Math.round(255f * winnerFocus));
-                c.drawRoundRect(rect, 16 * k, 16 * k, winnerRim);
-            }
-        }
-        Paint edgeMask = rouletteEdgeScratch;
-        if (rouletteEdgeLeft != left || rouletteEdgeRight != right) {
-            edgeMask.setShader(new LinearGradient(left, 0, right, 0,
-                    new int[]{0x00FFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00FFFFFF},
-                    new float[]{0f, 0.10f, 0.90f, 1f}, Shader.TileMode.CLAMP));
-            rouletteEdgeLeft = left;
-            rouletteEdgeRight = right;
-        }
-        edgeMask.setXfermode(textEdgeMode);
-        c.drawRect(left, layerTop, right, layerBottom, edgeMask);
-        edgeMask.setXfermode(null);
-        c.restore();
-        if (rouletteWork.finished()) {
-            Recs.Pick chosen = rouletteWork.picks().get(rouletteWork.winner());
-            Paint p = rouletteTitleScratch;
-            p.set(lCardTitle);
-            p.setColor(tone(L_INK, WHITE));
-            p.setTextSize(32 * k);
-            ellipsizeScratch.set(p);
-            String name = android.text.TextUtils.ellipsize(chosen.title,
-                    ellipsizeScratch, 850 * k,
-                    android.text.TextUtils.TruncateAt.END).toString();
-            c.drawText(name, cx - p.measureText(name) / 2, cy + 230 * k, p);
-            // Two compact glass hints instead of a single unframed caption.
-            Paint hintText = rouletteHintScratch;
-            hintText.set(lCardTitle);
-            hintText.setTextSize(23 * k);
-            hintText.setColor(tone(L_INK, WHITE));
-            String hintWatch = AppStrings.get(R.string.home_ok_watch);
-            String hintAgain = AppStrings.get(R.string.home_right_spin_again);
-            float hintPad = 24 * k;
-            float hintGap = 16 * k;
-            float hintH = 58 * k;
-            float hintW1 = hintText.measureText(hintWatch) + 2 * hintPad;
-            float hintW2 = hintText.measureText(hintAgain) + 2 * hintPad;
-            float hintX = cx - (hintW1 + hintGap + hintW2) / 2f;
-            float hintY = cy + 251 * k;
-            RectF hintOne = rouletteHintOneScratch;
-            hintOne.set(hintX, hintY, hintX + hintW1, hintY + hintH);
-            RectF hintTwo = rouletteHintTwoScratch;
-            hintTwo.set(hintOne.right + hintGap, hintY,
-                    hintOne.right + hintGap + hintW2, hintY + hintH);
-            scene.liquid(c, hintOne, 20 * k, tone(0xFFFFFFFF, SMOKE),
-                    tone(0.52f, 0.48f), tone(0.02f, 0.02f), 8 * k, 5 * k,
-                    tone(0.62f, 0.48f), 1f);
-            scene.liquid(c, hintTwo, 20 * k, tone(0xFFFFFFFF, SMOKE),
-                    tone(0.52f, 0.48f), tone(0.02f, 0.02f), 8 * k, 5 * k,
-                    tone(0.62f, 0.48f), 1f);
-            float hintBase = hintY + hintH / 2f + Ui.halfCap(hintText);
-            c.drawText(hintWatch, hintOne.centerX() - hintText.measureText(hintWatch) / 2f,
-                    hintBase, hintText);
-            c.drawText(hintAgain, hintTwo.centerX() - hintText.measureText(hintAgain) / 2f,
-                    hintBase, hintText);
-        }
     }
 
     private boolean picksOn() {
@@ -3262,15 +2919,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         shoulders.set(ax - 13 * k, ay + 3 * k, ax + 13 * k, ay + 16 * k);
         c.drawRoundRect(shoulders, 11 * k, 11 * k, p);
         c.restoreToCount(saved);
-    }
-
-    private String networkLabel() {
-        String state = networkStatus.state() == NetworkStatus.WIFI
-                ? (AppStrings.get(R.string.home_network_wifi))
-                : networkStatus.state() == NetworkStatus.ETHERNET
-                ? (AppStrings.get(R.string.home_network_ethernet))
-                : (AppStrings.get(R.string.home_network_offline));
-        return state + (AppStrings.get(R.string.home_network_action));
     }
 
     private void openNetworkSettings() {

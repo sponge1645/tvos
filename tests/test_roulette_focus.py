@@ -17,13 +17,13 @@ def method(signature):
 body = ''.join(method(s) for s in [
     '    private void move(', '    private void back(', '    private void cancelRouletteWork(',
     '    private void spinRoulette(', '    private void finishRoulette(',
-    '    private void loadRoulette(', '    private void prepareRoulettePosters(',
+    '    private void loadRoulette(',
 ])
 assert 'rouletteWork.reset();' in method('    private void selectTab(')
 assert 'cancelRouletteWork();' in method('    void pause(')
 assert 'cancelRouletteWork();' in method('    private void beginSearch(')
-for signature in ('    private void activate(', '    private void a11yFocus('):
-    assert 'if (rouletteWork.spinning()) return;' in method(signature)
+assert 'if (rouletteWork.spinning()) return;' in method('    private void activate(')
+assert 'if (s.spinning) return;' in Path('app/src/io/tvos/HomeAccessibility.java').read_text()
 
 handler = '''package android.os;
 import java.util.*;
@@ -82,7 +82,7 @@ public class RouletteFocusHarness {
  void moveGrid(int dx,int dy){}
  boolean moveLight(int dx,int dy){lightMoves++;zone=Z_SHELF;return true;}
  int nearest(RectF[] r,float x){return 0;}boolean browse(int dx){return true;}
- void openDrawer(){zone=Z_DRAWER;}void closeDrawer(){}boolean talkBack(){return false;}
+ void openDrawer(){zone=Z_DRAWER;}void closeDrawer(){}static class Accessibility {boolean talkBack(){return false;}} final Accessibility accessibility=new Accessibility();
  List<Integer> widgets(){return Collections.emptyList();}void retarget(boolean snap){retargets++;}
  void finishDockEdit(boolean save){}void closeSheet(){}void closeSearch(){}
  void wake(){}void showToast(String message){toasts++;}
@@ -110,7 +110,7 @@ public class RouletteFocusHarness {
   for(int repeat=0;repeat<20;repeat++)for(int[] d:new int[][]{{0,1},{0,-1},{1,0},{-1,0}})h.move(d[0],d[1]);
   check(h.zone==Z_CARDS && h.lightMoves==0,"arrows and held-key repeats cannot leave running roulette");
   for(int slot=57;slot>=0;slot--){
-   h.prepareRoulettePosters(slot);
+   h.rouletteWork.preparePosters(slot);
    check(h.recs.window.size()==14,"bounded roulette prefetch");
    check(h.recs.window.get(0)==h.rouletteWork.picks().get(winner),"winner loads first and stays resident");
    for(int offset=-3;offset<=3;offset++){
@@ -118,7 +118,7 @@ public class RouletteFocusHarness {
     for(Recs.Pick p:h.recs.window)present|=p.id==id;
     check(present,"visible roulette posters stay inside window");
    }
-   int count=h.recs.windows;h.prepareRoulettePosters(slot);
+   int count=h.recs.windows;h.rouletteWork.preparePosters(slot);
    check(h.recs.windows==count,"same strip slot does not rebuild window");
   }
   h.back();
@@ -135,7 +135,7 @@ public class RouletteFocusHarness {
   h.rouletteWork.reset();h.zone=Z_CARDS;h.move(0,1);
   check(h.zone==Z_SHELF && h.lightMoves==2 && !h.rouletteWork.finished(),"category reset clears winner presentation and unlocks navigation");
   h.spinRoulette();h.running=false;h.cancelRouletteWork();int count=h.recs.windows;
-  h.prepareRoulettePosters(20);h.handler.advance(6000);
+  h.rouletteWork.preparePosters(20);h.handler.advance(6000);
   check(h.recs.windows==count && !h.rouletteWork.finished(),"paused home loads no posters and completes no spin");
   h.running=true;h.spinRoulette();h.tab=0;h.rouletteWork.reset();h.zone=Z_SHELF;h.handler.advance(6000);
   check(h.zone==Z_SHELF && !h.rouletteWork.finished(),"leaving category cannot receive delayed winner focus");
