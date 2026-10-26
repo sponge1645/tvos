@@ -29,6 +29,7 @@ public class MetadataHarness {
   check(TmdbMetadata.countryName(null).isEmpty()&&TmdbMetadata.countryName("USA").isEmpty(),"invalid country codes ignored");
   check(TmdbMetadata.movieOrigin(new JSONObject().put("production_countries",new JSONArray().put(country("GB"))),"France, 1999 г.").equals("1999 · UK"),"cached year survives incomplete details");
   check(TmdbMetadata.movieOrigin(new JSONObject().put("release_date","2021").put("production_countries",new JSONArray().put("bad")),"").equals("2021"),"malformed country record preserves year");
+  check(TmdbMetadata.movieOrigin(new JSONObject().put("release_date","2021"),"2020 · USA").equals("2021 · USA"),"partial details preserve known country");
   Pick p=pick("movie");JSONObject d=details();TmdbMetadata.applyDetails(p,d,"RU",pkg->false);
   check(p.movieOrigin.equals("2020 · USA")&&p.duration.equals("125 min")&&p.meta.equals("Drama · 2h 5m")&&p.detailed,"English movie metadata");
   check(p.rating==7.2&&p.poster.equals("/poster.jpg")&&p.backdrop.equals("/old.jpg"),"missing detail fields retain previous art/rating");

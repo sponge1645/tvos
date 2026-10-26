@@ -231,47 +231,84 @@ final class Recs {
     private final java.util.Set<String> durationRequested = new java.util.HashSet<>();
     private final java.util.Map<String, Long> durationLastAttempt = new java.util.HashMap<>();
 
-    /** Discover omits runtime and movie production countries. Enrich visible cards asynchronously. */
+    private final java.util.Map<String, List<Pick>> durationWaiters = new java.util.HashMap<>();
+    private final java.util.Map<String, JSONObject> durationResults = new java.util.LinkedHashMap<String, JSONObject>(16, .75f, true) {
+        private static final long serialVersionUID = 1L;
+        @Override protected boolean removeEldestEntry(Map.Entry<String, JSONObject> entry) {
+            return size() > 128;
+        }
+    };
+
+    /** Discover omits runtime/country. Share details across distinct cards for the same title. */
     void requestDuration(Pick p) {
-        if (p == null || !"movie".equals(p.kind)
-                || ((p.duration != null && !p.duration.isEmpty())
-                && (p.movieOrigin != null && p.movieOrigin.contains(" · ")))) return;
+        if (p == null || !"movie".equals(p.kind)) return;
         final String language = Ui.language;
         final String id = language + ":" + key(p);
         synchronized (durationRequested) {
-            if (durationRequested.contains(id)) return;
+            JSONObject cached = durationResults.get(id);
+            if (cached != null) applyMovieMetadata(p, cached);
+            if (p.duration != null && !p.duration.isEmpty()
+                    && p.movieOrigin != null && p.movieOrigin.contains(" · ")) return;
+            if (durationRequested.contains(id)) {
+                List<Pick> waiting = durationWaiters.get(id);
+                if (waiting != null && !waiting.contains(p)) waiting.add(p);
+                return;
+            }
             Long last = durationLastAttempt.get(id);
-            // TMDB may not yet have runtime/country for upcoming releases; retry at most daily.
             if (last != null && System.currentTimeMillis() - last < 24 * 60 * 60 * 1000L) return;
             durationRequested.add(id);
+            List<Pick> waiting = new ArrayList<>();
+            waiting.add(p);
+            durationWaiters.put(id, waiting);
             durationLastAttempt.put(id, System.currentTimeMillis());
         }
         durationIo.execute(() -> {
+            JSONObject result = null;
+            boolean fallbackFailed = false;
             try {
-                JSONObject details = get("/movie/" + p.id + "?language=" + lang());
-                int minutes = details.optInt("runtime", 0);
-                String origin = movieOrigin(details, p.movieOrigin);
-                // A localized response can have incomplete fields; try the default record.
-                if (minutes <= 0 || !origin.contains(" · ")) {
-                    JSONObject fallback = get("/movie/" + p.id + "?language=en-US");
-                    if (minutes <= 0) minutes = fallback.optInt("runtime", 0);
-                    if (!origin.contains(" · ")) origin = movieOrigin(fallback, origin);
+                result = get("/movie/" + p.id + "?language=" + AppLanguage.from(language).apiTag);
+                if (result.optInt("runtime", 0) <= 0 || result.optJSONArray("production_countries") == null
+                        || result.optJSONArray("production_countries").length() == 0) {
+                    try {
+                        JSONObject fallback = get("/movie/" + p.id + "?language=en-US");
+                        if (result.optInt("runtime", 0) <= 0) result.put("runtime", fallback.optInt("runtime", 0));
+                        if (result.optJSONArray("production_countries") == null
+                                || result.optJSONArray("production_countries").length() == 0)
+                            result.put("production_countries", fallback.optJSONArray("production_countries"));
+                    } catch (IOException | org.json.JSONException e) {
+                        // Keep usable fields from the first response if the optional fallback fails.
+                        fallbackFailed = true;
+                        AppLog.w("movie metadata fallback: " + e.getMessage());
+                    }
                 }
-                if (!language.equals(Ui.language)) return;
-                if (minutes > 0) p.duration = String.format(Ui.locale(), AppStrings.get(R.string.runtime_minutes), minutes);
-                if (!origin.isEmpty()) p.movieOrigin = origin;
-                save();
-                notifyListeners();
             } catch (IOException | org.json.JSONException e) {
                 AppLog.w("movie metadata: " + e.getMessage());
-                synchronized (durationRequested) { durationLastAttempt.remove(id); }
             } catch (RuntimeException e) {
                 AppLog.unexpected("movie metadata", e);
-                synchronized (durationRequested) { durationLastAttempt.remove(id); }
-            } finally {
-                synchronized (durationRequested) { durationRequested.remove(id); }
             }
+            final JSONObject details = result;
+            final boolean retrySoon = fallbackFailed;
+            main.post(() -> {
+                synchronized (durationRequested) {
+                    List<Pick> waiting = durationWaiters.remove(id);
+                    durationRequested.remove(id);
+                    if (details == null || retrySoon) durationLastAttempt.put(id,
+                            System.currentTimeMillis() - 24 * 60 * 60 * 1000L + 30_000L);
+                    if (!language.equals(Ui.language) || details == null) return;
+                    durationResults.put(id, details);
+                    if (waiting != null) for (Pick pick : waiting) applyMovieMetadata(pick, details);
+                }
+                save();
+                notifyListeners();
+            });
         });
+    }
+
+    private static void applyMovieMetadata(Pick p, JSONObject details) {
+        int minutes = details.optInt("runtime", 0);
+        if (minutes > 0) p.duration = String.format(Ui.locale(), AppStrings.get(R.string.runtime_minutes), minutes);
+        String origin = movieOrigin(details, p.movieOrigin);
+        if (!origin.isEmpty()) p.movieOrigin = origin;
     }
 
 

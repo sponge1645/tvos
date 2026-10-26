@@ -101,6 +101,8 @@ final class TmdbMetadata {
                 country = countryName(code);
             }
         }
+        if (country.isEmpty() && fallback != null && fallback.contains(" · "))
+            country = fallback.substring(fallback.indexOf(" · ") + 3);
         return country.isEmpty() ? year : year.isEmpty() ? country : year + " · " + country;
     }
 
