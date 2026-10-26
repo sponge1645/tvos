@@ -37,7 +37,7 @@ import java.util.concurrent.Executors;
  *  - top right, like the iPhone lock screen: the date with the weather, the big Liquid Glass clock (the photo shows
  *    through the digits, bent at the edges; Shaders.GLASS_TEXT) and the compact prices;
  *  - bottom left, the photo's caption: the time-of-day label ("TONIGHT"), the title, and genre · runtime · service.
- * Dark scrims only where there is text, stronger where the photo is bright. Any key exits (as on Apple TV).
+ * Baked photo gradients and glyph shadows keep overlays readable. Any key exits (as on Apple TV).
  * Without photos (no TMDB key, or before the first fetch): the big clock over the night aurora.
  */
 final class DreamView extends View implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
@@ -319,7 +319,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             float[] light = new float[2];
             try {
                 images = Backdrop.photo(file, PW, PH, light);
-                images[0] = Backdrop.gpu(withScrims(images[0], light[0], light[1]));
+                images[0] = Backdrop.gpu(withScrims(images[0], light[0]));
             } catch (Exception | OutOfMemoryError e) {
                 AppLog.w("screensaver: photo for “" + chosen.title + "”: " + e.getMessage());
             }
@@ -478,15 +478,15 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     }
 
     /**
-     * Black scrims where there is text, stronger where the photo is bright, painted once onto the photo itself (in the
-     * background): each frame draws only the photo (the TV's GPU feels every full-screen layer). With the slow zoom,
-     * they move a little along with the photo, which makes no difference to the text.
+     * Existing bottom and full-width top gradients, baked once in the background.
+     * Clock/weather glyphs have their own shadows; no local upper-right clock scrim.
+     * Each frame still draws only the prepared photo, without another full-screen layer.
      */
-    private static Bitmap withScrims(Bitmap photo, float lightCaption, float lightClock) {
+    private static Bitmap withScrims(Bitmap photo, float lightCaption) {
         int w = photo.getWidth(), h = photo.getHeight();
         Canvas c = new Canvas(photo);
         Paint p = new Paint(Paint.DITHER_FLAG);
-        float caption = scrimStrength(lightCaption, 0.5f), corner = scrimStrength(lightClock, 0.42f);
+        float caption = scrimStrength(lightCaption, 0.5f);
         p.setShader(new LinearGradient(0, h, 0, h * 0.42f,
                 new int[] {black(0.55f * caption), black(0.33f * caption), black(0.11f * caption), 0},
                 new float[] {0, 0.35f, 0.7f, 1}, Shader.TileMode.CLAMP));
@@ -502,15 +502,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         p.setShader(new LinearGradient(0, 0, 0, h * 0.3f, new int[] {black(0.3f), black(0.075f), 0},
                 new float[] {0, 0.45f, 1}, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h * 0.3f, p);
-        float cx = w * 0.86f, cy = h * 0.15f;
-        RadialGradient clockSide = new RadialGradient(cx, cy, w * 0.36f,
-                new int[] {black(corner), black(0.6f * corner), black(0.15f * corner), 0},
-                new float[] {0, 0.42f, 0.75f, 1}, Shader.TileMode.CLAMP);
-        Matrix mc = new Matrix();
-        mc.setScale(1, 0.72f, cx, cy);
-        clockSide.setLocalMatrix(mc);
-        p.setShader(clockSide);
-        c.drawRect(w * 0.5f, 0, w, cy + w * 0.36f * 0.72f, p);
+        // The clock is centered now; the former upper-right oval would darken empty photo space.
         return photo;
     }
 
