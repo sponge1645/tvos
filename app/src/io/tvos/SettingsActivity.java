@@ -1,6 +1,8 @@
 // TVOS_WEATHER_FADE_V1
 package io.tvos;
 
+import static io.tvos.SettingsContent.*;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
@@ -177,7 +179,6 @@ public class SettingsActivity extends Activity {
     }
 
     static final class SettingsView extends View implements Choreographer.FrameCallback {
-        private static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, GENERAL = 6, WIDGETS = 7, SYSTEM = 8, ABOUT = 9, SCREENSAVER = 10, WEATHER = 11, DATE_TIME = 12, MENU_BUTTONS = 13, UPDATES = 14, TOP_PANEL = 15, ACCESSIBILITY = 16, RESET = 17, VPN_SETTINGS = 18, APPS_DOWNLOADS = 19, CATEGORY_EDIT = 20;
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
         private static final int PICK_VISIBLE = 10;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
@@ -202,7 +203,6 @@ public class SettingsActivity extends Activity {
         private final List<String> shelfOrder = new ArrayList<>();
         private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
-        private static final int PICK_CITY = 0, PICK_VPN = -1;
         private final List<String[]> cities = new ArrayList<>();
         private String cityStatus = "";
         private final RectF tmp = new RectF(), rowRect = new RectF(), focusBox = new RectF();
@@ -785,49 +785,11 @@ public class SettingsActivity extends Activity {
         }
 
         private String screenTitle() {
-            switch (screen) {
-                case GENERAL: return Ui.ru ? "Основные" : "General";
-                case WIDGETS: return Ui.ru ? "Виджеты" : "Widgets";
-                case WEATHER: return tr("Погода", "Weather");
-                case DATE_TIME: return tr("Дата", "Date");
-                case SYSTEM: return Ui.ru ? "Система" : "System";
-                case RESET: return tr("Сброс", "Reset");
-                case TOP_PANEL: return tr("Верхняя панель", "Menu Bar");
-                case ACCESSIBILITY: return tr("Универсальный доступ", "Accessibility");
-                case APPS_DOWNLOADS: return tr("Приложения", "Apps");
-                case MENU_BUTTONS: return tr("Кнопки", "Buttons");
-                case UPDATES: return tr("Обновления ПО", "Software Updates");
-                case ABOUT: return Ui.ru ? "Об этом устройстве" : "About";
-                case SCREENSAVER: return tr("Заставка", "Screen Saver");
-                case HOME_CHOICE: return tr("Домашний экран", "Default Launcher");
-                case VPN_SETTINGS: return "VPN";
-                case HOME_SETTINGS: return settingsGroup == WIDGETS ? (Ui.ru ? "Котировки" : "Quotes") : settingsGroup == SYSTEM ? (Ui.ru ? "Категории" : "Categories") : (Ui.ru ? "Основные" : "General");
-                case REMOTE_KEYS: return tr("Пульты и устройства", "Remotes and Devices");
-                case SHELF_EDIT: return "Dock";
-                case CATEGORY_EDIT: return tr("Категории", "Categories");
-                case PICKER: return pickFor == PICK_VPN ? "VPN" : pickFor == PICK_CITY ? (Ui.ru ? "Регион" : "Region") : (Ui.ru ? "Выбор приложения" : "Choose app");
-                default: return Ui.ru ? "Настройки" : "Settings";
-            }
+            return SettingsContent.screenTitle(screen, settingsGroup, pickFor, Ui.ru);
         }
 
         private String[] menuLabels() {
-            switch (screen) {
-                case GENERAL: return new String[] {tr("Об этом устройстве", "About"), tr("Оформление", "Appearance"), tr("Язык", "Language"), tr("Регион", "Region"), tr("Дата и время", "Date & Time"), tr("Температура", "Temperature"), tr("Формат времени", "Time Format"), tr("Щелчки при навигации", "Navigation Clicks")};
-                case WIDGETS: return new String[] {tr("Погода", "Weather"), tr("Котировки", "Quotes"), tr("Дата", "Date")};
-                case DATE_TIME: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar")};
-                case WEATHER: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("Показывать на нижней панели", "Show in Bottom Menu")};
-                case MENU_BUTTONS: return menuButtonLabels();
-                case UPDATES: return new String[] {tr("Обновление ПО", "Update Software"), tr("Автоматическое обновление", "Automatically Update")};
-                case SYSTEM: return new String[] {tr("Обновления ПО", "Software Updates"), tr("Сброс", "Reset"), tr("Перезагрузить tvOS", "Restart tvOS")};
-                case RESET: return new String[] {tr("Очистить кеш", "Clear cache"), tr("Сброс tvOS", "Reset tvOS")};
-                case TOP_PANEL: return new String[] {tr("Категории", "Categories"), tr("Кнопки", "Buttons")};
-                case APPS_DOWNLOADS: return new String[] {tr("Загрузить AirPlay", "Download AirPlay"), tr("Загрузить Apple Music", "Download Apple Music"), tr("Загрузить TizenTube", "Download TizenTube"), tr("Загрузить INCY", "Download INCY"), tr("Загрузить Seena", "Download Seena"), tr("Загрузить Lampa", "Download Lampa"), tr("Загрузить KinoPub", "Download KinoPub")};
-                case ACCESSIBILITY: return new String[] {tr("Уменьшение прозрачности", "Reduce Transparency"), tr("Уменьшение анимаций", "Reduce Motion"), tr("Домашний экран", "Default Launcher"), tr("Настройки ТВ", "TV Settings")};
-                case VPN_SETTINGS: return new String[] {tr("Показывать на верхней панели", "Show in Menu Bar"), tr("VPN-служба", "VPN")};
-                case SCREENSAVER: return new String[] {tr("Источник", "Current Selection"), tr("Показывать часы", "Show Clock"), tr("Показывать место съёмки", "Show Location"), tr("Показывать погоду", "Show Weather"), tr("Предпросмотр", "Preview")};
-                case ABOUT: return new String[] {tr("Имя", "Name"), tr("Модель", "Model"), tr("Серийный номер", "Serial Number"), "tvOS", tr("ОС", "OS"), tr("Разрешение", "Resolution"), tr("Имя сети Wi-Fi", "Wi-Fi Network Name"), tr("IP-адрес", "IP Address")};
-                default: return new String[] {tr("Основные", "General"), tr("Заставка", "Screen Saver"), "AirPlay", tr("Пульты и устройства", "Remotes and Devices"), tr("Универсальный доступ", "Accessibility"), tr("Приложения", "Apps"), "Dock", tr("Верхняя панель", "Menu Bar"), tr("Виджеты", "Widgets"), tr("Система", "System")};
-            }
+            return screen == MENU_BUTTONS ? menuButtonLabels() : SettingsContent.menuLabels(screen, Ui.ru);
         }
         private android.content.SharedPreferences localPrefs() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE); }
         private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
@@ -1204,65 +1166,8 @@ public class SettingsActivity extends Activity {
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
         private void drawTileDescription(Canvas c) {
-            String info = null;
-            switch (screen) {
-                case MAIN:
-                    if (focus == 2) info = tr("Для AirPlay нужно дополнительное приложение.\nУстановите его в разделе «Приложения».",
-                            "AirPlay requires an additional app.\nInstall it from the Apps section.");
-                    else if (focus == 6) info = tr("Настройка приложений на панели Dock.", "Choose the apps shown in the Dock.");
-                    break;
-                case GENERAL:
-                    if (focus == 3) info = tr("Город для прогноза погоды.", "The city used for weather forecasts.");
-                    break;
-                case SCREENSAVER:
-                    if (focus == 3) info = tr("Город для погоды указывается в пункте «Регион».",
-                            "Set the weather city in Region.");
-                    break;
-                case APPS_DOWNLOADS:
-                    info = appDownloadDescription(focus);
-                    break;
-                case UPDATES:
-                    info = updateDetailsText();
-                    break;
-                case HOME_CHOICE:
-                    info = tr("tvOS — без рекламы, с новой заставкой. Встроенный — заводской главный экран телевизора. Переключение занимает несколько секунд; экран может мигать.",
-                            "tvOS has no ads and a new screen saver. Built-in uses the TV's original home screen. Switching can take a few seconds.");
-                    break;
-                case CATEGORY_EDIT:
-                    info = tr("Разделы верхней панели.\nOK — включить или выключить, стрелки — изменить порядок.",
-                            "Menu Bar categories.\nOK turns a category on or off; left and right change its order.");
-                    break;
-                case SHELF_EDIT:
-                    info = tr("Настройка приложений на панели Dock.\nOK — добавить или убрать, стрелки — изменить порядок.",
-                            "Choose the apps shown in the Dock.\nOK adds or removes an app; left and right change its order.");
-                    break;
-                case PICKER:
-                    info = pickFor == PICK_CITY
-                            ? tr("Город для прогноза погоды.", "The city used for weather forecasts.")
-                            : tr("Нажмите OK для выбора. Назад — отмена.", "Press OK to select. Back to cancel.");
-                    break;
-                case HOME_SETTINGS:
-                    info = tr("OK или стрелки изменяют выбранный параметр.", "Press OK or the arrow keys to change a setting.");
-                    if (screen == HOME_SETTINGS && settingsGroup == SYSTEM)
-                        info = tr("Включайте и выключайте разделы главного экрана.", "Enable or disable home screen sections.");
-                    break;
-                case TOP_PANEL:
-                    if (focus == 1) info = tr("Настройка кнопок быстрого доступа на верхней панели.", "Configure quick-access buttons in the Menu Bar.");
-                    break;
-                case MENU_BUTTONS:
-                    info = focus == menuButtonRows.size()
-                            ? tr("Выберите приложение для кнопки VPN.", "Choose the app opened by the VPN button.")
-                            : tr("OK — включить или выключить, стрелки — изменить порядок.",
-                                    "OK turns a button on or off; left and right change its order.");
-                    break;
-                case RESET:
-                    info = tr("Очистка кеша не удаляет настройки. Сброс tvOS удалит все данные приложения.", "Clearing cache preserves settings. Reset tvOS erases all app data.");
-                    break;
-                case REMOTE_KEYS:
-                    info = tr("Выберите назначение кнопок пульта. Некоторые кнопки могут управляться самим телевизором.",
-                            "Choose remote button actions. Some buttons may be controlled by the TV.");
-                    break;
-            }
+            String info = screen == UPDATES ? updateDetailsText()
+                    : SettingsContent.description(screen, focus, pickFor, settingsGroup, menuButtonRows.size(), Ui.ru);
             if (info == null) return;
             descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xB3C9D5D9);
             int width = Math.round(740 * k);
@@ -1278,26 +1183,6 @@ public class SettingsActivity extends Activity {
             c.translate(152 * k, 837 * k);
             descriptionLayout.draw(c);
             c.restore();
-        }
-
-        private String appDownloadDescription(int index) {
-            switch (index) {
-                case 0: return tr("Трансляция экрана, видео и музыки\nс iPhone, iPad и Mac на телевизор.",
-                        "Share your screen, videos and music\nfrom iPhone, iPad or Mac to your TV.");
-                case 1: return tr("Музыка, альбомы и плейлисты на телевизоре.\nСторонний клиент; нужна подписка Apple Music.",
-                        "Music, albums and playlists on your TV.\nA third-party client; Apple Music subscription required.");
-                case 2: return tr("Альтернативный клиент YouTube\nс интерфейсом для телевизора и управлением с пульта.",
-                        "An alternative YouTube client\nwith a TV interface and remote control support.");
-                case 3: return tr("VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.",
-                        "A VPN client for connecting to your own servers.\nImport configurations and subscription links.");
-                case 4: return tr("Фильмы, сериалы и мультфильмы\nв приложении с управлением с пульта.",
-                        "Movies, series and cartoons\nin an app designed for your TV remote.");
-                case 5: return tr("Каталог фильмов и сериалов для телевизора.\nИсточники просмотра настраиваются отдельно.",
-                        "A movie and series catalog for your TV.\nPlayback sources are configured separately.");
-                case 6: return tr("Фильмы и сериалы из сервиса KinoPub.\nДля просмотра нужен аккаунт с доступом.",
-                        "Movies and series from KinoPub.\nAn account with viewing access is required.");
-                default: return null;
-            }
         }
 
         private String updateDetailsText() {

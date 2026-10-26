@@ -1,7 +1,6 @@
 """Exercise production value-row routing, widget toggles and application labels on JVM."""
 from pathlib import Path
 import os
-import re
 import subprocess
 import tempfile
 
@@ -12,8 +11,9 @@ def method(signature):
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[start:end]
 body=''.join(method(s) for s in ['        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels(', '        private String[] menuButtonLabels(', '        private String menuButtonLabel('])
-constants=sorted(set(re.findall(r'case ([A-Z_]+):',body)) | {'MAIN'})
-header=r'''import java.util.*;
+header=r'''package io.tvos;
+import java.util.*;
+import static io.tvos.SettingsContent.*;
 public class SettingsHarness {
  static class Ui {static boolean ru;}
  static class Prefs {static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
@@ -27,7 +27,7 @@ public class SettingsHarness {
  void arrow(int direction){if(canAdjustMenu())adjustMenu(direction);}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
-header+=' static final int '+','.join(f'{name}={i}' for i,name in enumerate(constants))+';\n'
+
 tests=r'''
  public static void main(String[] args){
   SettingsHarness h=new SettingsHarness();h.screen=GENERAL;
@@ -70,6 +70,7 @@ tests=r'''
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-settings-test-') as directory:
     root=Path(directory);(root/'SettingsHarness.java').write_text(header+body+tests)
+    (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,str(root/'SettingsHarness.java')],check=True)
-    subprocess.run([java,'-cp',directory,'SettingsHarness'],check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,str(root/'SettingsHarness.java'),str(root/'SettingsContent.java')],check=True)
+    subprocess.run([java,'-cp',directory,'io.tvos.SettingsHarness'],check=True)
