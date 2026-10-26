@@ -60,7 +60,7 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.8` (versionCode 14), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.9` (versionCode 15), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 
@@ -79,3 +79,5 @@ KinoPub card opening supports both `watch.kino` and `watch.kino.mod`, retaining 
 `TmdbClient` isolates TMDB JSON transport from recommendation scheduling: API-key/Bearer authorization, eight-second timeouts and HTTP errors retain their behavior, and response streams are explicitly closed. `Recs` keeps its executors, cancellation, catalogs, localization and image/cache ownership. The transport test intercepts URL connections and exercises production code without external network requests.
 
 `SettingsContent` owns stable screen IDs, titles, static row labels and RU/EN guidance. SettingsActivity retains dynamic values, update timestamps, live button rows, drawing, actions and focus. Content is generated for the current language/context rather than cached globally. Previous/current content matched across 34,776 combinations during extraction; persistent regressions cover titles, menu rows, app descriptions and city/VPN contexts.
+
+`SettingsActions` owns input decisions for OK, value arrows and Back. The view applies platform effects and retains lifecycle, dialogs and focus animation. Routing uses enum constants without per-key command allocations; Back creates only its small destination value. During extraction, 37,818 previous/current activation and Back effect traces matched. The JVM fixture exercises production handlers with controlled platform effects.

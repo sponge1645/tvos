@@ -1453,29 +1453,7 @@ public class SettingsActivity extends Activity {
                     } else {
                         if (backDown && !e.isCanceled()) {
                             tvosClick.open();
-                            if (screen == PICKER && pickFor == PICK_CITY) { focus = 3; screen = GENERAL; }
-                            else if (screen == PICKER && pickFor == PICK_VPN) { focus = 1; screen = VPN_SETTINGS; }
-                            else if (screen == PICKER) { focus = pickFor - 1; screen = REMOTE_KEYS; }
-                            else if (screen == HOME_CHOICE) { screen = ACCESSIBILITY; focus = 2; }
-                            else if (screen == SCREENSAVER) { screen = MAIN; focus = 1; }
-                            else if (screen == ABOUT) { screen = GENERAL; focus = 0; }
-                            else if (screen == REMOTE_KEYS) { screen = MAIN; focus = 3; }
-                            else if (screen == MENU_BUTTONS) { screen = TOP_PANEL; focus = 1; }
-                            else if (screen == CATEGORY_EDIT) { screen = TOP_PANEL; focus = 0; }
-                            else if (screen == VPN_SETTINGS) { rebuildMenuButtonRows(-1); screen = MENU_BUTTONS; focus = menuButtonRows.size(); }
-                            else if (screen == UPDATES) { screen = SYSTEM; focus = 0; }
-                            else if (screen == HOME_SETTINGS) { screen = settingsGroup == SYSTEM ? TOP_PANEL : settingsGroup; focus = settingsGroup == SYSTEM ? 0 : settingsGroup == WIDGETS ? 1 : 0; }
-                            else if (screen == RESET) { screen = SYSTEM; focus = 1; }
-                            else if (screen == WEATHER) { screen = WIDGETS; focus = 0; }
-                            else if (screen == DATE_TIME) { screen = WIDGETS; focus = 2; }
-                            else if (screen == SHELF_EDIT) { screen = MAIN; focus = 6; }
-                            else if (screen == APPS_DOWNLOADS) { screen = MAIN; focus = 5; }
-                            else {
-                                // Determine the parent row BEFORE replacing the child screen.
-                                int child = screen;
-                                focus = child == GENERAL ? 0 : child == ACCESSIBILITY ? 4 : child == TOP_PANEL ? 7 : child == WIDGETS ? 8 : child == SYSTEM ? 9 : 0;
-                                screen = MAIN;
-                            }
+                            backFromScreen();
                         }
                         backDown = false;
                     }
@@ -1484,6 +1462,15 @@ public class SettingsActivity extends Activity {
                     return true;
                 default:
                     return false;
+            }
+        }
+
+        private void backFromScreen() {
+            if (screen == VPN_SETTINGS) rebuildMenuButtonRows(-1);
+            SettingsActions.Target target = SettingsActions.back(screen, pickFor, settingsGroup, menuButtonRows.size());
+            if (target != null) {
+                focus = target.row;
+                screen = target.screen;
             }
         }
 
@@ -1729,41 +1716,32 @@ public class SettingsActivity extends Activity {
 
         /** Only value rows respond to left/right; actions and submenus require OK. */
         private boolean canAdjustMenu() {
-            switch (screen) {
-                case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
-                case GENERAL: return focus == 1 || focus == 2 || focus == 5 || focus == 6 || focus == 7;
-                case SCREENSAVER: return focus >= 0 && focus < 4;
-                case UPDATES: return focus == 1;
-                case ACCESSIBILITY: return focus < 2;
-                case VPN_SETTINGS: return focus == 0;
-                case MENU_BUTTONS: return focus < menuButtonRows.size();
-                default: return false;
-            }
+            return SettingsActions.canAdjust(screen, focus, menuButtonRows.size());
         }
 
         private void adjustMenu(int dir) {
-            if (screen == HOME_SETTINGS) { adjust(dir); return; }
-            if (screen == WIDGETS && focus == 2) { return; }
-            if (screen == WEATHER) { toggleWeather(focus == 0); return; }
-            if (screen == DATE_TIME) { toggleDateTime(); return; }
-            if (screen == SCREENSAVER) {
-                if (focus == 0) cycleDreamSource(dir);
-                else if (focus == 1) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
-                else if (focus == 2) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
-                else if (focus == 3) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
-                return;
-            }
-            if (screen == UPDATES) { if (focus == 1) toggleAutomaticUpdates(); return; }
-            if (screen == ACCESSIBILITY) { if (focus == 0) setLocalFlag("reduce_transparency", !localFlag("reduce_transparency")); else if (focus == 1) setLocalFlag("reduce_motion", !localFlag("reduce_motion")); return; }
-            if (screen == VPN_SETTINGS) { if (focus == 0) toggleVpnTop(); return; }
-            if (screen == MENU_BUTTONS) { moveMenuButton(dir); return; }
-            if (screen == GENERAL) {
-                if (focus == 1) { int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme()); Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]); }
-                else if (focus == 2) { int at = java.util.Arrays.asList(LANGUAGES).indexOf(Prefs.language()); Prefs.setLanguage(LANGUAGES[(at + dir + LANGUAGES.length) % LANGUAGES.length]); }
-                else if (focus == 5) { int at = java.util.Arrays.asList(UNITS).indexOf(Prefs.temperature()); Prefs.setTemperature(UNITS[(at + dir + UNITS.length) % UNITS.length]); }
-                else if (focus == 6) { Prefs.setHour24(!Prefs.hour24()); }
-                else if (focus == 7) { setLocalFlag("navigation_clicks", !localPrefs().getBoolean("navigation_clicks", true)); }
-                HomeData.get(getContext()).settingsChanged();
+            switch (SettingsActions.adjustment(screen, focus)) {
+                case HOME: adjust(dir); return;
+                case WEATHER: toggleWeather(focus == 0); return;
+                case DATE: toggleDateTime(); return;
+                case DREAM_SOURCE: cycleDreamSource(dir); return;
+                case DREAM_CLOCK: setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false)); return;
+                case DREAM_LOCATION: setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false)); return;
+                case DREAM_WEATHER: setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false)); return;
+                case AUTO_UPDATE: toggleAutomaticUpdates(); return;
+                case TRANSPARENCY: setLocalFlag("reduce_transparency", !localFlag("reduce_transparency")); return;
+                case MOTION: setLocalFlag("reduce_motion", !localFlag("reduce_motion")); return;
+                case VPN: toggleVpnTop(); return;
+                case MENU_BUTTON: moveMenuButton(dir); return;
+                case GENERAL:
+                    if (focus == 1) { int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme()); Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]); }
+                    else if (focus == 2) { int at = java.util.Arrays.asList(LANGUAGES).indexOf(Prefs.language()); Prefs.setLanguage(LANGUAGES[(at + dir + LANGUAGES.length) % LANGUAGES.length]); }
+                    else if (focus == 5) { int at = java.util.Arrays.asList(UNITS).indexOf(Prefs.temperature()); Prefs.setTemperature(UNITS[(at + dir + UNITS.length) % UNITS.length]); }
+                    else if (focus == 6) { Prefs.setHour24(!Prefs.hour24()); }
+                    else if (focus == 7) { setLocalFlag("navigation_clicks", !localPrefs().getBoolean("navigation_clicks", true)); }
+                    HomeData.get(getContext()).settingsChanged();
+                    return;
+                default: return;
             }
         }
 
@@ -2125,127 +2103,82 @@ public class SettingsActivity extends Activity {
 
         private void activate() {
             final int screenBeforeAction = screen;
-            if (screen == ABOUT) {
+            SettingsActions.Action action = SettingsActions.activation(screen, focus, pickFor,
+                    screen == HOME_SETTINGS && settingIndex() == CITY_ROW, menuButtonRows.size(),
+                    screen == VPN_SETTINGS && focus != 0 && vpnTopEnabled());
+            if (action == SettingsActions.Action.NAME) {
                 if (focus == 0) askDeviceName();
                 return;
             }
             Context c = getContext();
-            if (screen == HOME_CHOICE) {
-                boolean wantFree = focus == 0;
-                if (!busy()) {
-                    HomeMode.request(c, wantFree ? HomeMode.FREE : HomeMode.ORIGINAL);
-                    pendingAt = SystemClock.uptimeMillis();
-                }
-                // Keep the user on Home screen selection. The old GENERAL/focus=7
-                // jump incorrectly opened Navigation clicks when tvOS was already active.
-                invalidate();
-                return;
-            } else if (screen == PICKER && pickFor == PICK_CITY) {
-                String[] city = cities.get(pickScroll + focus);
-                Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);
-                HomeData.get(c).settingsChanged();
-                focus = 3;
-                screen = GENERAL;
-            } else if (screen == PICKER && pickFor == PICK_VPN) {
-                String pkg = appPkgs.get(pickScroll + focus);
-                localPrefs().edit().putString("vpn_app", pkg).apply();
-                if (!pkg.isEmpty()) {
-                    java.util.List<String> shelf = Prefs.shelf();
-                    if (shelf == null) shelf = new java.util.ArrayList<>(HomeApps.shelfPackages(c));
-                    if (shelf.remove("llc.itdev.incy")) Prefs.setShelf(shelf);
-                }
-                focus = 1; screen = VPN_SETTINGS;
-            } else if (screen == PICKER) {
-                int at = pickScroll + focus;
-                Prefs.setKeyApp(Prefs.KEYS[pickFor - 1], appPkgs.get(at));
-                focus = pickFor - 1;
-                screen = REMOTE_KEYS;
-            } else if (screen == CATEGORY_EDIT) {
-                toggleCategory();
-                invalidate();
-                return;
-            } else if (screen == SHELF_EDIT) {
-                toggleShelfApp();
-                invalidate();
-                return;
-            } else if (screen == REMOTE_KEYS) {
-                openPicker(focus + 1);
-            } else if (screen == HOME_SETTINGS && settingIndex() == CITY_ROW) {
-                askCity();
-                return;
-            } else if (screen == HOME_SETTINGS) {
-                adjust(1);
-                invalidate();
-                return;
-            } else if (screen == MAIN) {
-                if (focus == 0) { screen = GENERAL; focus = 0; }
-                else if (focus == 1) { screen = SCREENSAVER; focus = 0; }
-                else if (focus == 2) {
-                    launchAirPlay();
+            if (action.targetScreen >= 0) {
+                screen = action.targetScreen;
+                focus = 0;
+            } else switch (action) {
+                case HOME_MODE:
+                    if (!busy()) {
+                        HomeMode.request(c, focus == 0 ? HomeMode.FREE : HomeMode.ORIGINAL);
+                        pendingAt = SystemClock.uptimeMillis();
+                    }
+                    invalidate();
                     return;
+                case SELECT_CITY: {
+                    String[] city = cities.get(pickScroll + focus);
+                    Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);
+                    HomeData.get(c).settingsChanged();
+                    focus = 3; screen = GENERAL;
+                    break;
                 }
-                else if (focus == 3) { HomeMode.ensureRemoteService(c, 0); loadApps(); screen = REMOTE_KEYS; focus = 0; }
-                else if (focus == 4) { screen = ACCESSIBILITY; focus = 0; }
-                else if (focus == 5) { screen = APPS_DOWNLOADS; focus = 0; }
-                else if (focus == 6) { openShelfEditor(); return; }
-                else if (focus == 7) { screen = TOP_PANEL; focus = 0; }
-                else if (focus == 8) { screen = WIDGETS; focus = 0; }
-                else if (focus == 9) { screen = SYSTEM; focus = 0; }
-
-            } else if (screen == APPS_DOWNLOADS) {
-                AppDownloads.start(activity, focus);
-                return;
-            } else if (screen == GENERAL) {
-                if (focus == 3) { askCity(); return; }
-                if (focus == 0) { screen = ABOUT; focus = 0; }
-                else if (focus == 4) { activity.startActivity(new Intent(Settings.ACTION_DATE_SETTINGS)); return; }
-                else { adjustMenu(1); }
-            } else if (screen == WIDGETS) {
-                if (focus == 2) { screen = DATE_TIME; focus = 0; }
-                else if (focus == 0 || focus == 1) {
-                    if (focus == 0) { screen = WEATHER; focus = 0; }
-                    else { returnFocus = focus; settingsGroup = WIDGETS; screen = HOME_SETTINGS; focus = 0; }
+                case SELECT_VPN: {
+                    String pkg = appPkgs.get(pickScroll + focus);
+                    localPrefs().edit().putString("vpn_app", pkg).apply();
+                    if (!pkg.isEmpty()) {
+                        java.util.List<String> shelf = Prefs.shelf();
+                        if (shelf == null) shelf = new java.util.ArrayList<>(HomeApps.shelfPackages(c));
+                        if (shelf.remove("llc.itdev.incy")) Prefs.setShelf(shelf);
+                    }
+                    focus = 1; screen = VPN_SETTINGS;
+                    break;
                 }
-            } else if (screen == UPDATES) {
-                if (focus == 0) {
+                case SELECT_KEY:
+                    Prefs.setKeyApp(Prefs.KEYS[pickFor - 1], appPkgs.get(pickScroll + focus));
+                    focus = pickFor - 1; screen = REMOTE_KEYS;
+                    break;
+                case CATEGORY: toggleCategory(); invalidate(); return;
+                case SHELF: toggleShelfApp(); invalidate(); return;
+                case KEY_PICKER: openPicker(focus + 1); break;
+                case CITY_PICKER: askCity(); return;
+                case HOME_ADJUST: adjust(1); invalidate(); return;
+                case AIRPLAY: launchAirPlay(); return;
+                case REMOTES:
+                    HomeMode.ensureRemoteService(c, 0); loadApps(); screen = REMOTE_KEYS; focus = 0;
+                    break;
+                case SHELF_EDITOR: openShelfEditor(); return;
+                case DOWNLOAD: AppDownloads.start(activity, focus); return;
+                case DATE_SETTINGS: activity.startActivity(new Intent(Settings.ACTION_DATE_SETTINGS)); return;
+                case MENU_ADJUST: adjustMenu(1); break;
+                case QUOTES: returnFocus = focus; settingsGroup = WIDGETS; screen = HOME_SETTINGS; focus = 0; break;
+                case CHECK_UPDATE:
                     updateRequested = true;
-                    SelfUpdate updater = SelfUpdate.get(getContext());
-                    updater.check(false);
+                    SelfUpdate.get(getContext()).check(false);
                     onSelfUpdate();
-                } else toggleAutomaticUpdates();
-            } else if (screen == MENU_BUTTONS) {
-                if (focus == menuButtonRows.size()) { screen = VPN_SETTINGS; focus = 0; }
-                else toggleMenuButton();
-            } else if (screen == VPN_SETTINGS) {
-                if (focus == 0) toggleVpnTop();
-                else if (vpnTopEnabled()) { loadApps(); openPicker(PICK_VPN); }
-            } else if (screen == DATE_TIME) {
-                toggleDateTime();
-            } else if (screen == WEATHER) {
-                toggleWeather(focus == 0);
-            } else if (screen == SCREENSAVER) {
-                if (focus == 0) cycleDreamSource(1);
-                else if (focus == 1) setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false));
-                else if (focus == 2) setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false));
-                else if (focus == 3) setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false));
-                else if (focus == 4) { pause(); activity.showPreview(); return; }
-            } else if (screen == TOP_PANEL) {
-                if (focus == 0) { openCategoryEditor(); return; }
-                else if (focus == 1) { openMenuButtonEditor(); return; }
-            } else if (screen == ACCESSIBILITY) {
-                if (focus == 0) setLocalFlag("reduce_transparency", !localFlag("reduce_transparency"));
-                else if (focus == 1) setLocalFlag("reduce_motion", !localFlag("reduce_motion"));
-                else if (focus == 2) { screen = HOME_CHOICE; focus = freeActive() ? 0 : 1; }
-                else if (focus == 3) { activity.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
-            } else if (screen == RESET) {
-                if (focus == 0) confirmClearCache();
-                else if (focus == 1) confirmResetTvos();
-                return;
-            } else if (screen == SYSTEM) {
-                if (focus == 0) { screen = UPDATES; focus = 0; }
-                else if (focus == 1) { screen = RESET; focus = 0; }
-                else if (focus == 2) {
-                    // Restart the actual HomeActivity, not this SettingsActivity.
+                    break;
+                case AUTO_UPDATE: toggleAutomaticUpdates(); break;
+                case MENU_BUTTON: toggleMenuButton(); break;
+                case VPN_TOGGLE: toggleVpnTop(); break;
+                case VPN_PICKER: loadApps(); openPicker(PICK_VPN); break;
+                case DATE_TOGGLE: toggleDateTime(); break;
+                case WEATHER_TOGGLE: toggleWeather(focus == 0); break;
+                case PREVIEW: pause(); activity.showPreview(); return;
+                case CATEGORY_EDITOR: openCategoryEditor(); return;
+                case BUTTON_EDITOR: openMenuButtonEditor(); return;
+                case HOME_CHOICE: screen = HOME_CHOICE; focus = freeActive() ? 0 : 1; break;
+                case TV_SETTINGS: activity.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); break;
+                case RESET_CONFIRM:
+                    if (focus == 0) confirmClearCache();
+                    else if (focus == 1) confirmResetTvos();
+                    return;
+                case RESTART: {
                     Intent restart = new Intent(activity, HomeActivity.class);
                     restart.putExtra("io.tvos.RESTART_HOME", true);
                     restart.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -2253,10 +2186,9 @@ public class SettingsActivity extends Activity {
                     activity.finish();
                     return;
                 }
-
+                default: break;
             }
-            // Reset focus springs only when navigating to a different screen.
-            // Toggling a setting must preserve the focused capsule's animation state.
+            // Reset springs only when navigating; toggles retain the focused capsule.
             if (screen != screenBeforeAction) {
                 for (Spring s : pop) s.snap(0);
             }

@@ -70,7 +70,8 @@ tests=r'''
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-settings-test-') as directory:
     root=Path(directory);(root/'SettingsHarness.java').write_text(header+body+tests)
+    (root/'SettingsActions.java').write_text(Path('app/src/io/tvos/SettingsActions.java').read_text())
     (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,str(root/'SettingsHarness.java'),str(root/'SettingsContent.java')],check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,str(root/'SettingsHarness.java'),str(root/'SettingsContent.java'),str(root/'SettingsActions.java')],check=True)
     subprocess.run([java,'-cp',directory,'io.tvos.SettingsHarness'],check=True)
