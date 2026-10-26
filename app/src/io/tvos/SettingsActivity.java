@@ -190,6 +190,7 @@ public class SettingsActivity extends Activity {
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final SettingsCitySearch citySearch;
         private final SettingsValues valueSource;
+        private final SettingsDeviceDialogs deviceDialogs;
         private final Spring[] pop = new Spring[12];
         private final List<String> appPkgs = new ArrayList<>(), appLabels = new ArrayList<>();
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
@@ -307,6 +308,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this);
             valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
@@ -1144,50 +1146,6 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        /** Only app-owned cache; preserves preferences, databases and downloaded user data. */
-        private static boolean deleteCacheContents(java.io.File dir) {
-            if (dir == null || !dir.exists()) return true;
-            boolean ok = true;
-            java.io.File[] children = dir.listFiles();
-            if (children == null) return false;
-            for (java.io.File child : children) {
-                if (child.isDirectory() && !java.nio.file.Files.isSymbolicLink(child.toPath()))
-                    ok &= deleteCacheContents(child);
-                if (!child.delete()) ok = false;
-            }
-            return ok;
-        }
-
-        private void confirmClearCache() {
-            new AlertDialog.Builder(activity)
-                    .setTitle(AppStrings.get(R.string.settings_clear_cache_confirmation))
-                    .setMessage(AppStrings.get(R.string.settings_temporary_posters_images_and_screensaver_cache_will_be_deleted_se))
-                    .setNegativeButton(AppStrings.get(R.string.settings_cancel), null)
-                    .setPositiveButton(AppStrings.get(R.string.settings_clear), (dialog, which) -> {
-                        boolean ok = deleteCacheContents(activity.getCacheDir());
-                        java.io.File external = activity.getExternalCacheDir();
-                        if (external != null) ok &= deleteCacheContents(external);
-                        android.widget.Toast.makeText(activity,
-                                ok ? AppStrings.get(R.string.settings_cache_cleared) : AppStrings.get(R.string.settings_some_cache_could_not_be_cleared),
-                                android.widget.Toast.LENGTH_SHORT).show();
-                    }).show();
-        }
-
-        private void confirmResetTvos() {
-            new AlertDialog.Builder(activity)
-                    .setTitle(AppStrings.get(R.string.settings_reset_tvos_confirmation))
-                    .setMessage(AppStrings.get(R.string.settings_all_tvos_settings_selected_apps_and_app_data_will_be_erased_this_))
-                    .setNegativeButton(AppStrings.get(R.string.settings_cancel), null)
-                    .setPositiveButton(AppStrings.get(R.string.settings_reset_tvos_3), (dialog, which) -> {
-                        android.app.ActivityManager am = (android.app.ActivityManager)
-                                activity.getSystemService(Context.ACTIVITY_SERVICE);
-                        if (am == null || !am.clearApplicationUserData())
-                            android.widget.Toast.makeText(activity,
-                                    AppStrings.get(R.string.settings_could_not_reset_tvos),
-                                    android.widget.Toast.LENGTH_LONG).show();
-                    }).show();
-        }
-
         // MARK: - Home Settings and Remote Buttons
 
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
@@ -1578,36 +1536,13 @@ public class SettingsActivity extends Activity {
 
         }
 
-        private void askDeviceName() {
-            final android.widget.EditText input =
-                    new android.widget.EditText(getContext());
-            input.setSingleLine(true);
-            input.setText(localPrefs().getString("device_name", "ТВ"));
-            input.selectAll();
-
-            new android.app.AlertDialog.Builder(getContext())
-                    .setTitle(AppStrings.get(R.string.settings_name))
-                    .setView(input)
-                    .setNegativeButton(AppStrings.get(R.string.settings_cancel), null)
-                    .setPositiveButton(AppStrings.get(R.string.settings_save), (dialog, which) -> {
-                        String name = input.getText().toString().trim();
-                        if (name.isEmpty()) name = "ТВ";
-                        localPrefs().edit()
-                                .putString("device_name", name).apply();
-                        invalidate();
-                    })
-                    .show();
-
-            input.requestFocus();
-        }
-
         private void activate() {
             final int screenBeforeAction = screen;
             SettingsActions.Action action = SettingsActions.activation(screen, focus, pickFor,
                     screen == HOME_SETTINGS && settingIndex() == CITY_ROW, buttonEditor.size(),
                     screen == VPN_SETTINGS && focus != 0 && vpnTopEnabled());
             if (action == SettingsActions.Action.NAME) {
-                if (focus == 0) askDeviceName();
+                if (focus == 0) deviceDialogs.askDeviceName();
                 return;
             }
             Context c = getContext();
@@ -1673,8 +1608,8 @@ public class SettingsActivity extends Activity {
                 case HOME_CHOICE: screen = HOME_CHOICE; focus = freeActive() ? 0 : 1; break;
                 case TV_SETTINGS: activity.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); break;
                 case RESET_CONFIRM:
-                    if (focus == 0) confirmClearCache();
-                    else if (focus == 1) confirmResetTvos();
+                    if (focus == 0) deviceDialogs.confirmClearCache();
+                    else if (focus == 1) deviceDialogs.confirmResetTvos();
                     return;
                 case RESTART: {
                     Intent restart = new Intent(activity, HomeActivity.class);

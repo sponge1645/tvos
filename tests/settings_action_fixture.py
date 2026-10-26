@@ -51,7 +51,7 @@ public class CLASSNAME {
  static class Spoken {void focusMoved(){note("spoken");}}final Spoken spoken=new Spoken();
  CLASSNAME(){for(int i=0;i<20;i++){appPkgs.add("app"+i);cities.add(new String[]{"city","Name","1","2","3","Zone"});}rebuildMenuButtonRows(-1);events.clear();Prefs.shelf=null;Prefs.theme="auto";Prefs.language="en";Prefs.unit="auto";Prefs.h24=false;}
  int settingIndex(){return selectedSetting;}boolean busy(){return busyFlag;}boolean freeActive(){return freeFlag;}boolean vpnTopEnabled(){return vpnFlag;}
- void invalidate(){note("invalidate");}void askDeviceName(){note("name");}void askCity(){note("ask-city");}
+ void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
  void toggleCategory(){note("category");}void toggleShelfApp(){note("shelf-toggle");}void adjust(int d){note("adjust:"+d);}
  void launchAirPlay(){note("airplay");}void loadApps(){note("load-apps");}
  void openPicker(int p){pickFor=p;screen=PICKER;focus=0;note("picker:"+p);}
@@ -62,7 +62,7 @@ public class CLASSNAME {
  void toggleVpnTop(){note("vpn-toggle");}void toggleDateTime(){note("date-toggle");}void toggleWeather(boolean top){note("weather:"+top);}
  void pause(){note("pause");}void openCategoryEditor(){screen=CATEGORY_EDIT;focus=0;note("category-editor");}
  void openMenuButtonEditor(){screen=MENU_BUTTONS;focus=0;note("button-editor");}
- void confirmClearCache(){note("confirm-cache");}void confirmResetTvos(){note("confirm-reset");}
+ final Dialogs deviceDialogs=new Dialogs();static class Dialogs {void askDeviceName(){note("name");}void confirmClearCache(){note("confirm-cache");}void confirmResetTvos(){note("confirm-reset");}}
  void rebuildMenuButtonRows(int selected){buttonEditor.rows.clear();for(int i=0;i<buttonCount;i++)buttonEditor.rows.add(i);note("rebuild-buttons");}
  String snapshot(){return screen+":"+focus+":"+pickFor+":"+settingsGroup+":"+returnFocus+":"+pendingAt+":"+updateRequested+":"+events;}
 '''
