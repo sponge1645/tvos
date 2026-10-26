@@ -2,19 +2,7 @@ package io.tvos;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import java.util.LinkedHashMap;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.io.InputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -186,6 +174,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int workEpoch;
     private final SearchController searchWork;
     private final RouletteController rouletteWork;
+    private final MovieAppLauncher movieApps;
+    private final HomeDockEditor dockEditor;
 
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
     private List<Recs.Pick> cards = new ArrayList<>();
@@ -211,10 +201,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final DockLogoRenderer dockLogos = new DockLogoRenderer();
     private final RectF platterRect = new RectF();
     private int shelfIndex;
-    // Lightweight Dock editing: hold OK, move with left/right, OK saves, Back restores.
-    private static final long DOCK_HOLD_MS = 500L;
-    private boolean dockEditing, dockHoldArmed, dockDropArmed;
-    private java.util.List<HomeApps.Item> dockBefore;
     private Spring[] dockSlide = new Spring[0];
     private final Spring dockLift = new Spring(0.3f, 0.72f, 0);
     private int dockLiftIndex = -1;
@@ -277,24 +263,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private String weatherLineLanguage = "";
     private long clockMinute = -1;
     private boolean okDown, backDown;
-    private void playDockEditClick() { click.open(); }
-
-    private final Runnable dockHold = () -> {
-        if (dockHoldArmed && okDown && !sheetOpen && zone == Z_SHELF && !shelf.isEmpty()) {
-            dockHoldArmed = false;
-            dockEditing = true;
-            dockDropArmed = false;
-            dockBefore = new java.util.ArrayList<>(shelf);
-            dockLiftIndex = shelfIndex;
-            dockWiggleAt = SystemClock.uptimeMillis();
-            dockLift.target = 1;
-            dockAnimating = true;
-            playDockEditClick();
-            showToast(AppStrings.get(R.string.home_dock_edit_hint));
-            tilesDirty = true;
-            wake();
-        }
-    };
+    private void beginDockEdit() {
+        dockLiftIndex = shelfIndex;
+        dockWiggleAt = SystemClock.uptimeMillis();
+        dockLift.target = 1;
+        dockAnimating = true;
+        click.open();
+        showToast(AppStrings.get(R.string.home_dock_edit_hint));
+        tilesDirty = true;
+        wake();
+    }
 
     private Paint labelPaint, metaPaint, clockPaint, buttonPaint, capsuleText, tipPaint;
     private Paint rowTitle, drawerLabel, cardTitle, cardText, cardDim, cardDimRight;
@@ -428,6 +406,21 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         rouletteWork = new RouletteController(handler, recs, () -> running,
                 () -> tabEnabled(4), () -> tab == 4,
                 () -> { heroDirty = true; wake(); }, this::finishRoulette);
+        movieApps = new MovieAppLauncher(a, this, LOADER, handler, new MovieAppLauncher.Host() {
+            @Override public boolean running() { return running; }
+            @Override public int epoch() { return workEpoch; }
+            @Override public void toast(String text) { showToast(text); }
+        });
+        dockEditor = new HomeDockEditor(handler, new HomeDockEditor.Host() {
+            @Override public boolean eligible() { return okDown && !sheetOpen && zone == Z_SHELF && !shelf.isEmpty(); }
+            @Override public List<HomeApps.Item> items() { return shelf; }
+            @Override public int index() { return shelfIndex; }
+            @Override public void begin() { beginDockEdit(); }
+            @Override public void move(int from, int to) { shiftDockTiles(from, to); }
+            @Override public void finish(List<HomeApps.Item> restore) { finishDockTiles(restore); }
+            @Override public void saved() { click.open(); }
+            @Override public void canceled() { click.move(); }
+        });
         click = new Click(a);
         ui = a.getSharedPreferences("home-ui", Context.MODE_PRIVATE);
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
@@ -533,10 +526,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         workEpoch++;
         searchWork.pause(searchMode);
         cancelRouletteWork();
-        handler.removeCallbacks(dockHold);
-        dockHoldArmed = false;
+        dockEditor.pause();
         okDown = false;
-        if (dockEditing) finishDockEdit(false);
         Choreographer.getInstance().removeFrameCallback(this);
         handler.removeCallbacks(tick);
         handler.removeCallbacks(reloadSoon);
@@ -817,9 +808,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean marqueeActive = focusedPoster >= 0 && marqueeNeeded && up - marqueeSince >= 1000;
         if (marqueeActive || rouletteWork.spinning()) heroDirty = true;
         boolean dockMoving = step(dockSlide, dt) | dockLift.step(dt);
-        if (dockEditing || dockLift.value > 0.001f) dockMoving = true;
+        if (dockEditor.editing() || dockLift.value > 0.001f) dockMoving = true;
         dockAnimating = dockMoving;
-        if (!dockEditing && !dockMoving) dockLiftIndex = -1;
+        if (!dockEditor.editing() && !dockMoving) dockLiftIndex = -1;
         if (dockMoving) tilesDirty = true;
         boolean tilesMoving = step(tileFocus, dt) | dockMoving;
         boolean statusMoving = step(statusFocus, dt);
@@ -1302,7 +1293,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         tileShaders = new LinearGradient[0];
         boolean same = list.size() == shelf.size();
         for (int i = 0; same && i < list.size(); i++) same = list.get(i).key.equals(shelf.get(i).key);
-        if (dockEditing) return; // Do not overwrite a drag with an asynchronous refresh.
+        if (dockEditor.editing()) return; // Do not overwrite a drag with an asynchronous refresh.
         shelf = list;
         if (!same || tileFocus.length != list.size()) {
             tileFocus = new Spring[list.size()];
@@ -1926,7 +1917,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     boolean onKey(KeyEvent e) {
         wake();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
-        if (dockEditing) return dockEditKey(e, down);
+        if (dockEditor.editing()) {
+            boolean handled = dockEditor.onKey(e);
+            if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    || e.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER) okDown = false;
+            return handled;
+        }
         switch (e.getKeyCode()) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 if (down) move(-1, 0);
@@ -1948,19 +1944,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (down) {
                     if (e.getRepeatCount() == 0) {
                         okDown = true;
-                        dockHoldArmed = !dockEditing && !sheetOpen && zone == Z_SHELF && !shelf.isEmpty();
-                        if (dockHoldArmed) handler.postDelayed(dockHold, DOCK_HOLD_MS);
+                        dockEditor.arm();
                     }
                 } else {
-                    handler.removeCallbacks(dockHold);
-                    dockHoldArmed = false;
-                    if (okDown && !e.isCanceled()) {
-                        if (dockEditing) {
-                            // The initial long press releases without saving; a second OK drops the tile.
-                            if (dockDropArmed) finishDockEdit(true);
-                            else dockDropArmed = true;
-                        } else if (spoken.keyClick()) activate();
-                    }
+                    dockEditor.cancelHold();
+                    if (okDown && !e.isCanceled() && spoken.keyClick()) activate();
                     okDown = false;
                 }
                 return true;
@@ -1977,41 +1965,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
     }
 
-    private boolean dockEditKey(KeyEvent e, boolean down) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (down) shiftDock(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
-                return true;
-            case KeyEvent.KEYCODE_DPAD_UP:
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                return true;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER:
-                if (!down) {
-                    if (!dockDropArmed) dockDropArmed = true; // release of initial hold
-                    okDown = false;
-                } else if (dockDropArmed && e.getRepeatCount() == 0) {
-                    okDown = false;
-                    finishDockEdit(true);
-                }
-                return true;
-            case KeyEvent.KEYCODE_BACK:
-                if (down) {
-                    if (e.getRepeatCount() == 0) backDown = true;
-                } else {
-                    if (backDown && !e.isCanceled()) { finishDockEdit(false); click.move(); }
-                    backDown = false;
-                }
-                return true;
-            default: return false;
-        }
-    }
-
-    private void shiftDock(int dx) {
-        int i = shelfIndex, j = i + dx;
-        if (j < 0 || j >= shelf.size()) return;
+    private void shiftDockTiles(int i, int j) {
         HomeApps.Item item = shelf.get(i);
         shelf.set(i, shelf.get(j));
         shelf.set(j, item);
@@ -2030,41 +1984,28 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         click.move();
     }
 
-    private void finishDockEdit(boolean save) {
-        if (!dockEditing) return;
-        dockEditing = false;
+    private void finishDockTiles(List<HomeApps.Item> before) {
         dockLift.target = 0;
-        if (!save && dockBefore != null && dockBefore.size() == shelf.size()) {
+        if (before != null && before.size() == shelf.size()) {
             HomeApps.Item selected = shelf.get(shelfIndex);
             int n = shelf.size();
             Spring[] focus = new Spring[n], slide = new Spring[n];
             LinearGradient[] shaders = tileShaders.length == n ? new LinearGradient[n] : tileShaders;
             for (int a = 0; a < n; a++) {
-                int b = shelf.indexOf(dockBefore.get(a));
+                int b = shelf.indexOf(before.get(a));
                 if (b < 0) { b = a; }
                 focus[a] = tileFocus[b];
                 slide[a] = dockSlide[b];
                 slide[a].value += tileRects[b].left - tileRects[a].left;
                 if (shaders != tileShaders) shaders[a] = tileShaders[b];
             }
-            shelf = dockBefore;
+            shelf = before;
             tileFocus = focus;
             dockSlide = slide;
             tileShaders = shaders;
             shelfIndex = dockLiftIndex = shelf.indexOf(selected);
             if (shelfIndex < 0) shelfIndex = dockLiftIndex = 0;
         }
-        if (save) {
-            java.util.List<String> packages = new java.util.ArrayList<>();
-            for (HomeApps.Item item : shelf) {
-                if ("tv-settings".equals(item.key)) packages.add("io.tvos.virtual.tvsettings");
-                else if (item.pkg != null) packages.add(item.pkg);
-            }
-            Prefs.setShelf(packages);
-            click.open();
-        }
-        dockDropArmed = false;
-        dockBefore = null;
         retarget(false);
         tilesDirty = true;
         wake();
@@ -2072,7 +2013,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void back() {
         if (rouletteWork.spinning()) cancelRouletteWork();
-        if (dockEditing) { finishDockEdit(false); click.move(); return; }
+        if (dockEditor.editing()) { dockEditor.finish(false); click.move(); return; }
         if (sheetOpen) {
             closeSheet();
         } else if (searchMode) {
@@ -2091,7 +2032,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void move(int dx, int dy) {
         if (rouletteWork.spinning()) return; // Keep remote focus on the running roulette until it stops.
-        if (dockEditing) { if (dx != 0) shiftDock(dx); return; }
+        if (dockEditor.editing()) { if (dx != 0) dockEditor.move(dx); return; }
         if (sheetOpen) {
             moveGrid(dx, dy);
             return;
@@ -2099,19 +2040,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (moveLight(dx, dy)) return;
         switch (zone) {
             case Z_SHELF:
-                if (dockEditing) {
-                    if (dx == 0) return;
-                    int to = Math.max(0, Math.min(shelf.size() - 1, shelfIndex + dx));
-                    if (to == shelfIndex) return;
-                    HomeApps.Item moved = shelf.remove(shelfIndex);
-                    shelf.add(to, moved);
-                    shelfIndex = to;
-                    tileShaders = new LinearGradient[0];
-                    tilesDirty = true;
-                    platter.invalidate();
-                    click.move();
-                    return;
-                }
                 if (dx != 0) {
                     int next = Math.max(0, Math.min(shelf.size() - 1, shelfIndex + dx));
                     if (next == shelfIndex) return;
@@ -2235,7 +2163,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } else if (zone == Z_HERO) {
             Recs.Pick p = currentPick();
             if (p == null) return;
-            chooseWatchApp(p);
+            movieApps.choose(p);
             return;
         } else if (zone == Z_STATUS) {
             if (statusItems.isEmpty()) return;
@@ -2268,13 +2196,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             r = topRects[topIndex];
         } else if (zone == Z_CARDS) {
             if (tab == 4 && !searchMode) {
-                if (rouletteWork.finished() && !rouletteWork.picks().isEmpty()) chooseWatchApp(rouletteWork.picks().get(rouletteWork.winner()));
+                if (rouletteWork.finished() && !rouletteWork.picks().isEmpty()) movieApps.choose(rouletteWork.picks().get(rouletteWork.winner()));
                 else spinRoulette();
                 return;
             }
             Recs.Pick p = cardIndex < cards.size() ? cards.get(cardIndex) : null;
             if (p == null) return;
-            chooseWatchApp(p);
+            movieApps.choose(p);
             return;
         } else {
             if (shelf.isEmpty()) return;
@@ -2438,227 +2366,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         retarget(false);
         heroDirty = statusDirty = true;
         wake();
-    }
-
-    /** Choose a launchable installed TV application. Does not claim the title is available there. */
-    private void chooseWatchApp(Recs.Pick pick) {
-        PackageManager pm = activity.getPackageManager();
-        LinkedHashMap<String, String> apps = new LinkedHashMap<>();
-        Intent query = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        for (ResolveInfo ri : pm.queryIntentActivities(query, 0)) {
-            if (ri.activityInfo == null) continue;
-            String pkg = ri.activityInfo.packageName;
-            if (pkg.equals(activity.getPackageName()) || HomeApps.launchIntent(pm, pkg) == null) continue;
-            apps.put(pkg, String.valueOf(ri.loadLabel(pm)));
-        }
-        // Also include launchable phone-style apps installed on some YaOS devices.
-        Intent regular = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        for (ResolveInfo ri : pm.queryIntentActivities(regular, 0)) {
-            if (ri.activityInfo == null) continue;
-            String pkg = ri.activityInfo.packageName;
-            if (pkg.equals(activity.getPackageName()) || HomeApps.launchIntent(pm, pkg) == null) continue;
-            apps.putIfAbsent(pkg, String.valueOf(ri.loadLabel(pm)));
-        }
-        // WATCH_APPS_ONLY_V4: show only supported video applications.
-        java.util.Set<String> allowed = new java.util.HashSet<>(java.util.Arrays.asList(
-                "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv"));
-        apps.keySet().retainAll(allowed);
-        if (apps.isEmpty()) {
-            showToast(AppStrings.get(R.string.home_no_launchable_apps_found));
-            return;
-        }
-        java.util.List<Map.Entry<String, String>> entries = new ArrayList<>(apps.entrySet());
-        entries.sort((a, b) -> a.getValue().compareToIgnoreCase(b.getValue()));
-        String[] labels = new String[entries.size()];
-        for (int i = 0; i < entries.size(); i++) labels[i] = entries.get(i).getValue();
-        new AlertDialog.Builder(activity)
-                .setTitle(AppStrings.get(R.string.home_open_app))
-                .setItems(labels, (dialog, which) -> {
-                    Map.Entry<String, String> selected = entries.get(which);
-                    if ("top.rootu.lampa".equals(selected.getKey())) {
-                        try {
-                            Intent link = new Intent(Intent.ACTION_VIEW,
-                                    android.net.Uri.parse("https://www.themoviedb.org/"
-                                            + ("tv".equals(pick.kind) ? "tv/" : "movie/") + pick.id));
-                            link.setPackage("top.rootu.lampa");
-                            if (AppLaunch.start(activity, link, "Lampa title link")) return;
-                        } catch (RuntimeException e) {
-                            AppLog.unexpected("Lampa link preparation", e);
-                        }
-                        // Older Lampa builds may not handle TMDB links; use normal launch.
-                    }
-                    if ("com.seena.app".equals(selected.getKey())) {
-                        // Seena 1.9.0: ACTION_SEARCH with a full query, no delayed relaunch.
-                        try {
-                            Intent search = new Intent(Intent.ACTION_SEARCH);
-                            search.setClassName("com.seena.app", "com.seena.app.MainActivity");
-                            search.putExtra(android.app.SearchManager.QUERY, pick.title);
-                            search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            if (!AppLaunch.start(activity, search, "Seena search"))
-                                showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
-                        } catch (RuntimeException e) {
-                            AppLog.unexpected("Seena search preparation", e);
-                            showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
-                        }
-                        return;
-                    }
-                    if ("com.vk.tv".equals(selected.getKey())) {
-                        openVkVideoSearch(pick.title);
-                        return;
-                    }
-                    if (KinoPubLink.supports(selected.getKey())) {
-                        openKinoPub(pick, selected.getKey());
-                        return;
-                    }
-                    HomeApps.Item app = HomeApps.app(selected.getKey(), selected.getValue());
-                    if (!HomeApps.open(activity, app, this, 0, 0, 1, 1)) {
-                        showToast(AppStrings.get(R.string.home_couldn_t_open_app));
-                    }
-                })
-                .setNegativeButton(AppStrings.get(R.string.home_cancel), null)
-                .show();
-    }
-
-    /** Best-effort VK Video title search. The TV app may not expose a public search intent. */
-    /** Open VK Video search with the selected movie title; no automation. */
-    private void openVkVideoSearch(String title) {
-        if (title == null || title.trim().isEmpty()) return;
-        try {
-            String query = java.net.URLEncoder.encode(title.trim(), "UTF-8");
-            Intent intent = new Intent(Intent.ACTION_VIEW,
-                    android.net.Uri.parse("vkvideo://video/search?query=" + query));
-            intent.setPackage("com.vk.tv");
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (AppLaunch.start(activity, intent, "VK Video search")) return;
-        } catch (java.io.UnsupportedEncodingException e) {
-            AppLog.w("VK Video query encoding: " + e.getClass().getSimpleName());
-        } catch (RuntimeException e) {
-            AppLog.unexpected("VK Video search preparation", e);
-        }
-        showToast(AppStrings.get(R.string.home_couldn_t_open_vk_video_search));
-    }
-
-    /** KinoPub autocomplete: exact title first; type is a preference, not a hard filter (TV shows can be tagged differently). */
-    private void openKinoPub(Recs.Pick pick, String targetPackage) {
-        final int epoch = workEpoch;
-        if (pick == null || pick.title == null || pick.title.trim().isEmpty()) return;
-        final String title = pick.title.trim();
-        final String kind = pick.kind;
-        final String origin = "tv".equals(kind) ? pick.tvOrigin : pick.movieOrigin;
-        final Matcher yearMatch = Pattern.compile("(?:19|20)\\d{2}").matcher(origin == null ? "" : origin);
-        final String year = yearMatch.find() ? yearMatch.group() : "";
-        final SharedPreferences cache = activity.getSharedPreferences("kinopub-ids", Context.MODE_PRIVATE);
-        final String cacheKey = kind + ":" + pick.id;
-        final int cached = cache.getInt(cacheKey, -1);
-        if (cached > 0) {
-            launchKinoPub(cached, targetPackage);
-            return;
-        }
-        showToast(AppStrings.get(R.string.home_searching_kinopub));
-        LOADER.execute(() -> {
-            int id = -1;
-            // Try both TMDB's localized and original titles. KinoPub may index only one.
-            java.util.LinkedHashSet<String> queries = new java.util.LinkedHashSet<>();
-            queries.add(title);
-            if (pick.originalTitle != null && !pick.originalTitle.trim().isEmpty()) queries.add(pick.originalTitle.trim());
-            // Keep candidates by KinoPub ID: the same result may appear in both queries.
-            java.util.Map<Integer, Integer> scores = new java.util.HashMap<>();
-            final String normalizedTitle = normalizeKinoTitle(title);
-            final String normalizedOriginal = normalizeKinoTitle(pick.originalTitle == null ? "" : pick.originalTitle);
-            for (String query : queries) {
-                try {
-                    String endpoint = "https://api.kinopub.link/v1.1/autocomplete?query="
-                            + URLEncoder.encode(query, "UTF-8");
-                    HttpURLConnection conn = (HttpURLConnection) new URL(endpoint).openConnection();
-                    conn.setConnectTimeout(6000);
-                    conn.setReadTimeout(6000);
-                    try {
-                        if (conn.getResponseCode() != 200) continue;
-                        try (InputStream in = conn.getInputStream(); ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
-                            byte[] buf = new byte[4096];
-                            int n;
-                            while ((n = in.read(buf)) != -1 && bytes.size() < 131072) bytes.write(buf, 0, n);
-                            JSONArray matches = new JSONArray(bytes.toString("UTF-8"));
-                            for (int i = 0; i < matches.length(); i++) {
-                                JSONObject item = matches.optJSONObject(i);
-                                if (item == null) continue;
-                                String type = item.optString("type", "");
-                                int candidate = item.optInt("id", -1);
-                                if (candidate <= 0) continue;
-                                String value = item.optString("value", "");
-                                Matcher m = Pattern.compile("\\((\\d{4})\\)\\s*$").matcher(value);
-                                String names = m.find() ? value.substring(0, m.start()) : value;
-                                int nameScore = 0;
-                                for (String part : names.split(" / ")) {
-                                    String normalized = normalizeKinoTitle(part);
-                                    if (normalized.isEmpty()) continue;
-                                    if (normalized.equals(normalizedTitle)) nameScore = Math.max(nameScore, 100);
-                                    if (!normalizedOriginal.isEmpty() && normalized.equals(normalizedOriginal))
-                                        nameScore = Math.max(nameScore, 100);
-                                }
-                                // An exact title is mandatory; autocomplete contains many unrelated items.
-                                if (nameScore == 0) continue;
-                                // Prefer the matching category, but do not exclude shows,
-                                // documentaries or other KinoPub categories with an exact title.
-                                int score = nameScore;
-                                if (("movie".equals(kind) && "movie".equals(type))
-                                        || ("tv".equals(kind) && "serial".equals(type))) score += 10;
-                                Matcher ym = Pattern.compile("\\((\\d{4})\\)\\s*$").matcher(value);
-                                if (!year.isEmpty() && ym.find()) {
-                                    int delta = Math.abs(Integer.parseInt(year) - Integer.parseInt(ym.group(1)));
-                                    if (delta == 0) score += 20;
-                                    else if (delta <= ("tv".equals(kind) ? 3 : 1)) score += 5;
-                                    else continue; // Different production with the same name.
-                                }
-                                Integer old = scores.get(candidate);
-                                if (old == null || score > old) scores.put(candidate, score);
-                            }
-                        }
-                    } finally {
-                        conn.disconnect();
-                    }
-                } catch (java.io.IOException | org.json.JSONException e) {
-                    AppLog.w("KinoPub lookup: " + e.getClass().getSimpleName());
-                } catch (RuntimeException e) {
-                    AppLog.unexpected("KinoPub lookup", e);
-                }
-            }
-            int bestScore = -1;
-            boolean ambiguous = false;
-            for (java.util.Map.Entry<Integer, Integer> candidate : scores.entrySet()) {
-                int score = candidate.getValue();
-                if (score > bestScore) {
-                    bestScore = score;
-                    id = candidate.getKey();
-                    ambiguous = false;
-                } else if (score == bestScore) {
-                    ambiguous = true;
-                }
-            }
-            if (ambiguous) id = -1;
-            final int resolved = id;
-            handler.post(() -> {
-                if (!running || epoch != workEpoch) return;
-                if (resolved > 0) {
-                    cache.edit().putInt(cacheKey, resolved).apply();
-                    launchKinoPub(resolved, targetPackage);
-                } else {
-                    showToast(AppStrings.get(R.string.home_no_exact_kinopub_match));
-                }
-            });
-        });
-    }
-
-    private static String normalizeKinoTitle(String title) {
-        return title.toLowerCase(Locale.ROOT).replace('ё', 'е')
-                .replaceAll("[^\\p{L}\\p{N}]+", " ").trim().replaceAll(" +", " ");
-    }
-
-    private void launchKinoPub(int id, String targetPackage) {
-        for (Intent intent : KinoPubLink.candidates(targetPackage, id)) {
-            if (AppLaunch.start(activity, intent, "KinoPub card launch")) return;
-        }
-        showToast(AppStrings.get(R.string.home_couldn_t_open_kinopub_card));
     }
 
     // MARK: - TalkBack: every reachable item as a virtual node (Spoken). Id = group * 1000 + index + 1.

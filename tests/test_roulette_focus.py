@@ -65,7 +65,7 @@ harness = '''package io.tvos;
 import java.util.*;
 public class RouletteFocusHarness {
  static final int Z_SHELF=1,Z_CARDS=2,Z_HERO=3,Z_STATUS=4,Z_DRAWER=5,WIDGETS=6;
- boolean running=true,enabled=true,dockEditing,sheetOpen,searchMode,tilesDirty,heroDirty;
+ boolean running=true,enabled=true,sheetOpen,searchMode,tilesDirty,heroDirty;
  int zone=Z_CARDS,shelfIndex,statusIndex,widgetIndex,drawerIndex,lightMoves,cardIndex,tab=4,changes,toasts,retargets;
  static class Item {} static class HomeApps {static class Item extends RouletteFocusHarness.Item {}}
  static class RectF {float centerX(){return 0;}}static class LinearGradient {}
@@ -78,7 +78,8 @@ public class RouletteFocusHarness {
  final Recs recs=new Recs();
  final RouletteController rouletteWork=new RouletteController(handler,recs,()->running,()->enabled,()->tab==4,
   ()->changes++,this::finishRoulette);
- void shiftDock(int dx){}void moveGrid(int dx,int dy){}
+ static class Dock {boolean editing(){return false;}void move(int dx){}void finish(boolean save){}} final Dock dockEditor=new Dock();
+ void moveGrid(int dx,int dy){}
  boolean moveLight(int dx,int dy){lightMoves++;zone=Z_SHELF;return true;}
  int nearest(RectF[] r,float x){return 0;}boolean browse(int dx){return true;}
  void openDrawer(){zone=Z_DRAWER;}void closeDrawer(){}boolean talkBack(){return false;}

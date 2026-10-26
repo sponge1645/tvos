@@ -6,10 +6,11 @@ from settings_strings_fixture import write as write_strings
 from tmdb_metadata_fixture import block
 
 home=Path('app/src/io/tvos/HomeView.java').read_text()
+movie=Path('app/src/io/tvos/MovieAppLauncher.java').read_text()
 apps=Path('app/src/io/tvos/HomeApps.java').read_text()
 settings=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 assert 'catch (Exception' not in home
-lookup=block(home,'    private void openKinoPub(')
+lookup=block(movie,'    private void openKinoPub(')
 assert 'java.io.IOException | org.json.JSONException' in lookup
 assert 'AppLog.unexpected("KinoPub lookup", e);' in lookup
 assert 'lookup failed for ' not in lookup
@@ -35,7 +36,7 @@ public class LaunchHarness extends View {
  static Recs.Pick pick(){Recs.Pick p=new Recs.Pick();p.kind="movie";p.id=42;p.title="A & Б";return p;}
  static LaunchHarness app(String pkg){LaunchHarness h=new LaunchHarness();h.activity.pm.tv.add(new ResolveInfo(pkg,"Video"));
   h.activity.pm.leanback=new Intent("launch").setPackage(pkg);return h;}
-'''+''.join(block(home,s) for s in ['    private void chooseWatchApp(', '    private void openVkVideoSearch(', '    private void openNetworkSettings('])+block(settings,'        private void launchAirPlay(')+'''
+'''+''.join(block(movie,s).replace('void choose(', 'void chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(', '    private void openVkVideoSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
  public static void main(String[] args){
   Intent intent=new Intent("test");Context c=new Context();Log.reset();
   check(AppLaunch.start(c,intent,"launch")&&c.launched==intent,"one-argument launch success");

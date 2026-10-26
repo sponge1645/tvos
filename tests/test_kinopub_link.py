@@ -5,12 +5,12 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-source=Path('app/src/io/tvos/HomeView.java').read_text()
+source=Path('app/src/io/tvos/MovieAppLauncher.java').read_text()
 def method(signature):
  a=source.index(signature);b=source.index('{',a);depth=1;i=b+1
  while depth:depth+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-choose=method('    private void chooseWatchApp(')
+choose=method('    void choose(')
 assert '"watch.kino.mod"' in choose
 assert 'openKinoPub(pick, selected.getKey());' in choose
 lookup=method('    private void openKinoPub(')
@@ -30,7 +30,7 @@ public class KinoPubHarness {
  final Activity activity=new Activity();int toasts;
  void showToast(String message){toasts++;}
  static void check(boolean ok,String reason){if(!ok)throw new AssertionError(reason);}
-''' + method('    private void launchKinoPub(') + '''
+''' + method('    private void launchKinoPub(').replace('host.toast(', 'showToast(') + '''
  public static void main(String[] args){
   check(KinoPubLink.supports("watch.kino")&&KinoPubLink.supports("watch.kino.mod"),"both exact packages supported");
   check(!KinoPubLink.supports("watch.kino.mod.other")&&!KinoPubLink.supports(null),"no broad package aliases");
