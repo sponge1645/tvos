@@ -123,7 +123,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         date.setVisibility(View.GONE);
         weatherData = HomeData.get(context);
         aerialLocation = new TextView(context);
-        aerialLocation.setTypeface(sfAerial(context, "sf_display_medium.otf"));
+        aerialLocation.setTypeface(sfAerial(context, "sf_display_light.otf"));
         aerialLocation.setTextColor(0xD9F2F2F2);
         aerialLocation.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
         // Rasterize the glyph shadow into a transparent text layer, not the video surface.

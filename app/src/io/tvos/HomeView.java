@@ -331,6 +331,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private float dockHighlightW = -1, dockHighlightH = -1, dockHighlightRadius = -1, dockHighlightDensity = -1;
     // Reused only on the UI drawing thread to avoid Paint allocations per frame.
     private final PosterText posterText = new PosterText();
+    private final RatingStyle ratingStyle = new RatingStyle(cardRects.length);
     private final Paint ratingTextScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ratingFillScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ratingSheenScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -548,6 +549,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         imageShaders.clear();
         dockLogos.clear();
         posterText.clear();
+        ratingStyle.clear();
         shadows.clear();
         weatherSnapshot.clear();
         quotesSnapshot.clear();
@@ -3834,8 +3836,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             float pad = 6 * k;
             Paint ratingText = ratingTextScratch;
             ratingText.set(lCardMeta);
-            ratingText.setTypeface(android.graphics.Typeface.create(
-                    lCardMeta.getTypeface(), android.graphics.Typeface.BOLD));
+            ratingText.setTypeface(ratingStyle.bold(lCardMeta.getTypeface()));
             // Match the translucent glass controls without sacrificing contrast.
             // Use the actual day/night transition, not the metadata text color.
             ratingText.setColor(p.rating >= 6.0 && p.rating < 9.0 ? 0xFF000000 : 0xFFFFFFFF);
@@ -3857,10 +3858,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             Paint badgeSheen = ratingSheenScratch;
             badgeSheen.reset();
             badgeSheen.setAntiAlias(true);
-            badgeSheen.setShader(new LinearGradient(
-                    badge.left, badge.top, badge.left, badge.bottom,
-                    blend(0x20FFFFFF, 0x32FFFFFF, night),
-                    0x00FFFFFF, Shader.TileMode.CLAMP));
+            badgeSheen.setShader(ratingStyle.sheen(i, badge.left, badge.top, badge.bottom,
+                    blend(0x20FFFFFF, 0x32FFFFFF, night)));
             c.drawRoundRect(badge, badgeRadius, badgeRadius, badgeSheen);
             Paint badgeRim = ratingRimScratch;
             badgeRim.reset();
