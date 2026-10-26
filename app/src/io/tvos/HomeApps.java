@@ -419,47 +419,51 @@ final class HomeApps {
 
     /** Opens the item with the system zoom transition growing out of the card (the app starts opening right away). */
     static boolean open(Activity a, Item it, View from, int x, int y, int w, int h) {
-        Intent intent;
-        switch (it.kind) {
-            case APP:
-                intent = launchIntent(a.getPackageManager(), it.pkg);
-                if (intent != null) intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                break;
-            case LIVE_TV:
-                intent = liveTv(a);
-                break;
-            case INPUT:
-                Intent yaosHdmi = new Intent(
-                    Intent.ACTION_VIEW,
-                    android.net.Uri.parse("live-tv://android.media.tv/passthrough/" +
-                        android.net.Uri.encode(it.inputId))
-                );
-                yaosHdmi.setPackage("com.yandex.tv.live");
-                if (yaosHdmi.resolveActivity(a.getPackageManager()) != null) {
-                    intent = yaosHdmi;
-                } else {
-                    intent = new Intent(
-                        Intent.ACTION_VIEW,
-                        TvContract.buildChannelUriForPassthroughInput(it.inputId)
-                    );
-                }
-                break;
-            case SETTINGS:
-                intent = new Intent().setComponent(new ComponentName(a, SettingsActivity.class));
-                break;
-            case ANDROID_SETTINGS:
-                intent = new Intent(Settings.ACTION_SETTINGS);
-                break;
-            default:
-                return false;
-        }
-        if (intent == null) return false;
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
-            a.startActivity(intent, ActivityOptions.makeScaleUpAnimation(from, x, y, Math.max(w, 1), Math.max(h, 1)).toBundle());
-            return true;
+            Intent intent;
+            switch (it.kind) {
+                case APP:
+                    intent = launchIntent(a.getPackageManager(), it.pkg);
+                    if (intent != null) intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    break;
+                case LIVE_TV:
+                    intent = liveTv(a);
+                    break;
+                case INPUT:
+                    Intent yaosHdmi = new Intent(
+                        Intent.ACTION_VIEW,
+                        android.net.Uri.parse("live-tv://android.media.tv/passthrough/" +
+                            android.net.Uri.encode(it.inputId))
+                    );
+                    yaosHdmi.setPackage("com.yandex.tv.live");
+                    if (yaosHdmi.resolveActivity(a.getPackageManager()) != null) {
+                        intent = yaosHdmi;
+                    } else {
+                        intent = new Intent(
+                            Intent.ACTION_VIEW,
+                            TvContract.buildChannelUriForPassthroughInput(it.inputId)
+                        );
+                    }
+                    break;
+                case SETTINGS:
+                    intent = new Intent().setComponent(new ComponentName(a, SettingsActivity.class));
+                    break;
+                case ANDROID_SETTINGS:
+                    intent = new Intent(Settings.ACTION_SETTINGS);
+                    break;
+                default:
+                    return false;
+            }
+            if (intent == null) return false;
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            return AppLaunch.start(a, intent,
+                    ActivityOptions.makeScaleUpAnimation(from, x, y, Math.max(w, 1), Math.max(h, 1)).toBundle(),
+                    "App item launch");
         } catch (ActivityNotFoundException | SecurityException e) {
-            AppLog.w("couldn't open " + it.label + ": " + e.getMessage());
+            AppLog.w("App item preparation: " + e.getClass().getSimpleName());
+            return false;
+        } catch (RuntimeException e) {
+            AppLog.unexpected("App item preparation", e);
             return false;
         }
     }
@@ -520,8 +524,7 @@ final class HomeApps {
     }
 
     static Intent launchIntent(PackageManager pm, String pkg) {
-        Intent intent = pm.getLeanbackLaunchIntentForPackage(pkg);
-        return intent != null ? intent : pm.getLaunchIntentForPackage(pkg);
+        return AppLaunch.launchIntent(pm, pkg);
     }
 
 }

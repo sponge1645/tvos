@@ -2542,7 +2542,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app, Ui.ru)); return; }
             Intent launch = HomeApps.launchIntent(activity.getPackageManager(), pkg);
             if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found, Ui.ru)); return; }
-            try { activity.startActivity(launch); } catch (Exception e) { showToast(AppStrings.get(R.string.home_could_not_open_vpn, Ui.ru)); }
+            if (!AppLaunch.start(activity, launch, "VPN launch"))
+                showToast(AppStrings.get(R.string.home_could_not_open_vpn, Ui.ru));
             return;
         }
         if (it.kind == HomeApps.INPUTS) {
@@ -2889,11 +2890,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                                     android.net.Uri.parse("https://www.themoviedb.org/"
                                             + ("tv".equals(pick.kind) ? "tv/" : "movie/") + pick.id));
                             link.setPackage("top.rootu.lampa");
-                            activity.startActivity(link);
-                            return;
-                        } catch (Exception ignored) {
-                            // Older Lampa builds may not handle TMDB links; use normal launch.
+                            if (AppLaunch.start(activity, link, "Lampa title link")) return;
+                        } catch (RuntimeException e) {
+                            AppLog.unexpected("Lampa link preparation", e);
                         }
+                        // Older Lampa builds may not handle TMDB links; use normal launch.
                     }
                     if ("com.seena.app".equals(selected.getKey())) {
                         // Seena 1.9.0: ACTION_SEARCH with a full query, no delayed relaunch.
@@ -2902,9 +2903,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                             search.setClassName("com.seena.app", "com.seena.app.MainActivity");
                             search.putExtra(android.app.SearchManager.QUERY, pick.title);
                             search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            activity.startActivity(search);
-                        } catch (Exception e) {
-                            android.util.Log.w("FreeMyTV", "Seena search failed", e);
+                            if (!AppLaunch.start(activity, search, "Seena search"))
+                                showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search, Ui.ru));
+                        } catch (RuntimeException e) {
+                            AppLog.unexpected("Seena search preparation", e);
                             showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search, Ui.ru));
                         }
                         return;
@@ -2936,11 +2938,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     android.net.Uri.parse("vkvideo://video/search?query=" + query));
             intent.setPackage("com.vk.tv");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(intent);
-        } catch (Exception e) {
-            android.util.Log.w("FreeMyTV", "VK Video search unavailable", e);
-            showToast(AppStrings.get(R.string.home_couldn_t_open_vk_video_search, Ui.ru));
+            if (AppLaunch.start(activity, intent, "VK Video search")) return;
+        } catch (java.io.UnsupportedEncodingException e) {
+            AppLog.w("VK Video query encoding: " + e.getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            AppLog.unexpected("VK Video search preparation", e);
         }
+        showToast(AppStrings.get(R.string.home_couldn_t_open_vk_video_search, Ui.ru));
     }
 
     /** KinoPub autocomplete: exact title first; type is a preference, not a hard filter (TV shows can be tagged differently). */
@@ -3022,8 +3026,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     } finally {
                         conn.disconnect();
                     }
-                } catch (Exception e) {
-                    android.util.Log.w("FreeMyTV", "KinoPub lookup failed for " + query, e);
+                } catch (java.io.IOException | org.json.JSONException e) {
+                    AppLog.w("KinoPub lookup: " + e.getClass().getSimpleName());
+                } catch (RuntimeException e) {
+                    AppLog.unexpected("KinoPub lookup", e);
                 }
             }
             int bestScore = -1;
@@ -3058,16 +3064,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void launchKinoPub(int id, String targetPackage) {
-        Exception failure = null;
         for (Intent intent : KinoPubLink.candidates(targetPackage, id)) {
-            try {
-                activity.startActivity(intent);
-                return;
-            } catch (Exception e) {
-                failure = e;
-            }
+            if (AppLaunch.start(activity, intent, "KinoPub card launch")) return;
         }
-        android.util.Log.w("FreeMyTV", "KinoPub card launch failed for " + targetPackage, failure);
         showToast(AppStrings.get(R.string.home_couldn_t_open_kinopub_card, Ui.ru));
     }
 
@@ -3996,8 +3995,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void openNetworkSettings() {
         for (String action : new String[] {android.provider.Settings.ACTION_WIRELESS_SETTINGS,
                 android.provider.Settings.ACTION_WIFI_SETTINGS, android.provider.Settings.ACTION_SETTINGS}) {
-            try { activity.startActivity(new Intent(action)); return; }
-            catch (android.content.ActivityNotFoundException | SecurityException ignored) {}
+            if (AppLaunch.start(activity, new Intent(action), "Network settings")) return;
         }
         showToast(AppStrings.get(R.string.home_could_not_open_network_settings, Ui.ru));
     }

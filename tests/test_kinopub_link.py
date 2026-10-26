@@ -1,5 +1,6 @@
 """Exercise package-bound KinoPub intents and actual HomeView launch fallback."""
 from settings_strings_fixture import write as write_strings
+from app_launch_fixture import files as launch_files
 from pathlib import Path
 import subprocess
 import tempfile
@@ -15,22 +16,16 @@ assert 'openKinoPub(pick, selected.getKey());' in choose
 lookup=method('    private void openKinoPub(')
 assert 'launchKinoPub(cached, targetPackage);' in lookup
 assert 'launchKinoPub(resolved, targetPackage);' in lookup
-sources={
- 'android/net/Uri.java':'''package android.net;public class Uri {final String value;private Uri(String s){value=s;}public static Uri parse(String s){return new Uri(s);}public String toString(){return value;}}''',
- 'android/content/Intent.java':'''package android.content;public class Intent {
- public static final String ACTION_VIEW="view";public String action,pkg,cls;public android.net.Uri uri;
- public Intent(String a,android.net.Uri u){action=a;uri=u;}public Intent setClassName(String p,String c){pkg=p;cls=c;return this;}
- public Intent setPackage(String p){pkg=p;return this;}}
-''',
- 'android/util/Log.java':'package android.util;public class Log {public static void w(String t,String m,Throwable e){}}',
+sources=launch_files()
+sources.update({
  'io/tvos/KinoPubLink.java':Path('app/src/io/tvos/KinoPubLink.java').read_text(),
  'io/tvos/KinoPubHarness.java':'''package io.tvos;
 import java.util.*;import android.content.Intent;
 public class KinoPubHarness {
  static class Ui {static boolean ru;}
- static class Activity {
+ static class Activity extends android.app.Activity {
   String pkg,cls;Intent launched;List<Intent> attempts=new ArrayList<>();
-  void startActivity(Intent i){attempts.add(i);if(!i.pkg.equals(pkg)||!Objects.equals(i.cls,cls))throw new IllegalStateException("missing activity");launched=i;}
+  public void startActivity(Intent i){attempts.add(i);if(!i.pkg.equals(pkg)||!Objects.equals(i.cls,cls))throw new android.content.ActivityNotFoundException("missing activity");launched=i;}
  }
  final Activity activity=new Activity();int toasts;
  void showToast(String message){toasts++;}
@@ -57,7 +52,7 @@ public class KinoPubHarness {
  }
 }
 '''
-}
+})
 with tempfile.TemporaryDirectory(prefix='tvos-kinopub-link-') as tmp:
  root=Path(tmp)
  write_strings(root)

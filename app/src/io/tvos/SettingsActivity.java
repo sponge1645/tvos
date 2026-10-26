@@ -1635,14 +1635,14 @@ public class SettingsActivity extends Activity {
         private void launchAirPlay() {
             final String packageName = "io.github.jqssun.airplay";
             PackageManager pm = getContext().getPackageManager();
-            Intent launch = pm.getLeanbackLaunchIntentForPackage(packageName);
-            if (launch == null) launch = pm.getLaunchIntentForPackage(packageName);
+            Intent launch = HomeApps.launchIntent(pm, packageName);
             if (launch != null) {
                 try {
                     launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    getContext().startActivity(launch);
-                    return;
-                } catch (Exception ignored) { }
+                    if (AppLaunch.start(getContext(), launch, "AirPlay launch")) return;
+                } catch (RuntimeException e) {
+                    AppLog.unexpected("AirPlay launch preparation", e);
+                }
             }
             android.widget.Toast.makeText(getContext(),
                     AppStrings.get(R.string.settings_airplay_is_not_installed_or_unavailable, Ui.ru),
