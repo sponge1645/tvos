@@ -330,6 +330,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final RectF dockHighlightArc = new RectF();
     private float dockHighlightW = -1, dockHighlightH = -1, dockHighlightRadius = -1, dockHighlightDensity = -1;
     // Reused only on the UI drawing thread to avoid Paint allocations per frame.
+    private final PosterText posterText = new PosterText();
     private final Paint ratingTextScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ratingFillScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ratingSheenScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -546,6 +547,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         rouletteWork.invalidatePosters();
         imageShaders.clear();
         dockLogos.clear();
+        posterText.clear();
         shadows.clear();
         weatherSnapshot.clear();
         quotesSnapshot.clear();
@@ -3822,24 +3824,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (p == null) return;
         String title = p.title == null ? "" : p.title;
         drawCardMarquee(c, title, lCardTitle, base.left, base.bottom + 46 * k, bw, i);
-        String detail = "";
-        if ("tv".equals(p.kind)) detail = p.tvOrigin == null ? "" : p.tvOrigin;
-        else if ("movie".equals(p.kind)) {
-            String origin = p.movieOrigin == null ? "" : p.movieOrigin;
-            String duration = p.duration == null ? "" : p.duration;
-            // Normalize old cached metadata as well as newly fetched TMDB details.
-            origin = origin.replace(" г.", "").replace(" г", "").replace(", ", " · ");
-            detail = origin.isEmpty() ? duration : duration.isEmpty() ? origin : origin + " · " + duration;
-        }
-        if ("tv".equals(p.kind) && !detail.isEmpty()) {
-            detail = detail.replace(" г.", "").replace(" г", "").replace(", ", " · ");
-        }
-        if (tab == 0 && !searchMode && detail.isEmpty() && p.meta != null) detail = p.meta;
+        PosterText.Entry text = posterText.get(p);
+        String detail = text.detail(tab == 0 && !searchMode);
         float metaLeft = base.left;
         float metaWidth = bw;
         float metaBaseline = base.bottom + 85 * k;
         if (p.rating > 0.0) {
-            String rating = String.format(java.util.Locale.US, "%.1f", p.rating);
+            String rating = text.rating;
             float pad = 6 * k;
             Paint ratingText = ratingTextScratch;
             ratingText.set(lCardMeta);
@@ -3860,7 +3851,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             badgeFill.setAntiAlias(true);
             badgeFill.setStyle(Paint.Style.FILL);
             // Smoke glass in light mode, frosted glass in dark mode.
-            badgeFill.setColor(ratingBadgeColor(Double.parseDouble(rating)));
+            badgeFill.setColor(text.badgeColor);
             c.drawRoundRect(badge, badgeRadius, badgeRadius, badgeFill);
             // A subtle highlight and fine rim reproduce the upper glass buttons.
             Paint badgeSheen = ratingSheenScratch;
@@ -3887,16 +3878,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!detail.isEmpty() && metaWidth > 0) {
             drawCardMarquee(c, detail, lCardMeta, metaLeft, metaBaseline, metaWidth, i);
         }
-    }
-
-    private static int ratingBadgeColor(double r) {
-        if (r >= 9.8) return 0xFF1EA1F2;
-        if (r >= 9.0) return 0xFF186A3A;
-        if (r >= 8.0) return 0xFF27B463;
-        if (r >= 7.0) return 0xFFF4D03F;
-        if (r >= 6.0) return 0xFFF39C13;
-        if (r >= 4.1) return 0xFFE74C3C;
-        return 0xFF633974;
     }
 
     /** Marquee shared by titles and TV origin metadata, with a soft alpha fade at clipped edges. */
