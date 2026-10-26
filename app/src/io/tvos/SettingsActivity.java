@@ -2,6 +2,7 @@
 package io.tvos;
 
 import static io.tvos.SettingsContent.*;
+import static io.tvos.SettingsValues.*;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -188,6 +189,7 @@ public class SettingsActivity extends Activity {
         private final Shadows rowShadows = new Shadows();
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final SettingsCitySearch citySearch;
+        private final SettingsValues values;
         private final Spring[] pop = new Spring[12];
         private final List<String> appPkgs = new ArrayList<>(), appLabels = new ArrayList<>();
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
@@ -307,6 +309,7 @@ public class SettingsActivity extends Activity {
             activity = a;
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this);
+            values = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             HomeData.Weather wx = HomeData.get(a).weather;
@@ -350,7 +353,7 @@ public class SettingsActivity extends Activity {
                     return row < names.length ? names[row] : "";
                 }
                 case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case TOP_PANEL: {
-                    String[] names = menuLabels(), values = menuValues();
+                    String[] names = menuLabels(), values = values.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
                 case HOME_CHOICE: {
@@ -363,7 +366,7 @@ public class SettingsActivity extends Activity {
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
                     String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingsGroup == WIDGETS ? widgetLabels() : settingLabels();
-                    String[] values = keys ? keyValues() : settingsGroup == SYSTEM ? new String[] {settingValues()[detectivesRow()], settingValues()[randomRow()]} : settingsGroup == WIDGETS ? widgetValues() : settingValues();
+                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {values.settings()[detectivesRow()], values.settings()[randomRow()]} : settingsGroup == WIDGETS ? values.widgets() : values.settings();
                     return row < labels.length ? labels[row] + ", " + values[row] : "";
                 }
                 case PICKER: {
@@ -728,90 +731,6 @@ public class SettingsActivity extends Activity {
         private void toggleVpnTop() { Prefs.setTopButtonEnabled(2, !vpnTopEnabled()); invalidate(); }
         // Legacy display/Wi-Fi information remains available on older TV firmware.
         @SuppressWarnings("deprecation")
-        private String[] menuValues() {
-            String[] v = new String[rowCount()];
-            java.util.Arrays.fill(v, "");
-            if (screen == GENERAL) {
-                String theme = Prefs.theme();
-                v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
-                v[2] = settingValues()[0];
-                v[3] = Prefs.city();
-                v[4] = "";
-                v[5] = settingValues()[1];
-                v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
-                v[7] = onOff(localPrefs().getBoolean("navigation_clicks", true));
-                
-            } else if (screen == UPDATES) {
-                v[1] = onOff(localPrefs().getBoolean("auto_update", false));
-            } else if (screen == ACCESSIBILITY) {
-                v[0] = onOff(localFlag("reduce_transparency"));
-                v[1] = onOff(localFlag("reduce_motion"));
-                v[2] = freeActive() ? "tvOS" : AppStrings.get(R.string.settings_built_in);
-            } else if (screen == VPN_SETTINGS) {
-                v[0] = onOff(vpnTopEnabled());
-                String vpn = localPrefs().getString("vpn_app", "");
-                if (vpn.isEmpty()) v[1] = AppStrings.get(R.string.settings_not_selected);
-                else { try { v[1] = String.valueOf(getContext().getPackageManager().getApplicationLabel(getContext().getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = AppStrings.get(R.string.settings_not_found); } }
-            } else if (screen == MENU_BUTTONS) {
-                for (int i = 0; i < buttonEditor.size(); i++) {
-                    int id = buttonEditor.get(i);
-                    v[i] = Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off);
-                }
-            } else if (screen == SCREENSAVER) {
-                String src = localPrefs().getString("video_dream_source", "google");
-                v[0] = "apple".equals(src) ? "Apple" : "na".equals(src) ? "National Geographic" : "Google";
-                v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
-                v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
-                v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
-            } else if (screen == WIDGETS) {
-                // Quotes is a submenu; its switch is shown inside HOME_SETTINGS.
-                // Date is a submenu; its switch is shown inside DATE_TIME.
-            } else if (screen == DATE_TIME) {
-                v[0] = onOff(localPrefs().getBoolean("show_date", true));
-            } else if (screen == WEATHER) {
-                v[0] = onOff(weatherVisible(true)); v[1] = onOff(weatherVisible(false));
-            } else if (screen == ABOUT) {
-                v[0] = android.os.Build.MODEL == null || android.os.Build.MODEL.trim().isEmpty()
-                        ? AppStrings.get(R.string.settings_unknown) : android.os.Build.MODEL.trim();
-                v[1] = AppStrings.get(R.string.settings_unavailable);
-                try {
-                    String serial = android.os.Build.getSerial();
-                    if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
-                } catch (Exception ignored) {}
-                try {
-                    v[2] = getContext().getPackageManager()
-                            .getPackageInfo(getContext().getPackageName(), 0).versionName;
-                } catch (Exception e) { v[2] = "—"; }
-                v[3] = "Android " + android.os.Build.VERSION.RELEASE;
-                android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
-                activity.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
-                v[4] = dm.widthPixels + " × " + dm.heightPixels;
-                v[5] = AppStrings.get(R.string.settings_network_unavailable);
-                v[6] = "—";
-                v[7] = localPrefs().getString("device_name", "ТВ");
-                LocalNetwork.Info network = LocalNetwork.read(getContext());
-                if (network != null) {
-                    v[6] = network.address;
-                    if (network.ethernet) v[5] = "Ethernet";
-                    else {
-                        v[5] = AppStrings.get(R.string.settings_wi_fi_name_unavailable);
-                        try {
-                            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
-                                    getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                            android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
-                            String ssid = wi == null ? null : wi.getSSID();
-                            if (ssid != null && !ssid.isEmpty() && !ssid.contains("unknown ssid"))
-                                v[5] = ssid.replace("\"", "");
-                        } catch (Exception ignored) {}
-                    }
-                }
-                // Show device name first, preserving all other values.
-                String deviceName = v[7];
-                System.arraycopy(v, 0, v, 1, 7);
-                v[0] = deviceName;
-            }
-            return v;
-        }
         // Approved About-screen geometry (all dimensions are scaled by k).
         private static final float ABOUT_ROW_GAP = 22f;
         private static final float ABOUT_NAME_Y_OFFSET = 3f;
@@ -931,7 +850,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void drawMenu(Canvas c) {
-            String[] labels = menuLabels(), values = menuValues();
+            String[] labels = menuLabels(), values = values.menu(screen, rowCount());
             for (int i = 0; i < labels.length; i++) {
                 float y = (LIST_TOP + i * (ROW_H + ABOUT_ROW_GAP)
                         + (screen == ABOUT ? (i == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET)) * k;
@@ -1274,83 +1193,11 @@ public class SettingsActivity extends Activity {
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
         /** Home Settings: language, temperature, theme, weather, quotes, then one row per coin. */
         private static final int CITY_ROW = 4, COIN_ROWS = 6;
-        private int detectivesRow() { return dollar() ? 10 : 9; }
-        private int randomRow() { return detectivesRow() + 1; }
 
-        private boolean dollar() {
-            return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
-        }
-
-        private String[] settingLabels() {
-            List<String> l = new ArrayList<>();
-            l.add(AppStrings.get(R.string.settings_language));
-            l.add(AppStrings.get(R.string.settings_temperature));
-            l.add(AppStrings.get(R.string.settings_theme));
-            l.add(AppStrings.get(R.string.settings_weather_widget));
-            l.add(AppStrings.get(R.string.settings_city));
-            l.add(AppStrings.get(R.string.settings_show_in_bottom_menu));
-            l.add("Bitcoin");
-            l.add("Ethereum");
-            l.add("Solana");
-            if (dollar()) l.add(AppStrings.get(R.string.settings_dollar));
-            l.add(AppStrings.get(R.string.settings_detectives));
-            l.add(AppStrings.get(R.string.settings_random_movie));
-            return l.toArray(new String[0]);
-        }
-
-        private String[] settingValues() {
-            String[] labels = settingLabels();
-            String[] v = new String[labels.length];
-            v[0] = AppLanguage.from(Prefs.language()).nativeName;
-            String unit = Prefs.temperature();
-            v[1] = unit.equals("C") ? "°C" : unit.equals("F") ? "°F" : AppStrings.get(R.string.settings_automatic_value);
-            String theme = Prefs.theme();
-            v[2] = theme.equals("light") ? AppStrings.get(R.string.settings_theme_light) : theme.equals("dark") ? AppStrings.get(R.string.settings_theme_dark) : AppStrings.get(R.string.settings_automatic_value);
-            v[3] = onOff(Prefs.weather());
-            v[CITY_ROW] = !citySearch.status().isEmpty() ? citySearch.status() : Prefs.city().isEmpty() ? "—" : Prefs.city();
-            v[5] = onOff(Prefs.quotes());
-            // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
-            for (int i = COIN_ROWS; i < detectivesRow(); i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
-            v[detectivesRow()] = onOff(Prefs.detectives());
-            v[randomRow()] = onOff(Prefs.randomMovie());
-            return v;
-        }
-
-        private String[] widgetLabels() {
-            String[] all = settingLabels();
-            java.util.ArrayList<String> result = new java.util.ArrayList<>();
-            result.add(all[5]);
-            for (int i = COIN_ROWS; i < detectivesRow(); i++) result.add(all[i]);
-            return result.toArray(new String[0]);
-        }
-        private String[] widgetValues() {
-            String[] all = settingValues();
-            java.util.ArrayList<String> result = new java.util.ArrayList<>();
-            result.add(all[5]);
-            for (int i = COIN_ROWS; i < detectivesRow(); i++) result.add(all[i]);
-            return result.toArray(new String[0]);
-        }
         private int settingIndex() {
             if (settingsGroup == SYSTEM) return focus == 0 ? detectivesRow() : randomRow();
             if (settingsGroup == WIDGETS) return focus == 0 ? 5 : COIN_ROWS + focus - 1;
             return focus;
-        }
-        private static String onOff(boolean on) {
-            return on ? AppStrings.get(R.string.settings_on) : AppStrings.get(R.string.settings_off);
-        }
-
-        private String[] keyLabels() {
-            return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                    AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button)};
-        }
-
-        private String[] keyValues() {
-            String[] v = new String[Prefs.KEYS.length];
-            for (int i = 0; i < v.length; i++) {
-                int at = appPkgs.indexOf(Prefs.keyApp(Prefs.KEYS[i]));
-                v[i] = at >= 0 ? appLabels.get(at) : AppStrings.get(R.string.settings_not_installed);
-            }
-            return v;
         }
 
         /** Installed TV apps, by name, after "Nothing": what a remote button can open. */
@@ -1714,7 +1561,7 @@ public class SettingsActivity extends Activity {
         private void drawList(Canvas c) {
             boolean keys = screen == REMOTE_KEYS;
             String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingsGroup == WIDGETS ? widgetLabels() : settingLabels();
-            String[] values = keys ? keyValues() : settingsGroup == SYSTEM ? new String[] {settingValues()[detectivesRow()], settingValues()[randomRow()]} : settingsGroup == WIDGETS ? widgetValues() : settingValues();
+            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {values.settings()[detectivesRow()], values.settings()[randomRow()]} : settingsGroup == WIDGETS ? values.widgets() : values.settings();
             // The screen title is already drawn centrally; no legacy subtitle.
             for (int i = 0; i < labels.length; i++) {
                 setApprovedRowRect(i);

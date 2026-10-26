@@ -4,6 +4,11 @@ import re,subprocess,tempfile
 from settings_strings_fixture import write,tables
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 def method(signature):
+ text=source
+ if signature not in text:
+  text=Path("app/src/io/tvos/SettingsValues.java").read_text();signature=signature.replace("        private ","    static ").replace("static static ","static ")
+ return extract(text,signature)
+def extract(source,signature):
  a=source.index(signature);b=source.index('{',a);depth=1;i=b+1
  while depth:depth+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
