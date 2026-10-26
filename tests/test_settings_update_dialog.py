@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess, tempfile
 from settings_strings_fixture import write
 stubs={
+'io/tvos/SettingsUpdateProgress.java':'package io.tvos;class SettingsUpdateProgress {int kind,percent;void observe(int k,int p,long now){kind=k;percent=p;}}',
 'android/content/Context.java':'''package android.content;public class Context {public final android.content.pm.PackageManager pm=new android.content.pm.PackageManager();public android.content.pm.PackageManager getPackageManager(){return pm;}public String getPackageName(){return "io.tvos";}}''',
 'android/app/Activity.java':'''package android.app;public class Activity extends android.content.Context {}''',
 'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public boolean missing;public static class NameNotFoundException extends Exception {private static final long serialVersionUID=1L;}public static class PackageInfo {public String versionName="1.1";}public PackageInfo getPackageInfo(String p,int f)throws NameNotFoundException{if(missing)throw new NameNotFoundException();return new PackageInfo();}}''',
@@ -32,10 +33,12 @@ public class UpdateDialogHarness {
  static final int OK=KeyEvent.KEYCODE_DPAD_CENTER,BACK=KeyEvent.KEYCODE_BACK,DOWN=KeyEvent.KEYCODE_DPAD_DOWN,UP=KeyEvent.KEYCODE_DPAD_UP;
  static void key(SettingsUpdateDialog d,int code){check(d.onKey(new KeyEvent(KeyEvent.ACTION_UP,code)),"modal consumes input");}
  static Canvas draw(SettingsUpdateDialog d,boolean light){Canvas c=new Canvas();d.draw(c,1920,1080,light);check(c.depth==0,"balanced canvas state");return c;}
- static SettingsUpdateDialog create(){SelfUpdate.instance=new SelfUpdate();SettingsUpdateDialog d=new SettingsUpdateDialog(new Activity(),new View());d.resize(1);d.resume();return d;}
+ static SettingsUpdateProgress progress;
+ static SettingsUpdateDialog create(){SelfUpdate.instance=new SelfUpdate();SettingsUpdateDialog d=new SettingsUpdateDialog(new Activity(),new View(),progress=new SettingsUpdateProgress());d.resize(1);d.resume();return d;}
  public static void main(String[] args){
   AppLanguage.select("en");SettingsUpdateDialog d=create();SelfUpdate u=SelfUpdate.instance;
   check(!d.visible()&&u.listeners.size()==1&&u.automatic==1,"resume registers once without opening unsolicited modal");
+  u.emit(SelfUpdate.DOWNLOADING,12,"");check(!d.visible()&&progress.percent==12,"background download reaches progress without unsolicited modal");
   d.check();check(d.visible()&&u.checks==1,"check opens modal with synchronous status callback");
   Canvas c=draw(d,true);check(c.text.contains("Checking for updates…")&&c.layerAlpha==0&&c.dimAlpha==0,"checking starts transparent");
   SystemClock.now+=260;c=draw(d,true);check(c.layerAlpha==-1&&c.scale==1f&&c.dimAlpha==105,"fade ends opaque in light theme");
@@ -44,7 +47,7 @@ public class UpdateDialogHarness {
   check(c.panelLeft==470f&&c.panelTop==205f&&c.dimAlpha==175,"panel geometry and dark dimming retained");
   d.onKey(new KeyEvent(KeyEvent.ACTION_DOWN,OK));check(u.downloads==0,"download only on key release");
   key(d,DOWN);key(d,UP);key(d,OK);check(u.downloads==1,"focused primary downloads once");
-  u.emit(SelfUpdate.DOWNLOADING,47,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains("47%"),"live download progress");
+  u.emit(SelfUpdate.DOWNLOADING,47,"");SystemClock.now+=260;c=draw(d,true);check(!d.visible()&&progress.kind==SelfUpdate.DOWNLOADING&&progress.percent==47,"download fades to inline page progress");
   u.emit(SelfUpdate.READY,100,"");check(u.installs==1,"download and install intent continues when ready");
   u.emit(SelfUpdate.READY,100,"");check(u.installs==1,"duplicate ready callback does not reinstall");
   key(d,DOWN);key(d,OK);check(u.installs==1&&d.visible(),"later closes through fade");

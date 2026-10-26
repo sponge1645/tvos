@@ -285,7 +285,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer = new Layer(a, SHEET);
         toastLayer = new Layer(a, TOAST);
         searchGlassLayer = new Layer(a, SEARCH_GLASS);
-        revealContent = new View[] {sky, heroLayer, status};
+        revealContent = new View[] {sky, heroLayer};
         notices = new HomeNotices(a, scene, LOADER, handler, toastLayer::invalidate, this::wake, this::announceForAccessibility);
         searchInput = new HomeSearchInput(a,this,searchGlassLayer,new HomeSearchInput.Host(){
             @Override public boolean running(){return running;}

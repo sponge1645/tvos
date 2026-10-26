@@ -13,7 +13,7 @@ final class HomeReveal {
     void cancel() { remaining = 0; }
     boolean active() { return remaining > 0; }
     float remaining() { return remaining; }
-    float scale() { return 1 - 0.03f * remaining; }
+    float scale() { return 1 - 0.05f * remaining; }
     boolean tick(long now) {
         if (!active()) return false;
         float t = Math.max(0, Math.min(1, (now - started) / (float) DURATION_MS));

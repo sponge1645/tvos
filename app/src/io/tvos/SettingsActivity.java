@@ -143,6 +143,7 @@ public class SettingsActivity extends Activity {
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
         private final SettingsBackground background = new SettingsBackground();
         private final SettingsUpdateDialog updateDialog;
+        private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private JSONObject state = new JSONObject();
         private int screen = MAIN, focus, settingsGroup = GENERAL, returnFocus = 0;
         // Shared, short-lived Canvas transition for all settings submenus.
@@ -225,7 +226,7 @@ public class SettingsActivity extends Activity {
             activity = a;
             deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
-            updateDialog = new SettingsUpdateDialog(a, this);
+            updateDialog = new SettingsUpdateDialog(a, this, updateProgress);
             valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
@@ -777,7 +778,12 @@ public class SettingsActivity extends Activity {
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 float right = rowRect.right - 30 * k;
                 if (screen != ABOUT || i == 0) {
-                    if (menuChevronVisible(i)) drawApprovedChevron(c);
+                    if (screen == UPDATES && i == 0 && updateProgress.active()) {
+                        boolean reduced = localFlag("reduce_motion");
+                        updateProgress.drawSpinner(c, rowRect.right - 43 * k, rowRect.centerY(), k,
+                                f > 0.5f ? 0xFF777777 : secondaryInk(), reduced);
+                        if (running && !reduced) postInvalidateDelayed(80);
+                    } else if (menuChevronVisible(i)) drawApprovedChevron(c);
                     rowValue.setColor(screen == VPN_SETTINGS && i == 1 && !vpnTopEnabled() ? 0x66808080 : ABOUT_SECONDARY_COLOR);
                     drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
                 } else {
@@ -845,12 +851,16 @@ public class SettingsActivity extends Activity {
         private void drawTileDescription(Canvas c) {
             String info = screen == UPDATES ? updateDetailsText()
                     : SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size());
+            if (screen == UPDATES && updateProgress.active()) {
+                updateProgress.draw(c, k, lightSettings());
+                return;
+            }
             if (info == null) return;
             descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xB3C9D5D9);
             int width = Math.round(740 * k);
             if (descriptionLayout == null || !info.equals(descriptionText) || width != descriptionWidth) {
-                descriptionPaint.setTypeface(Ui.regular);
-                descriptionPaint.setTextSize(25 * k);
+                descriptionPaint.setTypeface(Ui.displaySemibold);
+                descriptionPaint.setTextSize(30 * k);
                 descriptionLayout = new StaticLayout(info, descriptionPaint, width,
                         android.text.Layout.Alignment.ALIGN_CENTER, 1.18f, 0, false);
                 descriptionText = info;

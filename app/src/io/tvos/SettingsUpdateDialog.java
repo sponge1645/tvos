@@ -15,19 +15,21 @@ import android.view.View;
 final class SettingsUpdateDialog {
     private final Activity activity;
     private final View owner;
+    private final SettingsUpdateProgress progress;
     private final Paint popupPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint popupHeading, popupBody, popupButtonText;
     private final RectF popupPanel = new RectF(), popupButton = new RectF();
     private long updatePopupStarted;
     private boolean updatePopupClosing;
-    private int updatePopup, updatePopupFocus; // 0 hidden, 1 current, 2 available, 3 error, 4 checking, 5 downloading, 6 ready
+    private int updatePopup, updatePopupFocus; // 0 hidden, 1 current, 2 available, 3 error, 4 checking, 6 ready
     private boolean running, updateRequested, installWhenReady;
     private final SelfUpdate.Listener updateListener = this::onSelfUpdate;
     private float k = 1;
 
-    SettingsUpdateDialog(Activity activity, View owner) {
+    SettingsUpdateDialog(Activity activity, View owner, SettingsUpdateProgress progress) {
         this.activity = activity;
         this.owner = owner;
+        this.progress = progress;
     }
 
     boolean visible() { return updatePopup != 0; }
@@ -69,11 +71,21 @@ final class SettingsUpdateDialog {
     }
 
     private void onSelfUpdate() {
-        if (!running || !updateRequested) return;
+        if (!running) return;
         SelfUpdate updater = SelfUpdate.get(activity);
         SelfUpdate.Status update = updater.status();
+        progress.observe(update.kind, update.percent, SystemClock.uptimeMillis());
+        owner.invalidate();
+        if (!updateRequested) return;
+        if (update.kind == SelfUpdate.DOWNLOADING) {
+            // Fade back to the page while preserving the user's download-and-install intent.
+            if (updatePopup != 0 && !updatePopupClosing) {
+                updatePopupClosing = true;
+                updatePopupStarted = SystemClock.uptimeMillis();
+            }
+            return;
+        }
         int mode = update.kind == SelfUpdate.CHECKING ? 4
-                : update.kind == SelfUpdate.DOWNLOADING ? 5
                 : update.kind == SelfUpdate.AVAILABLE ? 2
                 : update.kind == SelfUpdate.READY ? 6
                 : update.kind == SelfUpdate.ERROR ? 3 : 1;
@@ -104,7 +116,10 @@ final class SettingsUpdateDialog {
     boolean onKey(KeyEvent e) {
         if (e.getAction() != KeyEvent.ACTION_UP) return true;
         int code = e.getKeyCode();
-        if (updatePopupClosing) return true;
+        if (updatePopupClosing) {
+            if (code == KeyEvent.KEYCODE_BACK) closeUpdatePopup();
+            return true;
+        }
         if (code == KeyEvent.KEYCODE_BACK) { closeUpdatePopup(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
             if (updatePopup == 2 || updatePopup == 6) updatePopupFocus = code == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : 0;
@@ -189,8 +204,6 @@ final class SettingsUpdateDialog {
                 update.message.length() <= 44 ? update.message : update.message.substring(0, 44),
                 update.message.length() <= 44 ? "" : update.message.substring(44)};
         else if (updatePopup == 4) lines = new String[] {AppStrings.get(R.string.settings_checking_for_updates)};
-        else if (updatePopup == 5) lines = new String[] {AppStrings.get(R.string.settings_downloading_update),
-                update.percent < 0 ? "" : update.percent + "%"};
         else if (updatePopup == 6) lines = new String[] {AppStrings.get(R.string.settings_update_downloaded),
                 AppStrings.get(R.string.settings_version) + availableVersion};
         else lines = new String[] {AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(activity).replace("tvOS ", "")};

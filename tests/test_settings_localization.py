@@ -46,13 +46,12 @@ tests='''
    check(copy[1][0].equals(russian?"Загрузить и установить":"Download and Install"),"install choice");
    h.updatePopup=6;copy=h.popup();check(copy[0][1].equals(russian?"Версия 1.2.3":"Version 1.2.3"),"downloaded version keeps space");
    check(copy[1][0].equals(russian?"Установить":"Install"),"downloaded button");
-   SelfUpdate.status.percent=47;h.updatePopup=5;check(h.popup()[0][1].equals("47%"),"progress is unchanged");
-   SelfUpdate.status.percent=-1;check(h.popup()[0][1].equals(""),"unknown progress stays blank");
+   // Download copy now belongs to SettingsUpdateProgress, covered by its whole-class regression.
    h.updatePopup=3;SelfUpdate.status.message="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
    copy=h.popup();check(copy[0][1].length()==44&&copy[0][2].equals("STUVWXYZ"),"error wrapping unchanged");
    h.updatePopup=1;copy=h.popup();check(copy[0][1].equals("1.1")&&copy[1][0].equals("OK"),"installed version and OK");
   }
-  System.out.println("PASS: RU/EN update dialogs, version/progress/error states, menu labels and resource argument parity");
+  System.out.println("PASS: RU/EN update dialogs, version/error states, menu labels and resource argument parity");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-localized-settings-') as tmp:

@@ -182,4 +182,14 @@
         <item quantity="many">%1$d дней назад</item>
         <item quantity="other">%1$d дня назад</item>
     </plurals>
+    <string name="settings_update_download_percent" formatted="true">Загрузка: %1$d%%</string>
+    <string name="settings_update_download_remaining" formatted="true">Загрузка: примерно %1$s до завершения</string>
+    <string name="settings_update_less_than_minute" formatted="true">меньше минуты</string>
+    <string name="settings_update_verifying" formatted="true">Проверка обновления…</string>
+    <plurals name="settings_update_minutes">
+        <item quantity="one">%1$d минута</item>
+        <item quantity="few">%1$d минуты</item>
+        <item quantity="many">%1$d минут</item>
+        <item quantity="other">%1$d минуты</item>
+    </plurals>
 </resources>
