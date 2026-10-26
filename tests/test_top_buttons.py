@@ -23,10 +23,11 @@ class Prefs {
  }
  static Store store=new Store();static Store sp(){return store;}static void fresh(){store.values.clear();version++;topButtonOrderCache=null;}
  static int[] categoryOrder(){return new int[]{0,1,2,3,4};}
+ static boolean categoryEnabled(int id){throw new AssertionError("wrong preference domain");}static int categoryCount(){throw new AssertionError("wrong preference domain");}static void setCategoryEnabled(int id,boolean on){throw new AssertionError("wrong preference domain");}static void setCategoryOrder(List<Integer> ids){throw new AssertionError("wrong preference domain");}
 '''+prefs_body+'''
 }
 class Editor {
- List<Integer> menuButtonRows=new ArrayList<>();int focus,screen;static final int MENU_BUTTONS=13;
+ SettingsOrderEditor buttonEditor=new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);int focus,screen;static final int MENU_BUTTONS=13;
  String tr(String ru,String en){return en;}
 '''+editor+'''
  void open(){openMenuButtonEditor();}void toggle(){toggleMenuButton();}void move(int d){moveMenuButton(d);}
@@ -46,6 +47,7 @@ class Navigation {
 }
 public class TopButtonsHarness {
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
+ static List<Integer> snapshot(SettingsOrderEditor editor){List<Integer> out=new ArrayList<>();for(int i=0;i<editor.size();i++)out.add(editor.get(i));return out;}
  static int permutations;
  static void permutation(List<Integer> order,int at){
   if(at<6){for(int i=at;i<6;i++){Collections.swap(order,at,i);permutation(order,at+1);Collections.swap(order,at,i);}return;}
@@ -54,6 +56,9 @@ public class TopButtonsHarness {
    for(int id=0;id<6;id++)Prefs.setTopButtonEnabled(id,(mask&(1<<id))!=0);
    List<Integer> visible=new ArrayList<>();for(int id:order)if(Prefs.topButtonEnabled(id))visible.add(5+id);
    check(Prefs.topButtonCount()==visible.size(),"visible count");
+   SettingsOrderEditor model=new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);model.rebuild(-1);
+   List<Integer> grouped=new ArrayList<>();for(int id:order)if(Prefs.topButtonEnabled(id))grouped.add(id);for(int id:order)if(!Prefs.topButtonEnabled(id))grouped.add(id);
+   check(snapshot(model).equals(grouped),"editor grouping for every order/mask");
    for(int i=0;i<visible.size();i++)check(Prefs.topButtonPosition(visible.get(i)-5)==i+1,"numbered positions");
    Navigation n=new Navigation();n.layout();
    float prior=-10000;for(int id:visible){Navigation.RectF r=n.topRects[id];check(r.left>prior,"saved order has nonoverlapping rectangles, including clock");prior=r.right;check(id==9?r.width()>60:r.width()==60,"clock keeps its own width");}
@@ -78,13 +83,13 @@ public class TopButtonsHarness {
   Prefs.store.putString("top_button_order","5,5,99,x,4");Prefs.version++;check(Arrays.equals(Prefs.topButtonOrder(),new int[]{5,4,0,1,2,3}),"malformed data repaired without duplicates");
   boolean rejected=false;try{Prefs.setTopButtonOrder(Arrays.asList(0,1));}catch(IllegalArgumentException e){rejected=true;}check(rejected,"partial order rejected");
   rejected=false;try{Prefs.setTopButtonOrder(Arrays.asList(0,1,2,3,4,4));}catch(IllegalArgumentException e){rejected=true;}check(rejected,"duplicate order rejected");
-  Prefs.fresh();Editor e=new Editor();e.open();check(e.menuButtonRows.equals(Arrays.asList(0,1,3,5,4,2)),"enabled first, disabled below");
-  e.focus=3;e.move(-1);check(e.menuButtonRows.get(2)==5&&e.focus==2,"Network can move left and focus follows");
+  Prefs.fresh();Editor e=new Editor();e.open();check(snapshot(e.buttonEditor).equals(Arrays.asList(0,1,3,5,4,2)),"enabled first, disabled below");
+  e.focus=3;e.move(-1);check(e.buttonEditor.get(2)==5&&e.focus==2,"Network can move left and focus follows");
   e.toggle();check(!Prefs.topButtonEnabled(5)&&e.focus==5,"disabled Network moves below list");
   e.move(-1);check(e.focus==5,"disabled button cannot reorder enabled list");
   e.toggle();check(Prefs.topButtonEnabled(5)&&e.focus==4,"enabled Network appends to active list");
   e.focus=6;e.toggle();e.move(-1);check(e.focus==6,"VPN app configuration row is not reorderable/toggleable");
-  List<Integer> saved=new ArrayList<>(e.menuButtonRows);Prefs.topButtonOrderCache=null;e.open();check(e.menuButtonRows.equals(saved),"order survives snapshot reload");
+  List<Integer> saved=snapshot(e.buttonEditor);Prefs.topButtonOrderCache=null;e.open();check(snapshot(e.buttonEditor).equals(saved),"order survives snapshot reload");
   permutation(new ArrayList<>(Arrays.asList(0,1,2,3,4,5)),0);check(permutations==720,"all permutations covered");
   System.out.println("PASS: migration, visibility, editor toggle/reorder/focus, 720 orders x 64 masks, clock width/layout, poster targets, normal/search navigation");
  }
@@ -92,6 +97,7 @@ public class TopButtonsHarness {
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'TopButtonsHarness.java';p.write_text(header)
+ (Path(d)/'SettingsOrderEditor.java').write_text(Path('app/src/io/tvos/SettingsOrderEditor.java').read_text().replace('package io.tvos;',''))
  write_strings(Path(d),package=False)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'TopButtonsHarness'],check=True)

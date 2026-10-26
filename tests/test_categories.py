@@ -29,6 +29,7 @@ harness='''import java.util.*;
 class Ui {static boolean ru;}
 class Prefs {
  static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}
+ static boolean topButtonEnabled(int id){throw new AssertionError("wrong preference domain");}static int topButtonCount(){throw new AssertionError("wrong preference domain");}static void setTopButtonEnabled(int id,boolean on){throw new AssertionError("wrong preference domain");}static void setTopButtonOrder(List<Integer> ids){throw new AssertionError("wrong preference domain");}
  static int version;private static int categoryVersion=-1,categoryMask;private static int[] categoryOrderCache;
  static class Store {
   final Map<String,Object> values=new HashMap<>();
@@ -43,7 +44,7 @@ class Prefs {
 ''' +prefs_body+'''
 }
 class CategoryEditor {
- final List<Integer> categoryRows=new ArrayList<>();int focus,screen;static final int CATEGORY_EDIT=20;
+ final SettingsOrderEditor categoryEditor=new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);int focus,screen;static final int CATEGORY_EDIT=20;
  String tr(String ru,String en){return en;}
 ''' +editor_body+'''
  void open(){openCategoryEditor();}void toggle(){toggleCategory();}void move(int d){moveCategory(d);}
@@ -61,6 +62,7 @@ class HomeNavigation {
 public class CategoriesHarness {
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static void invalid(List<Integer> ids){boolean rejected=false;try{Prefs.setCategoryOrder(ids);}catch(IllegalArgumentException expected){rejected=true;}check(rejected,"invalid category order rejected");}
+ static List<Integer> snapshot(SettingsOrderEditor editor){List<Integer> out=new ArrayList<>();for(int i=0;i<editor.size();i++)out.add(editor.get(i));return out;}
  static int permutations;
  static void permutation(List<Integer> order,int at){
   if(at<5){for(int i=at;i<5;i++){Collections.swap(order,at,i);permutation(order,at+1);Collections.swap(order,at,i);}return;}
@@ -70,6 +72,9 @@ public class CategoriesHarness {
    for(int id=0;id<5;id++)Prefs.setCategoryEnabled(id,(mask&(1<<id))!=0);
    List<Integer> visible=new ArrayList<>();for(int id:order)if((mask&(1<<id))!=0)visible.add(id);
    check(Prefs.categoryCount()==visible.size(),"enabled count independent of category IDs");
+   SettingsOrderEditor model=new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);model.rebuild(-1);
+   List<Integer> grouped=new ArrayList<>();for(int id:order)if(Prefs.categoryEnabled(id))grouped.add(id);for(int id:order)if(!Prefs.categoryEnabled(id))grouped.add(id);
+   check(snapshot(model).equals(grouped),"editor grouping for every order/mask");
    check(Prefs.firstCategory()==(visible.isEmpty()?-1:visible.get(0)),"first enabled follows configured order");
    check(Prefs.lastCategory()==(visible.isEmpty()?-1:visible.get(visible.size()-1)),"last enabled follows configured order");
    for(int i=0;i<visible.size();i++)check(Prefs.categoryPosition(visible.get(i))==i+1,"visible position ignores disabled entries");
@@ -94,17 +99,17 @@ public class CategoriesHarness {
   check(Arrays.equals(Prefs.categoryOrder(),new int[]{4,1,0,2,3}),"malformed order repaired without duplicates or losing categories");
   invalid(Arrays.asList(0,1));invalid(Arrays.asList(0,1,2,3,3));invalid(Arrays.asList(0,1,2,3,9));
   Prefs.fresh();CategoryEditor e=new CategoryEditor();e.open();
-  check(e.categoryRows.equals(Arrays.asList(0,1,3,4,2)),"enabled categories first, disabled below like Dock");
-  e.focus=1;e.move(-1);check(e.categoryRows.get(0)==1&&e.focus==0,"reorder follows selected category");
+  check(snapshot(e.categoryEditor).equals(Arrays.asList(0,1,3,4,2)),"enabled categories first, disabled below like Dock");
+  e.focus=1;e.move(-1);check(e.categoryEditor.get(0)==1&&e.focus==0,"reorder follows selected category");
   e.move(-1);check(e.focus==0,"left edge does not wrap");
-  e.toggle();check(!Prefs.categoryEnabled(1)&&e.categoryRows.get(4)==1&&e.focus==4,"disable moves category below enabled entries and keeps focus");
+  e.toggle();check(!Prefs.categoryEnabled(1)&&e.categoryEditor.get(4)==1&&e.focus==4,"disable moves category below enabled entries and keeps focus");
   e.move(-1);check(e.focus==4,"disabled categories cannot displace enabled entries");
-  e.toggle();check(Prefs.categoryEnabled(1)&&e.categoryRows.get(3)==1&&e.focus==3,"enable appends to active categories like Dock");
-  List<Integer> saved=new ArrayList<>(e.categoryRows);Prefs.reload();e.open();
-  check(e.categoryRows.equals(saved),"order survives a fresh preferences snapshot");
+  e.toggle();check(Prefs.categoryEnabled(1)&&e.categoryEditor.get(3)==1&&e.focus==3,"enable appends to active categories like Dock");
+  List<Integer> saved=snapshot(e.categoryEditor);Prefs.reload();e.open();
+  check(snapshot(e.categoryEditor).equals(saved),"order survives a fresh preferences snapshot");
   while(Prefs.categoryCount()>0){e.focus=0;e.toggle();}
   check(Prefs.firstCategory()==-1&&Prefs.lastCategory()==-1,"all categories can be disabled");
-  e.focus=2;int restored=e.categoryRows.get(2);e.toggle();
+  e.focus=2;int restored=e.categoryEditor.get(2);e.toggle();
   check(Prefs.categoryCount()==1&&Prefs.firstCategory()==restored&&e.focus==0,"one category can be restored after all-off");
   Prefs.setCategoryOrder(Arrays.asList(3,1,4,0,2));
   for(int id=0;id<5;id++)Prefs.setCategoryEnabled(id,id==1||id==3);
@@ -125,6 +130,7 @@ public class CategoriesHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-categories-') as directory:
     root=Path(directory);p=root/'CategoriesHarness.java';p.write_text(harness)
+    (root/'SettingsOrderEditor.java').write_text(Path('app/src/io/tvos/SettingsOrderEditor.java').read_text().replace('package io.tvos;',''))
     write_strings(root,package=False)
     subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
     subprocess.run(['java','-cp',directory,'CategoriesHarness'],check=True)

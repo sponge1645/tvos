@@ -14,7 +14,7 @@ public class CLASSNAME {
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,pickScroll,returnFocus,selectedSetting,buttonCount=6;
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;long pendingAt;
- final List<Integer> menuButtonRows=new ArrayList<>();
+ final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
  static class Ui {static boolean ru;}
  static class Context {}final Context context=new Context();Context getContext(){return context;}
@@ -63,7 +63,7 @@ public class CLASSNAME {
  void pause(){note("pause");}void openCategoryEditor(){screen=CATEGORY_EDIT;focus=0;note("category-editor");}
  void openMenuButtonEditor(){screen=MENU_BUTTONS;focus=0;note("button-editor");}
  void confirmClearCache(){note("confirm-cache");}void confirmResetTvos(){note("confirm-reset");}
- void rebuildMenuButtonRows(int selected){menuButtonRows.clear();for(int i=0;i<buttonCount;i++)menuButtonRows.add(i);note("rebuild-buttons");}
+ void rebuildMenuButtonRows(int selected){buttonEditor.rows.clear();for(int i=0;i<buttonCount;i++)buttonEditor.rows.add(i);note("rebuild-buttons");}
  String snapshot(){return screen+":"+focus+":"+pickFor+":"+settingsGroup+":"+returnFocus+":"+pendingAt+":"+updateRequested+":"+events;}
 '''
 def view(name, activation=None, back=None):

@@ -20,7 +20,7 @@ public class SettingsHarness {
  static class Prefs {static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
  static class HomeData {static HomeData get(Object c){return new HomeData();}void settingsChanged(){}}
  static class Store {Map<String,Object> m=new HashMap<>();boolean contains(String k){return m.containsKey(k);}boolean getBoolean(String k,boolean d){return m.containsKey(k)?(Boolean)m.get(k):d;}int getInt(String k,int d){return m.containsKey(k)?(Integer)m.get(k):d;}Store edit(){return this;}Store putBoolean(String k,boolean v){m.put(k,v);return this;}Store putInt(String k,int v){m.put(k,v);return this;}void apply(){}}
- List<Integer> menuButtonRows=new ArrayList<>(Arrays.asList(0,1,3,5,4,2));
+ List<Integer> buttonEditor=new ArrayList<>(Arrays.asList(0,1,3,5,4,2));
  Store store=new Store();int screen,focus,adjusted,moved;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Object getContext(){return this;}void invalidate(){}

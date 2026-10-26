@@ -199,8 +199,7 @@ public class SettingsActivity extends Activity {
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
         private final List<String> pickLabels = new ArrayList<>();
         // The shelf editor: the apps it can hold (selected ones first, in order) and the selection.
-        private final List<String[]> shelfRows = new ArrayList<>();
-        private final List<String> shelfOrder = new ArrayList<>();
+        private final SettingsDockEditor dockEditor = new SettingsDockEditor();
         private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
@@ -212,8 +211,8 @@ public class SettingsActivity extends Activity {
         private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path arrowPath = new Path();
         private final TextPaint shelfMeasurePaint = new TextPaint();
-        private final List<Integer> categoryRows = new ArrayList<>();
-        private final List<Integer> menuButtonRows = new ArrayList<>();
+        private final SettingsOrderEditor categoryEditor = new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);
+        private final SettingsOrderEditor buttonEditor = new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);
         private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private StaticLayout descriptionLayout;
         private String descriptionText;
@@ -389,23 +388,23 @@ public class SettingsActivity extends Activity {
                             + ", " + (at + 1) + AppStrings.get(R.string.settings_of) + pickLabels.size();
                 }
                 case MENU_BUTTONS: {
-                    if (row == menuButtonRows.size()) return AppStrings.get(R.string.settings_vpn_app);
-                    if (row < 0 || row >= menuButtonRows.size()) return "";
-                    int id = menuButtonRows.get(row);
+                    if (row == buttonEditor.size()) return AppStrings.get(R.string.settings_vpn_app);
+                    if (row < 0 || row >= buttonEditor.size()) return "";
+                    int id = buttonEditor.get(row);
                     return menuButtonLabel(id) + ", " + (Prefs.topButtonEnabled(id)
                             ? AppStrings.get(R.string.settings_position) + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off));
                 }
                 case CATEGORY_EDIT: {
-                    if (row < 0 || row >= categoryRows.size()) return "";
-                    int id = categoryRows.get(row);
+                    if (row < 0 || row >= categoryEditor.size()) return "";
+                    int id = categoryEditor.get(row);
                     return categoryLabel(id) + ", " + (Prefs.categoryEnabled(id)
                             ? AppStrings.get(R.string.settings_position) + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off));
                 }
                 case SHELF_EDIT: {
                     int at = pickScroll + row;
-                    if (at >= shelfRows.size()) return "";
-                    String[] app = shelfRows.get(at);
-                    int place = shelfOrder.indexOf(app[0]);
+                    if (at >= dockEditor.size()) return "";
+                    String[] app = dockEditor.get(at);
+                    int place = dockEditor.position(app[0]);
                     return app[1] + ", " + (place >= 0 ? AppStrings.get(R.string.settings_on_the_shelf_place) + (place + 1)
                             : AppStrings.get(R.string.settings_not_on_the_shelf));
                 }
@@ -571,16 +570,16 @@ public class SettingsActivity extends Activity {
                 case SYSTEM: return 3;
                 case RESET: return 2;
                 case TOP_PANEL: return 2;
-                case CATEGORY_EDIT: return categoryRows.size();
+                case CATEGORY_EDIT: return categoryEditor.size();
                 case ACCESSIBILITY: return 4;
                 case VPN_SETTINGS: return 2;
-                case MENU_BUTTONS: return menuButtonRows.size() + 1;
+                case MENU_BUTTONS: return buttonEditor.size() + 1;
                 case UPDATES: return 2;
                 case ABOUT: return 8;
                 case HOME_CHOICE: return 2;
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? 2 : settingsGroup == WIDGETS ? widgetLabels().length : settingLabels().length;
                 case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
-                case SHELF_EDIT: return Math.min(PICK_VISIBLE, shelfRows.size());
+                case SHELF_EDIT: return Math.min(PICK_VISIBLE, dockEditor.size());
                 default: return Prefs.KEYS.length;
             }
         }
@@ -838,8 +837,8 @@ public class SettingsActivity extends Activity {
                 if (vpn.isEmpty()) v[1] = AppStrings.get(R.string.settings_not_selected);
                 else { try { v[1] = String.valueOf(getContext().getPackageManager().getApplicationLabel(getContext().getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = AppStrings.get(R.string.settings_not_found); } }
             } else if (screen == MENU_BUTTONS) {
-                for (int i = 0; i < menuButtonRows.size(); i++) {
-                    int id = menuButtonRows.get(i);
+                for (int i = 0; i < buttonEditor.size(); i++) {
+                    int id = buttonEditor.get(i);
                     v[i] = Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off);
                 }
             } else if (screen == SCREENSAVER) {
@@ -1156,7 +1155,7 @@ public class SettingsActivity extends Activity {
         @SuppressWarnings("deprecation")
         private void drawTileDescription(Canvas c) {
             String info = screen == UPDATES ? updateDetailsText()
-                    : SettingsContent.description(screen, focus, pickFor, settingsGroup, menuButtonRows.size());
+                    : SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size());
             if (info == null) return;
             descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xB3C9D5D9);
             int width = Math.round(740 * k);
@@ -1258,7 +1257,7 @@ public class SettingsActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
                     if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || screen == CATEGORY_EDIT || canAdjustMenu())) tvosClick.move();
-                    if (down && screen == MENU_BUTTONS && focus < menuButtonRows.size()) {
+                    if (down && screen == MENU_BUTTONS && focus < buttonEditor.size()) {
                         moveMenuButton(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     } else if (down && screen == CATEGORY_EDIT) {
@@ -1303,7 +1302,7 @@ public class SettingsActivity extends Activity {
 
         private void backFromScreen() {
             if (screen == VPN_SETTINGS) rebuildMenuButtonRows(-1);
-            SettingsActions.Target target = SettingsActions.back(screen, pickFor, settingsGroup, menuButtonRows.size());
+            SettingsActions.Target target = SettingsActions.back(screen, pickFor, settingsGroup, buttonEditor.size());
             if (target != null) {
                 focus = target.row;
                 screen = target.screen;
@@ -1478,9 +1477,9 @@ public class SettingsActivity extends Activity {
         }
 
         private String[] menuButtonLabels() {
-            String[] labels = new String[menuButtonRows.size() + 1];
-            for (int i = 0; i < menuButtonRows.size(); i++) labels[i] = menuButtonLabel(menuButtonRows.get(i));
-            labels[menuButtonRows.size()] = AppStrings.get(R.string.settings_vpn_app);
+            String[] labels = new String[buttonEditor.size() + 1];
+            for (int i = 0; i < buttonEditor.size(); i++) labels[i] = menuButtonLabel(buttonEditor.get(i));
+            labels[buttonEditor.size()] = AppStrings.get(R.string.settings_vpn_app);
             return labels;
         }
 
@@ -1496,10 +1495,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void rebuildMenuButtonRows(int selectedId) {
-            menuButtonRows.clear();
-            for (int id : Prefs.topButtonOrder()) if (Prefs.topButtonEnabled(id)) menuButtonRows.add(id);
-            for (int id : Prefs.topButtonOrder()) if (!Prefs.topButtonEnabled(id)) menuButtonRows.add(id);
-            focus = Math.max(0, menuButtonRows.indexOf(selectedId));
+            focus = buttonEditor.rebuild(selectedId);
         }
         private void openMenuButtonEditor() {
             rebuildMenuButtonRows(-1);
@@ -1507,33 +1503,20 @@ public class SettingsActivity extends Activity {
             screen = MENU_BUTTONS;
         }
         private void toggleMenuButton() {
-            if (focus < 0 || focus >= menuButtonRows.size()) return;
-            int id = menuButtonRows.get(focus);
-            boolean enable = !Prefs.topButtonEnabled(id);
-            menuButtonRows.remove(Integer.valueOf(id));
-            if (enable) menuButtonRows.add(Prefs.topButtonCount(), id);
-            else menuButtonRows.add(id);
-            Prefs.setTopButtonEnabled(id, enable);
-            Prefs.setTopButtonOrder(menuButtonRows);
-            rebuildMenuButtonRows(id);
+            focus = buttonEditor.toggle(focus);
         }
         private void moveMenuButton(int direction) {
-            if (focus < 0 || focus >= menuButtonRows.size()) return;
-            int id = menuButtonRows.get(focus), to = focus + direction;
-            if (!Prefs.topButtonEnabled(id) || to < 0 || to >= Prefs.topButtonCount()) return;
-            Collections.swap(menuButtonRows, focus, to);
-            Prefs.setTopButtonOrder(menuButtonRows);
-            focus = to;
+            focus = buttonEditor.move(focus, direction);
         }
         private void drawMenuButtonEditor(Canvas c) {
-            for (int row = 0; row <= menuButtonRows.size(); row++) {
+            for (int row = 0; row <= buttonEditor.size(); row++) {
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(ABOUT_SECONDARY_COLOR);
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                boolean vpnApp = row == menuButtonRows.size();
-                int id = vpnApp ? -1 : menuButtonRows.get(row);
+                boolean vpnApp = row == buttonEditor.size();
+                int id = vpnApp ? -1 : buttonEditor.get(row);
                 drawTrackedText(c, vpnApp ? AppStrings.get(R.string.settings_vpn_app) : menuButtonLabel(id),
                         rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
@@ -1549,7 +1532,7 @@ public class SettingsActivity extends Activity {
 
         /** Only value rows respond to left/right; actions and submenus require OK. */
         private boolean canAdjustMenu() {
-            return SettingsActions.canAdjust(screen, focus, menuButtonRows.size());
+            return SettingsActions.canAdjust(screen, focus, buttonEditor.size());
         }
 
         private void adjustMenu(int dir) {
@@ -1683,7 +1666,7 @@ public class SettingsActivity extends Activity {
         }
 
         private int listSize() {
-            return screen == SHELF_EDIT ? shelfRows.size() : pickLabels.size();
+            return screen == SHELF_EDIT ? dockEditor.size() : pickLabels.size();
         }
 
         private String categoryLabel(int id) {
@@ -1697,10 +1680,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void rebuildCategoryRows(int selectedId) {
-            categoryRows.clear();
-            for (int id : Prefs.categoryOrder()) if (Prefs.categoryEnabled(id)) categoryRows.add(id);
-            for (int id : Prefs.categoryOrder()) if (!Prefs.categoryEnabled(id)) categoryRows.add(id);
-            focus = Math.max(0, categoryRows.indexOf(selectedId));
+            focus = categoryEditor.rebuild(selectedId);
         }
 
         private void openCategoryEditor() {
@@ -1710,29 +1690,16 @@ public class SettingsActivity extends Activity {
         }
 
         private void toggleCategory() {
-            if (focus < 0 || focus >= categoryRows.size()) return;
-            int id = categoryRows.get(focus);
-            boolean enable = !Prefs.categoryEnabled(id);
-            categoryRows.remove(Integer.valueOf(id));
-            if (enable) categoryRows.add(Prefs.categoryCount(), id);
-            else categoryRows.add(id);
-            Prefs.setCategoryEnabled(id, enable);
-            Prefs.setCategoryOrder(categoryRows);
-            rebuildCategoryRows(id);
+            focus = categoryEditor.toggle(focus);
         }
 
         private void moveCategory(int direction) {
-            if (focus < 0 || focus >= categoryRows.size()) return;
-            int id = categoryRows.get(focus), to = focus + direction;
-            if (!Prefs.categoryEnabled(id) || to < 0 || to >= Prefs.categoryCount()) return;
-            Collections.swap(categoryRows, focus, to);
-            Prefs.setCategoryOrder(categoryRows);
-            focus = to;
+            focus = categoryEditor.move(focus, direction);
         }
 
         private void drawCategoryEditor(Canvas c) {
-            for (int row = 0; row < categoryRows.size(); row++) {
-                int id = categoryRows.get(row);
+            for (int row = 0; row < categoryEditor.size(); row++) {
+                int id = categoryEditor.get(row);
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
                 rowLabel.setColor(blend(normalInk(), INK, f));
@@ -1749,56 +1716,28 @@ public class SettingsActivity extends Activity {
         // MARK: - Shelf editor
 
         private void openShelfEditor() {
-            shelfOrder.clear();
-            shelfOrder.addAll(HomeApps.shelfPackages(getContext()));
-            rebuildShelfRows(HomeApps.shelfCandidates(getContext()));
+            dockEditor.open(HomeApps.shelfPackages(getContext()), HomeApps.shelfCandidates(getContext()));
             pickScroll = 0;
             listScroll.snap(0);
             focus = 0;
             screen = SHELF_EDIT;
         }
 
-        /** Selected apps first, in shelf order, then the rest in the order they came. */
-        private void rebuildShelfRows(List<String[]> candidates) {
-            shelfRows.clear();
-            for (String pkg : shelfOrder) {
-                for (String[] cand : candidates) if (cand[0].equals(pkg)) { shelfRows.add(cand); break; }
-            }
-            for (String[] cand : candidates) if (!shelfOrder.contains(cand[0])) shelfRows.add(cand);
+        /** Keep the changed app focused and visible after the model reorders its candidates. */
+        private void focusShelfRow(int at) {
+            if (at < 0) return;
+            int visible = rowCount();
+            if (at < pickScroll) pickScroll = at;
+            else if (at >= pickScroll + visible) pickScroll = at - visible + 1;
+            focus = at - pickScroll;
         }
 
-        /** Same rows after a change: keeps the focus on the app that was focused. */
-        private void refreshShelfRows(String focusedPkg) {
-            List<String[]> all = new ArrayList<>(shelfRows);
-            rebuildShelfRows(all);
-            for (int i = 0; i < shelfRows.size(); i++) {
-                if (!shelfRows.get(i)[0].equals(focusedPkg)) continue;
-                int visible = rowCount();
-                if (i < pickScroll) pickScroll = i;
-                else if (i >= pickScroll + visible) pickScroll = i - visible + 1;
-                focus = i - pickScroll;
-                break;
-            }
-            Prefs.setShelf(shelfOrder);
-        }
-
-        /** OK: puts the app on the shelf (at the end) or takes it off. */
         private void toggleShelfApp() {
-            String pkg = shelfRows.get(pickScroll + focus)[0];
-            if (shelfOrder.contains(pkg)) shelfOrder.remove(pkg);
-            else if (shelfOrder.size() < HomeApps.MAX_SHELF) shelfOrder.add(pkg);
-            else return;
-            refreshShelfRows(pkg);
+            focusShelfRow(dockEditor.toggle(pickScroll + focus));
         }
 
-        /** ← → : moves a shelf app one place earlier or later. */
         private void moveShelfApp(int dir) {
-            String pkg = shelfRows.get(pickScroll + focus)[0];
-            int at = shelfOrder.indexOf(pkg), to = at + dir;
-            if (at < 0 || to < 0 || to >= shelfOrder.size()) return;
-            shelfOrder.remove(at);
-            shelfOrder.add(to, pkg);
-            refreshShelfRows(pkg);
+            focusShelfRow(dockEditor.move(pickScroll + focus, dir));
         }
 
         private void drawShelfEditor(Canvas c) {
@@ -1806,8 +1745,8 @@ public class SettingsActivity extends Activity {
             shelfMeasurePaint.set(rowLabel);
             for (int at = scrollingFirstRow(); at < scrollingEndRow(); at++) {
                 int i = at - pickScroll;
-                String[] app = shelfRows.get(at);
-                int place = shelfOrder.indexOf(app[0]);
+                String[] app = dockEditor.get(at);
+                int place = dockEditor.position(app[0]);
                 setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
@@ -1935,7 +1874,7 @@ public class SettingsActivity extends Activity {
         private void activate() {
             final int screenBeforeAction = screen;
             SettingsActions.Action action = SettingsActions.activation(screen, focus, pickFor,
-                    screen == HOME_SETTINGS && settingIndex() == CITY_ROW, menuButtonRows.size(),
+                    screen == HOME_SETTINGS && settingIndex() == CITY_ROW, buttonEditor.size(),
                     screen == VPN_SETTINGS && focus != 0 && vpnTopEnabled());
             if (action == SettingsActions.Action.NAME) {
                 if (focus == 0) askDeviceName();

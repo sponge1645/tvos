@@ -9,7 +9,7 @@ def method(sig):
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 assert 'screen == UPDATES ? updateDetailsText()' in method('        private void drawTileDescription(')
-assert 'SettingsContent.description(screen, focus, pickFor, settingsGroup, menuButtonRows.size())' in source
+assert 'SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size())' in source
 harness='''package io.tvos;
 import java.util.*;import static io.tvos.SettingsContent.*;
 public class ContentHarness {
