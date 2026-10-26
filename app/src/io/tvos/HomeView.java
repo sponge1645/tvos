@@ -116,6 +116,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private Paint labelPaint;
     private Paint lTab, lTabOn, lCardTitle, lCardMeta, lDate;
     private float contentTop, contentBottom;
+    private final HomeReveal reveal = new HomeReveal();
+    private final View[] revealContent;
 
     // Shelf
     private List<HomeApps.Item> shelf = new ArrayList<>();
@@ -273,6 +275,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         click = new Click(a);
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
         setFocusable(true);
+        setBackgroundColor(0xFF000000);
         sky = new Layer(a, SKY);
         heroLayer = new Layer(a, HERO);
         status = new Layer(a, STATUS);
@@ -282,6 +285,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer = new Layer(a, SHEET);
         toastLayer = new Layer(a, TOAST);
         searchGlassLayer = new Layer(a, SEARCH_GLASS);
+        revealContent = new View[] {sky, heroLayer, status};
         notices = new HomeNotices(a, scene, LOADER, handler, toastLayer::invalidate, this::wake, this::announceForAccessibility);
         searchInput = new HomeSearchInput(a,this,searchGlassLayer,new HomeSearchInput.Host(){
             @Override public boolean running(){return running;}
@@ -365,9 +369,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchWork.resume(searchQuery);
     }
 
+    void revealFromDream() {
+        if (!running || drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
+        boolean reduced = getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("reduce_motion", false);
+        reveal.start(SystemClock.uptimeMillis(), reduced || !android.animation.ValueAnimator.areAnimatorsEnabled());
+        updateMotion();
+        wake();
+    }
+
     void pause() {
         if (!running) return;
         running = false;
+        reveal.cancel();
+        updateMotion();
         networkStatus.stop();
         workEpoch++;
         searchWork.pause(searchMode);
@@ -540,6 +555,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer.setPivotY(height / 2f);
         place(toastLayer, (width - toastLayer.getMeasuredWidth()) / 2, 0);
         searchGlassLayer.layout(0, 0, width, height);
+        for (View layer : revealContent) {
+            layer.setPivotX(width / 2f - layer.getLeft());
+            layer.setPivotY(height / 2f - layer.getTop());
+        }
     }
 
     private static void place(View v, int x, int y) {
@@ -618,7 +637,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean bgFading = background.tickFade(up, drawerLayer.getVisibility() == VISIBLE || notices.visible());
         boolean nightMoving = background.tickNight(up);
 
-        if (drawerMoving || sheetMoving || motionDirty) updateMotion();
+        boolean revealing = reveal.tick(up);
+        if (drawerMoving || sheetMoving || motionDirty || revealing) updateMotion();
         // Opening and closing the drawer only moves the cached layers: redrawing the glass on every frame made the TV
         // drop frames (measured: ~50 ms of GPU per frame). The app tiles have no glass; the top buttons fade out as
         // they rise; the drawer is drawn resting in place; the glass shelf is redrawn once the drawer stops, so the
@@ -640,7 +660,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // Busy: something is moving, or the sheet or the drawer is open.
         boolean busy = tilesMoving || heroMoving || drawerItemsMoving || gridMoving || drawerMoving
                 || sheetMoving || toastFading || bgFading || nightMoving || searchHeadingMoving
-                || notices.busy() || rouletteWork.spinning() || dockMoving;
+                || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
         idle = !busy;
         if (busy) Choreographer.getInstance().postFrameCallback(this);
         else {
@@ -673,8 +693,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float lift = -d * shift;
         show(heroLayer, top, lift);
         show(status, top, lift);
-        show(platter, home, lift);
-        show(tiles, home, lift);
+        float dockOffset = (h - platterRect.top + 20 * k) * reveal.remaining();
+        show(platter, home, lift + dockOffset);
+        show(tiles, home, lift + dockOffset);
+        float contentScale = reveal.scale();
+        for (View layer : revealContent) {
+            layer.setScaleX(contentScale);
+            layer.setScaleY(contentScale);
+        }
         float da = home * smoothstep(0.1f, 0.6f, dc);
         drawerLayer.setTranslationY((1 - d) * shift);
         drawerLayer.setAlpha(da);

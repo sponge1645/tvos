@@ -16,6 +16,7 @@ import android.widget.TextView;
  */
 public class HomeActivity extends Activity {
     private HomeView home;
+    private HomeDreamReturn dreamReturn;
     private final SelfUpdate.Listener updateListener = this::noticeUpdate;
 
     private void noticeUpdate() {
@@ -47,8 +48,24 @@ public class HomeActivity extends Activity {
         Ui.init(this);
         home = new HomeView(this);
         setContentView(home);
+        dreamReturn = new HomeDreamReturn(this, home::revealFromDream);
         getWindow().setBackgroundDrawable(null);
         WifiPermission.requestOnce(this);
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        if (dreamReturn != null) dreamReturn.started();
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (dreamReturn != null) dreamReturn.focused(hasFocus);
+    }
+
+    @Override protected void onStop() {
+        if (dreamReturn != null) dreamReturn.stopped();
+        super.onStop();
     }
 
     @Override protected void onResume() {
@@ -62,6 +79,7 @@ public class HomeActivity extends Activity {
         if (home != null) {
             HomeData.get(this).localizeCity(Prefs.language());
             home.resume();
+            if (dreamReturn != null) dreamReturn.resumed();
             SelfUpdate.get(this).addListener(updateListener);
             noticeUpdate();
             SelfUpdate.get(this).maybeAutomatic(false);
@@ -69,6 +87,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        if (dreamReturn != null) dreamReturn.paused();
         SelfUpdate.get(this).removeListener(updateListener);
         if (home != null) home.pause();
         super.onPause();
@@ -87,6 +106,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (dreamReturn != null) dreamReturn.close();
         if (home != null) home.destroy();
         super.onDestroy();
     }
