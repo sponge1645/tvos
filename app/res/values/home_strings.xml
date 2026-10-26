@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_live_tv" formatted="false">"Live TV"</string>
+    <string name="home_settings" formatted="false">"Settings"</string>
+    <string name="home_inputs" formatted="false">"Inputs"</string>
+    <string name="home_shortcuts" formatted="false">"Shortcuts"</string>
+    <string name="home_no_weather_data_right_now" formatted="false">"No weather data right now."</string>
+    <string name="home_weather" formatted="false">"Weather"</string>
+    <string name="home_sunrise" formatted="false">"Sunrise "</string>
+    <string name="home_sunset" formatted="false">"Sunset "</string>
+    <string name="home_daily_change" formatted="false">"24h change"</string>
+    <string name="home_crypto" formatted="false">"Crypto"</string>
+    <string name="home_all_apps" formatted="false">"All Apps"</string>
+    <string name="home_open_error_prefix" formatted="false">"Couldn\'t open "</string>
+    <string name="home_spoken_of" formatted="false">" of "</string>
+    <string name="home_spoken_tab" formatted="false">", tab "</string>
+    <string name="home_spoken_high" formatted="false">". High "</string>
+    <string name="home_spoken_low" formatted="false">", low "</string>
+    <string name="home_spoken_next_hours" formatted="false">" Next hours: "</string>
+    <string name="home_spoken_sunrise" formatted="false">" Sunrise "</string>
+    <string name="home_spoken_sunset" formatted="false">" Sunset "</string>
+    <string name="home_search" formatted="false">"Search"</string>
+    <string name="home_vpn_choose_app" formatted="false">"Choose a VPN app in Settings → General → VPN"</string>
+    <string name="home_vpn_app_not_found" formatted="false">"VPN app not found"</string>
+    <string name="home_could_not_open_vpn" formatted="false">"Could not open VPN"</string>
+    <string name="home_search_movies_and_series" formatted="false">"Search movies and series…"</string>
+    <string name="home_no_launchable_apps_found" formatted="false">"No launchable apps found"</string>
+    <string name="home_open_app" formatted="false">"Open app"</string>
+    <string name="home_couldn_t_open_seena_search" formatted="false">"Couldn\'t open Seena search"</string>
+    <string name="home_couldn_t_open_app" formatted="false">"Couldn\'t open app"</string>
+    <string name="home_cancel" formatted="false">"Cancel"</string>
+    <string name="home_couldn_t_open_vk_video_search" formatted="false">"Couldn\'t open VK Video search"</string>
+    <string name="home_searching_kinopub" formatted="false">"Searching KinoPub…"</string>
+    <string name="home_no_exact_kinopub_match" formatted="false">"No exact KinoPub match"</string>
+    <string name="home_couldn_t_open_kinopub_card" formatted="false">"Couldn\'t open KinoPub card"</string>
+    <string name="home_clock_and_profile" formatted="false">"Clock and profile"</string>
+    <string name="home_random_movie" formatted="false">"Random Movie"</string>
+    <string name="home_movies_loading_toast" formatted="false">"Loading movies…"</string>
+    <string name="home_search_heading_prefix" formatted="false">"Search: "</string>
+    <string name="home_roulette_loading" formatted="false">"Loading movies…"</string>
+    <string name="home_roulette_title" formatted="false">"🎲  Random Movie"</string>
+    <string name="home_ok_watch" formatted="false">"OK – watch"</string>
+    <string name="home_right_spin_again" formatted="false">"Right – spin again"</string>
+    <string name="home_network_wifi" formatted="false">"Wi-Fi, internet available"</string>
+    <string name="home_network_ethernet" formatted="false">"Ethernet, internet available"</string>
+    <string name="home_network_offline" formatted="false">"No internet"</string>
+    <string name="home_network_action" formatted="false">". Open network settings"</string>
+    <string name="home_could_not_open_network_settings" formatted="false">"Could not open network settings"</string>
+    <string name="home_dock_edit_hint" formatted="false">"← → – move. OK – save. Back – cancel."</string>
+    <string name="home_weather_high_low" formatted="true">"H:%1$s   L:%2$s"</string>
+    <string name="home_tab_new" formatted="false">"New"</string>
+    <string name="home_tab_movies" formatted="false">"Movies"</string>
+    <string name="home_tab_detectives" formatted="false">"Detectives"</string>
+    <string name="home_tab_shows" formatted="false">"Shows"</string>
+</resources>

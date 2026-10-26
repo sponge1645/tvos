@@ -46,6 +46,9 @@ public class StringsHarness {
   check(AppStrings.quantity(R.plurals.settings_days_ago,true,22).equals("%1$d дня назад"),"plural lookup uses app Russian");
   check(AppStrings.quantity(R.plurals.settings_days_ago,false,22).equals("%1$d days ago"),"plural lookup uses app English");
   check(Context.overrides==before,"plural lookup reuses locale resources");
+  check(AppStrings.get(R.string.home_roulette_title,false).equals("🎲  Random Movie"),"home title preserves two spaces");
+  check(AppStrings.get(R.string.home_weather_high_low,true).equals("Макс. %1$s   Мин. %2$s"),"home template preserves three spaces");
+  check(AppStrings.get(R.string.home_spoken_of,true).equals(" из "),"home count separator keeps both edge spaces");
   AppStrings.init(activity);check(Context.overrides==2,"initializing another Activity does not reset cached resources");
   System.out.println("PASS: real XML translations, app/system language independence, application context, cached lookups and escaping");
  }

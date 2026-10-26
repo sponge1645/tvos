@@ -1,4 +1,5 @@
 """Run production roulette state and remote handlers against deterministic main-loop time."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess
 import tempfile
@@ -150,6 +151,7 @@ public class RouletteFocusHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-roulette-focus-') as directory:
     root = Path(directory)
+    write_strings(root)
     (root / 'android/os').mkdir(parents=True)
     (root / 'android/os/Handler.java').write_text(handler)
     (root / 'android/os/SystemClock.java').write_text(clock)

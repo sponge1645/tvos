@@ -60,7 +60,7 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.16` (versionCode 22), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.17` (versionCode 23), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 
@@ -91,3 +91,5 @@ Quality checks: `build.sh` reports `javac -Xlint:all,-options`; CI also enables 
 Poster text preparation: `PosterText` reuses normalized metadata, formatted ratings and rounded badge colors across unchanged frames. Its weak-key cache is bounded to 128 entries, invalidates on source-field changes and clears when HomeView pauses. Poster geometry, focus effects and image ownership are unchanged; device performance still needs measurement.
 
 Rating appearance preparation: `RatingStyle` reuses a bold face for the current metadata font and one exact-coordinate sheen gradient per visible poster slot. Font, bounds and packed color changes invalidate the relevant preparation; pause clears it. Aerial location labels use the bundled SF Pro Display Light font.
+
+Home localization: 52 additional RU/EN pairs in `home_strings.xml` cover tabs, weather/quotes, search/application messages and accessibility copy. Tab label arrays are prepared once per language; the weather high/low template is formatted only on weather/settings changes. The Dock edit hint now has an English translation. CI verifies all 460 compiled home/settings string values against XML after APK compilation. The language picker still offers Russian and English only.

@@ -33,4 +33,8 @@ jobs:
           ANDROID_SDK_ROOT: ${{ runner.temp }}/tvos-android-sdk
           TVOS_STRICT_JAVA: '1'
         run: bash build.sh
+      - name: Verify compiled UI strings
+        env:
+          ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
+        run: python3 tools/check-resource-strings.py --aapt2 "$ANDROID_HOME/build-tools/34.0.0/aapt2" tvOS.apk
       # No production signing key or TMDB key is used; this APK is deliberately not published.

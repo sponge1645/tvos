@@ -1,4 +1,5 @@
 """Exercise package-bound KinoPub intents and actual HomeView launch fallback."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess
 import tempfile
@@ -59,7 +60,8 @@ public class KinoPubHarness {
 }
 with tempfile.TemporaryDirectory(prefix='tvos-kinopub-link-') as tmp:
  root=Path(tmp)
+ write_strings(root)
  for name,value in sources.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*[str(root/n) for n in sources]],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.KinoPubHarness'],check=True)

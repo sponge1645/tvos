@@ -1,4 +1,4 @@
-"""Use the real XML translations when JVM settings tests replace Android resource lookup."""
+"""Use the real XML translations when JVM UI tests replace Android resource lookup."""
 from pathlib import Path
 import json,xml.etree.ElementTree as ET
 
@@ -10,8 +10,13 @@ def decode(value):
 def tables():
  out=[]
  for folder in ['values','values-ru']:
-  root=ET.parse(Path('app/res')/folder/'settings_strings.xml').getroot()
-  out.append({e.attrib['name']:decode(e.text or '') for e in root.findall('string')})
+  values={}
+  for path in sorted((Path('app/res')/folder).glob('*_strings.xml')):
+   root=ET.parse(path).getroot()
+   for e in root.findall('string'):
+    key=e.attrib['name'];assert key not in values,(folder,key)
+    values[key]=decode(e.text or '')
+  out.append(values)
  assert out[0].keys()==out[1].keys()
  return out
 
