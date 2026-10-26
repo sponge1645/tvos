@@ -1,3 +1,4 @@
+from settings_strings_fixture import write as write_strings
 """Production OTA refresh: bypass redirect caches, recheck ready releases and reuse only matching artifacts."""
 from pathlib import Path
 import subprocess,tempfile
@@ -74,6 +75,7 @@ public class OtaRefreshHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-ota-refresh-')as directory:
  root=Path(directory)
+ write_strings(root)
  for name,content in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(content)
  (root/'OtaRefreshHarness.java').write_text(harness)

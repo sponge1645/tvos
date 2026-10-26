@@ -56,11 +56,6 @@ final class Recs {
     /** Bump when what is saved for each title changes (the saved list is discarded and fetched again). */
     private static final int CACHE_VERSION = 16; // Discard catalogs previously labeled English but fetched in Russian
     private static final int MANHA = 0, TARDE = 1, NOITE = 2;
-    static final String[] PERIOD_LABEL = {"PARA ESTA MANHÃ", "PARA ESTA TARDE", "PARA ESTA NOITE"};
-    static final String[] PERIOD_LABEL_RU = {"ЭТИМ УТРОМ", "СЕГОДНЯ ДНЁМ", "СЕГОДНЯ ВЕЧЕРОМ"};
-    static final String[] PERIOD_LABEL_EN = {"THIS MORNING", "THIS AFTERNOON", "TONIGHT"};
-    static final String[] PERIOD_LABEL_ES = {"PARA ESTA MAÑANA", "PARA ESTA TARDE", "PARA ESTA NOCHE"};
-    static final String[] PERIOD_LABEL_DE = {"HEUTE MORGEN", "HEUTE NACHMITTAG", "HEUTE ABEND"};
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
     private static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
 
@@ -170,8 +165,7 @@ final class Recs {
     String error() { return error; }
 
     static String periodLabel() {
-        return (Ui.ru ? PERIOD_LABEL_RU : Ui.es ? PERIOD_LABEL_ES : Ui.de ? PERIOD_LABEL_DE : Ui.en ? PERIOD_LABEL_EN : PERIOD_LABEL)
-                [period(System.currentTimeMillis())];
+        switch(period(System.currentTimeMillis())) {case 0:return AppStrings.get(R.string.runtime_period_morning);case 1:return AppStrings.get(R.string.runtime_period_afternoon);default:return AppStrings.get(R.string.runtime_period_night);}
     }
 
     private static int period(long now) {
@@ -264,7 +258,7 @@ final class Recs {
                     if (!origin.contains(" · ")) origin = movieOrigin(fallback, origin);
                 }
                 if (!language.equals(Ui.language)) return;
-                if (minutes > 0) p.duration = Ui.ru ? minutes + " мин" : minutes + " min";
+                if (minutes > 0) p.duration = String.format(Ui.locale(), AppStrings.get(R.string.runtime_minutes), minutes);
                 if (!origin.isEmpty()) p.movieOrigin = origin;
                 save();
                 notifyListeners();

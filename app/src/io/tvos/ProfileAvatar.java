@@ -24,10 +24,8 @@ final class ProfileAvatar {
     private static final int[] BOTTOM = {0xFF91A7AD, 0xFFC28035, 0xFFD3A467, 0xFF7B9F42, 0xFFEFD15B, 0xFFD98FA7,
             0xFFCCD0D1, 0xFF424644, 0xFF494B4D, 0xFF8C826B, 0xFFD5D1CA, 0xFFE7C34F,
             0xFFC28A3D, 0xFFCBC7CE, 0xFFD19456, 0xFFD3A064, 0xFF669F91, 0xFF8B5B3E};
-    private static final String[] RU = {"Робот", "Лиса", "Женщина", "Лягушка", "Попкорн", "Свинья", "Панда",
-            "Видеокассета", "Кинохлопушка", "Обезьяна", "Собака", "Кошка", "Лев", "Заяц", "Хот-дог", "Мужчина", "Статуя Свободы", "Какашка"};
-    private static final String[] EN = {"Robot", "Fox", "Woman", "Frog", "Popcorn", "Pig", "Panda", "Videocassette",
-            "Clapper board", "Monkey", "Dog", "Cat", "Lion", "Rabbit", "Hot dog", "Man", "Statue of Liberty", "Poo"};
+    private static final int[] NAMES = {R.string.runtime_robot, R.string.runtime_fox, R.string.runtime_woman, R.string.runtime_frog, R.string.runtime_popcorn, R.string.runtime_pig, R.string.runtime_panda, R.string.runtime_videocassette, R.string.runtime_clapper_board, R.string.runtime_monkey, R.string.runtime_dog, R.string.runtime_cat, R.string.runtime_lion, R.string.runtime_rabbit, R.string.runtime_hot_dog, R.string.runtime_man, R.string.runtime_statue_of_liberty, R.string.runtime_poo};
+
     private final Context context;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final RectF imageRect = new RectF(-0.76f, -0.76f, 0.76f, 0.76f);
@@ -51,7 +49,7 @@ final class ProfileAvatar {
         context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt(KEY, id).apply();
     }
 
-    static String name(int id) { return (Ui.ru ? RU : EN)[id]; }
+    static String name(int id) { return AppStrings.get(NAMES[id]); }
 
     void prepare(int page) {
         for (int i = 0; i < COUNT; i++) {

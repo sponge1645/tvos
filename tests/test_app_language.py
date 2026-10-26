@@ -1,4 +1,5 @@
 """Exercise the shared language catalog and real Prefs/Ui integration without Android."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
@@ -79,6 +80,6 @@ public class LanguageHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-app-language-') as tmp:
  root=Path(tmp);(root/'LanguageHarness.java').write_text(harness)
- for name in ['AppLanguage','Russian']:(root/(name+'.java')).write_text(Path('app/src/io/tvos/'+name+'.java').read_text())
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.glob('*.java'))],check=True)
+ write_strings(root)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.LanguageHarness'],check=True)

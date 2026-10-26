@@ -1,3 +1,4 @@
+from settings_strings_fixture import write as write_strings
 """Production download, catalog and signer policy on JVM, with deterministic HTTPS/Android stubs."""
 from pathlib import Path
 import os
@@ -166,6 +167,7 @@ public class DownloadHarness {
 
 with tempfile.TemporaryDirectory(prefix='tvos-app-downloads-') as directory:
     root = Path(directory)
+    write_strings(root)
     for name, content in stubs.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)

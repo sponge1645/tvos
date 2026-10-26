@@ -11,7 +11,7 @@ parser.add_argument('apk',type=Path)
 args=parser.parse_args()
 dump=subprocess.check_output([args.aapt2,'dump','resources',str(args.apk)],text=True)
 actual=[{},{}]
-for block in re.finditer(r'    resource \S+ string/((?:home|settings)_\w+)\n(.*?)(?=    resource |\Z)',dump,re.S):
+for block in re.finditer(r'    resource \S+ string/((?:home|settings|runtime|weather)_\w+)\n(.*?)(?=    resource |\Z)',dump,re.S):
  for match in re.finditer(r'      \((ru)?\) ("(?:\\.|[^"\\])*")',block[2]):
   value=json.loads(match[2].replace('\n      ','\\n'))
   language=int(bool(match[1]))

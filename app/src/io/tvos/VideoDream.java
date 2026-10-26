@@ -489,7 +489,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
 
     private static String aerialPlace(String url) {
         // Current verified test clip. Other clips need catalog location metadata.
-        if (url.contains("KOREA_JAPAN_NIGHT")) return "Корея и Япония · Ночь";
+        if (url.contains("KOREA_JAPAN_NIGHT")) return AppStrings.get(R.string.runtime_aerial_test_location);
         return "";
     }
 

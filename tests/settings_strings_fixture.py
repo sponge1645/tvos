@@ -27,8 +27,10 @@ def sources():
  getter='package io.tvos;final class AppStrings {static String get(int id,boolean ru){switch(id){'+''.join('case '+str(ids[key])+':return ru?'+json.dumps(ru[key],ensure_ascii=False)+':'+json.dumps(en[key],ensure_ascii=False)+';' for key in keys)+'default:throw new IllegalArgumentException();}}}'
  plural_tables=[]
  for folder in ['values','values-ru']:
-  root=ET.parse(Path('app/res')/folder/'settings_strings.xml').getroot()
-  plural_tables.append({e.attrib['name']:{i.attrib['quantity']:decode(i.text or '') for i in e.findall('item')} for e in root.findall('plurals')})
+  values={}
+  for path in (Path('app/res')/folder).glob('*_strings.xml'):
+   root=ET.parse(path).getroot();values.update({e.attrib['name']:{i.attrib['quantity']:decode(i.text or '') for i in e.findall('item')} for e in root.findall('plurals')})
+  plural_tables.append(values)
  assert plural_tables[0].keys()==plural_tables[1].keys()
  plural_ids={key:i+len(ids)+1 for i,key in enumerate(sorted(plural_tables[0]))}
  r=r[:-1]+'static final class plurals {'+''.join('static final int '+key+'='+str(value)+';' for key,value in plural_ids.items())+'}}'
@@ -37,7 +39,7 @@ def sources():
  for key,id in plural_ids.items():
   body+='case '+str(id)+':if(ru){switch(category){'
   body+=''.join('case '+json.dumps(q)+':return '+json.dumps(v,ensure_ascii=False)+';' for q,v in plural_tables[1][key].items())
-  body+='default:return '+json.dumps(plural_tables[1][key]['other'],ensure_ascii=False)+';}}return '+json.dumps(plural_tables[0][key]['other'],ensure_ascii=False)+';'
+  body+='default:return '+json.dumps(plural_tables[1][key]['other'],ensure_ascii=False)+';}}return n==1?'+json.dumps(plural_tables[0][key].get('one',plural_tables[0][key]['other']),ensure_ascii=False)+':'+json.dumps(plural_tables[0][key]['other'],ensure_ascii=False)+';'
  body+='default:throw new IllegalArgumentException();}}'
  getter=getter[:-1]+body+'}'
  getter=getter[:-1]+'''static String get(int id){return get(id,AppLanguage.current());}

@@ -208,25 +208,17 @@ final class HomeMode {
             Set<String> owners = wifiOwners(adb);
             boolean setupHome = setupIsHome(adb);
             if ((setupHome && owners.contains(GOOGLE_SETUP)) || owners.contains(packageOf(home))) {
-                throw new IOException(Ui.tr("a configuração inicial da TV salvou o Wi-Fi, e desligá-la apagaria essas redes. "
-                        + "Em Configurações → Rede e Internet, esqueça a rede e conecte de novo (as fora de alcance não aparecem "
-                        + "lá: o Claude Code apaga pelo computador) e tente outra vez.",
-                        "the TV's first setup saved the Wi-Fi, and turning it off would erase those networks. "
-                        + "In Settings → Network & Internet, forget the network and connect again (networks out of range don't "
-                        + "show there: Claude Code can remove them from your computer), then try once more.",
-                        "la configuración inicial del TV guardó el Wi-Fi, y desactivarla borraría esas redes. "
-                        + "En Ajustes → Red e Internet, olvida la red y vuelve a conectarte (las fuera de alcance no aparecen "
-                        + "ahí: Claude Code las borra desde la computadora) y vuelve a intentarlo."));
+                throw new IOException(AppStrings.get(R.string.runtime_the_tv_s_first_setup_saved_the_wi_fi_and_turning_it_off_would_era));
             }
             if (metrics(latest, ORIGINAL) == null && !home.isEmpty()) {
-                busy(c, Ui.tr("Medindo o Início original…", "Measuring the original home screen…"));
+                busy(c, AppStrings.get(R.string.runtime_measuring_the_original_home_screen));
                 measureHomeTime(c, adb, ORIGINAL);
                 measureMemory(c, adb, ORIGINAL);
             }
-            busy(c, Ui.tr("Trocando o Início e a tela de descanso…", "Switching the home screen and screensaver…"));
+            busy(c, AppStrings.get(R.string.runtime_switching_the_home_screen_and_screensaver));
             Watchdog.clear(c);
             check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
-                    Ui.tr("o Android não aceitou o novo Início", "Android didn't accept the new home screen"));
+                    AppStrings.get(R.string.runtime_android_didn_t_accept_the_new_home_screen));
             adb.shell("settings put secure screensaver_components " + DREAM);
             JSONObject started = state(c);
             started.put("mode", FREE).put("homeReverted", false).put("setupHome", setupHome);
@@ -237,7 +229,7 @@ final class HomeMode {
             int done = 0;
             for (String pkg : targets) {
                 done++;
-                busy(c, Ui.tr("Desligando apps (", "Turning off apps (") + done + "/" + targets.size() + ")…");
+                busy(c, AppStrings.get(R.string.runtime_turning_off_apps) + done + "/" + targets.size() + ")…");
                 if (PROTECTED.contains(pkg) || !present.contains(pkg) || owners.contains(pkg)) continue;
                 String out = adb.shell("pm disable-user --user 0 " + pkg);
                 if (out.contains("disabled-user")) {
@@ -260,22 +252,21 @@ final class HomeMode {
                     AppLog.w("remote buttons service: " + e.getMessage());
                 }
             }
-            notice(c, Ui.tr("tvOS ligado: Início e tela de descanso novos, " + disabled.size() + " apps desligados.",
-                    "tvOS is on: new home screen and screensaver, " + disabled.size() + " apps turned off."));
-            busy(c, Ui.tr("Medindo o tvOS…", "Measuring tvOS…"));
+            notice(c, String.format(Ui.locale(), AppStrings.get(R.string.runtime_mode_enabled), disabled.size()));
+            busy(c, AppStrings.get(R.string.runtime_measuring_tvos));
             measureHomeTime(c, adb, FREE);
             done(c, null);
             adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             ModeJob.schedule(c, ModeJob.MEMORY, FREE, 120_000);
         } catch (Exception e) {
-            done(c, Ui.tr("Não deu para ligar o tvOS: ", "Couldn't turn on tvOS: ") + (Ui.ru ? Russian.text(e.getMessage() == null ? "" : e.getMessage()) : e.getMessage()));
+            done(c, AppStrings.get(R.string.runtime_couldn_t_turn_on_tvos) + AppLanguage.current().legacyText(e.getMessage() == null ? "" : e.getMessage()));
         }
     }
 
     private static void applyOriginal(Context c) {
         JSONObject s = state(c);
         try (Adb adb = connect(c, s)) {
-            busy(c, Ui.tr("Religando os apps…", "Turning the apps back on…"));
+            busy(c, AppStrings.get(R.string.runtime_turning_the_apps_back_on));
             String home = originalHome(s);
             Set<String> toEnable = new HashSet<>(stringList(s, "disabled"));
             for (String pkg : targets(home, originalDream(s), true)) {
@@ -286,13 +277,13 @@ final class HomeMode {
             List<String> failed = new ArrayList<>();
             for (String pkg : sorted(toEnable)) {
                 done++;
-                busy(c, Ui.tr("Religando apps (", "Turning apps back on (") + done + "/" + toEnable.size() + ")…");
+                busy(c, AppStrings.get(R.string.runtime_turning_apps_back_on) + done + "/" + toEnable.size() + ")…");
                 if (!present.contains(pkg)) continue;
                 // Checked: whatever didn't come back stays on the list (and in the notice); nothing disappears silently.
                 String out = adb.shell("pm enable " + pkg);
                 if (!out.contains("new state: enabled")) failed.add(pkg);
             }
-            busy(c, Ui.tr("Devolvendo o Início original…", "Restoring the original home screen…"));
+            busy(c, AppStrings.get(R.string.runtime_restoring_the_original_home_screen));
             boolean homeOk = restoreHome(adb, home);
             restoreScreensaver(adb, s);
             try {
@@ -305,21 +296,20 @@ final class HomeMode {
                     .put("disabled", new JSONArray(failed));
             save(c, s);
             if (failed.isEmpty() && homeOk) {
-                notice(c, Ui.tr("Modo original: Início, tela de descanso e apps de fábrica de volta.",
-                        "Original mode: the factory home screen, screensaver and apps are back."));
+                notice(c, AppStrings.get(R.string.runtime_original_mode_the_factory_home_screen_screensaver_and_apps_are_ba));
             } else {
                 List<String> problems = new ArrayList<>(failed);
-                if (!homeOk) problems.add(Ui.tr("o Início original", "the original home screen"));
-                notice(c, Ui.tr("Modo original, mas não consegui religar: ", "Original mode, but I couldn't turn back on: ")
+                if (!homeOk) problems.add(AppStrings.get(R.string.runtime_the_original_home_screen));
+                notice(c, AppStrings.get(R.string.runtime_original_mode_but_i_couldn_t_turn_back_on)
                         + String.join(", ", problems) + ".");
             }
-            busy(c, Ui.tr("Medindo o Início original…", "Measuring the original home screen…"));
+            busy(c, AppStrings.get(R.string.runtime_measuring_the_original_home_screen));
             measureHomeTime(c, adb, ORIGINAL);
             done(c, null);
             adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             ModeJob.schedule(c, ModeJob.MEMORY, ORIGINAL, 120_000);
         } catch (Exception e) {
-            done(c, Ui.tr("Não deu para voltar ao original: ", "Couldn't go back to the original: ") + (Ui.ru ? Russian.text(e.getMessage() == null ? "" : e.getMessage()) : e.getMessage()));
+            done(c, AppStrings.get(R.string.runtime_couldn_t_go_back_to_the_original) + AppLanguage.current().legacyText(e.getMessage() == null ? "" : e.getMessage()));
         }
     }
 
@@ -357,8 +347,7 @@ final class HomeMode {
                 restoreScreensaver(adb, s);
                 s.put("homeReverted", true).put("disabled", kept);
                 save(app, s);
-                notice(app, Ui.tr("O Início do tvOS caiu 3 vezes seguidas; voltei para o Início original.",
-                        "tvOS's home screen crashed 3 times in a row; I switched back to the original one."));
+                notice(app, AppStrings.get(R.string.runtime_tvos_s_home_screen_crashed_3_times_in_a_row_i_switched_back_to_th));
                 adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             } catch (Exception e) {
                 AppLog.w("could not give the home screen back: " + e.getMessage());
@@ -410,24 +399,24 @@ final class HomeMode {
                 }
                 if (!reverted && !homeHolder(adb).contains(PKG)) {
                     adb.shell("cmd package set-home-activity " + HOME_ACTIVITY);
-                    fixed.add(Ui.tr("o Início", "the home screen"));
+                    fixed.add(AppStrings.get(R.string.runtime_the_home_screen));
                 }
                 if (!reverted && !adb.shell("settings get secure screensaver_components").contains(DREAM)) {
                     adb.shell("settings put secure screensaver_components " + DREAM);
-                    fixed.add(Ui.tr("a tela de descanso", "the screensaver"));
+                    fixed.add(AppStrings.get(R.string.runtime_the_screensaver));
                 }
                 JSONObject latest = state(app);
                 latest.put("disabled", new JSONArray(sorted(disabled)));
                 save(app, latest);
             } catch (Exception e) {
-                notice(app, Ui.tr("Não consegui conferir o tvOS: ", "Couldn't check tvOS: ") + (Ui.ru ? Russian.text(e.getMessage() == null ? "" : e.getMessage()) : e.getMessage()));
+                notice(app, AppStrings.get(R.string.runtime_couldn_t_check_tvos) + AppLanguage.current().legacyText(e.getMessage() == null ? "" : e.getMessage()));
                 return;
             }
             if (!fixed.isEmpty()) {
-                notice(app, (updated ? Ui.tr("A atualização da TV religou ", "The TV update turned back on ")
-                        : Ui.tr("Desliguei o que faltava: ", "Turned off what was missing: ")) + String.join(", ", fixed) + ".");
+                notice(app, (updated ? AppStrings.get(R.string.runtime_the_tv_update_turned_back_on)
+                        : AppStrings.get(R.string.runtime_turned_off_what_was_missing)) + String.join(", ", fixed) + ".");
             } else if (updated) {
-                notice(app, Ui.tr("A TV foi atualizada; o tvOS continua igual.", "The TV was updated; tvOS is still on."));
+                notice(app, AppStrings.get(R.string.runtime_the_tv_was_updated_tvos_is_still_on));
             }
         }
     }
@@ -550,9 +539,8 @@ final class HomeMode {
     }
 
     private static Adb connect(Context c, JSONObject s) throws IOException {
-        busy(c, Ui.tr("Conectando…", "Connecting…"));
-        Adb adb = Adb.connect(c, 120_000, () -> busy(c, Ui.tr("Aceite o aviso “Permitir depuração” na TV (marque “Sempre permitir”).",
-                "Accept “Allow USB debugging?” on the TV (tick “Always allow”).")));
+        busy(c, AppStrings.get(R.string.runtime_connecting));
+        Adb adb = Adb.connect(c, 120_000, () -> busy(c, AppStrings.get(R.string.runtime_accept_allow_usb_debugging_on_the_tv_tick_always_allow)));
         if (!s.optBoolean("adbAuthorized")) {
             JSONObject latest = state(c);
             try { latest.put("adbAuthorized", true); } catch (JSONException ignored) {}

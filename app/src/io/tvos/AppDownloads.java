@@ -24,20 +24,19 @@ public final class AppDownloads {
 
     private AppDownloads() {}
 
-    static String text(String russian, String english) { return Ui.ru ? russian : english; }
 
     public static void start(Activity activity, int index) {
         AppDownloadCatalog.Entry app = AppDownloadCatalog.get(index);
         if (app == null || activity.isFinishing() || activity.isDestroyed()) return;
         if (!BUSY.compareAndSet(false, true)) {
-            message(activity, app.name, text("Другая загрузка ещё выполняется", "Another download is still running"));
+            message(activity, app.name, AppStrings.get(R.string.runtime_another_download_is_still_running));
             return;
         }
         try {
             new Job(activity, app).start();
         } catch (RuntimeException e) {
             BUSY.set(false);
-            message(activity, app.name, text("Не удалось начать загрузку: ", "Could not start download: ") + e.getMessage());
+            message(activity, app.name, AppStrings.get(R.string.runtime_could_not_start_download) + e.getMessage());
         }
     }
 
@@ -62,8 +61,8 @@ public final class AppDownloads {
             application = activity.getApplication();
             owner = new WeakReference<>(activity);
             AlertDialog dialog = new AlertDialog.Builder(activity).setTitle(app.name)
-                    .setMessage(text("Проверка приложения…", "Checking app…"))
-                    .setNegativeButton(text("Отмена", "Cancel"), (d, which) -> cancelled.set(true)).create();
+                    .setMessage(AppStrings.get(R.string.runtime_checking_app))
+                    .setNegativeButton(AppStrings.get(R.string.runtime_cancel), (d, which) -> cancelled.set(true)).create();
             dialog.setOnCancelListener(d -> cancelled.set(true));
             dialog.show();
             progress = new WeakReference<>(dialog);
@@ -79,7 +78,7 @@ public final class AppDownloads {
             UI.post(() -> {
                 AlertDialog dialog = progress.get();
                 if (!cancelled.get() && dialog != null && dialog.isShowing())
-                    dialog.setMessage(text("Загрузка APK: ", "Downloading APK: ") + percent + "%");
+                    dialog.setMessage(AppStrings.get(R.string.runtime_downloading_apk) + percent + "%");
             });
         }
 
@@ -90,7 +89,7 @@ public final class AppDownloads {
             try {
                 PackageInfo installed = ApkTrust.installed(context.getPackageManager(), app.packageName);
                 if (ApkTrust.reviewedVersionInstalled(app, installed)) {
-                    result = text("Установленная версия не старее проверенной сборки", "Installed version is not older than the reviewed build");
+                    result = AppStrings.get(R.string.runtime_installed_version_is_not_older_than_the_reviewed_build);
                     return;
                 }
                 AppDownloadCatalog.Source source = AppDownloadCatalog.resolve(app, installed != null,
@@ -100,11 +99,10 @@ public final class AppDownloads {
                 // Re-read: the installed version may have changed while downloading.
                 installed = ApkTrust.installed(context.getPackageManager(), app.packageName);
                 if (installed == null && source.sha256 == null)
-                    throw new IOException(text("Приложение удалено во время загрузки. Повторите установку проверенной сборки.",
-                            "App was removed during download. Retry with the reviewed installation build."));
+                    throw new IOException(AppStrings.get(R.string.runtime_app_was_removed_during_download_retry_with_the_reviewed_installat));
                 PackageInfo archive = ApkTrust.verify(context.getPackageManager(), temporary, app, installed);
                 if (installed != null && installed.getLongVersionCode() >= archive.getLongVersionCode()) {
-                    result = text("Приложение уже установлено", "App is already installed");
+                    result = AppStrings.get(R.string.runtime_app_is_already_installed);
                 } else {
                     ApkTransfer.checkCancelled(cancelled::get);
                     File destination = new File(context.getCacheDir(), "tvOS-installer.apk");
@@ -113,7 +111,7 @@ public final class AppDownloads {
                     install = true;
                 }
             } catch (Exception e) {
-                if (!cancelled.get()) result = text("Ошибка: ", "Error: ") + e.getMessage();
+                if (!cancelled.get()) result = AppStrings.get(R.string.runtime_error) + e.getMessage();
             } finally {
                 if (temporary.exists()) temporary.delete();
                 final boolean ready = install;
@@ -139,7 +137,7 @@ public final class AppDownloads {
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             try { activity.startActivity(intent); }
             catch (RuntimeException e) {
-                message(activity, app.name, text("Не удалось открыть установщик: ", "Could not open installer: ") + e.getMessage());
+                message(activity, app.name, AppStrings.get(R.string.runtime_could_not_open_installer) + e.getMessage());
             }
         }
 

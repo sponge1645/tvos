@@ -87,7 +87,7 @@ final class ApkTransfer {
                 if (received < 10000 || expected >= 0 && received != expected)
                     throw new IOException("Incomplete or invalid APK size");
                 if (source.sha256 != null && !source.sha256.equals(hex(digest.digest())))
-                    throw new IOException(AppDownloads.text("Не совпадает SHA-256 APK", "APK SHA-256 mismatch"));
+                    throw new IOException(AppStrings.get(R.string.runtime_apk_sha_256_mismatch));
                 complete = true;
             } finally {
                 connection.disconnect();

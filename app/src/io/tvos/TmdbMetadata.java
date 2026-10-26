@@ -42,20 +42,6 @@ final class TmdbMetadata {
     }
 
     /** TV genres that TMDB returns in English even in pt-BR. */
-    private static final String[][] GENRES_PT = {
-        {"Action & Adventure", "Ação e Aventura"}, {"Sci-Fi & Fantasy", "Ficção Científica e Fantasia"},
-        {"War & Politics", "Guerra e Política"}, {"Kids", "Infantil"}, {"News", "Notícias"}, {"Soap", "Novela"},
-        {"Talk", "Entrevistas"},
-    };
-    private static final String[][] GENRES_ES = {
-        {"Action & Adventure", "Acción y Aventura"}, {"Sci-Fi & Fantasy", "Ciencia ficción y Fantasía"},
-        {"War & Politics", "Guerra y Política"}, {"Kids", "Infantil"}, {"News", "Noticias"},
-        {"Soap", "Telenovela"}, {"Talk", "Entrevistas"},
-    };
-    private static final String[][] GENRES_DE = {
-        {"Action & Adventure", "Action & Abenteuer"}, {"War & Politics", "Krieg & Politik"}, {"Kids", "Kinder"},
-        {"News", "Nachrichten"}, {"Soap", "Seifenoper"}, {"Talk", "Talkshow"},
-    };
 
     static void add(List<Pick> list, JSONObject o, String kind) {
         String backdrop = o.optString("backdrop_path", "");
@@ -123,12 +109,6 @@ final class TmdbMetadata {
         return country.isEmpty() ? year : year.isEmpty() ? country : year + " · " + country;
     }
 
-    private static String genre(String name) {
-        if (Ui.ru) return Russian.text(name);
-        for (String[] g : Ui.es ? GENRES_ES : Ui.de ? GENRES_DE : GENRES_PT) if (g[0].equalsIgnoreCase(name)) return g[1];
-        return name;
-    }
-
     private static String bestBackdrop(JSONObject images) {
         JSONArray list = images == null ? null : images.optJSONArray("backdrops");
         String best = null;
@@ -164,18 +144,16 @@ final class TmdbMetadata {
         if (!poster.isEmpty() && !"null".equals(poster)) p.poster = poster;
         List<String> parts = new ArrayList<>();
         JSONArray genres = o.optJSONArray("genres");
-        if (p.kind.equals("tv")) parts.add(Ui.tr("Série", "Series"));
+        if (p.kind.equals("tv")) parts.add(AppStrings.get(R.string.runtime_series));
         if (genres != null && genres.length() > 0) {
             String name = genres.getJSONObject(0).optString("name");
-            parts.add(Ui.en ? name : genre(name));
+            parts.add(AppLanguage.current().legacyText(name));
         }
         if (p.kind.equals("movie")) {
             p.movieOrigin = movieOrigin(o, p.movieOrigin);
             int minutes = o.optInt("runtime");
-            p.duration = minutes > 0 ? (Ui.ru ? minutes + " мин" : minutes + " min") : "";
-            if (minutes > 0 && Ui.ru) parts.add(minutes >= 60 ? (minutes / 60) + " ч. " + (minutes % 60) + " мин" : minutes + " мин");
-            else if (minutes > 0 && Ui.en) parts.add(minutes >= 60 ? (minutes / 60) + "h " + (minutes % 60) + "m" : minutes + "m");
-            else if (minutes > 0) parts.add(minutes >= 60 ? (minutes / 60) + " h " + (minutes % 60) + " min" : minutes + " min");
+            p.duration = minutes > 0 ? (String.format(Ui.locale(), AppStrings.get(R.string.runtime_minutes), minutes)) : "";
+            if (minutes > 0) parts.add(minutes >= 60 ? String.format(Ui.locale(), AppStrings.get(R.string.runtime_duration_long), minutes / 60, minutes % 60) : String.format(Ui.locale(), AppStrings.get(R.string.runtime_duration_short), minutes));
         } else {
             // Discover metadata can be incomplete; details provide the original country and premiere year.
             String air = o.optString("first_air_date", "");
@@ -191,10 +169,7 @@ final class TmdbMetadata {
             if (!year.isEmpty() || !country.isEmpty())
                 p.tvOrigin = country.isEmpty() ? year : year.isEmpty() ? country : year + " · " + country;
             int seasons = o.optInt("number_of_seasons");
-            if (seasons > 0 && Ui.ru) parts.add(Russian.count(seasons, "сезон", "сезона", "сезонов"));
-            else if (seasons > 0 && Ui.en) parts.add(seasons == 1 ? "1 season" : seasons + " seasons");
-            else if (seasons > 0 && Ui.de) parts.add(seasons == 1 ? "1 Staffel" : seasons + " Staffeln");
-            else if (seasons > 0) parts.add(seasons == 1 ? "1 temporada" : seasons + " temporadas");
+            if (seasons > 0) parts.add(String.format(Ui.locale(), AppStrings.quantity(R.plurals.runtime_seasons, seasons), seasons));
         }
         JSONObject wp = o.optJSONObject("watch/providers");
         JSONObject br = wp == null ? null : wp.optJSONObject("results") == null ? null : wp.optJSONObject("results").optJSONObject(region);

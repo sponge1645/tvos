@@ -24,9 +24,7 @@ public class HomeActivity extends Activity {
         android.content.SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
         if (prefs.getLong("self_update_notified", 0) == update.release.versionCode) return;
         prefs.edit().putLong("self_update_notified", update.release.versionCode).apply();
-        android.widget.Toast.makeText(this, Ui.ru
-                ? "Обновление tvOS загружено. Установите его в настройках обновления ПО."
-                : "tvOS update downloaded. Install it in Software Updates.", android.widget.Toast.LENGTH_LONG).show();
+        android.widget.Toast.makeText(this, AppStrings.get(R.string.runtime_tvos_update_downloaded_install_it_in_software_updates), android.widget.Toast.LENGTH_LONG).show();
     }
     private int prefsVersion = Prefs.version;   // settings changed while we were away: start over
 
@@ -38,8 +36,7 @@ public class HomeActivity extends Activity {
             // Don't try to draw again: only show a notice while the main process restores the original home screen.
             HomeMode.requestRevertHome(this);
             TextView t = new TextView(this);
-            t.setText(Ui.tr("O Início do tvOS teve um problema.\nVoltando para o Início original da TV…",
-                    "tvOS's home screen ran into a problem.\nGoing back to the TV's original home screen…"));
+            t.setText(AppStrings.get(R.string.runtime_tvos_s_home_screen_ran_into_a_problem_ngoing_back_to_the_tv_s_ori));
             t.setTextColor(Color.WHITE);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
             t.setGravity(Gravity.CENTER);

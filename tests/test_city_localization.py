@@ -1,3 +1,4 @@
+from settings_strings_fixture import write as write_strings
 """Exercise localized city persistence, real resolver selection and stale async response guards."""
 from pathlib import Path
 import subprocess,tempfile
@@ -71,8 +72,9 @@ array='''package org.json;import java.util.*;public class JSONArray {List<JSONOb
 shared='''package android.content;public interface SharedPreferences {interface Editor {Editor putString(String k,String v);Editor putLong(String k,long v);Editor remove(String k);void apply();}}'''
 with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp);sources={'CityLocalizationHarness.java':header+prefbody+mid+databody+tests,'JSONObject.java':json,'JSONArray.java':array,'SharedPreferences.java':shared}
- sources['AppLanguage.java']=Path('app/src/io/tvos/AppLanguage.java').read_text()
- sources['Russian.java']=Path('app/src/io/tvos/Russian.java').read_text()
+
+
+ write_strings(root)
  for name,source in sources.items():(root/name).write_text(source)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*[str(root/n) for n in sources]],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.CityLocalizationHarness'],check=True)

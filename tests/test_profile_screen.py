@@ -1,3 +1,4 @@
+from settings_strings_fixture import write as write_strings
 """Exercise production profile navigation, persistence and animation scheduling without Android."""
 from pathlib import Path
 import os
@@ -138,6 +139,7 @@ public class ProfileHarness extends BaseView implements Choreographer.FrameCallb
 
 with tempfile.TemporaryDirectory(prefix='tvos-profile-') as directory:
     root = Path(directory)
+    write_strings(root)
     for name, text in stubs.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)

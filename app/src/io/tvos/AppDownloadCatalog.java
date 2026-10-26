@@ -85,9 +85,7 @@ final class AppDownloadCatalog {
 
     static Source resolve(Entry app, boolean installed, String[] abis, BooleanSupplier cancelled) throws Exception {
         if (!installed || app.fixedArtifact) {
-            if (app.bootstrap == null) throw new IOException(AppDownloads.text(
-                    "Для первой установки нет проверенного APK. Установите приложение из доверенного источника; затем tvOS сможет проверять его обновления по подписи.",
-                    "No verified APK for first installation. Install the app from a trusted source; tvOS can then verify updates against its signature."));
+            if (app.bootstrap == null) throw new IOException(AppStrings.get(R.string.runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru));
             if ("TizenTube".equals(app.name)) {
                 if (supports(abis, "armeabi-v7a")) return app.bootstrap;
                 if (supports(abis, "arm64-v8a")) return source(
@@ -115,7 +113,7 @@ final class AppDownloadCatalog {
             }
             if (best != null && bestScore != Integer.MIN_VALUE) return source(best, null);
         }
-        throw new IOException(AppDownloads.text("Нет подходящего APK в релизах", "No compatible APK in releases"));
+        throw new IOException(AppStrings.get(R.string.runtime_no_compatible_apk_in_releases));
     }
 
     static int assetScore(String filename, String[] abis) {

@@ -118,7 +118,7 @@ public final class ProfileActivity extends Activity {
             rim.setStrokeWidth(4);
             setFocusable(true);
             setFocusableInTouchMode(true);
-            setContentDescription(Ui.ru ? "Профиль tvOS" : "tvOS profile");
+            setContentDescription(AppStrings.get(R.string.runtime_tvos_profile));
             spoken = new Spoken(this, new Spoken.Source() {
                 @Override public void items(List<Integer> out) {
                     if (choosing) {
@@ -127,9 +127,9 @@ public final class ProfileActivity extends Activity {
                     } else { out.add(1); out.add(2); }
                 }
                 @Override public String text(int id) {
-                    if (choosing && id > 18) return id == 19 ? (Ui.ru ? "Страница 1" : "Page 1") : (Ui.ru ? "Страница 2" : "Page 2");
+                    if (choosing && id > 18) return id == 19 ? (AppStrings.get(R.string.runtime_page_1)) : (AppStrings.get(R.string.runtime_page_2));
                     if (choosing) return ProfileAvatar.name(id - 1) + (id - 1 == selected
-                            ? (Ui.ru ? ", выбран" : ", selected") : "");
+                            ? (AppStrings.get(R.string.runtime_selected)) : "");
                     return buttonLabel(id - 1);
                 }
                 @Override public boolean bounds(int id, Rect out) {
@@ -183,18 +183,16 @@ public final class ProfileActivity extends Activity {
         }
 
         private String buttonLabel(int index) {
-            return index == 0 ? (Ui.ru ? "Выбрать аватар" : "Choose avatar")
-                    : (Ui.ru ? "На главный экран" : "Back to Home");
+            return index == 0 ? (AppStrings.get(R.string.runtime_choose_avatar))
+                    : (AppStrings.get(R.string.runtime_back_to_home));
         }
 
         private void updateText() {
-            String title = choosing ? (Ui.ru ? "Выберите\nсвой аватар" : "Choose\nyour avatar")
-                    : (Ui.ru ? "Ваш профиль\nв tvOS" : "Your profile\non tvOS");
+            String title = choosing ? (AppStrings.get(R.string.runtime_choose_nyour_avatar))
+                    : (AppStrings.get(R.string.runtime_your_profile_non_tvos));
             String description = choosing
-                    ? (Ui.ru ? "Выберите значок стрелками и нажмите ОК."
-                            : "Use the arrows to choose, then press OK.")
-                    : (Ui.ru ? "Добавьте немного индивидуальности.\nВаш аватар появится рядом с часами\nна главном экране."
-                            : "Make yourself at home.\nYour avatar will appear beside the clock\non the Home screen.");
+                    ? (AppStrings.get(R.string.runtime_use_the_arrows_to_choose_then_press_ok))
+                    : (AppStrings.get(R.string.runtime_make_yourself_at_home_nyour_avatar_will_appear_beside_the_clock_n));
             headingLayout = StaticLayout.Builder.obtain(title, 0, title.length(), heading, 760)
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build();
             bodyLayout = StaticLayout.Builder.obtain(description, 0, description.length(), body, 800)

@@ -1,3 +1,4 @@
+from settings_strings_fixture import write as write_strings
 """Production release/APK policy on JVM with deterministic package-manager/JSON stubs."""
 from pathlib import Path
 import os
@@ -84,6 +85,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-update-policy-') as directory:
     root = Path(directory)
     (root / 'JSONObject.java').write_text(json_stub)
     (root / 'UpdatePolicyHarness.java').write_text(header + ' private static final int SIGNER_FLAGS=PackageManager.GET_SIGNING_CERTIFICATES|PackageManager.GET_SIGNATURES;\n' + method('    private void verifyApk(') + method('    private static Signature[] currentSigners(') + method('    private static boolean sameSigners(') + method('    private static boolean sameRelease(') + method('    private static String hex(') + tests)
+    write_strings(root)
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/UpdateRelease.java', str(root / 'JSONObject.java'), str(root / 'UpdatePolicyHarness.java')], check=True)
+    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/UpdateRelease.java', *map(str,root.rglob('*.java'))], check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.UpdatePolicyHarness'], check=True)

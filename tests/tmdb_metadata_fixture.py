@@ -28,7 +28,8 @@ ARRAY=r'''package org.json;import java.util.*;public class JSONArray {
 
 def files():
  source=Path('app/src/io/tvos/Recs.java').read_text()
- return {
+ from settings_strings_fixture import sources
+ return {**sources(),
   'org/json/JSONObject.java':JSON,
   'org/json/JSONArray.java':ARRAY,
   'org/json/JSONException.java':'package org.json;public class JSONException extends Exception {public JSONException(String s){super(s);}}',
@@ -36,6 +37,7 @@ def files():
   'io/tvos/Ui.java':'''package io.tvos;final class Ui {
    static String language="en";static boolean ru,en=true,de,es;
    static void language(String s){AppLanguage.select(s);language=s;ru=s.equals("ru");en=s.equals("en");de=s.equals("de");es=s.equals("es");}
+   static java.util.Locale locale(){return AppLanguage.current().locale;}
    static String tr(String pt,String english){return ru?Russian.text(english):en?english:pt;}
   }''',
   'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text(),

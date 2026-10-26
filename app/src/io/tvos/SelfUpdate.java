@@ -63,7 +63,6 @@ final class SelfUpdate {
         status = new Status(kind, release, percent, message);
         for (Listener listener : new ArrayList<>(listeners)) listener.onUpdate();
     }
-    private static String text(String ru, String en) { return Ui.ru ? ru : en; }
 
     void maybeAutomatic(boolean force) {
         android.content.SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
@@ -110,13 +109,13 @@ final class SelfUpdate {
                 int lastPercent = -1;
                 try {
                     long declared = connection.getContentLengthLong();
-                    if (declared >= 0 && declared != release.size) throw new IOException(text("Размер APK не совпадает", "APK size mismatch"));
+                    if (declared >= 0 && declared != release.size) throw new IOException(AppStrings.get(R.string.runtime_apk_size_mismatch));
                     try (InputStream in = connection.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
                         byte[] buffer = new byte[65536];
                         int count;
                         while ((count = in.read(buffer)) != -1) {
                             received += count;
-                            if (received > release.size) throw new IOException(text("APK превышает ожидаемый размер", "APK exceeds expected size"));
+                            if (received > release.size) throw new IOException(AppStrings.get(R.string.runtime_apk_exceeds_expected_size));
                             out.write(buffer, 0, count);
                             digest.update(buffer, 0, count);
                             int percent = (int) (received * 100 / release.size);
@@ -129,11 +128,11 @@ final class SelfUpdate {
                     }
                 } finally { connection.disconnect(); }
                 if (received != release.size || !hex(digest.digest()).equals(release.sha256))
-                    throw new IOException(text("Проверка SHA-256 не пройдена", "SHA-256 verification failed"));
+                    throw new IOException(AppStrings.get(R.string.runtime_sha_256_verification_failed));
                 verifyApk(tmp, release);
                 File ready = new File(context.getCacheDir(), "tvos-update.apk");
                 // Same private filesystem: rename replaces the published file only after verification.
-                if (!tmp.renameTo(ready)) throw new IOException(text("Не удалось сохранить обновление", "Could not save update"));
+                if (!tmp.renameTo(ready)) throw new IOException(AppStrings.get(R.string.runtime_could_not_save_update));
                 main.post(() -> { busy.set(false); publish(READY, release, 100, ""); });
             } catch (Exception e) {
                 tmp.delete();
@@ -152,15 +151,15 @@ final class SelfUpdate {
         PackageInfo archive = pm.getPackageArchiveInfo(file.getAbsolutePath(), 0);
         PackageInfo installed = pm.getPackageInfo(context.getPackageName(), 0);
         if (archive == null)
-            throw new IOException(text("Android не смог прочитать сведения об APK обновления", "Android could not read update APK metadata"));
+            throw new IOException(AppStrings.get(R.string.runtime_android_could_not_read_update_apk_metadata));
         if (!context.getPackageName().equals(archive.packageName))
-            throw new IOException(text("Неверный пакет обновления: ", "Unexpected update package: ") + archive.packageName);
+            throw new IOException(AppStrings.get(R.string.runtime_unexpected_update_package) + archive.packageName);
         if (archive.getLongVersionCode() != release.versionCode || !release.versionName.equals(archive.versionName))
-            throw new IOException(text("Версия APK не совпадает с описанием выпуска: ", "APK version differs from release metadata: ")
+            throw new IOException(AppStrings.get(R.string.runtime_apk_version_differs_from_release_metadata)
                     + archive.versionName + " (" + archive.getLongVersionCode() + "), "
-                    + text("ожидалась ", "expected ") + release.versionName + " (" + release.versionCode + ")");
+                    + AppStrings.get(R.string.runtime_expected) + release.versionName + " (" + release.versionCode + ")");
         if (archive.getLongVersionCode() <= installed.getLongVersionCode())
-            throw new IOException(text("Эта версия уже установлена или новее обновления: ", "Installed version is equal to or newer than the update: ")
+            throw new IOException(AppStrings.get(R.string.runtime_installed_version_is_equal_to_or_newer_than_the_update)
                     + installed.versionName + " (" + installed.getLongVersionCode() + ")");
         PackageInfo signedArchive, signedInstalled;
         try {
@@ -173,7 +172,7 @@ final class SelfUpdate {
         if (signedArchive != null && signedInstalled != null
                 && currentSigners(signedArchive) != null && currentSigners(signedInstalled) != null
                 && !sameSigners(signedInstalled, signedArchive))
-            throw new IOException(text("Подпись APK отличается от установленного tvOS", "Update signer differs from installed tvOS"));
+            throw new IOException(AppStrings.get(R.string.runtime_update_signer_differs_from_installed_tvos));
         // Missing signer metadata is not proof of a bad signature. The mandatory Android installer
         // verifies the real APK and rejects incompatible certificates; this app never installs silently.
     }
@@ -208,9 +207,9 @@ final class SelfUpdate {
         if (status.kind != READY || status.release == null || activity.isFinishing() || activity.isDestroyed()) return;
         try {
             File file = new File(context.getCacheDir(), "tvos-update.apk");
-            if (!file.isFile() || file.length() != status.release.size) throw new IOException(text("Файл обновления удалён из кеша. Проверьте обновления ещё раз.", "Cached update was removed. Check for updates again."));
+            if (!file.isFile() || file.length() != status.release.size) throw new IOException(AppStrings.get(R.string.runtime_cached_update_was_removed_check_for_updates_again));
             if (!context.getPackageManager().canRequestPackageInstalls()) {
-                Toast.makeText(activity, text("Разрешите установку из этого источника и повторите установку", "Allow installation from this source, then select Install again"), Toast.LENGTH_LONG).show();
+                Toast.makeText(activity, AppStrings.get(R.string.runtime_allow_installation_from_this_source_then_select_install_again), Toast.LENGTH_LONG).show();
                 activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         Uri.parse("package:" + context.getPackageName())));
                 return;
@@ -227,7 +226,7 @@ final class SelfUpdate {
     }
     private static String error(Exception e) {
         String message = e.getMessage();
-        if (message == null || message.trim().isEmpty()) return text("Не удалось получить обновление", "Could not obtain update");
+        if (message == null || message.trim().isEmpty()) return AppStrings.get(R.string.runtime_could_not_obtain_update);
         return message.length() > 90 ? message.substring(0, 87) + "…" : message;
     }
     private String readManifest() throws IOException {
@@ -236,7 +235,7 @@ final class SelfUpdate {
             byte[] buffer = new byte[4096];
             int n;
             while ((n = in.read(buffer)) != -1) {
-                if (out.size() + n > 65536) throw new IOException(text("Описание обновления слишком большое", "Update manifest is too large"));
+                if (out.size() + n > 65536) throw new IOException(AppStrings.get(R.string.runtime_update_manifest_is_too_large));
                 out.write(buffer, 0, n);
             }
             return new String(out.toByteArray(), StandardCharsets.UTF_8);
@@ -267,12 +266,12 @@ final class SelfUpdate {
             }
             if (code < 200 || code >= 300) {
                 connection.disconnect();
-                if (code == 404) throw new IOException(text("Выпуск или файл обновления ещё не опубликован", "Release or update asset has not been published yet"));
+                if (code == 404) throw new IOException(AppStrings.get(R.string.runtime_release_or_update_asset_has_not_been_published_yet));
                 throw new IOException("HTTP " + code);
             }
             return connection;
         }
-        throw new IOException(text("Слишком много переадресаций", "Too many redirects"));
+        throw new IOException(AppStrings.get(R.string.runtime_too_many_redirects));
     }
     private static String hex(byte[] bytes) {
         StringBuilder out = new StringBuilder(bytes.length * 2);

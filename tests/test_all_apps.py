@@ -1,3 +1,4 @@
+from settings_strings_fixture import write as write_strings
 """Run production app discovery against incomplete TV launcher queries and package fallbacks."""
 from pathlib import Path
 import subprocess,tempfile
@@ -67,6 +68,7 @@ tests='''
  }
 }'''
 with tempfile.TemporaryDirectory() as d:
+ write_strings(Path(d),package=False)
  p=Path(d)/'HomeApps.java';p.write_text(header+body+tests)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',d,str(p)],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'HomeApps'],check=True)
