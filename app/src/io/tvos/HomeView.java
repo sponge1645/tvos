@@ -3,8 +3,6 @@ package io.tvos;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.widget.EditText;
-import android.text.InputType;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -59,7 +57,6 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 
 /**
  * The home screen, styled after the Apple TV app with the macOS 27 glass:
@@ -121,6 +118,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Activity activity;
     private final Scene scene = new Scene();
     private final HomeData data;
+    private final HomeWidgets widgets;
     private final Recs recs;
     private final Click click;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -181,7 +179,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int tab, topIndex, cardIndex;
     private final RectF searchGlassBounds = new RectF();
     private boolean searchGlassVisible;
-    private android.app.Dialog searchDialog;
+    private final HomeSearchInput searchInput;
     private boolean searchMode;
     private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
     private String searchQuery = "";
@@ -300,8 +298,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     };
 
     private Paint labelPaint, metaPaint, clockPaint, buttonPaint, capsuleText, tipPaint, quotePaint, staleQuote;
-    private Paint rowTitle, drawerLabel, cardTitle, cardText, cardDim, cardDimRight, bigTemp, hourPaint, hourTemp;
-    private Paint pricePaint, changePaint, sheetTitle;
+    private Paint rowTitle, drawerLabel, cardTitle, cardText, cardDim, cardDimRight;
+    private Paint sheetTitle;
     private TextPaint titlePaint, gridLabel, toastPaint;
     private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint imagePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
@@ -348,13 +346,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private android.graphics.ColorFilter veilFilter;
     private float veilAmount = -1;
     private int veilColor;
-    private HomeData.Weather textWeather;
-    private long textPricesAt = -1, textMinute = -1;
-    private int textPrefs = -1;
-    private String textLanguage;
-    private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText, staleText;
-    private final String[] hourText = new String[6], hourTempText = new String[6];
-    private final String[] priceText = new String[HomeData.COINS.length], changeText = new String[HomeData.COINS.length];
 
     /** What the hero shows: a recommendation or, without any, the date, the time and the weather. */
     private static final class Hero {
@@ -431,6 +422,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         super(a);
         activity = a;
         data = HomeData.get(a);
+        widgets = new HomeWidgets(a,data);
         recs = Recs.get(a);
         searchWork = new SearchController(handler, recs, () -> running && searchMode,
                 this::acceptSearchResults);
@@ -450,6 +442,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer = new Layer(a, SHEET);
         toastLayer = new Layer(a, TOAST);
         searchGlassLayer = new Layer(a, SEARCH_GLASS);
+        searchInput = new HomeSearchInput(a,this,searchGlassLayer,new HomeSearchInput.Host(){
+            @Override public boolean running(){return running;}
+            @Override public String query(){return searchQuery;}
+            @Override public void queryChanged(String query){searchQueryChanged(query);}
+            @Override public void restore(){restoreSearchRequest();}
+            @Override public void dismissed(){searchInputDismissed();}
+            @Override public void paused(){closeSearch();}
+            @Override public void syncGlass(View panel){syncSearchGlass(panel);}
+        });
         // Hardware layers on the GPU: only the one that changed is redrawn; moving, fading and scaling stay cheap.
         // Not on Android 9 to 11: on older GPUs (a Mi Box 3's Mali-450) redrawing and compositing a big layer on every
         // frame cost more than drawing straight to the screen (measured: focus on the picks 33 → 12 ms a frame, the
@@ -549,14 +550,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         posterText.clear();
         ratingStyle.clear();
         shadows.clear();
-        weatherSnapshot.clear();
-        quotesSnapshot.clear();
+        widgets.clear();
         if (tvInputs != null) tvInputs.unregisterCallback(inputCallback);
     }
 
     void destroy() {
         pause();
-        if (searchDialog != null) searchDialog.dismiss();
+        searchInput.dismiss();
         click.release();
     }
 
@@ -738,6 +738,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void makePaints() {
+        widgets.resize(k);
         labelPaint = Ui.text(Ui.medium, 25 * k, 0xC7FFFFFF);
         labelPaint.setLetterSpacing(0.1f);
         titlePaint = new TextPaint(Ui.text(Ui.displayMedium, 76 * k, 0xFFFFFFFF));
@@ -781,15 +782,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         cardDim = Ui.numbers(Ui.medium, 23 * k, 0xADFFFFFF);
         cardDimRight = Ui.text(Ui.medium, 21 * k, 0x99FFFFFF);
         cardDimRight.setTextAlign(Paint.Align.RIGHT);
-        bigTemp = Ui.numbers(Ui.light, 100 * k, 0xFFFFFFFF);
-        hourPaint = Ui.numbers(Ui.medium, 22 * k, 0xADFFFFFF);
-        hourPaint.setTextAlign(Paint.Align.CENTER);
-        hourTemp = Ui.numbers(Ui.medium, 31.2f * k, 0xF2FFFFFF);
-        hourTemp.setTextAlign(Paint.Align.CENTER);
-        pricePaint = Ui.numbers(Ui.medium, 26 * k, 0xF2FFFFFF);
-        pricePaint.setTextAlign(Paint.Align.RIGHT);
-        changePaint = Ui.numbers(Ui.semibold, 21 * k, 0xFFFFFFFF);
-        changePaint.setTextAlign(Paint.Align.CENTER);
         sheetTitle = Ui.text(Ui.displaySemibold, 40 * k, 0xFFFFFFFF);
         sheetTitle.setTextAlign(Paint.Align.CENTER);
         gridLabel = new TextPaint(Ui.text(Ui.medium, 24 * k, 0x99FFFFFF));
@@ -1372,81 +1364,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 tone(30, 34) * k, tone(22, 28) * k, tone(0.65f, 0.95f), 1);
     }
 
-    /** The quotes row's text and sizes, for one set of coins, prices and text size. */
-    private final class Quotes {
-        final int[] coins;
-        final double[] prices;
-        final float size, cap, halfCap;
-        final String[] values;
-        final float[] glyphs, widths;
-
-        Quotes(int[] coins, double[] all, Paint text) {
-            this.coins = coins;
-            size = text.getTextSize();
-            cap = Ui.cap(text);
-            halfCap = Ui.halfCap(text);
-            int n = coins.length;
-            prices = new double[n];
-            values = new String[n];
-            glyphs = new float[n];
-            widths = new float[n];
-            for (int i = 0; i < n; i++) {
-                prices[i] = all[coins[i]];
-                values[i] = HomeData.compact(prices[i]);
-                glyphs[i] = Glyphs.width(getContext(), HomeData.COINS[coins[i]], cap);
-                widths[i] = text.measureText(values[i]);
-            }
-        }
-
-        boolean matches(int[] now, double[] all, float textSize) {
-            if (now != coins || textSize != size) return false;
-            for (int i = 0; i < coins.length; i++) if (Double.compare(all[coins[i]], prices[i]) != 0) return false;
-            return true;
-        }
-    }
-
-    private Quotes quotes;
-
     /** Coin logo + price in the configured currency, in a row at the right end of the tab bar. */
+
     private void drawQuotes(Canvas c) {
         boolean clock = !picksOn();
         float right = platterRect.isEmpty() ? CONTENT_R * k : platterRect.right - SHELF_PAD * k;
         applyTone();
         Paint text = clock ? lClockQuote : lQuote;
-        // The corner buttons' names appear in this row: the quotes fade out while one of them has focus.
         float fade = 1;
         for (int i = 5; i < 9 && !clock; i++) fade = Math.min(fade, 1 - Ui.clamp(topFocus[i].value));
         if (!clock) fade = Math.min(fade, 1 - Ui.clamp(topFocus[10].value));
-        if (fade <= 0.01f) return;
-        int textColor = text.getColor();
-        text.setColor(Ui.alpha(textColor, fade));
-        int n = HomeData.coinCount();
-        if (n == 0) { text.setColor(textColor); return; }
-        // Measured once per set of prices: this row is redrawn on every frame of the cards' focus animation, and
-        // measuring text there cost ~3 ms a frame on a Mi Box 3.
-        int[] coins = HomeData.active();
-        Quotes q = quotes;
-        if (q == null || !q.matches(coins, data.prices, text.getTextSize())) {
-            q = quotes = new Quotes(coins, data.prices, text);
-        }
-        // On the tab row, at the right.
-        float base = clock ? L_QUOTES_BASE * k : (L_TABBAR_TOP + L_TABBAR_H / 2) * k + q.halfCap;
-        float cap = q.cap, gap = (clock ? 8 : 6) * k, spacing = (clock ? 32 : 24) * k;
-        float total = spacing * (n - 1);
-        for (int i = 0; i < n; i++) total += q.glyphs[i] + gap + q.widths[i];
-        float x = clock ? MARGIN * k : right - total;
-        int coinColor = clock ? text.getColor() : Ui.alpha(tone(0xB38E8E93, 0x8CFFFFFF), fade);
-        for (int i = 0; i < n; i++) {
-            Glyphs.coin(getContext(), c, HomeData.COINS[coins[i]], x + q.glyphs[i] / 2, base - cap / 2, cap, coinColor);
-            x += q.glyphs[i] + gap;
-            c.drawText(q.values[i], x, base, text);
-            x += q.widths[i] + spacing;
-        }
-        text.setColor(textColor);
-        String stale = HomeData.staleness(data.pricesAt, 5 * 60_000L);
-        if (stale.isEmpty()) return;
-        if (clock) c.drawText(stale, x - spacing + 24 * k + staleQuote.measureText(stale), base, staleQuote);
-        else c.drawText(stale, right - total - 24 * k, base, staleQuote);
+        if (fade <= .01f) return;
+        float base = clock ? L_QUOTES_BASE * k : (L_TABBAR_TOP + L_TABBAR_H / 2) * k;
+        int coinColor = clock ? Ui.alpha(text.getColor(),fade) : Ui.alpha(tone(0xB38E8E93,0x8CFFFFFF),fade);
+        widgets.quotes(c,text,staleQuote,clock,right,base,fade,coinColor,k);
     }
 
     private void drawTiles(Canvas c) {
@@ -1720,10 +1651,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         cardText.setColor(drawerInk(0.95f));
         cardDim.setColor(tone(L_DIM, 0xADFFFFFF));
         cardDimRight.setColor(tone(L_FAINT, 0x99FFFFFF));
-        bigTemp.setColor(drawerInk(1));
-        hourPaint.setColor(tone(L_DIM, 0xADFFFFFF));
-        hourTemp.setColor(drawerInk(0.95f));
-        pricePaint.setColor(drawerInk(0.95f));
         float titleBase = ROW_TITLE * k;
         if (drawerInputs > 0) c.drawText(AppStrings.get(R.string.home_inputs), drawerRects[0].left + 4 * k, titleBase, rowTitle);
         if (drawerInputs < drawerItems.size()) c.drawText(AppStrings.get(R.string.home_shortcuts), drawerRects[drawerInputs].left + 4 * k, titleBase, rowTitle);
@@ -1772,155 +1699,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** Weather for your location: now (large), the next 6 hours, and sunrise and sunset. */
     private void drawWeatherCard(Canvas c, RectF r) {
         drawerCard(c, r);
-        if (Ui.LEGACY) weatherSnapshot.draw(c, r, drawerCardsKey(), cc -> drawWeather(cc, r));
-        else drawWeather(c, r);
-    }
-
-    private void drawWeather(Canvas c, RectF r) {
-        refreshDrawerText();
-        float x = r.left + 34 * k;
-        c.drawText(weatherTitle, x, r.top + 54 * k, cardTitle);
-        HomeData.Weather wx = textWeather;
-        if (Double.isNaN(wx.temp)) {
-            c.drawText(AppStrings.get(R.string.home_no_weather_data_right_now), x, r.top + 120 * k, cardDim);
-            return;
-        }
-        String symbol = Symbols.weather(wx.code, wx.isDay);
-        float sw = Symbols.width(getContext(), symbol, 52 * k);
-        Symbols.draw(getContext(), c, symbol, x + sw / 2, r.top + 132 * k, 52 * k, drawerInk(0.95f));
-        c.drawText(nowTemp, x + sw + 18 * k - Ui.leftBearing(bigTemp, nowTemp), r.top + 170 * k, bigTemp);
-        c.drawText(HomeData.condition(wx.code, wx.isDay), x, r.top + 220 * k, cardText);
-        c.drawText(highLow, x, r.top + 258 * k, cardDim);
-        float split = r.left + 392 * k;
-        fill.setShader(null);
-        fill.setColor(tone(0x1A000000, 0x24FFFFFF));
-        c.drawRoundRect(split - k, r.top + 34 * k, split + k, r.bottom - 34 * k, k, k, fill);
-        float hx = split + 30 * k, hw = (r.right - 30 * k - hx) / 6;
-        for (int i = 0; i < wx.hours.size() && i < 6; i++) {
-            float hc = hx + hw * (i + 0.5f);
-            c.drawText(hourText[i], hc, r.top + 54 * k, hourPaint);
-            String hourSymbol = Symbols.weather(wx.hourCode.get(i), wx.hourDay.get(i));
-            float iconSize = 36 * k;
-            float iconHeight = Symbols.height(getContext(), hourSymbol, iconSize);
-            // Center the combined icon + temperature on the card, independently of the hour heading.
-            float iconY = r.centerY() - (54 * k - iconHeight / 2) / 2;
-            float temperatureBase = iconHeight == 0 ? r.centerY() + Ui.halfCap(hourTemp) : iconY + 54 * k;
-            Symbols.draw(getContext(), c, hourSymbol, hc, iconY, iconSize, drawerInk(0.9f));
-            c.drawText(hourTempText[i], hc, temperatureBase, hourTemp);
-        }
-        float sx = hx, base = r.top + 258 * k;
-        if (wx.sunrise != 0) sx = sunItem(c, "sunrise", sunriseText, sx, base) + 36 * k;
-        if (wx.sunset != 0) sunItem(c, "sunset", sunsetText, sx, base);
-    }
-
-    private void refreshDrawerText() {
-        HomeData.Weather wx = data.weather;
-        boolean settings = Prefs.version != textPrefs || !Ui.language.equals(textLanguage);
-        textPrefs = Prefs.version;
-        textLanguage = Ui.language;
-        if (wx != textWeather || settings) {
-            textWeather = wx;
-            weatherTitle = Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather) : Prefs.city();
-            nowTemp = HomeData.degrees(wx.temp);
-            highLow = String.format(Ui.locale(), AppStrings.get(R.string.home_weather_high_low),
-                    HomeData.degrees(wx.max), HomeData.degrees(wx.min));
-            for (int i = 0; i < wx.hours.size() && i < 6; i++) {
-                hourText[i] = HomeData.hour(wx.hours.get(i));
-                hourTempText[i] = HomeData.degrees(wx.hourTemp.get(i));
-            }
-            sunriseText = AppStrings.get(R.string.home_sunrise) + Ui.time(wx.sunrise);
-            sunsetText = AppStrings.get(R.string.home_sunset) + Ui.time(wx.sunset);
-        }
-        long minute = System.currentTimeMillis() / 60_000;
-        if (data.pricesAt != textPricesAt || minute != textMinute || settings) {
-            textPricesAt = data.pricesAt;
-            textMinute = minute;
-            String stale = HomeData.staleness(data.pricesAt, 5 * 60_000L);
-            staleText = stale.isEmpty() ? AppStrings.get(R.string.home_daily_change) : stale;
-            for (int i = 0; i < HomeData.COINS.length; i++) {
-                priceText[i] = HomeData.brl(data.prices[i]);
-                changeText[i] = HomeData.change(data.changes[i]);
-            }
-        }
-    }
-
-    private float sunItem(Canvas c, String symbol, String label, float x, float base) {
-        float size = 22 * k, sw = Symbols.width(getContext(), symbol, size);
-        Symbols.draw(getContext(), c, symbol, x + sw / 2, base - Ui.halfCap(cardDim), size, tone(L_DIM, 0xB3FFFFFF));
-        c.drawText(label, x + sw + 10 * k, base, cardDim);
-        return x + sw + 10 * k + cardDim.measureText(label);
+        widgets.weather(c, r, dark());
     }
 
     /** Prices in the configured currency with the 24 h change (green/red, like Apple's Stocks app). */
     private void drawQuotesCard(Canvas c, RectF r) {
         drawerCard(c, r);
-        if (Ui.LEGACY) quotesSnapshot.draw(c, r, drawerCardsKey(), cc -> drawPrices(cc, r));
-        else drawPrices(c, r);
-    }
-
-    /**
-     * What the drawer cards show depends on: the data, the settings, the language, day or night, and the minute (the
-     * sunrise and sunset, "12 min ago").
-     */
-    private String drawerCardsKey() {
-        return data.weatherAt + "|" + data.pricesAt + "|" + Prefs.version + "|" + Ui.language + "|"
-                + Float.floatToIntBits(dark()) + "|" + System.currentTimeMillis() / 60_000;
-    }
-
-    /**
-     * Android 9 to 11: a drawer card's content (its text and symbols, not its glass) kept as a bitmap. The drawer is
-     * redrawn on every frame of its focus animation, and laying that text out again took ~15 ms a frame on a Mi Box 3.
-     */
-    private static final class Snapshot {
-        private Bitmap bitmap;
-        private String key = "";
-
-        void clear() { bitmap = null; key = ""; }
-
-        void draw(Canvas c, RectF r, String key, Consumer<Canvas> content) {
-            int left = Math.round(r.left), top = Math.round(r.top);
-            int w = Math.max(1, Math.round(r.right) - left), h = Math.max(1, Math.round(r.bottom) - top);
-            if (bitmap == null || bitmap.getWidth() != w || bitmap.getHeight() != h) {
-                bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-                this.key = "";
-            }
-            if (!key.equals(this.key)) {
-                bitmap.eraseColor(0);
-                Canvas cc = new Canvas(bitmap);
-                cc.translate(-left, -top);
-                content.accept(cc);
-                this.key = key;
-            }
-            c.drawBitmap(bitmap, left, top, null);
-        }
-    }
-
-    private final Snapshot weatherSnapshot = new Snapshot(), quotesSnapshot = new Snapshot();
-
-    private void drawPrices(Canvas c, RectF r) {
-        float x = r.left + 34 * k, right = r.right - 34 * k;
-        refreshDrawerText();
-        c.drawText(AppStrings.get(R.string.home_crypto), x, r.top + 54 * k, cardTitle);
-        c.drawText(staleText, right, r.top + 54 * k, cardDimRight);
-        float cap = Ui.cap(cardText);
-        int[] coins = HomeData.active();
-        for (int j = 0; j < coins.length; j++) {
-            int i = coins[j];
-            float base = r.top + (110 + 52 * j) * k, mid = base - cap / 2;
-            float gw = Glyphs.width(getContext(), HomeData.COINS[i], cap);
-            Glyphs.coin(getContext(), c, HomeData.COINS[i], x + 14 * k, mid, cap, tone(L_DIM, 0xCCFFFFFF));
-            c.drawText(HomeData.coinName(i), x + Math.max(gw, 28 * k) / 2 + 30 * k, base, cardText);
-            c.drawText(priceText[i], right - 128 * k, base, pricePaint);
-            double change = data.changes[i];
-            if (Double.isNaN(change)) continue;
-            int color = change >= 0 ? tone(0xFF248A3D, UP_COLOR) : tone(0xFFD70015, DOWN_COLOR);
-            tmp.set(right - 108 * k, mid - 17 * k, right, mid + 17 * k);
-            fill.setShader(null);
-            fill.setColor(Ui.alpha(color, 0.2f));
-            c.drawRoundRect(tmp, 17 * k, 17 * k, fill);
-            changePaint.setColor(color);
-            c.drawText(changeText[i], tmp.centerX(), mid + Ui.halfCap(changePaint), changePaint);
-        }
+        widgets.prices(c, r, dark());
     }
 
     // MARK: - Focus
@@ -2579,7 +2364,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Position the wallpaper-aware glass under the transparent Android text-input window. */
     private void syncSearchGlass(View panel) {
-        if (!running || searchDialog == null || !searchDialog.isShowing()) return;
+        if (!running || !searchInput.showing()) return;
         if (panel.getWidth() == 0 || panel.getHeight() == 0) return;
         int[] panelPos = new int[2], homePos = new int[2];
         panel.getLocationOnScreen(panelPos);
@@ -2590,18 +2375,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchGlassVisible = true;
         searchGlassLayer.setVisibility(VISIBLE);
         searchGlassLayer.invalidate();
-    }
-
-    /** Fade and shrink the floating search glass before removing its window. */
-    private void panelExit(android.app.Dialog dialog) {
-        android.view.Window window = dialog.getWindow();
-        if (window == null) { dialog.dismiss(); return; }
-        android.view.View decor = window.getDecorView();
-        decor.animate().cancel();
-        searchGlassLayer.animate().cancel();
-        searchGlassLayer.animate().alpha(0f).setDuration(220).start();
-        decor.animate().alpha(0f).setDuration(220)
-                .withEndAction(dialog::dismiss).start();
     }
 
     private void beginSearch() {
@@ -2618,9 +2391,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchWork.restore(searchQuery, !searchResults.isEmpty());
     }
 
-    /** A translucent in-app search field; Android TV supplies only the text keyboard. */
     private void openSearch() {
-        if (searchDialog != null && searchDialog.isShowing()) return;
+        if (searchInput.showing()) return;
         beginSearch();
         zone = Z_TOP;
         topIndex = availableTopButton(5);
@@ -2629,180 +2401,35 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         retarget(false);
         heroDirty = statusDirty = true;
         wake();
+        searchInput.open(searchQuery,night>.5f,L_BUTTON_CY*k);
+    }
 
-        final android.app.Dialog dialog = new android.app.Dialog(activity) {
-            private boolean closing;
-            @Override public boolean dispatchKeyEvent(KeyEvent event) {
-                int code = event.getKeyCode();
-                // The IME consumes keys while it is visible. Once it has been hidden,
-                // any navigation arrow dismisses the floating search, rather than trapping focus.
-                if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
-                        || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
-                            && !closing) {
-                        closing = true;
-                        panelExit(this);
-                    }
-                    return true;
-                }
-                return super.dispatchKeyEvent(event);
-            }
-            // Dialog Back handling must remain available on Android 9 TV keyboards.
-            @SuppressWarnings("deprecation")
-            @Override public void onBackPressed() {
-                if (closing) return;
-                closing = true;
-                android.view.Window w = getWindow();
-                if (w != null) w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-                panelExit(this);
-            }
-        };
-        searchDialog = dialog;
-        // HOME is handled by Android, not delivered as a key event to applications.
-        // Close the dialog when our activity goes to the background.
-        final android.app.Application.ActivityLifecycleCallbacks searchLifecycle =
-                new android.app.Application.ActivityLifecycleCallbacks() {
-            @Override public void onActivityPaused(Activity a) {
-                if (a == activity && dialog.isShowing()) {
-                    dialog.dismiss();
-                    closeSearch();
-                }
-            }
-            @Override public void onActivityCreated(Activity a, android.os.Bundle b) { }
-            @Override public void onActivityStarted(Activity a) { }
-            @Override public void onActivityResumed(Activity a) { }
-            @Override public void onActivityStopped(Activity a) { }
-            @Override public void onActivitySaveInstanceState(Activity a, android.os.Bundle b) { }
-            @Override public void onActivityDestroyed(Activity a) { }
-        };
-        activity.getApplication().registerActivityLifecycleCallbacks(searchLifecycle);
-        final android.widget.LinearLayout panel = new android.widget.LinearLayout(activity);
-        panel.setOrientation(android.widget.LinearLayout.VERTICAL);
-        int pad = (int) (22 * activity.getResources().getDisplayMetrics().density);
-        panel.setPadding(pad, pad / 2, pad, pad / 2);
-        // Glass is drawn by the HomeView canvas through scene.liquid(), not a Dialog Drawable.
-        // The dialog contains only a transparent text field and the system keyboard.
-        panel.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        final EditText input = new EditText(activity);
-        input.setSingleLine(true);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
-        input.setTextColor(night > 0.5f ? 0xFFFFFFFF : 0xFF20242B);
-        input.setHintTextColor(night > 0.5f ? 0xAABBBBBB : 0xFF777777);
-        input.setTextSize(21);
-        input.setCompoundDrawablePadding(pad / 2);
-        input.setHint(AppStrings.get(R.string.home_search_movies_and_series));
-        input.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        panel.addView(input, new android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
-        // Measure the former capsule before removing its vertical padding and themed input minimum.
-        // Keep 60% of that height, with enough room for the text at the user's font scale.
-        int searchWidth = (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.336f);
-        panel.measure(View.MeasureSpec.makeMeasureSpec(searchWidth, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        Paint.FontMetricsInt searchMetrics = input.getPaint().getFontMetricsInt();
-        int searchHeight = Math.max(Math.round(panel.getMeasuredHeight() * 0.60f),
-                searchMetrics.bottom - searchMetrics.top
-                        + Math.round(2 * activity.getResources().getDisplayMetrics().density));
-        panel.setPadding(pad, 0, pad, 0);
-        input.setMinimumHeight(0);
-        input.setMinHeight(0);
-        input.setIncludeFontPadding(false);
-        input.setPadding(input.getPaddingLeft(), 0, input.getPaddingRight(), 0);
-        input.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        input.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT, searchHeight));
-        dialog.setContentView(panel);
-        android.view.Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawableResource(android.R.color.transparent);
-            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            window.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
-            window.setLayout(searchWidth,
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-            window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
-                    | android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
-        }
+    private void searchQueryChanged(String query) {
+        searchQuery = query;
+        searchResults = new ArrayList<>();
+        cardPage = cardIndex = 0;
+        layoutLight();
+        updateCards();
+        heroDirty = statusDirty = true;
+        wake();
+        searchWork.changed(query);
+    }
 
-        // Restore before attaching the watcher: reopening the same query must not clear or reload its results.
-        input.setText(searchQuery);
-        input.setSelection(input.length());
-        input.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String query = s.toString().trim();
-                if (query.equals(searchQuery)) return;
-                searchQuery = query;
-                searchResults = new ArrayList<>();
-                cardPage = cardIndex = 0;
-                layoutLight();
-                updateCards();
-                heroDirty = statusDirty = true;
-                wake();
-                searchWork.changed(query);
-            }
-            @Override public void afterTextChanged(android.text.Editable e) { }
-        });
-        restoreSearchRequest();
-        input.setOnEditorActionListener((v, actionId, event) -> {
-            panelExit(dialog);
-            return true;
-        });
-        panel.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                panel.post(() -> syncSearchGlass(panel)));
-        dialog.setOnDismissListener(d -> {
-            if (searchDialog == dialog) searchDialog = null;
-            activity.getApplication().unregisterActivityLifecycleCallbacks(searchLifecycle);
-            searchGlassVisible = false;
-            setSearchInputOpen(false);
-            searchGlassLayer.animate().cancel();
-            searchGlassLayer.setAlpha(1f);
-            searchGlassLayer.setScaleX(1f);
-            searchGlassLayer.setScaleY(1f);
-            searchGlassLayer.setTranslationY(0f);
-            searchGlassLayer.setVisibility(INVISIBLE);
-            searchWork.flush();
-            zone = searchResults.isEmpty() ? Z_TOP : Z_CARDS;
-            if (zone == Z_TOP) topIndex = availableTopButton(5);
-            retarget(false);
-            heroDirty = statusDirty = true;
-            wake();
-        });
-        dialog.show();
-        window = dialog.getWindow();
-        if (window != null) {
-            window.setLayout(searchWidth,
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-            android.view.WindowManager.LayoutParams attrs = window.getAttributes();
-            attrs.y = Math.round(L_BUTTON_CY * k - searchHeight / 2f);
-            window.setAttributes(attrs);
-        }
-        panel.post(() -> {
-            if (!running || !dialog.isShowing()) return;
-            // Match the toolbar's actual screen coordinates, including window insets.
-            int[] panelPos = new int[2], homePos = new int[2];
-            panel.getLocationOnScreen(panelPos);
-            getLocationOnScreen(homePos);
-            int offset = Math.round(homePos[1] + L_BUTTON_CY * k
-                    - panelPos[1] - panel.getHeight() / 2f);
-            android.view.Window searchWindow = dialog.getWindow();
-            if (searchWindow != null && offset != 0) {
-                android.view.WindowManager.LayoutParams attrs = searchWindow.getAttributes();
-                attrs.y += offset;
-                searchWindow.setAttributes(attrs);
-            }
-            panel.postOnAnimation(() -> {
-                if (!dialog.isShowing()) return;
-                syncSearchGlass(panel);
-                searchGlassLayer.setAlpha(0f);
-                searchGlassLayer.animate().alpha(1f).setDuration(260).start();
-            });
-        });
-        android.view.View decor = dialog.getWindow().getDecorView();
-        decor.setAlpha(0f);
-        decor.animate().alpha(1f).setDuration(260).start();
-        input.requestFocus();
+    private void searchInputDismissed() {
+        searchGlassVisible = false;
+        setSearchInputOpen(false);
+        searchGlassLayer.animate().cancel();
+        searchGlassLayer.setAlpha(1f);
+        searchGlassLayer.setScaleX(1f);
+        searchGlassLayer.setScaleY(1f);
+        searchGlassLayer.setTranslationY(0f);
+        searchGlassLayer.setVisibility(INVISIBLE);
+        searchWork.flush();
+        zone = searchResults.isEmpty() ? Z_TOP : Z_CARDS;
+        if (zone == Z_TOP) topIndex = availableTopButton(5);
+        retarget(false);
+        heroDirty = statusDirty = true;
+        wake();
     }
 
     private void cancelSearchWork() {
@@ -4121,10 +3748,4 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return t * t * (3 - 2 * t);
     }
 
-    private static int blend(int a, int b, float f) {
-        int aa = a >>> 24, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
-        int ba = b >>> 24, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-        return (Math.round(aa + (ba - aa) * f) << 24) | (Math.round(ar + (br - ar) * f) << 16)
-                | (Math.round(ag + (bg - ag) * f) << 8) | Math.round(ab + (bb - ab) * f);
-    }
 }

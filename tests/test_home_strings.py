@@ -10,8 +10,9 @@ assert 'TABS_RU' not in source
 fields=next(line for line in source.splitlines() if 'private static final EnumMap<AppLanguage, String[]> tabLabels' in line)
 methods=''.join(block(source,s) for s in [
  '    private static String[] tabs()', '    private String networkLabel()',
- '    private void refreshDrawerText()', '    private String weatherText()'
+ '    private String weatherText()'
 ])
+methods+=block(Path('app/src/io/tvos/HomeWidgets.java').read_text(),'    private void refreshDrawerText()')
 harness='''package io.tvos;
 import java.util.*;
 public class HomeStringsHarness {

@@ -25,8 +25,8 @@ body = ''.join(method(s) for s in [
 # Check lifecycle/dialog integration, in addition to executing the actual controller below.
 assert 'searchWork.pause(searchMode);' in method('    void pause(')
 assert 'searchWork.resume(searchQuery);' in source
-assert 'searchWork.flush();' in method('    private void openSearch(')
-assert 'searchWork.changed(query);' in method('    private void openSearch(')
+assert 'searchWork.flush();' in method('    private void searchInputDismissed(')
+assert 'searchWork.changed(query);' in method('    private void searchQueryChanged(')
 for signature in ('    void reset(', '    private void selectTab(', '    private void closeSearch('):
     assert 'cancelSearchWork();' in method(signature)
 
