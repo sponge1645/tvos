@@ -44,7 +44,7 @@ public class CLASSNAME {
   static void request(Context c,int mode){note("home:"+mode);}static void ensureRemoteService(Context c,int value){note("remote-service");}
  }
  static class SystemClock {static long uptimeMillis(){return 123;}}
- static class SelfUpdate {static SelfUpdate get(Context c){return new SelfUpdate();}void check(boolean b){note("update:"+b);}}
+ final Dialog updateDialog=new Dialog();class Dialog {void check(){updateRequested=true;note("update:false");note("on-update");}}
  static class AppDownloads {static void start(Activity a,int row){note("download:"+row);}}
  static class Spring {void snap(float v){note("snap");}}
  final Spring[] pop={new Spring(),new Spring()};

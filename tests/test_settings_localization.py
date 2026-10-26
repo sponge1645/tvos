@@ -8,9 +8,10 @@ def method(signature):
  while depth:depth+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 def popup():
- a=source.index('            String[] lines;',source.index('private void drawUpdatePopup('))
- b=source.index('            float lineY',a)
- c=source.index('            String[] buttons =',b);d=source.index('            float buttonTop',c)
+ source=Path('app/src/io/tvos/SettingsUpdateDialog.java').read_text()
+ a=source.index('        String[] lines;',source.index('void draw('))
+ b=source.index('        float lineY',a)
+ c=source.index('        String[] buttons =',b);d=source.index('        float buttonTop',c)
  return 'String[][] popup(){'+source[a:b]+source[c:d]+'return new String[][]{lines,buttons};}'
 # Every locale has the same formatting arguments; translators can reorder them.
 en,ru=tables()
@@ -21,7 +22,7 @@ public class LocalizedSettingsHarness {
  static class Ui {static boolean ru;static Locale locale(){return ru?new Locale("ru","RU"):Locale.US;}}
  static class JSONObject {Map<String,Long> v=new HashMap<>();boolean has(String k){return v.containsKey(k);}long optLong(String k){return v.get(k);}}
  static class SelfUpdate {static final Status status=new Status();static SelfUpdate get(Object c){return new SelfUpdate();}Status status(){return status;}static class Status{Release release=new Release();String message="";int percent;}static class Release{String versionName="1.2.3";}}
- int updatePopup;Object getContext(){return this;}String versionName(Object c){return "tvOS 1.1";}
+ int updatePopup;Object activity=this;Object getContext(){return this;}String versionName(Object c){return "tvOS 1.1";}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
 methods=''.join(method(s) for s in ['        private static String metric(', '        private static String ago(', '        private String[] keyLabels()', '        private String menuButtonLabel(', '        private String categoryLabel(', '        private static String onOff('])

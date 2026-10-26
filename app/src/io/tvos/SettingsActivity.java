@@ -236,9 +236,7 @@ public class SettingsActivity extends Activity {
                 cachedBackground = null;
             }
         }
-        private final Paint popupPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private Paint popupHeading, popupBody, popupButtonText;
-        private final RectF popupPanel = new RectF(), popupButton = new RectF();
+        private final SettingsUpdateDialog updateDialog;
         private JSONObject state = new JSONObject(), recs = new JSONObject();
         private boolean hasKey;
         private int screen = MAIN, focus, settingsGroup = GENERAL, returnFocus = 0;
@@ -259,11 +257,6 @@ public class SettingsActivity extends Activity {
         private boolean running, okDown, backDown, wasBusy;
         private boolean lightAppearance;
         private final Runnable clearCityStatus = () -> { cityStatus = ""; if (running) invalidate(); };
-        private long updatePopupStarted = 0;
-        private boolean updatePopupClosing = false;
-        private int updatePopup = 0, updatePopupFocus = 0; // 0 hidden, 1 current, 2 available, 3 error, 4 checking, 5 downloading, 6 ready
-        private boolean updateRequested, installWhenReady;
-        private final SelfUpdate.Listener updateListener = this::onSelfUpdate;
         private StaticLayout errorLayout;   // the last error, wrapped (rebuilt only when it changes)
         private String errorShown;
         private final Spoken spoken;
@@ -329,6 +322,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            updateDialog = new SettingsUpdateDialog(a, this);
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             HomeData.Weather wx = HomeData.get(a).weather;
@@ -445,9 +439,7 @@ public class SettingsActivity extends Activity {
             if (running) return;
             running = true;
             HomeData.get(getContext()).localizeCity(Prefs.language());
-            SelfUpdate.get(getContext()).addListener(updateListener);
-            onSelfUpdate();
-            SelfUpdate.get(getContext()).maybeAutomatic(false);
+            updateDialog.resume();
             startedAt = SystemClock.uptimeMillis();
             lastNanos = 0;
             handler.post(poll);
@@ -457,7 +449,7 @@ public class SettingsActivity extends Activity {
 
         void pause() {
             running = false;
-            SelfUpdate.get(getContext()).removeListener(updateListener);
+            updateDialog.pause();
             citySerial++;
             if (cityRequest != null) cityRequest.cancel();
             cityRequest = null;
@@ -489,7 +481,7 @@ public class SettingsActivity extends Activity {
             if (!running) return;
             boolean moving = busy();
             for (Spring s : pop) moving |= !s.settled();
-            if (moving || (updatePopup == 0 && SystemClock.uptimeMillis() - lastSky >= 100)) invalidate();
+            if (moving || (!updateDialog.visible() && SystemClock.uptimeMillis() - lastSky >= 100)) invalidate();
             Choreographer.getInstance().postFrameCallback(this);
         }
 
@@ -517,12 +509,7 @@ public class SettingsActivity extends Activity {
                     new float[] {0f, topStop, bottomStop, 1f}, Shader.TileMode.CLAMP));
             scene.setSize(w, h);
             releaseBackground();
-            popupHeading = Ui.text(Ui.displaySemibold, 47*k, 0xFFFFFFFF);
-            popupHeading.setTextAlign(Paint.Align.CENTER);
-            popupBody = Ui.text(Ui.regular, 30*k, 0xFFE5E9F3);
-            popupBody.setTextAlign(Paint.Align.CENTER);
-            popupButtonText = Ui.text(Ui.displaySemibold, 30*k, 0xFFFFFFFF);
-            popupButtonText.setTextAlign(Paint.Align.CENTER);
+            updateDialog.resize(k);
             title = Ui.text(Ui.displaySemibold, 50 * k, 0xFFFFFFFF);
             title.setTextAlign(Paint.Align.CENTER);
             subtitle = Ui.text(Ui.regular, 28 * k, 0x99FFFFFF);
@@ -614,7 +601,7 @@ public class SettingsActivity extends Activity {
             }
             stepRowFocus(dt, up);
             float seconds = (up - startedAt) / 1000f;
-            if (updatePopup == 0 && up - lastSky >= 100) {
+            if (!updateDialog.visible() && up - lastSky >= 100) {
                 lastSky = up;
                 scene.advance(seconds);
             }
@@ -643,7 +630,7 @@ public class SettingsActivity extends Activity {
 
             drawListViewport(c);
             drawTileDescription(c);
-            if (updatePopup != 0) drawUpdatePopup(c);
+            if (updateDialog.visible()) updateDialog.draw(c, w, h, lightSettings());
         }
 
         /** Reset inherited selection before drawing either page of a menu transition. */
@@ -651,7 +638,7 @@ public class SettingsActivity extends Activity {
             if (drawnScreen == screen) return;
             boolean reduceMotion = localFlag("reduce_motion");
             boolean previous = drawnScreen >= 0;
-            transitionFrom = previous && !reduceMotion && updatePopup == 0
+            transitionFrom = previous && !reduceMotion && !updateDialog.visible()
                     && (parentScreen(screen) == drawnScreen || parentScreen(drawnScreen) == screen)
                     ? drawnScreen : -1;
             transitionStarted = now;
@@ -1188,7 +1175,7 @@ public class SettingsActivity extends Activity {
         }
 
         private String updateDetailsText() {
-            if (updateInstalledVersion == null) updateInstalledVersion = versionName(getContext());
+            if (updateInstalledVersion == null) updateInstalledVersion = SettingsUpdateDialog.versionName(getContext());
             long checkedAt = localPrefs().getLong("self_update_attempt", 0);
             if (updateCheckShown == null || checkedAt != updateCheckAt || updateCheckLanguage != AppLanguage.current()) {
                 updateCheckAt = checkedAt;
@@ -1233,178 +1220,20 @@ public class SettingsActivity extends Activity {
                     AppStrings.quantity(R.plurals.settings_days_ago, (int) Math.min(Integer.MAX_VALUE, days)), days);
         }
 
-        private static String versionName(Context c) {
-            try {
-                return "tvOS " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
-            } catch (android.content.pm.PackageManager.NameNotFoundException e) {
-                return "tvOS";
-            }
-        }
-
         private void toggleAutomaticUpdates() {
             boolean enabled = !localPrefs().getBoolean("auto_update", false);
             setLocalFlag("auto_update", enabled);
             if (enabled) SelfUpdate.get(getContext()).maybeAutomatic(true);
         }
 
-        private void onSelfUpdate() {
-            if (!running || !updateRequested) return;
-            SelfUpdate updater = SelfUpdate.get(getContext());
-            SelfUpdate.Status update = updater.status();
-            int mode = update.kind == SelfUpdate.CHECKING ? 4
-                    : update.kind == SelfUpdate.DOWNLOADING ? 5
-                    : update.kind == SelfUpdate.AVAILABLE ? 2
-                    : update.kind == SelfUpdate.READY ? 6
-                    : update.kind == SelfUpdate.ERROR ? 3 : 1;
-            if (updatePopup != mode || updatePopupClosing) showUpdatePopup(mode);
-            else invalidate();
-            if (update.kind == SelfUpdate.READY && installWhenReady) {
-                installWhenReady = false;
-                updater.install(activity);
-            }
-        }
-
-        private void showUpdatePopup(int mode) {
-            updatePopup = mode;
-            updatePopupFocus = 0;
-            updatePopupClosing = false;
-            updatePopupStarted = SystemClock.uptimeMillis();
-            invalidate();
-        }
-
-        private void closeUpdatePopup() {
-            updateRequested = false;
-            installWhenReady = false;
-            updatePopupClosing = true;
-            updatePopupStarted = SystemClock.uptimeMillis();
-            invalidate();
-        }
-
-        private boolean updatePopupKey(KeyEvent e) {
-            if (e.getAction() != KeyEvent.ACTION_UP) return true;
-            int code = e.getKeyCode();
-            if (updatePopupClosing) return true;
-            if (code == KeyEvent.KEYCODE_BACK) { closeUpdatePopup(); return true; }
-            if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
-                if (updatePopup == 2 || updatePopup == 6) updatePopupFocus = code == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : 0;
-                invalidate(); return true;
-            }
-            if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER) {
-                if (updatePopup == 2 && updatePopupFocus == 0) {
-                    installWhenReady = true;
-                    SelfUpdate.get(getContext()).download();
-                } else if (updatePopup == 6 && updatePopupFocus == 0) {
-                    SelfUpdate.get(getContext()).install(activity);
-                } else closeUpdatePopup();
-                return true;
-            }
-            return true;
-        }
-
-        private void drawUpdatePopup(Canvas c) {
-            long elapsed = SystemClock.uptimeMillis() - updatePopupStarted;
-            float t = Math.min(1f, elapsed / 260f);
-            float ease = 1f - (1f-t)*(1f-t)*(1f-t);
-            float alpha = updatePopupClosing ? 1f-ease : ease;
-            if (updatePopupClosing && t >= 1f) {
-                updatePopup = 0;
-                updatePopupClosing = false;
-                return;
-            }
-            if (t < 1f) postInvalidateDelayed(16);
-            c.save();
-            Paint p = popupPaint;
-            p.reset();
-            p.setAntiAlias(true);
-            // Match the underlying settings theme: warm translucent dimming in
-            // light mode, near-black dimming in dark mode.
-            p.setColor(lightSettings() ? 0xFF62645B : 0xFF000000);
-            p.setAlpha(Math.round((lightSettings() ? 105 : 175) * alpha));
-            c.drawRect(0, 0, w, h, p);
-            float left = 470*k, right = 1450*k;
-            float top = ((updatePopup == 2 || updatePopup == 6) ? 205 : 310)*k;
-            float bottom = ((updatePopup == 2 || updatePopup == 6) ? 875 : 765)*k;
-            float cx = (left+right)/2f, cy = (top+bottom)/2f;
-            float scale = 0.94f + 0.06f*ease;
-            if (updatePopupClosing) scale = 1f - 0.06f*ease;
-            c.save();
-            c.scale(scale, scale, cx, cy);
-            boolean fading = alpha < 0.999f;
-            if (fading) c.saveLayerAlpha(left-70*k, top-70*k, right+70*k, bottom+70*k, Math.round(255*alpha));
-            RectF panel = popupPanel;
-            panel.set(left, top, right, bottom);
-            // Flat, frosted Apple TV panel: no heavy shadow or bright gloss strip.
-            // The subtle vertical tint echoes the light/dark settings backgrounds.
-            p.clearShadowLayer();
-            p.setAlpha(255);
-            p.setStyle(Paint.Style.FILL);
-            p.setShader(new LinearGradient(left, top, left, bottom,
-                    lightSettings() ? 0xF2DEE4E1 : 0xF21F2223,
-                    lightSettings() ? 0xF2BFCFD0 : 0xF2232526,
-                    Shader.TileMode.CLAMP));
-            c.drawRoundRect(panel, 48*k, 48*k, p);
-            p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(1.2f*k);
-            p.setColor(lightSettings() ? 0x55FFFFFF : 0x24FFFFFF);
-            c.drawRoundRect(panel, 48*k, 48*k, p);
-            p.setStyle(Paint.Style.FILL);
-            Paint heading = popupHeading;
-            heading.setColor(lightSettings() ? 0xFF202631 : 0xFFFFFFFF);
-            Paint body = popupBody;
-            body.setColor(lightSettings() ? 0xFF364050 : 0xFFE5E9F3);
-            c.drawText(AppStrings.get(R.string.settings_tvos_update), cx, top+100*k, heading);
-            String[] lines;
-            SelfUpdate.Status update = SelfUpdate.get(getContext()).status();
-            String availableVersion = update.release == null ? "" : update.release.versionName;
-            if (updatePopup == 2) lines = new String[] {
-                AppStrings.get(R.string.settings_update_available).replace("%1$s", availableVersion),
-                AppStrings.get(R.string.settings_download_and_install_it_now),
-                AppStrings.get(R.string.settings_confirm_installation_on_your_tv),
-                AppStrings.get(R.string.settings_do_not_turn_off_your_tv_during_download),
-                AppStrings.get(R.string.settings_or_installation)
-            };
-            else if (updatePopup == 3) lines = new String[] {AppStrings.get(R.string.settings_could_not_update_tvos),
-                    update.message.length() <= 44 ? update.message : update.message.substring(0, 44),
-                    update.message.length() <= 44 ? "" : update.message.substring(44)};
-            else if (updatePopup == 4) lines = new String[] {AppStrings.get(R.string.settings_checking_for_updates)};
-            else if (updatePopup == 5) lines = new String[] {AppStrings.get(R.string.settings_downloading_update),
-                    update.percent < 0 ? "" : update.percent + "%"};
-            else if (updatePopup == 6) lines = new String[] {AppStrings.get(R.string.settings_update_downloaded),
-                    AppStrings.get(R.string.settings_version) + availableVersion};
-            else lines = new String[] {AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(getContext()).replace("tvOS ", "")};
-            float lineY = top+(updatePopup == 1 ? 203 : 167)*k;
-            for (String line : lines) { c.drawText(line, cx, lineY, body); lineY += 49*k; }
-            String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install), AppStrings.get(R.string.settings_update_later)}
-                    : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install), AppStrings.get(R.string.settings_later)} : new String[] {"OK"};
-            float buttonTop = bottom - (buttons.length*78+45)*k;
-            Paint buttonText = popupButtonText;
-            for (int i=0; i<buttons.length; i++) {
-                RectF b = popupButton;
-                b.set(left+65*k, buttonTop+i*82*k, right-65*k, buttonTop+(i*82+68)*k);
-                boolean selected = i == updatePopupFocus || buttons.length == 1;
-                // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
-                p.clearShadowLayer();
-                p.setShader(null);
-                p.setStyle(Paint.Style.FILL);
-                p.setColor(selected ? 0xF5F7F8FA : 0x709BA4AB);
-                c.drawRoundRect(b, 17*k, 17*k, p);
-                buttonText.setColor(selected ? 0xFF171A1F : 0xDB252A30);
-                c.drawText(buttons[i], b.centerX(), b.centerY()+Ui.halfCap(buttonText), buttonText);
-            }
-            if (fading) c.restore();
-            c.restore();
-            c.restore();
-        }
-
         boolean onKey(KeyEvent e) {
-            if (updatePopup != 0) {
+            if (updateDialog.visible()) {
                 if (e.getAction() == KeyEvent.ACTION_UP) {
                     int code = e.getKeyCode();
                     if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) tvosClick.move();
                     else if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER || code == KeyEvent.KEYCODE_BACK) tvosClick.open();
                 }
-                return updatePopupKey(e);
+                return updateDialog.onKey(e);
             }
             boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
             switch (e.getKeyCode()) {
@@ -2080,7 +1909,6 @@ public class SettingsActivity extends Activity {
 
         }
 
-
         private void askDeviceName() {
             final android.widget.EditText input =
                     new android.widget.EditText(getContext());
@@ -2162,9 +1990,7 @@ public class SettingsActivity extends Activity {
                 case MENU_ADJUST: adjustMenu(1); break;
                 case QUOTES: returnFocus = focus; settingsGroup = WIDGETS; screen = HOME_SETTINGS; focus = 0; break;
                 case CHECK_UPDATE:
-                    updateRequested = true;
-                    SelfUpdate.get(getContext()).check(false);
-                    onSelfUpdate();
+                    updateDialog.check();
                     break;
                 case AUTO_UPDATE: toggleAutomaticUpdates(); break;
                 case MENU_BUTTON: toggleMenuButton(); break;

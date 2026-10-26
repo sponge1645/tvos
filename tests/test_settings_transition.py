@@ -15,7 +15,8 @@ public class SettingsTransitionHarness {
  static final int PICK_CITY=0,PICK_VPN=-1;static final long MENU_TRANSITION_MS=280;
  static class Ui {static boolean ru;static java.util.Locale locale(){return ru?new java.util.Locale("ru","RU"):java.util.Locale.US;}}
  String tr(String r,String e){return Ui.ru?r:e;}
- int screen=MAIN,focus,drawnScreen=-1,transitionFrom=-1,updatePopup,settingsGroup=GENERAL,pickFor;
+ int screen=MAIN,focus,drawnScreen=-1,transitionFrom=-1,settingsGroup=GENERAL,pickFor;
+ static class Dialog {boolean active;boolean visible(){return active;}}final Dialog updateDialog=new Dialog();
  long transitionStarted,focusReadyAt;boolean reduceMotion;
  Spring[] pop={new Spring(.28f,.85f,0),new Spring(.28f,.85f,0),new Spring(.28f,.85f,0),new Spring(.28f,.85f,0),new Spring(.28f,.85f,0),new Spring(.28f,.85f,0)};
  boolean localFlag(String key){return reduceMotion;}int rowCount(){return screen==ABOUT?8:10;}
