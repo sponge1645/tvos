@@ -38,9 +38,8 @@ def files():
    static String language="en";static boolean ru,en=true,de,es;
    static void language(String s){AppLanguage.select(s);language=s;ru=s.equals("ru");en=s.equals("en");de=s.equals("de");es=s.equals("es");}
    static java.util.Locale locale(){return AppLanguage.current().locale;}
-   static String tr(String pt,String english){return ru?Russian.text(english):en?english:pt;}
+   
   }''',
   'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text(),
-  'io/tvos/Russian.java':Path('app/src/io/tvos/Russian.java').read_text(),
   'io/tvos/TmdbMetadata.java':Path('app/src/io/tvos/TmdbMetadata.java').read_text(),
  }

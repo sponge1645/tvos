@@ -318,7 +318,7 @@ public class SettingsActivity extends Activity {
                 JSONArray notices = state.optJSONArray("notices");
                 if (wasBusy && !nowBusy && notices != null && notices.length() > 0) {
                     JSONObject newest = notices.optJSONObject(0);
-                    if (newest != null) announceForAccessibility(newest.optString("text"));
+                    if (newest != null) announceForAccessibility(NoticeText.render(newest));
                 }
                 wasBusy = nowBusy;
                 invalidate();
@@ -1139,7 +1139,7 @@ public class SettingsActivity extends Activity {
             for (int i = 0; notices != null && i < notices.length() && shown < 2; i++) {
                 JSONObject o = notices.optJSONObject(i);
                 if (o == null) continue;
-                String line = ago(o.optLong("at")) + " · " + AppLanguage.current().legacyText(o.optString("text"));
+                String line = ago(o.optLong("at")) + " · " + NoticeText.render(o);
                 c.drawText(TextUtils.ellipsize(line, notice, 790 * k, TextUtils.TruncateAt.END).toString(), x, y + (42 + 38 * shown) * k, notice);
                 shown++;
             }

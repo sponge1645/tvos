@@ -48,8 +48,7 @@ static String quantity(int id,int n){return quantity(id,AppLanguage.current(),n)
 static String quantity(int id,AppLanguage language,int n){return quantity(id,language==AppLanguage.RUSSIAN,n);}
 }'''
  return {'io/tvos/R.java':r,'io/tvos/AppStrings.java':getter,
-         'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text(),
-         'io/tvos/Russian.java':Path('app/src/io/tvos/Russian.java').read_text()}
+         'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text()}
 
 def write(root, package=True):
  for name,text in sources().items():

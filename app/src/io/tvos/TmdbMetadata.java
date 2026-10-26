@@ -104,6 +104,19 @@ final class TmdbMetadata {
         return country.isEmpty() ? year : year.isEmpty() ? country : year + " · " + country;
     }
 
+    private static String genreText(String name) {
+        switch (name) {
+            case "Action & Adventure": return AppStrings.get(R.string.runtime_action_adventure);
+            case "Sci-Fi & Fantasy": return AppStrings.get(R.string.runtime_sci_fi_fantasy);
+            case "War & Politics": return AppStrings.get(R.string.runtime_war_politics);
+            case "Kids": return AppStrings.get(R.string.runtime_kids);
+            case "News": return AppStrings.get(R.string.runtime_news);
+            case "Soap": return AppStrings.get(R.string.runtime_soap);
+            case "Talk": return AppStrings.get(R.string.runtime_talk);
+            default: return name;
+        }
+    }
+
     private static String bestBackdrop(JSONObject images) {
         JSONArray list = images == null ? null : images.optJSONArray("backdrops");
         String best = null;
@@ -142,7 +155,7 @@ final class TmdbMetadata {
         if (p.kind.equals("tv")) parts.add(AppStrings.get(R.string.runtime_series));
         if (genres != null && genres.length() > 0) {
             String name = genres.getJSONObject(0).optString("name");
-            parts.add(AppLanguage.current().legacyText(name));
+            parts.add(genreText(name));
         }
         if (p.kind.equals("movie")) {
             p.movieOrigin = movieOrigin(o, p.movieOrigin);

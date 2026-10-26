@@ -53,6 +53,4 @@ enum AppLanguage {
         return codes;
     }
 
-    /** Resolves known external/older messages and genre names; translated copy is stored in XML. */
-    String legacyText(String english) { return this == RUSSIAN ? Russian.text(english) : english; }
 }

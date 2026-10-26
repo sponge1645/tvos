@@ -208,7 +208,7 @@ final class HomeMode {
             Set<String> owners = wifiOwners(adb);
             boolean setupHome = setupIsHome(adb);
             if ((setupHome && owners.contains(GOOGLE_SETUP)) || owners.contains(packageOf(home))) {
-                throw new IOException(AppStrings.get(R.string.runtime_the_tv_s_first_setup_saved_the_wi_fi_and_turning_it_off_would_era));
+                throw new ResourceFailure(R.string.runtime_the_tv_s_first_setup_saved_the_wi_fi_and_turning_it_off_would_era);
             }
             if (metrics(latest, ORIGINAL) == null && !home.isEmpty()) {
                 busy(c, AppStrings.get(R.string.runtime_measuring_the_original_home_screen));
@@ -218,7 +218,7 @@ final class HomeMode {
             busy(c, AppStrings.get(R.string.runtime_switching_the_home_screen_and_screensaver));
             Watchdog.clear(c);
             check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
-                    AppStrings.get(R.string.runtime_android_didn_t_accept_the_new_home_screen));
+                    R.string.runtime_android_didn_t_accept_the_new_home_screen);
             adb.shell("settings put secure screensaver_components " + DREAM);
             JSONObject started = state(c);
             started.put("mode", FREE).put("homeReverted", false).put("setupHome", setupHome);
@@ -252,14 +252,14 @@ final class HomeMode {
                     AppLog.w("remote buttons service: " + e.getMessage());
                 }
             }
-            notice(c, String.format(Ui.locale(), AppStrings.get(R.string.runtime_mode_enabled), disabled.size()));
+            notice(c, R.string.runtime_mode_enabled, disabled.size());
             busy(c, AppStrings.get(R.string.runtime_measuring_tvos));
             measureHomeTime(c, adb, FREE);
             done(c, null);
             adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             ModeJob.schedule(c, ModeJob.MEMORY, FREE, 120_000);
         } catch (Exception e) {
-            done(c, AppStrings.get(R.string.runtime_couldn_t_turn_on_tvos) + AppLanguage.current().legacyText(e.getMessage() == null ? "" : e.getMessage()));
+            doneError(c, R.string.runtime_couldn_t_turn_on_tvos, e);
         }
     }
 
@@ -296,12 +296,11 @@ final class HomeMode {
                     .put("disabled", new JSONArray(failed));
             save(c, s);
             if (failed.isEmpty() && homeOk) {
-                notice(c, AppStrings.get(R.string.runtime_original_mode_the_factory_home_screen_screensaver_and_apps_are_ba));
+                notice(c, R.string.runtime_original_mode_the_factory_home_screen_screensaver_and_apps_are_ba);
             } else {
-                List<String> problems = new ArrayList<>(failed);
-                if (!homeOk) problems.add(AppStrings.get(R.string.runtime_the_original_home_screen));
-                notice(c, AppStrings.get(R.string.runtime_original_mode_but_i_couldn_t_turn_back_on)
-                        + String.join(", ", problems) + ".");
+                List<Object> problems = new ArrayList<>(failed);
+                if (!homeOk) problems.add(NoticeText.message(R.string.runtime_the_original_home_screen));
+                notice(c, R.string.runtime_original_mode_but_i_couldn_t_turn_back_on, NoticeText.join(problems, ", ", "."));
             }
             busy(c, AppStrings.get(R.string.runtime_measuring_the_original_home_screen));
             measureHomeTime(c, adb, ORIGINAL);
@@ -309,7 +308,7 @@ final class HomeMode {
             adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             ModeJob.schedule(c, ModeJob.MEMORY, ORIGINAL, 120_000);
         } catch (Exception e) {
-            done(c, AppStrings.get(R.string.runtime_couldn_t_go_back_to_the_original) + AppLanguage.current().legacyText(e.getMessage() == null ? "" : e.getMessage()));
+            doneError(c, R.string.runtime_couldn_t_go_back_to_the_original, e);
         }
     }
 
@@ -347,7 +346,7 @@ final class HomeMode {
                 restoreScreensaver(adb, s);
                 s.put("homeReverted", true).put("disabled", kept);
                 save(app, s);
-                notice(app, AppStrings.get(R.string.runtime_tvos_s_home_screen_crashed_3_times_in_a_row_i_switched_back_to_th));
+                notice(app, R.string.runtime_tvos_s_home_screen_crashed_3_times_in_a_row_i_switched_back_to_th);
                 adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             } catch (Exception e) {
                 AppLog.w("could not give the home screen back: " + e.getMessage());
@@ -371,7 +370,7 @@ final class HomeMode {
                 save(app, s);
             } catch (JSONException ignored) {}
             if (!FREE.equals(s.optString("mode"))) return;
-            List<String> fixed = new ArrayList<>();
+            List<Object> fixed = new ArrayList<>();
             try (Adb adb = Adb.connect(app, 10_000, null)) {
                 Set<String> present = packages(adb, "");
                 Set<String> disabledNow = packages(adb, "-d");
@@ -399,24 +398,25 @@ final class HomeMode {
                 }
                 if (!reverted && !homeHolder(adb).contains(PKG)) {
                     adb.shell("cmd package set-home-activity " + HOME_ACTIVITY);
-                    fixed.add(AppStrings.get(R.string.runtime_the_home_screen));
+                    fixed.add(NoticeText.message(R.string.runtime_the_home_screen));
                 }
                 if (!reverted && !adb.shell("settings get secure screensaver_components").contains(DREAM)) {
                     adb.shell("settings put secure screensaver_components " + DREAM);
-                    fixed.add(AppStrings.get(R.string.runtime_the_screensaver));
+                    fixed.add(NoticeText.message(R.string.runtime_the_screensaver));
                 }
                 JSONObject latest = state(app);
                 latest.put("disabled", new JSONArray(sorted(disabled)));
                 save(app, latest);
             } catch (Exception e) {
-                notice(app, AppStrings.get(R.string.runtime_couldn_t_check_tvos) + AppLanguage.current().legacyText(e.getMessage() == null ? "" : e.getMessage()));
+                noticeError(app, R.string.runtime_couldn_t_check_tvos, e);
                 return;
             }
             if (!fixed.isEmpty()) {
-                notice(app, (updated ? AppStrings.get(R.string.runtime_the_tv_update_turned_back_on)
-                        : AppStrings.get(R.string.runtime_turned_off_what_was_missing)) + String.join(", ", fixed) + ".");
+                try {
+                    notice(app, updated ? R.string.runtime_the_tv_update_turned_back_on : R.string.runtime_turned_off_what_was_missing, NoticeText.join(fixed, ", ", "."));
+                } catch(JSONException e) { AppLog.w("notice list encoding failed"); }
             } else if (updated) {
-                notice(app, AppStrings.get(R.string.runtime_the_tv_was_updated_tvos_is_still_on));
+                notice(app, R.string.runtime_the_tv_was_updated_tvos_is_still_on);
             }
         }
     }
@@ -549,8 +549,8 @@ final class HomeMode {
         return adb;
     }
 
-    private static void check(String output, String expected, String error) throws IOException {
-        if (!output.contains(expected)) throw new IOException(error + " (" + output.trim() + ")");
+    private static void check(String output, String expected, int error) throws IOException {
+        if (!output.contains(expected)) throw new ResourceFailure(error, output.trim());
     }
 
     // MARK: - Measurements (without opening apps: memory and the home button)
@@ -629,7 +629,9 @@ final class HomeMode {
                     if (n < 0) break;
                     read += n;
                 }
-                return new JSONObject(new String(data, 0, read, StandardCharsets.UTF_8));
+                JSONObject parsed = new JSONObject(new String(data, 0, read, StandardCharsets.UTF_8));
+                NoticeText.migrate(parsed.optJSONArray("notices"));
+                return parsed;
             } catch (IOException | JSONException e) {
                 return defaults();
             }
@@ -677,14 +679,45 @@ final class HomeMode {
     }
 
     /** A notice for the home screen (a bubble) and the settings screen. Keeps the last 20. */
+    private static void doneError(Context c,int resource,Throwable failure) {
+        JSONObject state=state(c);state.remove("busy");
+        try {
+            JSONObject payload=NoticeText.message(resource,NoticeText.error(failure));
+            JSONObject record=new JSONObject().put("message",payload);
+            String error=NoticeText.render(record);
+            state.put("error",error);save(c,state);writeNotice(c,error,payload);
+        }catch(JSONException e){AppLog.w("notice encoding failed");}
+    }
+
+    private static void noticeError(Context c,int resource,Throwable failure) {
+        try { notice(c,resource,NoticeText.error(failure)); }
+        catch(JSONException e) { notice(c,AppStrings.get(resource)+(failure.getMessage()==null?"":failure.getMessage())); }
+    }
+
+    static void notice(Context c,int resource,Object... args) {
+        try {
+            JSONObject payload=NoticeText.message(resource,args);
+            JSONObject record=new JSONObject().put("message",payload);
+            String text=NoticeText.render(record);
+            writeNotice(c,text,payload);
+        }catch(JSONException e){AppLog.w("notice encoding failed");}
+    }
+
     static void notice(Context c, String text) {
+        writeNotice(c,text,null);
+    }
+
+    private static void writeNotice(Context c,String text,JSONObject payload) {
         AppLog.w("notice: " + text);
         JSONObject s = state(c);
         JSONArray old = s.optJSONArray("notices");
         JSONArray list = new JSONArray();
         try {
-            list.put(new JSONObject().put("at", System.currentTimeMillis()).put("text", text));
+            JSONObject entry=new JSONObject().put("at",System.currentTimeMillis()).put("text",text);
+            if(payload!=null)entry.put("message",payload);
+            list.put(entry);
             if (old != null) for (int i = 0; i < old.length() && list.length() < 20; i++) list.put(old.get(i));
+            NoticeText.migrate(list);
             s.put("notices", list);
         } catch (JSONException ignored) {}
         save(c, s);

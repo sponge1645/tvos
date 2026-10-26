@@ -13,7 +13,7 @@ header='''package io.tvos;
 public class SettingsTransitionHarness {
  static final int '''+constants+''';
  static final int PICK_CITY=0,PICK_VPN=-1;static final long MENU_TRANSITION_MS=280;
- static class Ui {static boolean ru;static java.util.Locale locale(){return ru?new java.util.Locale("ru","RU"):java.util.Locale.US;}static String tr(String p,String e){return ru?Russian.text(e):e;}}
+ static class Ui {static boolean ru;static java.util.Locale locale(){return ru?new java.util.Locale("ru","RU"):java.util.Locale.US;}}
  String tr(String r,String e){return Ui.ru?r:e;}
  int screen=MAIN,focus,drawnScreen=-1,transitionFrom=-1,updatePopup,settingsGroup=GENERAL,pickFor;
  long transitionStarted,focusReadyAt;boolean reduceMotion;

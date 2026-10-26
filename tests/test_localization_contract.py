@@ -14,17 +14,6 @@ for p in Path('app/src/io/tvos').glob('*.java'):
 ui=Path('app/src/io/tvos/Ui.java').read_text()
 assert 'static String tr(' not in ui
 assert 'volatile boolean' not in ui
-harness='''package io.tvos;public class MessageCompatibilityHarness {
- static void check(boolean ok){if(!ok)throw new AssertionError();}
- public static void main(String[] args){
- AppLanguage.select("ru");
- check(AppLanguage.current().legacyText("Settings").equals("Настройки"));
- check(AppLanguage.current().legacyText("Couldn't check tvOS: debugging is off on the TV (port 5555 closed)").equals("Не удалось проверить tvOS: отладка на телевизоре выключена (порт 5555 закрыт)"));
- check(AppLanguage.current().legacyText("unknown provider detail").equals("unknown provider detail"));
- AppLanguage.select("en");check(AppLanguage.current().legacyText("Settings").equals("Settings"));
- System.out.println("PASS: deleted shim guard, XML-only translated copy and older ADB/notice decoding");
- }}'''
-with tempfile.TemporaryDirectory() as tmp:
- root=Path(tmp);write(root);(root/'MessageCompatibilityHarness.java').write_text(harness)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
- subprocess.run(['java','-cp',tmp,'io.tvos.MessageCompatibilityHarness'],check=True)
+assert not Path('app/src/io/tvos/Russian.java').exists()
+assert 'legacyText(' not in Path('app/src/io/tvos/AppLanguage.java').read_text()
+print('PASS: localization contracts, removed shims and historical decoder')

@@ -72,7 +72,7 @@ final class Adb implements Closeable {
             s.connect(new InetSocketAddress("127.0.0.1", 5555), 3000);
         } catch (IOException e) {
             s.close();
-            throw new IOException("debugging is off on the TV (port 5555 closed)");
+            throw new ResourceFailure(R.string.runtime_debugging_is_off_on_the_tv_port_5555_closed);
         }
         Adb adb;
         try {
@@ -90,14 +90,14 @@ final class Adb implements Closeable {
                 try {
                     m = adb.read();
                 } catch (SocketTimeoutException e) {
-                    throw new IOException(offeredKey ? "debugging permission wasn't accepted on the TV" : "the TV's ADB didn't respond");
+                    throw new ResourceFailure(offeredKey ? R.string.runtime_debugging_permission_wasn_t_accepted_on_the_tv : R.string.runtime_the_tv_s_adb_didn_t_respond);
                 }
                 if (m.command == CNXN) {
                     s.setSoTimeout(20_000);
                     return adb;
                 }
-                if (m.command == STLS) throw new IOException("the TV asked for TLS (wireless debugging); use USB debugging");
-                if (m.command != AUTH || m.arg0 != AUTH_TOKEN) throw new IOException("unexpected reply from ADB");
+                if (m.command == STLS) throw new ResourceFailure(R.string.runtime_the_tv_asked_for_tls_wireless_debugging_use_usb_debugging);
+                if (m.command != AUTH || m.arg0 != AUTH_TOKEN) throw new ResourceFailure(R.string.runtime_unexpected_reply_from_adb);
                 if (!signed) {
                     adb.send(AUTH, AUTH_SIGNATURE, 0, sign(keys.getPrivate(), m.data));
                     signed = true;
@@ -108,7 +108,7 @@ final class Adb implements Closeable {
                     if (approval != null) approval.waiting();
                     s.setSoTimeout(approvalMs);
                 } else {
-                    throw new IOException("the TV rejected the app's key");
+                    throw new ResourceFailure(R.string.runtime_the_tv_rejected_the_app_s_key);
                 }
             }
         } catch (IOException | RuntimeException e) {
@@ -132,7 +132,7 @@ final class Adb implements Closeable {
                 result.write(m.data);
                 send(OKAY, local, m.arg0, null);
             } else if (m.command == CLSE) {
-                if (remote == 0 && m.arg0 == 0) throw new IOException("ADB refused the command");
+                if (remote == 0 && m.arg0 == 0) throw new ResourceFailure(R.string.runtime_adb_refused_the_command);
                 send(CLSE, local, m.arg0, null);
                 return result.toString("UTF-8");
             }
@@ -154,8 +154,8 @@ final class Adb implements Closeable {
         int length = b.getInt();
         b.getInt(); // checksum (newer adbd doesn't check it)
         int magic = b.getInt();
-        if ((m.command ^ 0xffffffff) != magic) throw new IOException("invalid ADB message");
-        if (length < 0 || length > 1024 * 1024) throw new IOException("ADB message too large");
+        if ((m.command ^ 0xffffffff) != magic) throw new ResourceFailure(R.string.runtime_invalid_adb_message);
+        if (length < 0 || length > 1024 * 1024) throw new ResourceFailure(R.string.runtime_adb_message_too_large);
         m.data = new byte[length];
         in.readFully(m.data);
         return m;

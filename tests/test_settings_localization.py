@@ -51,7 +51,9 @@ tests='''
    copy=h.popup();check(copy[0][1].length()==44&&copy[0][2].equals("STUVWXYZ"),"error wrapping unchanged");
    h.updatePopup=1;copy=h.popup();check(copy[0][1].equals("1.1")&&copy[1][0].equals("OK"),"installed version and OK");
    for(int days:new int[]{2,5,11,21,22,25,111,112,114}){
-    String old=days+" days ago";String expected=russian?Russian.text(old):old;
+    String[] forms={"дня","дней","дней","день","дня","дней","дней","дней","дней"};
+    int at=java.util.Arrays.binarySearch(new int[]{2,5,11,21,22,25,111,112,114},days);
+    String expected=days+(russian?" "+forms[at]+" назад":" days ago");
     check(ago(System.currentTimeMillis()-days*86400000L-60000).equals(expected),"plural day age: "+days);
    }
    check(ago(System.currentTimeMillis()-180000).equals(russian?"3 мин назад":"3 min ago"),"minute age");
