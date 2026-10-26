@@ -29,7 +29,7 @@ final class ScreensaverWeather {
         padding = 10 * density; // Expanded below to include the actual blurred alpha bounds.
 
         Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
-        text.setTypeface(Ui.semibold);
+        text.setTypeface(Ui.displayMedium);
         text.setTextSize(textSize); // exactly the location label's 24 sp
         text.setColor(0xEBFFFFFF);
         text.setShadowLayer(8 * density, 0, 2 * density, 0xE6000000);
