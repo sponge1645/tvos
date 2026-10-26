@@ -598,7 +598,7 @@ final class Recs {
     // MARK: - TMDB
 
     private boolean fetchList(int p, String language) throws IOException, org.json.JSONException {
-        String apiLanguage = "ru".equals(language) ? "ru-RU" : "en-US";
+        String apiLanguage = AppLanguage.from(language).apiTag;
         // Popularity is TMDB's global popularity score, filtered by Russian release context.
         // It is NOT a measurement of viewing figures in Russia.
         List<Pick> popular = new ArrayList<>();
@@ -801,12 +801,7 @@ final class Recs {
     }
 
     /** Language of titles and genres; the services come from the region. */
-    private static String lang() {
-        if (Ui.ru) return "ru-RU";
-        if (Ui.es) return "ES".equals(java.util.Locale.getDefault().getCountry()) ? "es-ES" : "es-MX";
-        if (Ui.de) return "de-DE";   // TMDB's de-AT and de-CH have few translations of their own
-        return Ui.en ? "en-US" : "pt-BR";
-    }
+    private static String lang() { return AppLanguage.current().apiTag; }
 
     private static void alternate(List<Pick> out, java.util.Set<String> seen, List<Pick> a, List<Pick> b, int max) {
         for (int i = 0; i < Math.max(a.size(), b.size()) && out.size() < max; i++) {

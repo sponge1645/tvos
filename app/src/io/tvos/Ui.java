@@ -24,10 +24,10 @@ final class Ui {
 
     /** Android 9 to 11: older TVs and boxes, whose GPUs need the cheaper drawing paths (Shadows, rounded images). */
     static final boolean LEGACY = Build.VERSION.SDK_INT < 31;
-    static final Locale RU = new Locale("ru", "RU");
     /** Legacy flags kept for compatibility with existing views; only Russian and English are selectable. */
-    static volatile String language = language();
-    static volatile boolean en = "en".equals(language), ru = "ru".equals(language), es = false, de = false;
+    static volatile String language = AppLanguage.select(Prefs.language()).code;
+    static volatile boolean en = AppLanguage.current() == AppLanguage.ENGLISH,
+            ru = AppLanguage.current() == AppLanguage.RUSSIAN, es = false, de = false;
     static Typeface thin, light, displayMedium, displaySemibold, displayBold, displayRegular, regular, medium, semibold;
     private static boolean loaded;
     private static final Rect BOUNDS = new Rect();
@@ -54,12 +54,11 @@ final class Ui {
         catch (RuntimeException e) { return Typeface.create(Typeface.DEFAULT, weight, false); }
     }
 
-    private static String language() { return Prefs.language(); }
-
     static void applyLanguage() {
-        language = language();
-        en = "en".equals(language);
-        ru = "ru".equals(language);
+        AppLanguage selected = AppLanguage.select(Prefs.language());
+        language = selected.code;
+        en = selected == AppLanguage.ENGLISH;
+        ru = selected == AppLanguage.RUSSIAN;
         es = false;
         de = false;
     }
@@ -110,13 +109,13 @@ final class Ui {
         return Math.max(0, Math.min(1, v));
     }
 
-    static String tr(String unused, String english) { return ru ? Russian.text(english) : english; }
+    static String tr(String unused, String english) { return AppLanguage.current().legacyText(english); }
 
     static String tr(String unused, String english, String unusedSpanish) {
-        return ru ? Russian.text(english) : english;
+        return AppLanguage.current().legacyText(english);
     }
 
-    static Locale locale() { return ru ? RU : Locale.US; }
+    static Locale locale() { return AppLanguage.current().locale; }
 
     /** Clock format chosen in tvOS settings, independent of the system setting. */
     static String clock(long now) {
@@ -147,11 +146,10 @@ final class Ui {
         }
     }
 
-    /** "domingo, 18 de outubro" (lowercase, like the iPhone in Portuguese); "Sunday, October 18" in English; "Sonntag, 18. Oktober". */
+    /** Full date uses the selected language's pattern and locale, independent of Android. */
     static String date(long now) {
-        return ru ? new SimpleDateFormat("EEEE, d MMMM", locale()).format(new Date(now))
-                : en ? new SimpleDateFormat("EEEE, MMMM d", Locale.US).format(new Date(now))
-                : new SimpleDateFormat(de ? "EEEE, d. MMMM" : "EEEE, d 'de' MMMM", locale()).format(new Date(now));
+        AppLanguage selected = AppLanguage.current();
+        return new SimpleDateFormat(selected.datePattern, selected.locale).format(new Date(now));
     }
 
     /** Spinning arc (work in progress). */

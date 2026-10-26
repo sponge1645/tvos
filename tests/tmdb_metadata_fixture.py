@@ -35,9 +35,10 @@ def files():
   'io/tvos/Recs.java':'package io.tvos;final class Recs {\n'+block(source,'    static final class Pick {')+'\n}',
   'io/tvos/Ui.java':'''package io.tvos;final class Ui {
    static String language="en";static boolean ru,en=true,de,es;
-   static void language(String s){language=s;ru=s.equals("ru");en=s.equals("en");de=s.equals("de");es=s.equals("es");}
+   static void language(String s){AppLanguage.select(s);language=s;ru=s.equals("ru");en=s.equals("en");de=s.equals("de");es=s.equals("es");}
    static String tr(String pt,String english){return ru?Russian.text(english):en?english:pt;}
   }''',
+  'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text(),
   'io/tvos/Russian.java':Path('app/src/io/tvos/Russian.java').read_text(),
   'io/tvos/TmdbMetadata.java':Path('app/src/io/tvos/TmdbMetadata.java').read_text(),
  }

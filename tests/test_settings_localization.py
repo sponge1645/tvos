@@ -30,7 +30,7 @@ tests='''
   LocalizedSettingsHarness h=new LocalizedSettingsHarness();
   Locale.setDefault(Locale.GERMAN); // app language must override the process locale.
   for(boolean russian:new boolean[]{false,true}){
-   Ui.ru=russian;
+   Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
    check(h.onOff(true).equals(russian?"Вкл.":"On"),"enabled value");
    check(h.menuButtonLabel(5).equals(russian?"Сеть":"Network"),"network reorder label");
    check(h.categoryLabel(4).equals(russian?"Случайный фильм":"Random Movie"),"category label");

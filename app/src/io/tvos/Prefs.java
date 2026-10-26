@@ -51,10 +51,10 @@ final class Prefs {
 
     // MARK: - Language and units
 
-    /** tvOS supports only Russian and English. Older saved choices fall back to English. */
+    /** Supported codes and fallback behavior come from the shared language catalog. */
     static String language() {
         String v = app == null ? Config.LANGUAGE : sp().getString("language", Config.LANGUAGE);
-        return v != null && v.trim().toLowerCase(Locale.ROOT).startsWith("ru") ? "ru" : "en";
+        return AppLanguage.from(v).code;
     }
 
     static void setLanguage(String v) {

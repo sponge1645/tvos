@@ -36,19 +36,19 @@ tests='''
   h.focus=3;h.stepRowFocus(.016f,700);check(h.pop[3].target==0,"read-only About rows stay unhighlighted");
   h.screen=GENERAL;h.focus=2;h.reduceMotion=true;h.syncMenuTransition(800);h.stepRowFocus(.016f,800);
   check(h.transitionFrom==-1 && h.pop[2].value==1,"Reduce Motion skips page delay and focus animation");
-  Ui.ru=false;check(h.keyLabels()[0].equals("Netflix Button"),"remote buttons capitalized in English");
-  Ui.ru=true;check(h.keyLabels()[0].equals("Кнопка Netflix"),"capitalized keys keep Russian translation");
-  h.screen=ABOUT;Ui.ru=false;check(h.screenTitle().equals("About"),"About heading matches menu");
+  Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.keyLabels()[0].equals("Netflix Button"),"remote buttons capitalized in English");
+  Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.keyLabels()[0].equals("Кнопка Netflix"),"capitalized keys keep Russian translation");
+  h.screen=ABOUT;Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.screenTitle().equals("About"),"About heading matches menu");
   h.screen=SCREENSAVER;check(h.screenTitle().equals("Screen Saver"),"Screen Saver heading matches menu");
   h.screen=HOME_CHOICE;check(h.screenTitle().equals("Default Launcher"),"launcher heading matches accessibility entry");
   java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
   long at=new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse("2026-10-24 07:18:10").getTime();
-  check(formatLastUpdateCheck(at,false).equals("Last check: October 24, 2026 at 07:18:10"),"English requested date and time format");
-  check(formatLastUpdateCheck(at,true).equals("Последняя проверка: 24 октября 2026 г. в 07:18:10"),"Russian localized date and time");
-  check(formatLastUpdateCheck(0,false).equals("Last check: Never"),"never checked is explicit");
-  check(!formatLastUpdateCheck(at+1000,false).equals(formatLastUpdateCheck(at,false)),"timestamp comes from data, not example text");
+  check(formatLastUpdateCheck(at,AppLanguage.ENGLISH).equals("Last check: October 24, 2026 at 07:18:10"),"English requested date and time format");
+  check(formatLastUpdateCheck(at,AppLanguage.RUSSIAN).equals("Последняя проверка: 24 октября 2026 г. в 07:18:10"),"Russian localized date and time");
+  check(formatLastUpdateCheck(0,AppLanguage.ENGLISH).equals("Last check: Never"),"never checked is explicit");
+  check(!formatLastUpdateCheck(at+1000,AppLanguage.ENGLISH).equals(formatLastUpdateCheck(at,AppLanguage.ENGLISH)),"timestamp comes from data, not example text");
   java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("GMT+03:00"));
-  check(formatLastUpdateCheck(at,false).endsWith("10:18:10"),"TV timezone used");
+  check(formatLastUpdateCheck(at,AppLanguage.ENGLISH).endsWith("10:18:10"),"TV timezone used");
   System.out.println("PASS: delayed soft focus, inherited selection reset, rapid navigation, Reduce Motion, real localized last check");
  }
 }'''

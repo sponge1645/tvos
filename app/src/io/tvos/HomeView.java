@@ -52,6 +52,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -113,7 +114,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float L_DATE_BASE = 330, L_CLOCK_BASE = 540, L_WEATHER_BASE = 626, L_QUOTES_BASE = 694;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73, L_FAINT = 0xFF8E8E93;
     // Prepared once per supported language; the drawing path never builds a label array.
-    private static String[] tabsRu, tabsEn;
+    private static final EnumMap<AppLanguage, String[]> tabLabels = new EnumMap<>(AppLanguage.class);
     private static final String[] TAB_KIND = {null, "movie", "detective", "tv"};
     private static final int Z_TOP = 4, Z_CARDS = 5;
 
@@ -292,7 +293,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             dockLift.target = 1;
             dockAnimating = true;
             playDockEditClick();
-            showToast(AppStrings.get(R.string.home_dock_edit_hint, Ui.ru));
+            showToast(AppStrings.get(R.string.home_dock_edit_hint));
             tilesDirty = true;
             wake();
         }
@@ -587,10 +588,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** The three corner buttons, with their names in the current language. */
     private void makeLightButtons() {
         lightButtons.clear();
-        lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "search", AppStrings.get(R.string.home_search, Ui.ru), "search"));
-        lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "live", AppStrings.get(R.string.home_live_tv, Ui.ru), "live_tv"));
+        lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "search", AppStrings.get(R.string.home_search), "search"));
+        lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "live", AppStrings.get(R.string.home_live_tv), "live_tv"));
         lightButtons.add(HomeApps.action(HomeApps.INPUTS, "vpn", "VPN", "vpn"));
-        lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", AppStrings.get(R.string.home_settings, Ui.ru), "settings"));
+        lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", AppStrings.get(R.string.home_settings), "settings"));
     }
 
     private boolean topButtonEnabled(int index) { return Prefs.topButtonEnabled(index); }
@@ -645,11 +646,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private static String[] tabs() {
-        boolean russian = Ui.ru;
-        String[] labels = russian ? tabsRu : tabsEn;
+        AppLanguage language = AppLanguage.current();
+        String[] labels = tabLabels.get(language);
         if (labels == null) {
-            labels = new String[] {AppStrings.get(R.string.home_tab_new, russian), AppStrings.get(R.string.home_tab_movies, russian), AppStrings.get(R.string.home_tab_detectives, russian), AppStrings.get(R.string.home_tab_shows, russian), "🎲"};
-            if (russian) tabsRu = labels; else tabsEn = labels;
+            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), AppStrings.get(R.string.home_tab_detectives, language), AppStrings.get(R.string.home_tab_shows, language), "🎲"};
+            tabLabels.put(language, labels);
         }
         return labels;
     }
@@ -1724,8 +1725,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         hourTemp.setColor(drawerInk(0.95f));
         pricePaint.setColor(drawerInk(0.95f));
         float titleBase = ROW_TITLE * k;
-        if (drawerInputs > 0) c.drawText(AppStrings.get(R.string.home_inputs, Ui.ru), drawerRects[0].left + 4 * k, titleBase, rowTitle);
-        if (drawerInputs < drawerItems.size()) c.drawText(AppStrings.get(R.string.home_shortcuts, Ui.ru), drawerRects[drawerInputs].left + 4 * k, titleBase, rowTitle);
+        if (drawerInputs > 0) c.drawText(AppStrings.get(R.string.home_inputs), drawerRects[0].left + 4 * k, titleBase, rowTitle);
+        if (drawerInputs < drawerItems.size()) c.drawText(AppStrings.get(R.string.home_shortcuts), drawerRects[drawerInputs].left + 4 * k, titleBase, rowTitle);
         int top = -1;
         for (int i = 0; i < drawerItems.size(); i++) if (drawerFocus[i].value > 0.02f && (top < 0 || drawerFocus[i].value > drawerFocus[top].value)) top = i;
         for (int i = 0; i < drawerItems.size(); i++) if (i != top) drawDrawerTile(c, i);
@@ -1781,7 +1782,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.drawText(weatherTitle, x, r.top + 54 * k, cardTitle);
         HomeData.Weather wx = textWeather;
         if (Double.isNaN(wx.temp)) {
-            c.drawText(AppStrings.get(R.string.home_no_weather_data_right_now, Ui.ru), x, r.top + 120 * k, cardDim);
+            c.drawText(AppStrings.get(R.string.home_no_weather_data_right_now), x, r.top + 120 * k, cardDim);
             return;
         }
         String symbol = Symbols.weather(wx.code, wx.isDay);
@@ -1819,23 +1820,23 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         textLanguage = Ui.language;
         if (wx != textWeather || settings) {
             textWeather = wx;
-            weatherTitle = Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather, Ui.ru) : Prefs.city();
+            weatherTitle = Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather) : Prefs.city();
             nowTemp = HomeData.degrees(wx.temp);
-            highLow = String.format(Ui.locale(), AppStrings.get(R.string.home_weather_high_low, Ui.ru),
+            highLow = String.format(Ui.locale(), AppStrings.get(R.string.home_weather_high_low),
                     HomeData.degrees(wx.max), HomeData.degrees(wx.min));
             for (int i = 0; i < wx.hours.size() && i < 6; i++) {
                 hourText[i] = HomeData.hour(wx.hours.get(i));
                 hourTempText[i] = HomeData.degrees(wx.hourTemp.get(i));
             }
-            sunriseText = AppStrings.get(R.string.home_sunrise, Ui.ru) + Ui.time(wx.sunrise);
-            sunsetText = AppStrings.get(R.string.home_sunset, Ui.ru) + Ui.time(wx.sunset);
+            sunriseText = AppStrings.get(R.string.home_sunrise) + Ui.time(wx.sunrise);
+            sunsetText = AppStrings.get(R.string.home_sunset) + Ui.time(wx.sunset);
         }
         long minute = System.currentTimeMillis() / 60_000;
         if (data.pricesAt != textPricesAt || minute != textMinute || settings) {
             textPricesAt = data.pricesAt;
             textMinute = minute;
             String stale = HomeData.staleness(data.pricesAt, 5 * 60_000L);
-            staleText = stale.isEmpty() ? AppStrings.get(R.string.home_daily_change, Ui.ru) : stale;
+            staleText = stale.isEmpty() ? AppStrings.get(R.string.home_daily_change) : stale;
             for (int i = 0; i < HomeData.COINS.length; i++) {
                 priceText[i] = HomeData.brl(data.prices[i]);
                 changeText[i] = HomeData.change(data.changes[i]);
@@ -1899,7 +1900,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void drawPrices(Canvas c, RectF r) {
         float x = r.left + 34 * k, right = r.right - 34 * k;
         refreshDrawerText();
-        c.drawText(AppStrings.get(R.string.home_crypto, Ui.ru), x, r.top + 54 * k, cardTitle);
+        c.drawText(AppStrings.get(R.string.home_crypto), x, r.top + 54 * k, cardTitle);
         c.drawText(staleText, right, r.top + 54 * k, cardDimRight);
         float cap = Ui.cap(cardText);
         int[] coins = HomeData.active();
@@ -2006,7 +2007,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void drawSheet(Canvas c) {
         c.drawColor(0xA8000000);
         float shift = scroll.value * GRID_ROW * k;
-        c.drawText(AppStrings.get(R.string.home_all_apps, Ui.ru), w / 2f, 124 * k - shift, sheetTitle);
+        c.drawText(AppStrings.get(R.string.home_all_apps), w / 2f, 124 * k - shift, sheetTitle);
         int n = others.size();
         if (gridLabels == null || gridLabels.length != n) {
             gridLabels = new String[n];
@@ -2539,11 +2540,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (it.kind == HomeApps.INPUTS && "vpn".equals(it.key)) {
             String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
-            if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app, Ui.ru)); return; }
+            if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app)); return; }
             Intent launch = HomeApps.launchIntent(activity.getPackageManager(), pkg);
-            if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found, Ui.ru)); return; }
+            if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found)); return; }
             if (!AppLaunch.start(activity, launch, "VPN launch"))
-                showToast(AppStrings.get(R.string.home_could_not_open_vpn, Ui.ru));
+                showToast(AppStrings.get(R.string.home_could_not_open_vpn));
             return;
         }
         if (it.kind == HomeApps.INPUTS) {
@@ -2559,7 +2560,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         boolean opened = HomeApps.open(activity, it, this, Math.round(r.left), Math.round(r.top),
                 Math.round(r.width()), Math.round(r.height()));
-        if (!opened) showToast(AppStrings.get(R.string.home_open_error_prefix, Ui.ru) + it.label + ".");
+        if (!opened) showToast(AppStrings.get(R.string.home_open_error_prefix) + it.label + ".");
     }
 
     /** The exact same wallpaper-aware liquid material used by the app Dock and top-right buttons. */
@@ -2690,7 +2691,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         input.setHintTextColor(night > 0.5f ? 0xAABBBBBB : 0xFF777777);
         input.setTextSize(21);
         input.setCompoundDrawablePadding(pad / 2);
-        input.setHint(AppStrings.get(R.string.home_search_movies_and_series, Ui.ru));
+        input.setHint(AppStrings.get(R.string.home_search_movies_and_series));
         input.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         panel.addView(input, new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2873,7 +2874,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv"));
         apps.keySet().retainAll(allowed);
         if (apps.isEmpty()) {
-            showToast(AppStrings.get(R.string.home_no_launchable_apps_found, Ui.ru));
+            showToast(AppStrings.get(R.string.home_no_launchable_apps_found));
             return;
         }
         java.util.List<Map.Entry<String, String>> entries = new ArrayList<>(apps.entrySet());
@@ -2881,7 +2882,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         String[] labels = new String[entries.size()];
         for (int i = 0; i < entries.size(); i++) labels[i] = entries.get(i).getValue();
         new AlertDialog.Builder(activity)
-                .setTitle(AppStrings.get(R.string.home_open_app, Ui.ru))
+                .setTitle(AppStrings.get(R.string.home_open_app))
                 .setItems(labels, (dialog, which) -> {
                     Map.Entry<String, String> selected = entries.get(which);
                     if ("top.rootu.lampa".equals(selected.getKey())) {
@@ -2904,10 +2905,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                             search.putExtra(android.app.SearchManager.QUERY, pick.title);
                             search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                             if (!AppLaunch.start(activity, search, "Seena search"))
-                                showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search, Ui.ru));
+                                showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
                         } catch (RuntimeException e) {
                             AppLog.unexpected("Seena search preparation", e);
-                            showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search, Ui.ru));
+                            showToast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
                         }
                         return;
                     }
@@ -2921,10 +2922,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     }
                     HomeApps.Item app = HomeApps.app(selected.getKey(), selected.getValue());
                     if (!HomeApps.open(activity, app, this, 0, 0, 1, 1)) {
-                        showToast(AppStrings.get(R.string.home_couldn_t_open_app, Ui.ru));
+                        showToast(AppStrings.get(R.string.home_couldn_t_open_app));
                     }
                 })
-                .setNegativeButton(AppStrings.get(R.string.home_cancel, Ui.ru), null)
+                .setNegativeButton(AppStrings.get(R.string.home_cancel), null)
                 .show();
     }
 
@@ -2944,7 +2945,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } catch (RuntimeException e) {
             AppLog.unexpected("VK Video search preparation", e);
         }
-        showToast(AppStrings.get(R.string.home_couldn_t_open_vk_video_search, Ui.ru));
+        showToast(AppStrings.get(R.string.home_couldn_t_open_vk_video_search));
     }
 
     /** KinoPub autocomplete: exact title first; type is a preference, not a hard filter (TV shows can be tagged differently). */
@@ -2963,7 +2964,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             launchKinoPub(cached, targetPackage);
             return;
         }
-        showToast(AppStrings.get(R.string.home_searching_kinopub, Ui.ru));
+        showToast(AppStrings.get(R.string.home_searching_kinopub));
         LOADER.execute(() -> {
             int id = -1;
             // Try both TMDB's localized and original titles. KinoPub may index only one.
@@ -3052,7 +3053,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     cache.edit().putInt(cacheKey, resolved).apply();
                     launchKinoPub(resolved, targetPackage);
                 } else {
-                    showToast(AppStrings.get(R.string.home_no_exact_kinopub_match, Ui.ru));
+                    showToast(AppStrings.get(R.string.home_no_exact_kinopub_match));
                 }
             });
         });
@@ -3067,7 +3068,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         for (Intent intent : KinoPubLink.candidates(targetPackage, id)) {
             if (AppLaunch.start(activity, intent, "KinoPub card launch")) return;
         }
-        showToast(AppStrings.get(R.string.home_couldn_t_open_kinopub_card, Ui.ru));
+        showToast(AppStrings.get(R.string.home_couldn_t_open_kinopub_card));
     }
 
     // MARK: - TalkBack: every reachable item as a virtual node (Spoken). Id = group * 1000 + index + 1.
@@ -3103,13 +3104,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         switch (group) {
             case GRID:
                 if (i >= others.size()) return "";
-                return label(others, i) + ", " + (i + 1) + AppStrings.get(R.string.home_spoken_of, Ui.ru) + others.size();
+                return label(others, i) + ", " + (i + 1) + AppStrings.get(R.string.home_spoken_of) + others.size();
             case Z_TOP:
                 if (i == 10) return networkLabel();
-                if (i == 9) return AppStrings.get(R.string.home_clock_and_profile, Ui.ru);
+                if (i == 9) return AppStrings.get(R.string.home_clock_and_profile);
                 if (i >= 5) return label(lightButtons, i - 5);
-                return tabs()[i] + AppStrings.get(R.string.home_spoken_tab, Ui.ru) + Prefs.categoryPosition(i) + AppStrings.get(R.string.home_spoken_of, Ui.ru) + Prefs.categoryCount();
-            case Z_CARDS: return tab == 4 ? (AppStrings.get(R.string.home_random_movie, Ui.ru)) : i < cards.size() ? pickText(cards.get(i)) : "";
+                return tabs()[i] + AppStrings.get(R.string.home_spoken_tab) + Prefs.categoryPosition(i) + AppStrings.get(R.string.home_spoken_of) + Prefs.categoryCount();
+            case Z_CARDS: return tab == 4 ? (AppStrings.get(R.string.home_random_movie)) : i < cards.size() ? pickText(cards.get(i)) : "";
             case Z_SHELF: return label(shelf, i);
             case Z_DRAWER: return label(drawerItems, i);
             case WIDGETS: return i == 0 ? weatherText() : quotesText();
@@ -3266,27 +3267,27 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** The weather card as TalkBack reads it: what it shows, in the same words and units. */
     private String weatherText() {
-        StringBuilder s = new StringBuilder(Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather, Ui.ru) : Prefs.city());
+        StringBuilder s = new StringBuilder(Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather) : Prefs.city());
         HomeData.Weather wx = data.weather;
-        if (Double.isNaN(wx.temp)) return s.append(". ").append(AppStrings.get(R.string.home_no_weather_data_right_now, Ui.ru)).toString();
+        if (Double.isNaN(wx.temp)) return s.append(". ").append(AppStrings.get(R.string.home_no_weather_data_right_now)).toString();
         s.append(". ").append(HomeData.degrees(wx.temp)).append(", ").append(HomeData.condition(wx.code, wx.isDay))
-                .append(AppStrings.get(R.string.home_spoken_high, Ui.ru)).append(HomeData.degrees(wx.max))
-                .append(AppStrings.get(R.string.home_spoken_low, Ui.ru)).append(HomeData.degrees(wx.min)).append('.');
+                .append(AppStrings.get(R.string.home_spoken_high)).append(HomeData.degrees(wx.max))
+                .append(AppStrings.get(R.string.home_spoken_low)).append(HomeData.degrees(wx.min)).append('.');
         int hours = Math.min(6, wx.hours.size());
-        if (hours > 0) s.append(AppStrings.get(R.string.home_spoken_next_hours, Ui.ru));
+        if (hours > 0) s.append(AppStrings.get(R.string.home_spoken_next_hours));
         for (int i = 0; i < hours; i++) {
             s.append(HomeData.hour(wx.hours.get(i))).append(' ').append(HomeData.degrees(wx.hourTemp.get(i))).append(i < hours - 1 ? ", " : ".");
         }
-        if (wx.sunrise != 0) s.append(AppStrings.get(R.string.home_spoken_sunrise, Ui.ru)).append(Ui.time(wx.sunrise)).append('.');
-        if (wx.sunset != 0) s.append(AppStrings.get(R.string.home_spoken_sunset, Ui.ru)).append(Ui.time(wx.sunset)).append('.');
+        if (wx.sunrise != 0) s.append(AppStrings.get(R.string.home_spoken_sunrise)).append(Ui.time(wx.sunrise)).append('.');
+        if (wx.sunset != 0) s.append(AppStrings.get(R.string.home_spoken_sunset)).append(Ui.time(wx.sunset)).append('.');
         return s.toString();
     }
 
     /** The quotes card as TalkBack reads it: each coin with its price and 24 h change. */
     private String quotesText() {
-        StringBuilder s = new StringBuilder(AppStrings.get(R.string.home_crypto, Ui.ru));
+        StringBuilder s = new StringBuilder(AppStrings.get(R.string.home_crypto));
         String stale = HomeData.staleness(data.pricesAt, 5 * 60_000L);
-        s.append(", ").append(stale.isEmpty() ? AppStrings.get(R.string.home_daily_change, Ui.ru) : stale).append('.');
+        s.append(", ").append(stale.isEmpty() ? AppStrings.get(R.string.home_daily_change) : stale).append('.');
         for (int i : HomeData.active()) {
             s.append(' ').append(HomeData.coinName(i)).append(' ').append(HomeData.brl(data.prices[i]));
             if (!Double.isNaN(data.changes[i])) s.append(", ").append(HomeData.change(data.changes[i]));
@@ -3445,7 +3446,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void spinRoulette() {
         if (rouletteWork.spinning()) return;
         if (!rouletteWork.spin()) {
-            showToast(AppStrings.get(R.string.home_movies_loading_toast, Ui.ru));
+            showToast(AppStrings.get(R.string.home_movies_loading_toast));
             return;
         }
         zone = Z_CARDS;
@@ -3533,7 +3534,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             Paint heading = searchHeadingScratch;
             heading.set(lTabOn);
             heading.setColor(Ui.alpha(tone(L_INK, WHITE), Ui.clamp(searchHeadingOpacity.value)));
-            c.drawText((AppStrings.get(R.string.home_search_heading_prefix, Ui.ru)) + searchQuery, MARGIN * k,
+            c.drawText((AppStrings.get(R.string.home_search_heading_prefix)) + searchQuery, MARGIN * k,
                     (largePostersWithoutWidgets ? L_BUTTON_CY + 14 : L_TABBAR_TOP + 48) * k, heading);
         }
         if (tab == 4 && !searchMode) {
@@ -3601,8 +3602,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             Paint p = rouletteTextPaint;
             p.setTextSize(40.8f * k);
             p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, focus));
-            String label = rouletteWork.loading() ? (AppStrings.get(R.string.home_roulette_loading, Ui.ru))
-                    : (AppStrings.get(R.string.home_roulette_title, Ui.ru));
+            String label = rouletteWork.loading() ? (AppStrings.get(R.string.home_roulette_loading))
+                    : (AppStrings.get(R.string.home_roulette_title));
             int saved = c.save();
             c.scale(scale, scale, cx, cy);
             c.drawText(label, cx - p.measureText(label) / 2, cy + Ui.halfCap(p), p);
@@ -3732,8 +3733,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             hintText.set(lCardTitle);
             hintText.setTextSize(23 * k);
             hintText.setColor(tone(L_INK, WHITE));
-            String hintWatch = AppStrings.get(R.string.home_ok_watch, Ui.ru);
-            String hintAgain = AppStrings.get(R.string.home_right_spin_again, Ui.ru);
+            String hintWatch = AppStrings.get(R.string.home_ok_watch);
+            String hintAgain = AppStrings.get(R.string.home_right_spin_again);
             float hintPad = 24 * k;
             float hintGap = 16 * k;
             float hintH = 58 * k;
@@ -3985,11 +3986,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private String networkLabel() {
         String state = networkStatus.state() == NetworkStatus.WIFI
-                ? (AppStrings.get(R.string.home_network_wifi, Ui.ru))
+                ? (AppStrings.get(R.string.home_network_wifi))
                 : networkStatus.state() == NetworkStatus.ETHERNET
-                ? (AppStrings.get(R.string.home_network_ethernet, Ui.ru))
-                : (AppStrings.get(R.string.home_network_offline, Ui.ru));
-        return state + (AppStrings.get(R.string.home_network_action, Ui.ru));
+                ? (AppStrings.get(R.string.home_network_ethernet))
+                : (AppStrings.get(R.string.home_network_offline));
+        return state + (AppStrings.get(R.string.home_network_action));
     }
 
     private void openNetworkSettings() {
@@ -3997,7 +3998,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 android.provider.Settings.ACTION_WIFI_SETTINGS, android.provider.Settings.ACTION_SETTINGS}) {
             if (AppLaunch.start(activity, new Intent(action), "Network settings")) return;
         }
-        showToast(AppStrings.get(R.string.home_could_not_open_network_settings, Ui.ru));
+        showToast(AppStrings.get(R.string.home_could_not_open_network_settings));
     }
 
     private void drawLightButtons(Canvas c) {

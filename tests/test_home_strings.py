@@ -7,7 +7,7 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/HomeView.java').read_text()
 assert 'Ui.tr(' not in source
 assert 'TABS_RU' not in source
-fields=next(line for line in source.splitlines() if 'private static String[] tabsRu, tabsEn;' in line)
+fields=next(line for line in source.splitlines() if 'private static final EnumMap<AppLanguage, String[]> tabLabels' in line)
 methods=''.join(block(source,s) for s in [
  '    private static String[] tabs()', '    private String networkLabel()',
  '    private void refreshDrawerText()', '    private String weatherText()'
@@ -38,7 +38,7 @@ public class HomeStringsHarness {
   Locale.setDefault(Locale.FRANCE);HomeStringsHarness h=new HomeStringsHarness();
   String[] english=null,russian=null;
   for(boolean ru:new boolean[]{false,true,false,true}){
-   Ui.ru=ru;Ui.language=ru?"ru":"en";Prefs.city="";Prefs.version++;HomeData.stale="";
+   Ui.ru=ru;AppLanguage.select(Ui.ru?"ru":"en");Ui.language=ru?"ru":"en";Prefs.city="";Prefs.version++;HomeData.stale="";
    h.data.weather=new HomeData.Weather();
    String[] labels=tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Детективы","Сериалы","🎲"}:new String[]{"New","Movies","Detectives","Shows","🎲"}),"tab order/copy");
    if(ru){if(russian==null)russian=labels;else check(labels==russian,"Russian array reused after language switch");}
@@ -61,11 +61,11 @@ public class HomeStringsHarness {
    check(h.highLow.equals(ru?"Макс. 22°   Мин. 5°":"H:22°   L:5°"),"new weather snapshot refreshes text");
    Prefs.city="";fresh.temp=Double.NaN;check(h.weatherText().equals(ru?"Погода. Сейчас нет данных о погоде.":"Weather. No weather data right now."),"missing weather fallback");
 
-   check(AppStrings.get(R.string.home_movies_loading_toast,ru).equals(ru?"Загружаем фильмы…":"Loading movies…"),"toast and roulette keep their distinct Russian wording");
-   check(AppStrings.get(R.string.home_roulette_loading,ru).equals(ru?"Загрузка фильмов…":"Loading movies…"),"roulette wording");
-   check(AppStrings.get(R.string.home_roulette_title,ru).equals(ru?"🎲  Случайный фильм":"🎲  Random Movie"),"dice title keeps double space");
-   check(AppStrings.get(R.string.home_dock_edit_hint,ru).equals(ru?"← → – переместить. ОК – сохранить. Назад – отменить.":"← → – move. OK – save. Back – cancel."),"Dock hint localized");
-   check(AppStrings.get(R.string.home_spoken_of,ru).equals(ru?" из ":" of "),"spoken count separators");
+   check(AppStrings.get(R.string.home_movies_loading_toast,AppLanguage.fromRussian(ru)).equals(ru?"Загружаем фильмы…":"Loading movies…"),"toast and roulette keep their distinct Russian wording");
+   check(AppStrings.get(R.string.home_roulette_loading,AppLanguage.fromRussian(ru)).equals(ru?"Загрузка фильмов…":"Loading movies…"),"roulette wording");
+   check(AppStrings.get(R.string.home_roulette_title,AppLanguage.fromRussian(ru)).equals(ru?"🎲  Случайный фильм":"🎲  Random Movie"),"dice title keeps double space");
+   check(AppStrings.get(R.string.home_dock_edit_hint,AppLanguage.fromRussian(ru)).equals(ru?"← → – переместить. ОК – сохранить. Назад – отменить.":"← → – move. OK – save. Back – cancel."),"Dock hint localized");
+   check(AppStrings.get(R.string.home_spoken_of,AppLanguage.fromRussian(ru)).equals(ru?" из ":" of "),"spoken count separators");
   }
   System.out.println("PASS: real home tabs/network/weather methods, cached labels/templates, language switches, missing/late data and significant whitespace");
  }

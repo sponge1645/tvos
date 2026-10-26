@@ -11,7 +11,7 @@ public class CLASSNAME {
  static final List<String> events=new ArrayList<>();
  static void note(String s){events.add(s);}
  static final int CITY_ROW=4;
- static final String[] THEMES={"auto","light","dark"},LANGUAGES={"ru","en"},UNITS={"auto","C","F"};
+ static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,pickScroll,returnFocus,selectedSetting,buttonCount=6;
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;long pendingAt;
  final List<Integer> menuButtonRows=new ArrayList<>();

@@ -304,7 +304,7 @@ final class HomeData {
         double distance = 0.25 * 0.25;
         // Search indexes may not match a Cyrillic query when English results are requested.
         // Discover the stable ID in either supported language, then translate through /get.
-        for (String searchLanguage : new String[] {language, "ru".equals(language) ? "en" : "ru"}) {
+        for (String searchLanguage : AppLanguage.searchOrder(language)) {
             for (String[] city : findCity(name, searchLanguage)) {
                 double dy = Double.parseDouble(city[2]) - lat, dx = Double.parseDouble(city[3]) - lon;
                 double candidate = dy * dy + dx * dx;
@@ -502,8 +502,10 @@ final class HomeData {
     }
 
     static String hour(long at) {
-        return Ui.once("hour", at, () -> Ui.en ? new SimpleDateFormat("h a", Locale.US).format(new java.util.Date(at))
-                : new SimpleDateFormat(Ui.es || Ui.ru ? "HH:mm" : Ui.de ? "HH 'Uhr'" : "HH'h'", Ui.locale()).format(new java.util.Date(at)));
+        return Ui.once("hour", at, () -> {
+            AppLanguage language = AppLanguage.current();
+            return new SimpleDateFormat(language.hourPattern, language.locale).format(new java.util.Date(at));
+        });
     }
 
     /** How long ago the data was fetched, if it's stale (no internet): "12 min ago". */

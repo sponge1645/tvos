@@ -40,9 +40,17 @@ def sources():
   body+='default:return '+json.dumps(plural_tables[1][key]['other'],ensure_ascii=False)+';}}return '+json.dumps(plural_tables[0][key]['other'],ensure_ascii=False)+';'
  body+='default:throw new IllegalArgumentException();}}'
  getter=getter[:-1]+body+'}'
- return {'io/tvos/R.java':r,'io/tvos/AppStrings.java':getter}
+ getter=getter[:-1]+'''static String get(int id){return get(id,AppLanguage.current());}
+static String get(int id,AppLanguage language){return get(id,language==AppLanguage.RUSSIAN);}
+static String quantity(int id,int n){return quantity(id,AppLanguage.current(),n);}
+static String quantity(int id,AppLanguage language,int n){return quantity(id,language==AppLanguage.RUSSIAN,n);}
+}'''
+ return {'io/tvos/R.java':r,'io/tvos/AppStrings.java':getter,
+         'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text(),
+         'io/tvos/Russian.java':Path('app/src/io/tvos/Russian.java').read_text()}
 
 def write(root, package=True):
  for name,text in sources().items():
+  if name.endswith("/Russian.java") and (root/"Russian.java").exists():continue
   if not package:name=Path(name).name;text=text.replace('package io.tvos;','')
   path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
