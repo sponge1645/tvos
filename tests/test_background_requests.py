@@ -16,6 +16,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.net.URLEncoder;
 public class AsyncHarness {
+ static class TmdbMetadata {static Pick search(JSONObject item){return null;}}
  static class Pick {int id; String kind,title,originalTitle,poster,backdrop,movieOrigin,tvOrigin;double rating;}
  static class JSONArray {int length(){return 0;} JSONObject optJSONObject(int i){return null;} }
  static class JSONObject {

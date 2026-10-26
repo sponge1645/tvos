@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import subprocess
 import tempfile
+from tmdb_metadata_fixture import files
 
 source = Path('app/src/io/tvos/Recs.java').read_text()
 def method(signature, text=source):
@@ -11,12 +12,11 @@ def method(signature, text=source):
         depth += (text[end] == '{') - (text[end] == '}'); end += 1
     return text[start:end]
 
-header = r'''import java.util.*;import java.io.*;import org.json.*;
+header = r'''package io.tvos;
+import java.util.*;import java.io.*;import org.json.*;import io.tvos.Recs.Pick;import static io.tvos.TmdbMetadata.countryName;
 public class CatalogHarness {
- static class Ui {static String language="en";static boolean ru;static void language(String s){language=s;ru=s.equals("ru");}}
  static class Config {static String TMDB_KEY="test";}static final String REGION="RU";
  static class AppLog {static void w(String s){}}
- static class Pick {int id;String kind,title,backdrop,poster,movieOrigin="",tvOrigin="";double rating;}
  List<Pick> picks=new ArrayList<>(),newPicks=new ArrayList<>(),detectivePicks=new ArrayList<>();String listLanguage="";long listAt,failedAt,keyStamp;int period,notices,refreshes;String error="";
  Set<String> durationRequested=new HashSet<>();Map<String,Long> durationLastAttempt=new HashMap<>();
  List<String> requests=new ArrayList<>();Runnable onGet;boolean failDetectives;
@@ -57,25 +57,14 @@ tests = r'''
  }
 }
 '''
-json = r'''package org.json;import java.util.*;public class JSONObject {
- private final Map<String,Object> m=new HashMap<>();public JSONObject put(String k,Object v){m.put(k,v);return this;}
- public String optString(String k){return optString(k,"");}public String optString(String k,String d){Object v=m.get(k);return v==null?d:String.valueOf(v);}
- public int optInt(String k){return optInt(k,0);}public int optInt(String k,int d){Object v=m.get(k);return v instanceof Number?((Number)v).intValue():d;}
- public double optDouble(String k,double d){Object v=m.get(k);return v instanceof Number?((Number)v).doubleValue():d;}
- public JSONArray optJSONArray(String k){return (JSONArray)m.get(k);}public JSONArray getJSONArray(String k){return (JSONArray)m.get(k);}
-}'''
-array = r'''package org.json;import java.util.*;public class JSONArray {
- private final List<Object> a=new ArrayList<>();public JSONArray put(Object v){a.add(v);return this;}public int length(){return a.size();}
- public JSONObject getJSONObject(int i){return (JSONObject)a.get(i);}public JSONObject optJSONObject(int i){return i>=0&&i<a.size()&&a.get(i) instanceof JSONObject?(JSONObject)a.get(i):null;}
- public String optString(int i,String d){return i>=0&&i<a.size()?String.valueOf(a.get(i)):d;}public int optInt(int i){return i>=0&&i<a.size()&&a.get(i) instanceof Number?((Number)a.get(i)).intValue():0;}
-}'''
 with tempfile.TemporaryDirectory(prefix='tvos-language-test-') as directory:
     root = Path(directory)
-    body = ''.join(method(s) for s in ['    private boolean fetchList(', '    private static void alternate(', '    private static void add(', '    private static String countryName(', '    private static String movieOrigin(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
+    body = ''.join(method(s) for s in ['    private boolean fetchList(', '    private static void alternate(', '    private static void add(', '    private static String movieOrigin(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
     view = Path('app/src/io/tvos/HomeView.java').read_text()
     body += method('    private static boolean samePicks(', view).replace('Recs.Pick', 'Pick')
     (root/'CatalogHarness.java').write_text(header+body+tests)
-    (root/'JSONObject.java').write_text(json);(root/'JSONArray.java').write_text(array)
+    for name,content in files().items():
+        path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)
     java = str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,str(root/'CatalogHarness.java'),str(root/'JSONObject.java'),str(root/'JSONArray.java')],check=True)
-    subprocess.run([java,'-cp',directory,'CatalogHarness'],check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
+    subprocess.run([java,'-cp',directory,'io.tvos.CatalogHarness'],check=True)
