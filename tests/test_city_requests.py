@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
      Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean running=true;
  final SettingsCitySearch citySearch=new SettingsCitySearch(handler,()->running,()->screen,this::showCityResults,this::invalidate);
      List<String[]> cities=new ArrayList<>();Runnable poll=()->{};
-     void invalidate(){}void releaseBackground(){}void openPicker(int id){pickers++;}
+     void invalidate(){}static class Background {void clear(){}}final Background background=new Background();void openPicker(int id){pickers++;}
      static void check(boolean ok,String s){if(!ok)throw new AssertionError(s);}
      void flush()throws Exception{CITY_IO.submit(()->{}).get(3,TimeUnit.SECONDS);}
     '''

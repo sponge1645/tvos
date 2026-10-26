@@ -12,10 +12,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.BlurMaskFilter;
 import android.graphics.LinearGradient;
-import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.Canvas;
-import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.graphics.Matrix;
 import android.graphics.Path;
@@ -221,15 +219,7 @@ public class SettingsActivity extends Activity {
                 new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP);
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
-        private Bitmap cachedBackground;
-        private boolean cachedBackgroundLight;
-        private final Paint backgroundBitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
-        private void releaseBackground() {
-            if (cachedBackground != null) {
-                cachedBackground.recycle();
-                cachedBackground = null;
-            }
-        }
+        private final SettingsBackground background = new SettingsBackground();
         private final SettingsUpdateDialog updateDialog;
         private JSONObject state = new JSONObject(), recs = new JSONObject();
         private boolean hasKey;
@@ -289,7 +279,7 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        private Paint pageTitle, logoInk, logoTile, atmosphere = new Paint(Paint.ANTI_ALIAS_FLAG), rim = new Paint(Paint.ANTI_ALIAS_FLAG), capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private Paint pageTitle, logoInk, logoTile, rim = new Paint(Paint.ANTI_ALIAS_FLAG), capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
         private TextPaint notice;
 
         private final Runnable poll = new Runnable() {
@@ -447,7 +437,7 @@ public class SettingsActivity extends Activity {
             citySearch.cancel();
             handler.removeCallbacks(poll);
             Choreographer.getInstance().removeFrameCallback(this);
-            releaseBackground(); // Free cached bitmap when settings are hidden.
+            background.clear(); // Free cached bitmap when settings are hidden.
             rowShadows.clear();
             descriptionLayout = null;
             descriptionText = null;
@@ -498,7 +488,7 @@ public class SettingsActivity extends Activity {
                     new int[] {0x00FFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00FFFFFF},
                     new float[] {0f, topStop, bottomStop, 1f}, Shader.TileMode.CLAMP));
             scene.setSize(w, h);
-            releaseBackground();
+            background.clear();
             updateDialog.resize(k);
             title = Ui.text(Ui.displaySemibold, 50 * k, 0xFFFFFFFF);
             title.setTextAlign(Paint.Align.CENTER);
@@ -595,7 +585,7 @@ public class SettingsActivity extends Activity {
                 lastSky = up;
                 scene.advance(seconds);
             }
-            drawCachedBackground(c);
+            background.draw(c, w, h, lightSettings());
 
             // tvOS-inspired settings layout: quiet title and a large rounded app tile.
             pageTitle.setColor(lightSettings() ? 0x66607985 : 0x73FFFFFF);
@@ -695,71 +685,6 @@ public class SettingsActivity extends Activity {
         private int normalInk() { return lightSettings() ? 0xE5162730 : 0xF2FFFFFF; }
         private int secondaryInk() { return lightSettings() ? 0x99182731 : 0x8CFFFFFF; }
         private int arrowInk() { return lightSettings() ? 0x8A34444C : 0x66FFFFFF; }
-
-        /** Render the static gradient background once per size/theme, not on every focus change. */
-        private void drawCachedBackground(Canvas c) {
-            boolean light = lightSettings();
-            if (cachedBackground == null || cachedBackgroundLight != light) {
-                releaseBackground();
-                // Only the smooth atmospheric gradient is downsampled; text,
-                // icons, buttons and glass remain at the native resolution.
-                int bw = Math.max(1, (w + 1) / 2);
-                int bh = Math.max(1, (h + 1) / 2);
-                try {
-                    cachedBackground = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
-                    Canvas bc = new Canvas(cachedBackground);
-                    bc.scale((float) bw / w, (float) bh / h);
-                    drawTvOsBackground(bc);
-                    cachedBackgroundLight = light;
-                } catch (OutOfMemoryError oom) {
-                    releaseBackground();
-                    // Avoid a crash on exceptionally memory-constrained TVs.
-                    drawTvOsBackground(c);
-                    return;
-                }
-            }
-            c.drawBitmap(cachedBackground, null,
-                    new Rect(0, 0, w, h), backgroundBitmapPaint);
-        }
-
-        /** Deep blue / petrol / charcoal atmosphere from the tvOS-style reference. */
-        private void drawTvOsBackground(Canvas c) {
-            if (lightSettings()) {
-                // Airy cyan/blue with a faint lavender and coral bloom, like tvOS light mode.
-                atmosphere.setShader(new LinearGradient(0, 0, w, h,
-                        0xFFB6EAF9, 0xFFE4F8FA, Shader.TileMode.CLAMP));
-                c.drawRect(0, 0, w, h, atmosphere);
-                atmosphere.setShader(new RadialGradient(w * 0.12f, h * 0.40f, w * 0.68f,
-                        new int[]{0xC5D8FFFF, 0x70C3F3FB, 0x00FFFFFF},
-                        new float[]{0f, .52f, 1f}, Shader.TileMode.CLAMP));
-                c.drawRect(0, 0, w, h, atmosphere);
-                atmosphere.setShader(new RadialGradient(w * 0.57f, h * 1.03f, w * 0.55f,
-                        new int[]{0xA9F6BFC7, 0x55E7C8E6, 0x00FFFFFF},
-                        new float[]{0f, .50f, 1f}, Shader.TileMode.CLAMP));
-                c.drawRect(0, 0, w, h, atmosphere);
-                atmosphere.setShader(new RadialGradient(w * 0.91f, h * 0.22f, w * 0.50f,
-                        new int[]{0xA6B2E9FF, 0x4CB5E9F7, 0x00FFFFFF},
-                        new float[]{0f, .55f, 1f}, Shader.TileMode.CLAMP));
-                c.drawRect(0, 0, w, h, atmosphere);
-                atmosphere.setShader(null);
-                return;
-            }
-            atmosphere.setShader(new LinearGradient(0, 0, w, h,
-                    0xFF16323F, 0xFF131A1F, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(new RadialGradient(w * 0.62f, h * 0.05f, w * 0.73f,
-                    new int[]{0xA6266774, 0x4C1E4451, 0x00151C21},
-                    new float[]{0f, .44f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(new RadialGradient(w * 0.06f, h * 0.66f, w * 0.7f,
-                    new int[]{0x70304C5C, 0x2B28434D, 0x00131B20},
-                    new float[]{0f, .5f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(new LinearGradient(0, h * .28f, 0, h,
-                    0x0010161B, 0xA80A0F13, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(null);
-        }
 
         private String screenTitle() {
             return SettingsContent.screenTitle(screen, settingsGroup, pickFor);
