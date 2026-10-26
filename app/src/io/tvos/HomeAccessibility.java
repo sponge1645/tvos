@@ -10,8 +10,9 @@ import java.util.List;
 /** Home virtual-node source. Reads live UI state only on the UI thread; navigation remains with the host. */
 final class HomeAccessibility implements Spoken.Source {
     static final int Z_TOP = 4, Z_CARDS = 5, Z_SHELF = 2, Z_DRAWER = 3, GRID = 9, WIDGETS = 8;
-    static final int COLUMNS = 5;
-    static final float GRID_W = 300, GRID_H = 169, GRID_GAP = 40, GRID_ROW = 239, GRID_TOP = 196;
+    static final int COLUMNS = HomeLayout.APP_COLUMNS;
+    static final float GRID_W = HomeLayout.APP_WIDTH, GRID_H = HomeLayout.APP_HEIGHT, GRID_GAP = HomeLayout.APP_GAP,
+            GRID_ROW = HomeLayout.APP_ROW, GRID_TOP = HomeLayout.APP_TOP;
 
     /** Reused read-only view of the current frame; list/rectangle references are never copied or retained separately. */
     static final class State {

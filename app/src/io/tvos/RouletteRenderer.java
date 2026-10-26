@@ -15,7 +15,7 @@ import android.text.TextPaint;
 /** Random-movie strip drawing and reusable graphics scratch; spin state stays in RouletteController. */
 final class RouletteRenderer {
     interface Images { void draw(Canvas canvas, Bitmap bitmap, RectF bounds, float radius); }
-    private static final float MARGIN = 80, CONTENT_R = 1840, DEEP_BLUR = 30;
+    private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT, DEEP_BLUR = 30;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7, SMOKE = 0xFF111113;
     private final RouletteController rouletteWork;
     private final Recs recs;

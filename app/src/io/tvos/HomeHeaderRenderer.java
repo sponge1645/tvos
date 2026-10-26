@@ -20,7 +20,7 @@ final class HomeHeaderRenderer {
         List<HomeApps.Item> lightButtons;
         Paint lDate, lTab, lTabOn;
     }
-    private static final float MARGIN = 80, L_BUTTON_CY = 103, L_TABBAR_TOP = 158, SHADOW_BLUR = 26;
+    private static final float MARGIN = HomeLayout.EDGE, L_BUTTON_CY = HomeLayout.HEADER_CY, L_TABBAR_TOP = 158, SHADOW_BLUR = 26;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7;
     private final Context context;
     private final HomeData data;

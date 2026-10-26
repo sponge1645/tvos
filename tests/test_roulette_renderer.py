@@ -28,7 +28,7 @@ public class RouletteRenderHarness {
   for(int i=0;i<times.length;i++){
    c=h.frame(times[i],1,0,0,0);check(h.work.slots.get(h.work.slots.size()-1)==expectedSlots[i],"baseline prefetch slot at "+times[i]);
    check(!entries(c,"image").isEmpty(),"visible posters throughout spin");
-   Canvas.Entry layer=entries(c,"layer").get(0);check(layer.l==80&&layer.r==1840,"strip clipped to margins");
+   Canvas.Entry layer=entries(c,"layer").get(0);check(layer.l==40&&layer.r==1880,"strip clipped to margins");
    List<Canvas.Entry> masks=entries(c,"rect");check(masks.size()==1&&masks.get(0).mode!=null,"one DST_IN edge mask");
    LinearGradient edge=(LinearGradient)masks.get(0).shader;check(Arrays.equals(edge.positions,new float[]{0,.1f,.9f,1}),"matching edge fade stops");
   }

@@ -30,5 +30,6 @@ def files():
  'io/tvos/Recs.java':'''package io.tvos;import android.graphics.Bitmap;class Recs {static class Pick {String title;final int id;Pick(int id){this.id=id;title="Movie "+id;}}boolean missing;Bitmap poster(Pick p){return missing?null:new Bitmap(p.id);}}''',
  'io/tvos/RouletteController.java':'''package io.tvos;import java.util.*;class RouletteController {boolean spin,done,loading;long at;int winner;List<Recs.Pick> picks=new ArrayList<>();List<Integer> slots=new ArrayList<>();boolean spinning(){return spin;}boolean finished(){return done;}boolean loading(){return loading;}long started(){return at;}int winner(){return winner;}List<Recs.Pick> picks(){return picks;}void preparePosters(int slot){slots.add(slot);}}''',
  'io/tvos/ActionSurface.java':Path('app/src/io/tvos/ActionSurface.java').read_text(),
+ 'io/tvos/HomeLayout.java':Path('app/src/io/tvos/HomeLayout.java').read_text(),
  'io/tvos/RouletteRenderer.java':Path('app/src/io/tvos/RouletteRenderer.java').read_text(),
  }

@@ -191,7 +191,7 @@ final class HomeAppsRenderer {
             c.drawRoundRect(cell, r, r, tileFill);
             drawLogo(c, it, cell, s, 0);
         } else {
-            if (it.tile != null) images.draw(c, it.tile, cell, r);
+            if (it.tile != null) images.drawCropped(c, it.tile, cell, r);
         }
         if (it.logo != null || it.tile != null) {
             c.save();
@@ -314,7 +314,7 @@ final class HomeAppsRenderer {
         this.frame = frame;
         c.drawColor(0xA8000000);
         float shift = frame.scroll * GRID_ROW * frame.k;
-        c.drawText(AppStrings.get(R.string.home_all_apps), frame.w / 2f, 124 * frame.k - shift, sheetTitle);
+        c.drawText(AppStrings.get(R.string.home_all_apps), frame.w / 2f, HomeLayout.HEADER_CY * frame.k + Ui.halfCap(sheetTitle) - shift, sheetTitle);
         int n = frame.others.size();
         if (gridLabels == null || gridLabels.length != n) {
             gridLabels = new String[n];

@@ -39,16 +39,11 @@ import java.util.concurrent.Executors;
  * redraws what changed.
  */
 final class HomeView extends ViewGroup implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
-    // tvOS grid (Human Interface Guidelines): content inside the safe area, 80 px from the sides and 60 from top and
-    // bottom; 40 px between items; 7 columns of 217 px (the apps). The shelf glass extends 36 px past the tiles (the
-    // same padding on all four sides) and the tile corners are concentric with it (glass radius = radius + padding).
-    private static final float MARGIN = 80, CONTENT_R = 1840;
-    // Shelf: tiles with corners concentric with the glass (glass radius = tile radius + padding).
-    // Shelf: 16:9 TV banners, up to 224 x 126, shrinking proportionally when more apps fit.
-    // The glass bar has 40 of padding, tiles are 48 apart and focused tiles grow 20%.
-    private static final float SHELF_PAD = 40, TILE_GAP = 48;
+    // The same outer 40 px boundary aligns Dock, posters, header actions and widgets.
+    private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT;
+    private static final float SHELF_PAD = HomeLayout.DOCK_PAD, TILE_GAP = HomeLayout.DOCK_GAP;
     // Bottom drawer (measured with it open; everything moves up by SHIFT).
-    private static final float SHIFT = 560, ROW_TOP = 540, ROW_H = 126, CARDS_TOP = 708, CARDS_H = 300;
+    private static final float SHIFT = 560, ROW_TOP = 540, ROW_H = 126, CARDS_H = HomeLayout.WEATHER_HEIGHT;
     // "All Apps" sheet.
     private static final int COLUMNS = HomeAccessibility.COLUMNS, VISIBLE_ROWS = 3;
     private static final float GRID_W = HomeAccessibility.GRID_W, GRID_H = HomeAccessibility.GRID_H,
@@ -63,8 +58,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // Light design (the L_ constants): title, tab bar, three recommendation cards and the shelf.
     // The tab bar is a 68 px capsule; all recommendation cards use a 5-column portrait grid.
     private static final float L_TABBAR_TOP = 158, L_TABBAR_H = 68, L_CARDS_TOP = 262;
-    private static final float L_BUTTON = 68, L_BUTTON_GAP = 20, L_BUTTON_CY = 103;
-    private static final float L_PLATTER_TOP = 814, L_TILE_H = 126;
+    private static final float L_BUTTON = HomeLayout.BUTTON, L_BUTTON_GAP = 20, L_BUTTON_CY = HomeLayout.HEADER_CY;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73;
     // Prepared once per supported language; the drawing path never builds a label array.
     private static final EnumMap<AppLanguage, String[]> tabLabels = new EnumMap<>(AppLanguage.class);
@@ -514,13 +508,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         int width = MeasureSpec.getSize(widthSpec), height = MeasureSpec.getSize(heightSpec);
         float kk = width / 1920f;
         measure(sky, width, height);
-        measure(heroLayer, width, Math.round(790 * kk));
+        measure(heroLayer, width, Math.round(HomeLayout.CARDS_LAYER_HEIGHT * kk));
         measure(status, Math.round(1160 * kk), Math.round(240 * kk));
         // Sized to what they draw (the glass and its shadow; the grown tiles and their shadows): smaller layers are
         // cheaper for the GPU to composite on every frame of the drawer animation.
-        measure(platter, width, Math.round(320 * kk));
-        measure(tiles, width, Math.round(270 * kk));
-        measure(drawerLayer, width, Math.round(600 * kk));
+        measure(platter, width, Math.round((HomeLayout.HEIGHT - HomeLayout.DOCK_LAYER_TOP) * kk));
+        measure(tiles, width, Math.round((HomeLayout.HEIGHT - HomeLayout.DOCK_LAYER_TOP) * kk));
+        measure(drawerLayer, width, Math.round((HomeLayout.HEIGHT - 470) * kk));
         measure(sheetLayer, width, height);
         measure(toastLayer, Math.round(1000 * kk), Math.round(220 * kk));
         measure(searchGlassLayer, width, height);
@@ -537,8 +531,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sky.layout(0, 0, width, height);
         place(heroLayer, 0, 0);
         place(status, width - status.getMeasuredWidth(), 0);
-        place(platter, 0, Math.round(750 * kk));
-        place(tiles, 0, Math.round(790 * kk));
+        place(platter, 0, Math.round(HomeLayout.DOCK_LAYER_TOP * kk));
+        place(tiles, 0, Math.round(HomeLayout.DOCK_LAYER_TOP * kk));
         place(drawerLayer, 0, Math.round(470 * kk));
         sheetLayer.layout(0, 0, width, height);
         sheetLayer.setPivotX(width / 2f);
@@ -794,14 +788,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void layoutShelf() {
         int n = shelf.size();
         float pad = SHELF_PAD * k, gap = TILE_GAP * k;
-        float full = (CONTENT_R - MARGIN) * k;
-        // Match Free My TV: always 16:9, at most 224 x 126, and bottom-aligned when shrinking.
-        float tw = Math.min(L_TILE_H * 16f / 9 * k,
-                (full - Math.max(0, n - 1) * gap) / Math.max(1, n));
-        float th = tw * 9f / 16;
+        float tw = HomeLayout.dockTileWidth(n, k);
+        float th = tw / HomeLayout.DOCK_ASPECT;
         float width = n * tw + Math.max(0, n - 1) * gap, left = (w - width) / 2f;
-        float top = (L_PLATTER_TOP + L_TILE_H) * k - th;
-        platterRect.set(left - pad, top, left + width + pad, top + th + 2 * pad);
+        float bottom = HomeLayout.dockBottom(h, k);
+        float top = bottom - th - 2 * pad;
+        platterRect.set(left - pad, top, left + width + pad, bottom);
         float x = left, y = top + pad;
         for (int i = 0; i < n; i++) {
             tileRects[i].set(x, y, x + tw, y + th);
@@ -854,7 +846,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             drawerRects[i].set(x, top, x + tw, top + ROW_H * k);
             x += tw + gap;
         }
-        float cardsTop = CARDS_TOP * k;
+        float cardsTop = HomeLayout.weatherTop(h, k);
         weatherCard.set(left, cardsTop, right, cardsTop + CARDS_H * k);
         drawerDirty = true;
     }
@@ -1459,11 +1451,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void layoutLight() {
         if (lTab == null) return;
         largePostersWithoutWidgets = noTopWidgets();
-        // Text tabs; the focus pill extends 26 px past the text (the first tab's text starts at the margin).
+        // Align the resting tab capsule with the common outer edge; text keeps its inner padding.
         float pad = 26 * k;
         float tabTop = (largePostersWithoutWidgets ? L_BUTTON_CY - L_TABBAR_H / 2f : L_TABBAR_TOP) * k;
         float tabBottom = tabTop + L_TABBAR_H * k;
-        float x = MARGIN * k - pad;
+        float x = MARGIN * k;
         for (int i : Prefs.categoryOrder()) {
             if (!tabEnabled(i)) { topRects[i].setEmpty(); continue; }
             float tw = Math.max(lTabOn.measureText(tabs()[i]), lTab.measureText(tabs()[i]));
