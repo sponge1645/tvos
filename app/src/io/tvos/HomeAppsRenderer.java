@@ -26,12 +26,12 @@ final class HomeAppsRenderer {
         float k, night, dockLift, scroll;
         boolean sheetOpen, weatherBottom;
     }
-    private static final float TILE_RADIUS = 22, SHELF_PAD = 40, FOCUS_GROW = .2f, SHADOW_BLUR = 26, DEEP_BLUR = 30, ROW_TITLE = 518;
+    private static final float TILE_RADIUS = 30, PLATTER_RADIUS = 62, FOCUS_GROW = .2f, SHADOW_BLUR = 26, DEEP_BLUR = 30, ROW_TITLE = 518;
     private static final long DOCK_WIGGLE_MS = 300;
     private static final int SMOKE = 0xFF111113, INK = 0xFF1C1C1E, WHITE = 0xFFF5F5F7, L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73, L_FAINT = 0xFF8E8E93;
     private static final int COLUMNS = HomeAccessibility.COLUMNS;
     private static final float GRID_W = HomeAccessibility.GRID_W, GRID_H = HomeAccessibility.GRID_H,
-            GRID_GAP = HomeAccessibility.GRID_GAP, GRID_ROW = HomeAccessibility.GRID_ROW, GRID_TOP = HomeAccessibility.GRID_TOP, GRID_RADIUS = 22;
+            GRID_GAP = HomeAccessibility.GRID_GAP, GRID_ROW = HomeAccessibility.GRID_ROW, GRID_TOP = HomeAccessibility.GRID_TOP, GRID_RADIUS = TILE_RADIUS;
     private final Context context;
     private final Scene scene;
     private final Shadows shadows;
@@ -98,7 +98,7 @@ final class HomeAppsRenderer {
     void drawPlatter(Canvas c, Frame frame) {
         this.frame = frame;
         if (frame.shelf.isEmpty()) return;
-        float radius = (TILE_RADIUS + SHELF_PAD) * frame.k;
+        float radius = PLATTER_RADIUS * frame.k;
         tmp.set(frame.platterRect);
         tmp.offset(0, 18 * frame.k);
         shadow.setColor(tone(0x1F000000, 0x52000000));

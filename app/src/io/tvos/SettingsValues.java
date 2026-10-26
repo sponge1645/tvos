@@ -161,8 +161,10 @@ final class SettingsValues {
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {
         String[] v = new String[Prefs.KEYS.length];
         for (int i = 0; i < v.length; i++) {
-            int at = appPkgs.indexOf(Prefs.keyApp(Prefs.KEYS[i]));
-            v[i] = at >= 0 ? appLabels.get(at) : AppStrings.get(R.string.settings_not_installed);
+            String pkg = Prefs.keyApp(Prefs.KEYS[i]);
+            int at = appPkgs.indexOf(pkg);
+            v[i] = pkg != null && !pkg.isEmpty() && at >= 0 ? appLabels.get(at)
+                    : AppStrings.get(R.string.settings_not_configured);
         }
         return v;
     }

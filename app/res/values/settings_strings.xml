@@ -140,7 +140,7 @@
     <string name="settings_youtube_button" formatted="false">YouTube Button</string>
     <string name="settings_prime_video_button" formatted="false">Prime Video Button</string>
     <string name="settings_tcl_channel_button" formatted="false">TCL Channel Button</string>
-    <string name="settings_not_installed" formatted="false">Not installed</string>
+    <string name="settings_not_configured" formatted="false">Not configured</string>
     <string name="settings_airplay_is_not_installed_or_unavailable" formatted="false">AirPlay is not installed or unavailable</string>
     <string name="settings_search" formatted="false">Search</string>
     <string name="settings_tv" formatted="false">TV</string>

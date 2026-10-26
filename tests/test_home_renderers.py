@@ -51,9 +51,12 @@ public class HomeRenderHarness {
  }
  static void apps()throws Exception{
   HomeWidgets weather=new HomeWidgets();HomeAppsRenderer a=new HomeAppsRenderer(new Context(),new Scene(),new Shadows(),weather,new RoundedImages());a.resize(1);HomeAppsRenderer.Frame f=appsFrame();Canvas c=new Canvas();a.drawTiles(c,f);check(entries(c,"logo").size()==2&&entries(c,"logo").get(1).text.equals("com.seena.app"),"focused Dock item drawn last");check(entries(c,"path").size()==4&&c.depth==0,"two highlight strokes per tile");
+  near(entries(c,"round").get(0).radius,30,"resting Dock tile radius");
   Object[] gradients=(Object[])field(a,"tileShaders");Object first=gradients[0],second=gradients[1];a.swapDock(0,1,2);check(gradients[1]==first,"gradient follows Dock item");a.restoreDock(f.shelf,Arrays.asList(f.shelf.get(1),f.shelf.get(0)));check(((Object[])field(a,"tileShaders"))[0]==first,"rollback restores gradient identity");
   c=new Canvas();a.drawPlatter(c,f);check(entries(c,"glass").size()==1,"Dock platter glass");c=new Canvas();a.drawDrawer(c,f);check(weather.draws==1&&entries(c,"symbol").get(0).color==0xFF8E8E93,"disconnected input dim and weather drawn");
   c=new Canvas();a.drawSheet(c,f);text(c,"All Apps");check(entries(c,"bitmap").size()==2&&!f.focusedCell.isEmpty(),"app sheet geometry and focused launch rect");
+  near(entries(c,"shadow").get(0).radius,32.4f,"focused All Apps radius scales with tile");
+  Ui.LEGACY=true;c=new Canvas();a.drawSheet(c,f);List<Canvas.Entry> appImages=new ArrayList<>();for(Canvas.Entry entry:entries(c,"round"))if(entry.shader instanceof BitmapShader)appImages.add(entry);near(appImages.get(0).radius,30,"resting All Apps image radius");near(appImages.get(1).radius,32.4f,"focused All Apps image radius");Ui.LEGACY=false;
   f.dockLift=1;f.dockLiftIndex=0;f.dockWiggleAt=0;SystemClock.now=100;c=new Canvas();a.drawTiles(c,f);check(entries(c,"rotate").size()==1&&entries(c,"logo").get(1).text.equals("watch.kino"),"lifted Dock item draws last with wiggle");
   a.invalidateLabels();a.resize(.5f);a.clear();check(field(a,"frame")==null,"renderer releases borrowed frame");a.invalidateDock();check(((Object[])field(a,"tileShaders")).length==0,"list reload invalidates Dock gradients");
  }

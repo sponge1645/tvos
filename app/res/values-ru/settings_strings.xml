@@ -140,7 +140,7 @@
     <string name="settings_youtube_button" formatted="false">Кнопка YouTube</string>
     <string name="settings_prime_video_button" formatted="false">Кнопка Prime Video</string>
     <string name="settings_tcl_channel_button" formatted="false">Кнопка TCL Channel</string>
-    <string name="settings_not_installed" formatted="false">Не установлено</string>
+    <string name="settings_not_configured" formatted="false">Не настроено</string>
     <string name="settings_airplay_is_not_installed_or_unavailable" formatted="false">AirPlay не установлен или недоступен</string>
     <string name="settings_search" formatted="false">Поиск</string>
     <string name="settings_tv" formatted="false">ТВ</string>

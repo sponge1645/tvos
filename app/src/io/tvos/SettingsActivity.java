@@ -1282,6 +1282,7 @@ public class SettingsActivity extends Activity {
                 pickCurrent = -1;
             } else {
                 pickLabels.addAll(appLabels);
+                if (which != PICK_VPN && !pickLabels.isEmpty()) pickLabels.set(0, AppStrings.get(R.string.settings_not_configured));
                 pickCurrent = appPkgs.indexOf(which == PICK_VPN ? localPrefs().getString("vpn_app", "") : Prefs.keyApp(Prefs.KEYS[which - 1]));
             }
             int visible = Math.min(PICK_VISIBLE, pickLabels.size());
