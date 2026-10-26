@@ -26,7 +26,9 @@ public class ValuesHarness {
    check(general[2].equals(AppLanguage.current().nativeName)&&general[1].equals(ru?"Авто":"Automatic"),"live language and theme");
    Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,8);check(general[5].equals("°C")&&general[6].equals(ru?"24 ч":"24 h"),"units/hour");
    Prefs.unit="auto";Prefs.theme="auto";Prefs.h24=false;
-   free[0]=true;check(v.menu(ACCESSIBILITY,4)[2].equals("tvOS"),"current launcher callback");
+   free[0]=true;check(v.menu(SYSTEM,4)[2].equals("tvOS"),"current launcher callback");
+   check(v.menu(ACCESSIBILITY,3)[2].isEmpty(),"TV Settings action has no misplaced launcher value");
+   free[0]=false;check(v.menu(SYSTEM,4)[2].equals(ru?"Встроенный":"Built-in"),"built-in launcher value follows moved row");free[0]=true;
    a.prefs.data.put("auto_update",true);check(v.menu(UPDATES,2)[1].equals(SettingsValues.onOff(true)),"auto update value");
    a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,5);check(saver[0].equals("National Geographic")&&saver[4].isEmpty(),"saver source and action row");
    check(v.menu(WEATHER,2)[0].equals(SettingsValues.onOff(true))&&v.menu(WEATHER,2)[1].equals(SettingsValues.onOff(false)),"independent weather callback");

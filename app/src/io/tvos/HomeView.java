@@ -1102,8 +1102,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (moveLight(dx, dy)) return;
         switch (zone) {
             case Z_SHELF:
-                if (dy <= 0 || drawerItems.isEmpty()) return;
-                openDrawer();
+                if (dx != 0) {
+                    int next = Math.max(0, Math.min(shelf.size() - 1, shelfIndex + dx));
+                    if (next == shelfIndex) return;
+                    shelfIndex = next;
+                } else {
+                    if (dy <= 0 || drawerItems.isEmpty()) return;
+                    openDrawer();
+                }
                 break;
             case WIDGETS: {
                 List<Integer> on = widgets();

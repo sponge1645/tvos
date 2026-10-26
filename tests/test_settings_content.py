@@ -14,22 +14,27 @@ harness='''package io.tvos;
 import java.util.*;import static io.tvos.SettingsContent.*;
 public class ContentHarness {
  static class Ui {static boolean ru;}
- int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;
+ int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;static final int PICK_VISIBLE=10;
+ final List<Integer> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),dockEditor=new ArrayList<>();final List<String> pickLabels=new ArrayList<>();
+ static class Prefs {static final String[] KEYS=new String[4];}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
  String[] menuButtonLabels(){String[] rows=new String[dynamicRows+1];Arrays.fill(rows,"dynamic");rows[dynamicRows]="VPN";return rows;}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
-'''+method('        private String screenTitle()')+method('        private String[] menuLabels()')+'''
+'''+method('        private String screenTitle()')+method('        private String[] menuLabels()')+method('        private int rowCount()')+method('        private boolean menuChevronVisible(')+method('        private int parentScreen(')+'''
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,VPN_SETTINGS,SCREENSAVER,ABOUT};
-  int[] rows={10,8,2,2,1,2,3,2,2,7,4,2,5,8};
+  int[] rows={10,8,2,2,1,2,4,2,2,7,3,2,5,8};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
    for(int i=0;i<screens.length;i++){
-    h.screen=screens[i];String[] labels=h.menuLabels();check(labels.length==rows[i],"menu row count for "+h.screen);
+    h.screen=screens[i];String[] labels=h.menuLabels();check(labels.length==rows[i]&&h.rowCount()==rows[i],"menu labels and actual focus row count for "+h.screen);
     for(String label:labels)check(label!=null&&!label.isEmpty(),"nonempty label");
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
+   check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
+   h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
+   h.screen=ACCESSIBILITY;check(!h.menuChevronVisible(2),"TV Settings action has no ghost launcher chevron");
    h.screen=MAIN;check(h.menuLabels()[1].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
    h.screen=WIDGETS;check(Arrays.equals(h.menuLabels(),russian?new String[]{"Погода","Дата"}:new String[]{"Weather","Date"}),"widget menu contains only weather and date");
    h.screen=ABOUT;check(h.screenTitle().equals(russian?"Об этом устройстве":"About"),"About heading");

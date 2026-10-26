@@ -46,7 +46,7 @@ tests='''
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.keyLabels()[0].equals("Кнопка Netflix"),"capitalized keys keep Russian translation");
   h.screen=ABOUT;Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.screenTitle().equals("About"),"About heading matches menu");
   h.screen=SCREENSAVER;check(h.screenTitle().equals("Screen Saver"),"Screen Saver heading matches menu");
-  h.screen=HOME_CHOICE;check(h.screenTitle().equals("Default Launcher"),"launcher heading matches accessibility entry");
+  h.screen=HOME_CHOICE;check(h.screenTitle().equals("Default Launcher"),"launcher heading matches System entry");
   java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
   long at=new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse("2026-10-24 07:18:10").getTime();
   check(formatLastUpdateCheck(at,AppLanguage.ENGLISH).equals("Last check: October 24, 2026 at 07:18:10"),"English requested date and time format");

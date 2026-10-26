@@ -97,9 +97,9 @@ final class SettingsActions {
             case WEATHER: return Action.WEATHER_TOGGLE;
             case SCREENSAVER: return row == 4 ? Action.PREVIEW : row >= 0 && row < 4 ? Action.MENU_ADJUST : Action.NONE;
             case TOP_PANEL: return row == 0 ? Action.CATEGORY_EDITOR : row == 1 ? Action.BUTTON_EDITOR : Action.NONE;
-            case ACCESSIBILITY: return row == 0 || row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.HOME_CHOICE : row == 3 ? Action.TV_SETTINGS : Action.NONE;
+            case ACCESSIBILITY: return row == 0 || row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_SETTINGS : Action.NONE;
             case RESET: return Action.RESET_CONFIRM;
-            case SYSTEM: return row == 0 ? Action.UPDATES_SCREEN : row == 1 ? Action.RESET_SCREEN : row == 2 ? Action.RESTART : Action.NONE;
+            case SYSTEM: return row == 0 ? Action.UPDATES_SCREEN : row == 1 ? Action.RESET_SCREEN : row == 2 ? Action.HOME_CHOICE : row == 3 ? Action.RESTART : Action.NONE;
             default: return Action.NONE;
         }
     }
@@ -114,7 +114,7 @@ final class SettingsActions {
             case MAIN: return null;
             case PICKER: return pickFor == PICK_CITY ? new Target(GENERAL, 3)
                     : pickFor == PICK_VPN ? new Target(VPN_SETTINGS, 1) : new Target(REMOTE_KEYS, pickFor - 1);
-            case HOME_CHOICE: return new Target(ACCESSIBILITY, 2);
+            case HOME_CHOICE: return new Target(SYSTEM, 2);
             case SCREENSAVER: return new Target(MAIN, 1);
             case ABOUT: return new Target(GENERAL, 0);
             case REMOTE_KEYS: return new Target(MAIN, 3);

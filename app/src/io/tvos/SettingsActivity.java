@@ -460,11 +460,11 @@ public class SettingsActivity extends Activity {
                 case WIDGETS: return 2;
                 case WEATHER: return 2;
                 case DATE_TIME: return 1;
-                case SYSTEM: return 3;
+                case SYSTEM: return 4;
                 case RESET: return 2;
                 case TOP_PANEL: return 2;
                 case CATEGORY_EDIT: return categoryEditor.size();
-                case ACCESSIBILITY: return 4;
+                case ACCESSIBILITY: return 3;
                 case VPN_SETTINGS: return 2;
                 case MENU_BUTTONS: return buttonEditor.size() + 1;
                 case UPDATES: return 2;
@@ -682,7 +682,7 @@ public class SettingsActivity extends Activity {
                 case SHELF_EDIT: case TOP_PANEL: case WIDGETS: case SYSTEM:
                     return MAIN;
                 case ABOUT: return GENERAL;
-                case HOME_CHOICE: return ACCESSIBILITY;
+                case HOME_CHOICE: return SYSTEM;
                 case MENU_BUTTONS: case CATEGORY_EDIT: return TOP_PANEL;
                 case VPN_SETTINGS: return MENU_BUTTONS;
                 case WEATHER: case DATE_TIME: return WIDGETS;
@@ -749,10 +749,10 @@ public class SettingsActivity extends Activity {
         private boolean menuChevronVisible(int row) {
             switch (screen) {
                 case SCREENSAVER: return row != 4;
-                case ACCESSIBILITY: return row != 3;
+                case ACCESSIBILITY: return row != 2;
                 case APPS_DOWNLOADS: case RESET: return false;
                 case UPDATES: return row != 0;
-                case SYSTEM: return row != 2;
+                case SYSTEM: return row != 3;
                 case VPN_SETTINGS: return row != 0 && (vpnTopEnabled() || row != 1);
                 default: return true;
             }

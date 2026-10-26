@@ -19,7 +19,7 @@ public class ActionsTest {
    if(row==2)check(ActionView.events.equals(Arrays.asList("airplay")),"AirPlay returns without focus reset");
    if(row==3)check(ActionView.events.indexOf("remote-service")<ActionView.events.indexOf("load-apps"),"remote permission setup precedes app load");
   }
-  int[][] back={{GENERAL,MAIN,0},{SCREENSAVER,MAIN,1},{REMOTE_KEYS,MAIN,3},{ACCESSIBILITY,MAIN,4},{APPS_DOWNLOADS,MAIN,5},{SHELF_EDIT,MAIN,6},{TOP_PANEL,MAIN,7},{WIDGETS,MAIN,8},{SYSTEM,MAIN,9},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,1},{HOME_CHOICE,ACCESSIBILITY,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
+  int[][] back={{GENERAL,MAIN,0},{SCREENSAVER,MAIN,1},{REMOTE_KEYS,MAIN,3},{ACCESSIBILITY,MAIN,4},{APPS_DOWNLOADS,MAIN,5},{SHELF_EDIT,MAIN,6},{TOP_PANEL,MAIN,7},{WIDGETS,MAIN,8},{SYSTEM,MAIN,9},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,1},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
   for(int[] route:back){ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
    ActionView v=create(VPN_SETTINGS,1);v.buttonCount=count;v.backFromScreen();
@@ -36,10 +36,12 @@ public class ActionsTest {
   v=create(SCREENSAVER,4);v.activate();check(ActionView.events.equals(Arrays.asList("pause","preview")),"preview pauses view before opening");
   v=create(GENERAL,1);v.activate();check(!ActionView.events.contains("snap")&&ActionView.events.contains("theme:light"),"value change preserves current focus animation");
   v=create(GENERAL,0);v.activate();check(v.screen==ABOUT&&ActionView.events.contains("snap"),"page change resets focus springs");
+  v=create(SYSTEM,2);v.activate();check(v.screen==HOME_CHOICE,"System launcher row opens choice");
+  check(SettingsActions.activation(ACCESSIBILITY,2,0,false,6,false)==SettingsActions.Action.TV_SETTINGS,"TV settings remains third accessibility row");
   v=create(RESET,0);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-cache")),"cache clear requires existing confirmation");
   v=create(RESET,1);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-reset")),"reset requires existing confirmation");
   v=create(UPDATES,0);v.activate();check(v.updateRequested&&ActionView.events.indexOf("update:false")<ActionView.events.indexOf("on-update"),"update check order preserved");
-  v=create(SYSTEM,2);v.activate();check(ActionView.events.contains("start:HomeActivity:3")&&ActionView.events.get(ActionView.events.size()-1).equals("finish"),"restart targets HomeActivity then closes Settings");
+  v=create(SYSTEM,3);v.activate();check(ActionView.events.contains("start:HomeActivity:3")&&ActionView.events.get(ActionView.events.size()-1).equals("finish"),"restart targets HomeActivity then closes Settings");
   v=create(VPN_SETTINGS,1);v.vpnFlag=false;v.activate();check(!ActionView.events.contains("load-apps"),"hidden VPN app cannot open picker");
   v=create(VPN_SETTINGS,1);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.pickFor==PICK_VPN,"enabled VPN opens package picker");
   check(SettingsActions.back(MAIN,0,GENERAL,6)==null,"Back from root remains activity-owned");

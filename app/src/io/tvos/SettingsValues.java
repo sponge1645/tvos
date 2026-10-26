@@ -51,6 +51,7 @@ final class SettingsValues {
         } else if (screen == ACCESSIBILITY) {
             v[0] = onOff(localFlag("reduce_transparency"));
             v[1] = onOff(localFlag("reduce_motion"));
+        } else if (screen == SYSTEM) {
             v[2] = freeActive.getAsBoolean() ? "tvOS" : AppStrings.get(R.string.settings_built_in);
         } else if (screen == VPN_SETTINGS) {
             v[0] = onOff(Prefs.topButtonEnabled(2));
