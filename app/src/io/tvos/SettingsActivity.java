@@ -189,11 +189,7 @@ public class SettingsActivity extends Activity {
         private final Scene scene = new Scene();
         private final Shadows rowShadows = new Shadows();
         private final Handler handler = new Handler(Looper.getMainLooper());
-        private static final java.util.concurrent.ThreadPoolExecutor CITY_IO = new java.util.concurrent.ThreadPoolExecutor(
-                1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
-                new java.util.concurrent.LinkedBlockingQueue<Runnable>());
-        private UiRequest cityRequest;
-        private int citySerial;
+        private final SettingsCitySearch citySearch;
         private final Spring[] pop = new Spring[12];
         private final List<String> appPkgs = new ArrayList<>(), appLabels = new ArrayList<>();
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
@@ -203,7 +199,6 @@ public class SettingsActivity extends Activity {
         private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
-        private String cityStatus = "";
         private final RectF tmp = new RectF(), rowRect = new RectF(), focusBox = new RectF();
         private final RectF logoBounds = new RectF();
         private final Paint.FontMetrics logoMetrics = new Paint.FontMetrics();
@@ -255,7 +250,6 @@ public class SettingsActivity extends Activity {
 
         private boolean running, okDown, backDown, wasBusy;
         private boolean lightAppearance;
-        private final Runnable clearCityStatus = () -> { cityStatus = ""; if (running) invalidate(); };
         private StaticLayout errorLayout;   // the last error, wrapped (rebuilt only when it changes)
         private String errorShown;
         private final Spoken spoken;
@@ -321,6 +315,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this);
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
@@ -449,11 +444,7 @@ public class SettingsActivity extends Activity {
         void pause() {
             running = false;
             updateDialog.pause();
-            citySerial++;
-            if (cityRequest != null) cityRequest.cancel();
-            cityRequest = null;
-            handler.removeCallbacks(clearCityStatus);
-            cityStatus = "";
+            citySearch.cancel();
             handler.removeCallbacks(poll);
             Choreographer.getInstance().removeFrameCallback(this);
             releaseBackground(); // Free cached bitmap when settings are hidden.
@@ -1391,7 +1382,7 @@ public class SettingsActivity extends Activity {
             String theme = Prefs.theme();
             v[2] = theme.equals("light") ? AppStrings.get(R.string.settings_theme_light) : theme.equals("dark") ? AppStrings.get(R.string.settings_theme_dark) : AppStrings.get(R.string.settings_automatic_value);
             v[3] = onOff(Prefs.weather());
-            v[CITY_ROW] = !cityStatus.isEmpty() ? cityStatus : Prefs.city().isEmpty() ? "—" : Prefs.city();
+            v[CITY_ROW] = !citySearch.status().isEmpty() ? citySearch.status() : Prefs.city().isEmpty() ? "—" : Prefs.city();
             v[5] = onOff(Prefs.quotes());
             // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
             for (int i = COIN_ROWS; i < detectivesRow(); i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
@@ -1601,7 +1592,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void askCity() {
-            if (AppStrings.get(R.string.settings_city_searching).equals(cityStatus)) return;
+            if (citySearch.searching()) return;
             EditText field = new EditText(activity);
             field.setSingleLine(true);
             field.setHint(AppStrings.get(R.string.settings_city_name_hint));
@@ -1609,56 +1600,23 @@ public class SettingsActivity extends Activity {
             AlertDialog dialog = new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                     .setTitle(AppStrings.get(R.string.settings_city))
                     .setView(field)
-                    .setPositiveButton(AppStrings.get(R.string.settings_find_city), (d, which) -> searchCity(field.getText().toString()))
+                    .setPositiveButton(AppStrings.get(R.string.settings_find_city), (d, which) -> citySearch.search(field.getText().toString()))
                     .setNegativeButton(AppStrings.get(R.string.settings_cancel), null)
                     .create();
             field.setOnEditorActionListener((v, action, event) -> {
                 dialog.dismiss();
-                searchCity(field.getText().toString());
+                citySearch.search(field.getText().toString());
                 return true;
             });
             dialog.show();
         }
 
-        private void searchCity(String name) {
-            if (!running || name.trim().isEmpty()) return;
-            if (cityRequest != null) cityRequest.cancel();
-            handler.removeCallbacks(clearCityStatus);
-            final int serial = ++citySerial;
-            final int originScreen = screen;
-            UiRequest request = new UiRequest(CITY_IO);
-            cityRequest = request;
-            cityStatus = AppStrings.get(R.string.settings_city_searching);
-            invalidate();
-            request.start(() -> {
-                List<String[]> found;
-                String error;
-                try {
-                    found = HomeData.findCity(name);
-                    error = found.isEmpty() ? AppStrings.get(R.string.settings_city_not_found) : "";
-                } catch (Exception e) {
-                    found = new ArrayList<>();
-                    error = AppStrings.get(R.string.settings_city_search_error_prefix) + e.getMessage();
-                    AppLog.w("city search: " + e.getMessage());
-                }
-                List<String[]> result = found;
-                String message = error;
-                if (!request.active()) return;
-                handler.post(() -> {
-                    if (!request.active() || !running || serial != citySerial) return;
-                    cityRequest = null;
-                    if (screen != originScreen) { cityStatus = ""; return; }
-                    cityStatus = message;
-                    if (!result.isEmpty() && (screen == HOME_SETTINGS || screen == GENERAL)) {
-                        cities.clear();
-                        cities.addAll(result);
-                        openPicker(PICK_CITY);
-                        spoken.focusMoved();
-                    }
-                    invalidate();
-                    if (!message.isEmpty()) handler.postDelayed(clearCityStatus, 4000);
-                });
-            });
+        private void showCityResults(List<String[]> result) {
+            if (screen != HOME_SETTINGS && screen != GENERAL) return;
+            cities.clear();
+            cities.addAll(result);
+            openPicker(PICK_CITY);
+            spoken.focusMoved();
         }
 
         private boolean scrolling() {
