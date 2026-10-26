@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
  * redraws what changed.
  */
 final class HomeView extends ViewGroup implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
-    // The same outer 40 px boundary aligns Dock, posters, header actions and widgets.
+    // Shared side edges; vertical margins and content centering live in HomeLayout.
     private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT;
     private static final float SHELF_PAD = HomeLayout.DOCK_PAD, TILE_GAP = HomeLayout.DOCK_GAP;
     // Bottom drawer (measured with it open; everything moves up by SHIFT).
@@ -57,7 +57,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
     // Light design (the L_ constants): title, tab bar, three recommendation cards and the shelf.
     // The tab bar is a 68 px capsule; all recommendation cards use a 5-column portrait grid.
-    private static final float L_TABBAR_TOP = 158, L_TABBAR_H = 68, L_CARDS_TOP = 262;
+    private static final float L_TABBAR_TOP = HomeLayout.TAB_TOP, L_TABBAR_H = HomeLayout.TAB_HEIGHT;
     private static final float L_BUTTON = HomeLayout.BUTTON, L_BUTTON_GAP = 20, L_BUTTON_CY = HomeLayout.HEADER_CY;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73;
     // Prepared once per supported language; the drawing path never builds a label array.
@@ -115,6 +115,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final NetworkStatus networkStatus;
     private Paint labelPaint;
     private Paint lTab, lTabOn, lCardTitle, lCardMeta, lDate;
+    private float contentTop, contentBottom;
 
     // Shelf
     private List<HomeApps.Item> shelf = new ArrayList<>();
@@ -801,6 +802,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         appSurfaces.clear();
         header.clearFrame();
+        layoutLight(); // Dock height changes the free space for posters and roulette.
     }
 
     // MARK: - Bottom drawer
@@ -1399,6 +1401,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         s.topRects = topRects; s.cardRects = cardRects; s.tileRects = tileRects; s.drawerRects = drawerRects;
         s.weatherCard = weatherCard; s.tabs = tabs(); s.networkState = networkStatus.state();
         s.k = k; s.h = h; s.scroll = scroll.target;
+        s.contentTop = contentTop; s.contentBottom = contentBottom;
         s.heroY = heroLayer.getTranslationY(); s.statusY = status.getTranslationY(); s.tilesY = tiles.getTranslationY();
         for (int i = 0; i < s.topVisible.length; i++) s.topVisible[i] = topControlVisible(i);
     }
@@ -1459,7 +1462,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         largePostersWithoutWidgets = noTopWidgets();
         // Align the resting tab capsule with the common outer edge; text keeps its inner padding.
         float pad = 26 * k;
-        float tabTop = (largePostersWithoutWidgets ? L_BUTTON_CY - L_TABBAR_H / 2f : L_TABBAR_TOP) * k;
+        float tabTop = (largePostersWithoutWidgets ? HomeLayout.TOP : L_TABBAR_TOP) * k;
         float tabBottom = tabTop + L_TABBAR_H * k;
         float x = MARGIN * k;
         for (int i : Prefs.categoryOrder()) {
@@ -1471,12 +1474,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float b = L_BUTTON * k, right = CONTENT_R * k, cy = L_BUTTON_CY * k;
         layoutTopActions(b, right, cy);
         float regularW = ((CONTENT_R - MARGIN) * k - 5 * 18 * k) / 6f;
-        // 10% wider and taller while keeping the poster bottom and metadata fixed.
-        // The larger posters grow upwards into the unused header-widget space.
+        // Keep compact-header posters 10% larger; center poster + all captions as one block.
         float posterW = regularW * (largePostersWithoutWidgets ? 1.10f : 1f);
         float posterH = posterW * 1.5f;
-        float regularH = regularW * 1.5f;
-        float top = (L_CARDS_TOP * k + regularH) - posterH;
+        contentTop = Math.max(tabBottom, (HomeLayout.TOP + L_BUTTON) * k);
+        contentBottom = platterRect.top;
+        float captionHeight = HomeLayout.POSTER_META_BASELINE * k + lCardMeta.descent() + 1.5f * k;
+        float top = HomeLayout.centeredTop(contentTop, contentBottom, posterH + captionHeight);
         float spacing = ((CONTENT_R - MARGIN) * k - 5 * posterW) / 4f;
         float left = MARGIN * k;
         for (int i = 0; i < 5; i++) {
@@ -1495,13 +1499,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             if (id == 4) {
                 Paint clockMeasure = new Paint(Paint.ANTI_ALIAS_FLAG);
                 clockMeasure.setTypeface(Ui.displayMedium);
-                clockMeasure.setTextSize(27 * k);
+                float unit = k * HomeLayout.BUTTON_SCALE;
+                clockMeasure.setTextSize(27 * unit);
                 Paint.FontMetrics fm = clockMeasure.getFontMetrics();
                 float glyphHeight = fm.descent - fm.ascent;
-                float textInset = Math.max(5 * k, (b - glyphHeight) / 2f);
-                float avatarDiameter = b - 10 * k;
-                float capsuleWidth = textInset + 5 * k + clockMeasure.measureText(clockText) + 10 * k
-                        + avatarDiameter + 5 * k + 5 * k;
+                float textInset = Math.max(5 * unit, (b - glyphHeight) / 2f);
+                float avatarDiameter = b - 10 * unit;
+                float capsuleWidth = textInset + 5 * unit + clockMeasure.measureText(clockText) + 10 * unit
+                        + avatarDiameter + 5 * unit + 5 * unit;
                 topRects[9].set(right - capsuleWidth, cy - b / 2f, right, cy + b / 2f);
                 right = topRects[9].left - L_BUTTON_GAP * k;
             } else {
@@ -1613,7 +1618,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.drawTabs(c, heading);
         if (tab == 4 && !searchMode) {
             rouletteRenderer.draw(c, k, background.night(), lCardTitle, rouletteButtonFocus.value,
-                    zone == Z_CARDS && !sheetOpen ? cardFocus[0].value : 0f);
+                    zone == Z_CARDS && !sheetOpen ? cardFocus[0].value : 0f, contentTop, contentBottom);
             return;
         }
         int top = -1;

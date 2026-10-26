@@ -11,7 +11,7 @@ prefs=Path('app/src/io/tvos/Prefs.java').read_text();settings=Path('app/src/io/t
 prefs_body='\n'.join(method(prefs,s) for s in ['    private static void put(String key, String value)','    private static void put(String key, boolean value)','    private static void readTopButtons(', '    static int[] topButtonOrder(', '    static boolean topButtonEnabled(', '    static int topButtonCount(', '    static int topButtonPosition(', '    static void setTopButtonEnabled(', '    static void setTopButtonOrder('])
 editor='\n'.join(method(settings,s) for s in ['        private String menuButtonLabel(', '        private void rebuildMenuButtonRows(', '        private void openMenuButtonEditor(', '        private void toggleMenuButton(', '        private void moveMenuButton('])
 nav='\n'.join(method(home,s) for s in ['    private boolean topButtonEnabled(', '    private boolean topControlVisible(', '    private int nextTopControl(', '    private int availableTopButton(', '    private int posterCornerTarget(', '    private void layoutTopActions('])
-header='''import java.util.*;
+header='import java.util.*;\n'+Path('app/src/io/tvos/HomeLayout.java').read_text().replace('package io.tvos;', '')+'''\n
 class Ui {static boolean ru;}
 class Prefs {
  static int version,topButtonVersion=-1,topButtonMask;static int[] topButtonOrderCache;

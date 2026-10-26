@@ -57,22 +57,25 @@ final class RouletteRenderer {
     private int tone(int light, int dark) { return ActionSurface.blend(light, dark, night); }
     private float tone(float light, float dark) { return light + (dark - light) * night; }
 
-    static void buttonBounds(RectF out, float k) {
+    static void buttonBounds(RectF out, float k, float top, float bottom) {
         float cx = (MARGIN + CONTENT_R) * k / 2f;
-        float cy = 480 * k;
+        float cy = (top + bottom) / 2f;
         out.set(cx - 295 * k, cy - 63 * k, cx + 295 * k, cy + 63 * k);
     }
 
-    void draw(Canvas c, float k, float night, Paint lCardTitle, float buttonFocus, float cardFocus) {
+    void draw(Canvas c, float k, float night, Paint lCardTitle, float buttonFocus, float cardFocus,
+            float top, float bottom) {
         this.night = night;
         if (shadowScale != k) {
             shadowDeep.setMaskFilter(new BlurMaskFilter(DEEP_BLUR * k, BlurMaskFilter.Blur.NORMAL));
             shadowScale = k;
         }
         final float cx = (MARGIN + CONTENT_R) * k / 2f;
-        final float cy = 480 * k;
+        // Winner poster (357 high), title and both hint buttons form one centered block.
+        final float groupTop = HomeLayout.centeredTop(top, bottom, (357f / 2 + 309) * k);
+        final float cy = groupTop + 357f / 2 * k;
         if (!rouletteWork.spinning() && !rouletteWork.finished()) {
-            buttonBounds(rouletteButtonRect, k);
+            buttonBounds(rouletteButtonRect, k, top, bottom);
             RectF button = rouletteButtonRect;
             float focus = Ui.clamp(buttonFocus);
             float scale = actionSurface.draw(c, button, focus, night, k);
@@ -83,8 +86,8 @@ final class RouletteRenderer {
             String label = rouletteWork.loading() ? (AppStrings.get(R.string.home_roulette_loading))
                     : (AppStrings.get(R.string.home_roulette_title));
             int saved = c.save();
-            c.scale(scale, scale, cx, cy);
-            c.drawText(label, cx - p.measureText(label) / 2, cy + Ui.halfCap(p), p);
+            c.scale(scale, scale, cx, button.centerY());
+            c.drawText(label, cx - p.measureText(label) / 2, button.centerY() + Ui.halfCap(p), p);
             c.restoreToCount(saved);
             return;
         }

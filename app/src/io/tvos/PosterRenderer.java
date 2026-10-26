@@ -119,12 +119,12 @@ final class PosterRenderer {
         }
         if (p == null) return;
         String title = p.title == null ? "" : p.title;
-        drawCardMarquee(c, title, lCardTitle, base.left, base.bottom + 46 * k, bw, i);
+        drawCardMarquee(c, title, lCardTitle, base.left, base.bottom + HomeLayout.POSTER_TITLE_BASELINE * k, bw, i);
         PosterText.Entry text = posterText.get(p);
         String detail = text.detail(tab == 0 && !searchMode);
         float metaLeft = base.left;
         float metaWidth = bw;
-        float metaBaseline = base.bottom + 85 * k;
+        float metaBaseline = base.bottom + HomeLayout.POSTER_META_BASELINE * k;
         if (p.rating > 0.0) {
             String rating = text.rating;
             float pad = 6 * k;

@@ -29,7 +29,7 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
  List<HomeApps.Item> others=new ArrayList<>(Arrays.asList(new HomeApps.Item("YouTube"),new HomeApps.Item("Settings"))),shelf=new ArrayList<>(Arrays.asList(new HomeApps.Item("Lampa"))),drawerItems=new ArrayList<>(Arrays.asList(new HomeApps.Item("HDMI"))),lightButtons=new ArrayList<>();
  List<Recs.Pick> cards=new ArrayList<>(Arrays.asList(new Recs.Pick("Title","2024, 120 min","Seena")));
  RectF[] topRects=new RectF[11],cardRects={new RectF(80,262,300,704)},tileRects={new RectF(80,814,304,940)},drawerRects={new RectF(80,540,304,666)};RectF weatherCard=new RectF(80,708,1840,1008);
- float k=1,h=1080;static class Layer {float y;float getTranslationY(){return y;}}final Layer heroLayer=new Layer(),status=new Layer(),tiles=new Layer();
+ float k=1,h=1080,contentTop=226,contentBottom=788;static class Layer {float y;float getTranslationY(){return y;}}final Layer heroLayer=new Layer(),status=new Layer(),tiles=new Layer();
  static class Spring {float target;}final Spring scroll=new Spring();static class Work {boolean active;boolean spinning(){return active;}}final Work rouletteWork=new Work();
  final NetworkStatus networkStatus=new NetworkStatus();final HomeData data=new HomeData();final Context context=new Context();
  final HomeAccessibility source=new HomeAccessibility(context,data,this);final boolean[] visible=new boolean[11];
@@ -60,11 +60,11 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   Prefs.city="Tokyo";check(h.source.text(8001).startsWith("Tokyo."),"live city");h.data.weather.temp=Double.NaN;check(h.source.text(8001).contains("No weather data"),"missing weather");
   h.source.focus(2001);check(!h.drawerOpen&&h.zone==Z_SHELF,"focus closes drawer");
   h.source.focus(4003);check(h.topIndex==2&&h.selected==2&&h.zone==Z_TOP,"category changes through host");
-  h.sheetOpen=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==148,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
+  h.sheetOpen=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==151,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
   h.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
   h.source.focus(9002);check(h.gridIndex==1&&h.gridDirty&&h.gridRetargets==1&&h.source.focused()==9002,"grid focus/scroll host");
   int moves=h.moves;h.source.focus(2001);check(h.moves==moves,"sheet blocks underlying focus");h.source.focus(9003);check(h.moves==moves,"invalid grid index ignored");
-  h.sheetOpen=false;h.tab=4;h.heroLayer.y=0;check(h.source.bounds(5001,r)&&r.left==665&&r.top==417&&r.right==1255&&r.bottom==543,"shared roulette button bounds");
+  h.sheetOpen=false;h.tab=4;h.heroLayer.y=0;check(h.source.bounds(5001,r)&&r.left==665&&r.top==444&&r.right==1255&&r.bottom==570,"shared roulette button bounds");
   h.rouletteWork.active=true;h.source.focus(3001);check(h.moves==moves,"spinning locks TalkBack focus");h.rouletteWork.active=false;h.source.focus(5001);check(h.zone==Z_CARDS&&h.source.text(5001).equals("Random Movie"),"roulette node");
   h.source.click(5001);check(h.activations==1,"click delegates existing activation");
   h.visible[10]=false;check(!h.source.bounds(4011,r),"disabled top control has no bounds");h.source.focus(4011);check(h.zone==Z_CARDS,"disabled focus ignored");

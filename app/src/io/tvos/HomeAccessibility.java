@@ -24,7 +24,7 @@ final class HomeAccessibility implements Spoken.Source {
         RectF weatherCard;
         String[] tabs;
         final boolean[] topVisible = new boolean[11];
-        float k, h, scroll, heroY, statusY, tilesY;
+        float k, h, scroll, heroY, statusY, tilesY, contentTop, contentBottom;
     }
 
     interface Host {
@@ -118,7 +118,7 @@ final class HomeAccessibility implements Spoken.Source {
             case Z_CARDS:
                 if (i >= (s.tab == 4 ? 1 : Math.min(5, s.cards.size()))) return false;
                 if (s.tab == 4) {
-                    RouletteRenderer.buttonBounds(a11yRect, s.k);
+                    RouletteRenderer.buttonBounds(a11yRect, s.k, s.contentTop, s.contentBottom);
                 } else {
                     a11yRect.set(s.cardRects[i]);
                 }

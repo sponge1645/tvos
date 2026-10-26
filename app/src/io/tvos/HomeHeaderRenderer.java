@@ -20,7 +20,7 @@ final class HomeHeaderRenderer {
         List<HomeApps.Item> lightButtons;
         Paint lDate, lTab, lTabOn;
     }
-    private static final float MARGIN = HomeLayout.EDGE, L_BUTTON_CY = HomeLayout.HEADER_CY, L_TABBAR_TOP = 158, SHADOW_BLUR = 26;
+    private static final float MARGIN = HomeLayout.EDGE, L_BUTTON_CY = HomeLayout.HEADER_CY, L_TABBAR_TOP = HomeLayout.TAB_TOP, SHADOW_BLUR = 26;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7;
     private final Context context;
     private final HomeData data;
@@ -95,6 +95,7 @@ final class HomeHeaderRenderer {
 
     private void drawClockProfileCapsule(Canvas c) {
         if (!Prefs.topButtonEnabled(4)) return;
+        float unit = frame.k * HomeLayout.BUTTON_SCALE;
         RectF capsule = frame.topRects[9];
         if (capsule.isEmpty()) return;
         float clockFocus = Ui.clamp(frame.topFocus[9].value);
@@ -107,15 +108,15 @@ final class HomeHeaderRenderer {
         // Dark text on the white focused capsule in both themes, just like Search.
         p.setColor(blend(tone(L_INK, 0xEBFFFFFF), L_INK, clockFocus));
         p.setTypeface(Ui.displayMedium);
-        p.setTextSize(27 * frame.k);
+        p.setTextSize(27 * unit);
         String time = frame.clockText;
         Paint.FontMetrics clockFm = clockMetricsScratch;
         p.getFontMetrics(clockFm);
-        float clockInset = Math.max(5 * frame.k, (capsule.height() - (clockFm.descent - clockFm.ascent)) / 2f);
+        float clockInset = Math.max(5 * unit, (capsule.height() - (clockFm.descent - clockFm.ascent)) / 2f);
         float clockBaseline = capsule.centerY() - (clockFm.ascent + clockFm.descent) / 2f;
-        c.drawText(time, capsule.left + clockInset + 5 * frame.k, clockBaseline, p);
-        float avatarRadius = Math.max(1f, capsule.height() / 2f - 5 * frame.k);
-        float ax = capsule.right - 5 * frame.k - avatarRadius, ay = capsule.centerY();
+        c.drawText(time, capsule.left + clockInset + 5 * unit, clockBaseline, p);
+        float avatarRadius = Math.max(1f, capsule.height() / 2f - 5 * unit);
+        float ax = capsule.right - 5 * unit - avatarRadius, ay = capsule.centerY();
         if (profileAvatarIndex >= 0) {
             profileAvatar.draw(c, profileAvatarIndex, ax, ay, avatarRadius);
             c.restoreToCount(saved);
@@ -124,14 +125,15 @@ final class HomeHeaderRenderer {
         p.setColor(tone(0xFFD5E1E8, 0xFF485662));
         c.drawCircle(ax, ay, avatarRadius, p);
         p.setColor(tone(0xFF41505D, 0xFFF1F3F5));
-        c.drawCircle(ax, ay - 7 * frame.k, 7 * frame.k, p);
+        c.drawCircle(ax, ay - 7 * unit, 7 * unit, p);
         RectF shoulders = avatarShouldersScratch;
-        shoulders.set(ax - 13 * frame.k, ay + 3 * frame.k, ax + 13 * frame.k, ay + 16 * frame.k);
-        c.drawRoundRect(shoulders, 11 * frame.k, 11 * frame.k, p);
+        shoulders.set(ax - 13 * unit, ay + 3 * unit, ax + 13 * unit, ay + 16 * unit);
+        c.drawRoundRect(shoulders, 11 * unit, 11 * unit, p);
         c.restoreToCount(saved);
     }
 
     void drawButtons(Canvas c, Frame frame) {
+        float unit = frame.k * HomeLayout.BUTTON_SCALE;
         this.frame = frame;
         drawClockProfileCapsule(c);
         if (Prefs.topButtonEnabled(5)) {
@@ -140,7 +142,7 @@ final class HomeHeaderRenderer {
             String networkSymbol = frame.networkState == NetworkStatus.WIFI ? "wifi"
                     : frame.networkState == NetworkStatus.ETHERNET ? "ethernet" : "nonetwork";
             Symbols.draw(context, c, networkSymbol, cell.centerX(), cell.centerY(),
-                    30 * frame.k * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));
+                    30 * unit * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));
         }
         for (int i = 0; i < frame.lightButtons.size(); i++) {
             if (!Prefs.topButtonEnabled(i)) continue;
@@ -148,7 +150,7 @@ final class HomeHeaderRenderer {
             float f = Ui.clamp(frame.topFocus[5 + i].value);
             float s = drawActionSurface(c, r, f);
             Symbols.draw(context, c, frame.lightButtons.get(i).symbol, cell.centerX(), cell.centerY(),
-                    27f * 1.15f * frame.k * s,
+                    27f * 1.15f * unit * s,
                     blend(tone(L_INK, 0xEBFFFFFF), L_INK, f));
 
         }
@@ -186,7 +188,7 @@ final class HomeHeaderRenderer {
             heading.set(frame.lTabOn);
             heading.setColor(Ui.alpha(tone(L_INK, WHITE), Ui.clamp(frame.headingOpacity)));
             c.drawText((AppStrings.get(R.string.home_search_heading_prefix)) + frame.searchQuery, MARGIN * frame.k,
-                    (frame.largePostersWithoutWidgets ? L_BUTTON_CY + 14 : L_TABBAR_TOP + 48) * frame.k, heading);
+                    (frame.largePostersWithoutWidgets ? HomeLayout.TOP + 48 : L_TABBAR_TOP + 48) * frame.k, heading);
         }
     }
 }
