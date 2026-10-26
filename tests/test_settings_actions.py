@@ -9,6 +9,9 @@ public class ActionsTest {
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static ActionView create(int screen,int row){ActionView v=new ActionView();v.screen=screen;v.focus=row;return v;}
  public static void main(String[] args){
+  check(SettingsActions.activation(WIDGETS,0,0,false,6,false)==SettingsActions.Action.WEATHER_SCREEN,"first widget opens weather");
+  check(SettingsActions.activation(WIDGETS,1,0,false,6,false)==SettingsActions.Action.DATE_SCREEN,"second widget opens date");
+  check(SettingsActions.activation(WIDGETS,2,0,false,6,false)==SettingsActions.Action.NONE,"removed third widget is inactive");
   int[] targets={GENERAL,SCREENSAVER,-1,REMOTE_KEYS,ACCESSIBILITY,APPS_DOWNLOADS,SHELF_EDIT,TOP_PANEL,WIDGETS,SYSTEM};
   for(int row=0;row<10;row++){
    ActionView v=create(MAIN,row);v.activate();
@@ -16,7 +19,7 @@ public class ActionsTest {
    if(row==2)check(ActionView.events.equals(Arrays.asList("airplay")),"AirPlay returns without focus reset");
    if(row==3)check(ActionView.events.indexOf("remote-service")<ActionView.events.indexOf("load-apps"),"remote permission setup precedes app load");
   }
-  int[][] back={{GENERAL,MAIN,0},{SCREENSAVER,MAIN,1},{REMOTE_KEYS,MAIN,3},{ACCESSIBILITY,MAIN,4},{APPS_DOWNLOADS,MAIN,5},{SHELF_EDIT,MAIN,6},{TOP_PANEL,MAIN,7},{WIDGETS,MAIN,8},{SYSTEM,MAIN,9},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,2},{HOME_CHOICE,ACCESSIBILITY,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
+  int[][] back={{GENERAL,MAIN,0},{SCREENSAVER,MAIN,1},{REMOTE_KEYS,MAIN,3},{ACCESSIBILITY,MAIN,4},{APPS_DOWNLOADS,MAIN,5},{SHELF_EDIT,MAIN,6},{TOP_PANEL,MAIN,7},{WIDGETS,MAIN,8},{SYSTEM,MAIN,9},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,1},{HOME_CHOICE,ACCESSIBILITY,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
   for(int[] route:back){ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
    ActionView v=create(VPN_SETTINGS,1);v.buttonCount=count;v.backFromScreen();

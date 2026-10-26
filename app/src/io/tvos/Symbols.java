@@ -77,7 +77,6 @@ final class Symbols {
         switch (name) {
             case "apps": case "sync": return 123;
             case "home": return 135;
-            case "bitcoin": return 138;
             case "check": return 120;
             case "chevron_right": case "chevron_down": return 89;
             case "play": return 102;

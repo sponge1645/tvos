@@ -69,7 +69,6 @@
   <string name="runtime_no_compatible_apk_in_releases" formatted="false">"Нет подходящего APK в релизах"</string>
   <string name="runtime_tvos_s_home_screen_ran_into_a_problem_ngoing_back_to_the_tv_s_ori" formatted="false">"Ошибка главного экрана tvOS.\nВозвращаемся к заводскому главному экрану…"</string>
   <string name="runtime_tvos_update_downloaded_install_it_in_software_updates" formatted="false">"Обновление tvOS загружено. Установите его в настройках обновления ПО."</string>
-  <string name="runtime_dollar" formatted="false">"Доллар"</string>
   <string name="runtime_unexpected_apk_package_or_version" formatted="false">"Неверное приложение или версия APK"</string>
   <string name="runtime_apk_requires_a_newer_android_version" formatted="false">"APK несовместим с версией Android"</string>
   <string name="runtime_android_returned_no_apk_signing_certificate" formatted="false">"Android не вернул сертификат подписи APK"</string>
@@ -84,14 +83,12 @@
   <string name="runtime_no_weather_data_right_now" formatted="false">"Сейчас нет данных о погоде."</string>
   <string name="runtime_sunrise" formatted="false">"Восход "</string>
   <string name="runtime_sunset" formatted="false">"Закат "</string>
-  <string name="runtime_crypto" formatted="false">"Криптовалюты"</string>
   <string name="runtime_24h_change" formatted="false">"изменение за 24 ч"</string>
   <string name="runtime_for_you" formatted="false">"Для вас"</string>
   <string name="runtime_couldn_t_open" formatted="false">"Не удалось открыть "</string>
   <string name="runtime_of" formatted="false">" из "</string>
   <string name="runtime_tab" formatted="false">", вкладка "</string>
   <string name="runtime_of_3" formatted="false">" из 3"</string>
-  <string name="runtime_prices_from" formatted="false">"котировки за "</string>
   <string name="runtime_starting" formatted="false">"Запуск…"</string>
   <string name="runtime_original" formatted="false">"Заводской"</string>
   <string name="runtime_home_screen" formatted="false">"Главный экран, "</string>
@@ -131,7 +128,6 @@
   <string name="runtime_next_hours" formatted="false">" Ближайшие часы: "</string>
   <string name="runtime_sunrise_2" formatted="false">" Восход "</string>
   <string name="runtime_sunset_2" formatted="false">" Закат "</string>
-  <string name="runtime_quotes_widget" formatted="false">"Виджет котировок"</string>
   <string name="runtime_on" formatted="false">"Вкл."</string>
   <string name="runtime_off" formatted="false">"Выкл."</string>
   <string name="runtime_shelf" formatted="false">"Избранные приложения"</string>

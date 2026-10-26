@@ -33,7 +33,7 @@ final class SettingsContent {
             case SCREENSAVER: return AppStrings.get(R.string.settings_screen_saver, language);
             case HOME_CHOICE: return AppStrings.get(R.string.settings_default_launcher, language);
             case VPN_SETTINGS: return "VPN";
-            case HOME_SETTINGS: return settingsGroup == WIDGETS ? (AppStrings.get(R.string.settings_quotes, language)) : settingsGroup == SYSTEM ? (AppStrings.get(R.string.settings_categories, language)) : (AppStrings.get(R.string.settings_general, language));
+            case HOME_SETTINGS: return settingsGroup == SYSTEM ? (AppStrings.get(R.string.settings_categories, language)) : (AppStrings.get(R.string.settings_general, language));
             case REMOTE_KEYS: return AppStrings.get(R.string.settings_remotes_and_devices, language);
             case SHELF_EDIT: return "Dock";
             case CATEGORY_EDIT: return AppStrings.get(R.string.settings_categories, language);
@@ -45,7 +45,7 @@ final class SettingsContent {
     static String[] menuLabels(int screen, AppLanguage language) {
         switch (screen) {
             case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_date_time, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_navigation_clicks, language)};
-            case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_quotes, language), AppStrings.get(R.string.settings_date, language)};
+            case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language), AppStrings.get(R.string.settings_show_in_bottom_menu, language)};
             case UPDATES: return new String[] {AppStrings.get(R.string.settings_update_software, language), AppStrings.get(R.string.settings_automatically_update, language)};

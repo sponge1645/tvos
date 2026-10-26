@@ -8,8 +8,6 @@
     <string name="home_weather" formatted="false">"Погода"</string>
     <string name="home_sunrise" formatted="false">"Восход "</string>
     <string name="home_sunset" formatted="false">"Закат "</string>
-    <string name="home_daily_change" formatted="false">"изменение за 24 ч"</string>
-    <string name="home_crypto" formatted="false">"Криптовалюты"</string>
     <string name="home_all_apps" formatted="false">"Приложения"</string>
     <string name="home_open_error_prefix" formatted="false">"Не удалось открыть "</string>
     <string name="home_spoken_of" formatted="false">" из "</string>

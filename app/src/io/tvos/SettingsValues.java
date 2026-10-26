@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 /** Current settings labels/values and platform reads; no Canvas, navigation or stored UI state. */
 final class SettingsValues {
-    private static final int CITY_ROW = 4, COIN_ROWS = 6;
+    private static final int CITY_ROW = 4;
     private final Activity activity;
     private final SettingsOrderEditor buttonEditor;
     private final BooleanSupplier freeActive;
@@ -45,7 +45,7 @@ final class SettingsValues {
             v[5] = settings()[1];
             v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
             v[7] = onOff(localPrefs().getBoolean("navigation_clicks", true));
-            
+
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));
         } else if (screen == ACCESSIBILITY) {
@@ -69,7 +69,6 @@ final class SettingsValues {
             v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
         } else if (screen == WIDGETS) {
-            // Quotes is a submenu; its switch is shown inside HOME_SETTINGS.
             // Date is a submenu; its switch is shown inside DATE_TIME.
         } else if (screen == DATE_TIME) {
             v[0] = onOff(localPrefs().getBoolean("show_date", true));
@@ -118,13 +117,9 @@ final class SettingsValues {
         return v;
     }
 
-    static int detectivesRow() { return dollar() ? 10 : 9; }
+    static int detectivesRow() { return 5; }
 
     static int randomRow() { return detectivesRow() + 1; }
-
-    static boolean dollar() {
-        return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
-    }
 
     static String[] settingLabels() {
         List<String> l = new ArrayList<>();
@@ -133,11 +128,6 @@ final class SettingsValues {
         l.add(AppStrings.get(R.string.settings_theme));
         l.add(AppStrings.get(R.string.settings_weather_widget));
         l.add(AppStrings.get(R.string.settings_city));
-        l.add(AppStrings.get(R.string.settings_show_in_bottom_menu));
-        l.add("Bitcoin");
-        l.add("Ethereum");
-        l.add("Solana");
-        if (dollar()) l.add(AppStrings.get(R.string.settings_dollar));
         l.add(AppStrings.get(R.string.settings_detectives));
         l.add(AppStrings.get(R.string.settings_random_movie));
         return l.toArray(new String[0]);
@@ -153,28 +143,9 @@ final class SettingsValues {
         v[2] = theme.equals("light") ? AppStrings.get(R.string.settings_theme_light) : theme.equals("dark") ? AppStrings.get(R.string.settings_theme_dark) : AppStrings.get(R.string.settings_automatic_value);
         v[3] = onOff(Prefs.weather());
         v[CITY_ROW] = !cityStatus.get().isEmpty() ? cityStatus.get() : Prefs.city().isEmpty() ? "—" : Prefs.city();
-        v[5] = onOff(Prefs.quotes());
-        // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
-        for (int i = COIN_ROWS; i < detectivesRow(); i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
         v[detectivesRow()] = onOff(Prefs.detectives());
         v[randomRow()] = onOff(Prefs.randomMovie());
         return v;
-    }
-
-    static String[] widgetLabels() {
-        String[] all = settingLabels();
-        java.util.ArrayList<String> result = new java.util.ArrayList<>();
-        result.add(all[5]);
-        for (int i = COIN_ROWS; i < detectivesRow(); i++) result.add(all[i]);
-        return result.toArray(new String[0]);
-    }
-
-    String[] widgets() {
-        String[] all = settings();
-        java.util.ArrayList<String> result = new java.util.ArrayList<>();
-        result.add(all[5]);
-        for (int i = COIN_ROWS; i < detectivesRow(); i++) result.add(all[i]);
-        return result.toArray(new String[0]);
     }
 
     static String onOff(boolean on) {

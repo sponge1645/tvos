@@ -20,7 +20,6 @@
     <string name="settings_temperature" formatted="false">Температура</string>
     <string name="settings_time_format" formatted="false">Формат времени</string>
     <string name="settings_navigation_clicks" formatted="false">Щелчки при навигации</string>
-    <string name="settings_quotes" formatted="false">Котировки</string>
     <string name="settings_show_in_menu_bar" formatted="false">Показывать на верхней панели</string>
     <string name="settings_show_in_bottom_menu" formatted="false">Показывать на нижней панели</string>
     <string name="settings_update_software" formatted="false">Обновление ПО</string>
@@ -133,7 +132,6 @@
     <string name="settings_could_not_reset_tvos" formatted="false">Не удалось сбросить tvOS</string>
     <string name="settings_theme" formatted="false">Тема</string>
     <string name="settings_weather_widget" formatted="false">Виджет погоды</string>
-    <string name="settings_dollar" formatted="false">Доллар</string>
     <string name="settings_automatic_value" formatted="false">Автоматически</string>
     <string name="settings_theme_light" formatted="false">Светлая</string>
     <string name="settings_theme_dark" formatted="false">Тёмная</string>

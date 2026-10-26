@@ -8,8 +8,6 @@
     <string name="home_weather" formatted="false">"Weather"</string>
     <string name="home_sunrise" formatted="false">"Sunrise "</string>
     <string name="home_sunset" formatted="false">"Sunset "</string>
-    <string name="home_daily_change" formatted="false">"24h change"</string>
-    <string name="home_crypto" formatted="false">"Crypto"</string>
     <string name="home_all_apps" formatted="false">"All Apps"</string>
     <string name="home_open_error_prefix" formatted="false">"Couldn\'t open "</string>
     <string name="home_spoken_of" formatted="false">" of "</string>

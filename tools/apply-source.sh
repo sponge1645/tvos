@@ -16,6 +16,14 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
     else cp "$SOURCE/$ITEM" "$TARGET/$ITEM"; fi
   fi
 done
+# Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
+for RETIRED_FILE in \
+  app/src/io/tvos/Russian.java app/src/io/tvos/Glyphs.java \
+  app/res/drawable/coin_btc.xml app/res/drawable/coin_eth.xml \
+  app/res/drawable/coin_sol.xml app/res/drawable/coin_usdt.xml \
+  app/assets/symbols/bitcoin.svg app/assets/symbols/bitcoin.png; do
+  rm -f -- "$TARGET/$RETIRED_FILE"
+done
 # These fonts were replaced by SF Pro Display. The complete previous app is already in BACKUP.
 for FONT_FILE in InterVariable.ttf sf_text_regular.otf sf_text_medium.otf sf_text_semibold.otf OFL.txt; do
   rm -f -- "$TARGET/app/assets/fonts/$FONT_FILE"

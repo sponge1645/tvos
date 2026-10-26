@@ -33,7 +33,23 @@ final class Prefs {
         app = c.getApplicationContext();
         AppStrings.init(app);
         migrateKeys();   // before anything reads the button choices
+        removeRetiredWidgetData();
         Ui.applyLanguage();   // the language picked on the TV, now that it can be read
+    }
+
+    /** Delete only obsolete widget keys; keep weather, region and all other settings. */
+    private static void removeRetiredWidgetData() {
+        SharedPreferences settings = sp();
+        String[] retired = {"quotes", "coin0", "coin1", "coin2", "coin3"};
+        SharedPreferences.Editor edit = null;
+        for (String key : retired) if (settings.contains(key)) {
+            if (edit == null) edit = settings.edit();
+            edit.remove(key);
+        }
+        if (edit != null) edit.apply();
+        SharedPreferences data = app.getSharedPreferences("homedata", Context.MODE_PRIVATE);
+        if (data.contains("prices") || data.contains("pricesAt"))
+            data.edit().remove("prices").remove("pricesAt").apply();
     }
 
     private static SharedPreferences sp() {
@@ -132,16 +148,10 @@ final class Prefs {
         return true;
     }
 
-    // MARK: - Widgets and coins
+    // MARK: - Weather
 
     static boolean weather() { return sp().getBoolean("weather", true); }
     static void setWeather(boolean on) { put("weather", on); }
-
-    static boolean quotes() { return sp().getBoolean("quotes", Config.SHOW_CRYPTO); }
-    static void setQuotes(boolean on) { put("quotes", on); }
-
-    static boolean coin(int i) { return sp().getBoolean("coin" + i, true); }
-    static void setCoin(int i, boolean on) { put("coin" + i, on); }
 
     // Home screen recommendation sections (enabled by default).
     static boolean detectives() { return sp().getBoolean("showDetectives", false); }

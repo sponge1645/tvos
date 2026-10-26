@@ -65,7 +65,7 @@ final class Ui {
         return p;
     }
 
-    /** Fixed-width digits (the clock and the prices don't jitter when a digit changes). */
+    /** Fixed-width digits (the clock doesn't jitter when a digit changes). */
     static Paint numbers(Typeface face, float size, int color) {
         Paint p = text(face, size, color);
         p.setFontFeatureSettings("'tnum'");

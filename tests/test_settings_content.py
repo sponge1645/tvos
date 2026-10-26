@@ -21,7 +21,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,VPN_SETTINGS,SCREENSAVER,ABOUT};
-  int[] rows={10,8,3,2,1,2,3,2,2,7,4,2,5,8};
+  int[] rows={10,8,2,2,1,2,3,2,2,7,4,2,5,8};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -31,6 +31,7 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    h.screen=MAIN;check(h.menuLabels()[1].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
+   h.screen=WIDGETS;check(Arrays.equals(h.menuLabels(),russian?new String[]{"Погода","Дата"}:new String[]{"Weather","Date"}),"widget menu contains only weather and date");
    h.screen=ABOUT;check(h.screenTitle().equals(russian?"Об этом устройстве":"About"),"About heading");
    check(h.menuLabels()[2].equals(russian?"Серийный номер":"Serial Number"),"capitalization preserved");
    h.screen=APPS_DOWNLOADS;String[] expected={"AirPlay","Apple Music","TizenTube","INCY","Seena","Lampa","KinoPub"};
@@ -52,7 +53,7 @@ public class ContentHarness {
     check(SettingsContent.description(MENU_BUTTONS,count,0,0,count,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("VPN"),"VPN footer follows live row count");
     if(count>0)check(!SettingsContent.description(MENU_BUTTONS,0,0,0,count,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("VPN"),"ordinary button retains reorder guidance");
    }
-   h.screen=HOME_SETTINGS;h.settingsGroup=WIDGETS;check(h.screenTitle().equals(russian?"Котировки":"Quotes"),"widget subgroup title");
+   h.screen=HOME_SETTINGS;h.settingsGroup=WIDGETS;check(h.screenTitle().equals(russian?"Основные":"General"),"widget subgroup title");
    h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Категории":"Categories"),"category subgroup title");
    check(!SettingsContent.description(HOME_SETTINGS,0,0,SYSTEM,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(HOME_SETTINGS,0,0,GENERAL,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"subgroup-specific guidance");
    check(SettingsContent.description(MAIN,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");

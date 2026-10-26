@@ -9,7 +9,7 @@ final class SettingsActions {
     enum Action {
         NONE, NAME, HOME_MODE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
-        DATE_SETTINGS, MENU_ADJUST, QUOTES, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
+        DATE_SETTINGS, MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         VPN_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
         GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
@@ -89,7 +89,7 @@ final class SettingsActions {
                 }
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
             case GENERAL: return row == 3 ? Action.CITY_PICKER : row == 0 ? Action.ABOUT_SCREEN : row == 4 ? Action.DATE_SETTINGS : Action.MENU_ADJUST;
-            case WIDGETS: return row == 2 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : row == 1 ? Action.QUOTES : Action.NONE;
+            case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
             case UPDATES: return row == 0 ? Action.CHECK_UPDATE : Action.AUTO_UPDATE;
             case MENU_BUTTONS: return row == buttonCount ? Action.VPN_SCREEN : Action.MENU_BUTTON;
             case VPN_SETTINGS: return row == 0 ? Action.VPN_TOGGLE : vpnEnabled ? Action.VPN_PICKER : Action.NONE;
@@ -122,10 +122,10 @@ final class SettingsActions {
             case CATEGORY_EDIT: return new Target(TOP_PANEL, 0);
             case VPN_SETTINGS: return new Target(MENU_BUTTONS, buttonCount);
             case UPDATES: return new Target(SYSTEM, 0);
-            case HOME_SETTINGS: return new Target(group == SYSTEM ? TOP_PANEL : group, group == SYSTEM ? 0 : group == WIDGETS ? 1 : 0);
+            case HOME_SETTINGS: return new Target(group == SYSTEM ? TOP_PANEL : group, 0);
             case RESET: return new Target(SYSTEM, 1);
             case WEATHER: return new Target(WIDGETS, 0);
-            case DATE_TIME: return new Target(WIDGETS, 2);
+            case DATE_TIME: return new Target(WIDGETS, 1);
             case SHELF_EDIT: return new Target(MAIN, 6);
             case APPS_DOWNLOADS: return new Target(MAIN, 5);
             default: return new Target(MAIN, screen == GENERAL ? 0 : screen == ACCESSIBILITY ? 4 : screen == TOP_PANEL ? 7 : screen == WIDGETS ? 8 : screen == SYSTEM ? 9 : 0);

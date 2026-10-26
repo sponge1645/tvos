@@ -287,8 +287,8 @@ public class SettingsActivity extends Activity {
                 case HOME_SETTINGS:
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
-                    String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingsGroup == WIDGETS ? widgetLabels() : settingLabels();
-                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : settingsGroup == WIDGETS ? valueSource.widgets() : valueSource.settings();
+                    String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingLabels();
+                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : valueSource.settings();
                     return row < labels.length ? labels[row] + ", " + values[row] : "";
                 }
                 case PICKER: {
@@ -470,7 +470,7 @@ public class SettingsActivity extends Activity {
                 case APPS_DOWNLOADS: return 7;
                 case GENERAL: return 8;
                 case SCREENSAVER: return 5;
-                case WIDGETS: return 3;
+                case WIDGETS: return 2;
                 case WEATHER: return 2;
                 case DATE_TIME: return 1;
                 case SYSTEM: return 3;
@@ -483,7 +483,7 @@ public class SettingsActivity extends Activity {
                 case UPDATES: return 2;
                 case ABOUT: return 8;
                 case HOME_CHOICE: return 2;
-                case HOME_SETTINGS: return settingsGroup == SYSTEM ? 2 : settingsGroup == WIDGETS ? widgetLabels().length : settingLabels().length;
+                case HOME_SETTINGS: return settingsGroup == SYSTEM ? 2 : settingLabels().length;
                 case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
                 case SHELF_EDIT: return Math.min(PICK_VISIBLE, dockEditor.size());
                 default: return Prefs.KEYS.length;
@@ -995,7 +995,7 @@ public class SettingsActivity extends Activity {
             switch (e.getKeyCode()) {
                 case KeyEvent.KEYCODE_DPAD_UP:
                     if (screen == ABOUT) return true;
-                    
+
                     if (down && e.getRepeatCount() == 0 && (focus > 0 || (scrolling() && pickScroll > 0))) tvosClick.move();
                     if (down && focus > 0) focus--;
                     else if (down && scrolling() && pickScroll > 0) pickScroll--;
@@ -1004,7 +1004,7 @@ public class SettingsActivity extends Activity {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                     if (screen == ABOUT) return true;
-                    
+
                     if (down && e.getRepeatCount() == 0 && (focus < rowCount() - 1 || (scrolling() && pickScroll + rowCount() < listSize()))) tvosClick.move();
                     if (down && focus < rowCount() - 1) focus++;
                     else if (down && scrolling() && pickScroll + rowCount() < listSize()) pickScroll++;
@@ -1069,12 +1069,11 @@ public class SettingsActivity extends Activity {
         // MARK: - Home Settings and Remote Buttons
 
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
-        /** Home Settings: language, temperature, theme, weather, quotes, then one row per coin. */
-        private static final int CITY_ROW = 4, COIN_ROWS = 6;
+        /** Home Settings: language, temperature, theme, weather, city and categories. */
+        private static final int CITY_ROW = 4;
 
         private int settingIndex() {
             if (settingsGroup == SYSTEM) return focus == 0 ? detectivesRow() : randomRow();
-            if (settingsGroup == WIDGETS) return focus == 0 ? 5 : COIN_ROWS + focus - 1;
             return focus;
         }
 
@@ -1231,12 +1230,7 @@ public class SettingsActivity extends Activity {
                 }
                 case 3: Prefs.setWeather(!Prefs.weather()); break;
                 case CITY_ROW: return;
-                case 5: Prefs.setQuotes(!Prefs.quotes()); break;
-
-                default:
-                    if (!Prefs.quotes()) return;
-                    Prefs.setCoin(selected - COIN_ROWS, !Prefs.coin(selected - COIN_ROWS));
-                    break;
+                default: return;
             }
             HomeData.get(getContext()).settingsChanged();
         }
@@ -1438,16 +1432,14 @@ public class SettingsActivity extends Activity {
 
         private void drawList(Canvas c) {
             boolean keys = screen == REMOTE_KEYS;
-            String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingsGroup == WIDGETS ? widgetLabels() : settingLabels();
-            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : settingsGroup == WIDGETS ? valueSource.widgets() : valueSource.settings();
+            String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingLabels();
+            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : valueSource.settings();
             // The screen title is already drawn centrally; no legacy subtitle.
             for (int i = 0; i < labels.length; i++) {
                 setApprovedRowRect(i);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                boolean locked = !keys && settingsGroup == WIDGETS && i >= 1 && !Prefs.quotes();
-                rowValue.setColor(locked ? 0x88A1A3A1 : ABOUT_SECONDARY_COLOR);
-                if (locked) rowLabel.setColor(blend(lightSettings() ? 0x77304450 : 0x73FFFFFF, 0x731C1C1E, f));
+                rowValue.setColor(ABOUT_SECONDARY_COLOR);
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
@@ -1512,7 +1504,6 @@ public class SettingsActivity extends Activity {
                 case DOWNLOAD: AppDownloads.start(activity, focus); return;
                 case DATE_SETTINGS: activity.startActivity(new Intent(Settings.ACTION_DATE_SETTINGS)); return;
                 case MENU_ADJUST: adjustMenu(1); break;
-                case QUOTES: returnFocus = focus; settingsGroup = WIDGETS; screen = HOME_SETTINGS; focus = 0; break;
                 case CHECK_UPDATE:
                     updateDialog.check();
                     break;

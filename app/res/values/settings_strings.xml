@@ -20,7 +20,6 @@
     <string name="settings_temperature" formatted="false">Temperature</string>
     <string name="settings_time_format" formatted="false">Time Format</string>
     <string name="settings_navigation_clicks" formatted="false">Navigation Clicks</string>
-    <string name="settings_quotes" formatted="false">Quotes</string>
     <string name="settings_show_in_menu_bar" formatted="false">Show in Menu Bar</string>
     <string name="settings_show_in_bottom_menu" formatted="false">Show in Bottom Menu</string>
     <string name="settings_update_software" formatted="false">Update Software</string>
@@ -133,7 +132,6 @@
     <string name="settings_could_not_reset_tvos" formatted="false">Could not reset tvOS</string>
     <string name="settings_theme" formatted="false">Theme</string>
     <string name="settings_weather_widget" formatted="false">Weather widget</string>
-    <string name="settings_dollar" formatted="false">Dollar</string>
     <string name="settings_automatic_value" formatted="false">Automatic</string>
     <string name="settings_theme_light" formatted="false">Light</string>
     <string name="settings_theme_dark" formatted="false">Dark</string>

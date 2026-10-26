@@ -69,7 +69,6 @@
   <string name="runtime_no_compatible_apk_in_releases" formatted="false">"No compatible APK in releases"</string>
   <string name="runtime_tvos_s_home_screen_ran_into_a_problem_ngoing_back_to_the_tv_s_ori" formatted="false">"tvOS\'s home screen ran into a problem.\nGoing back to the TV\'s original home screen…"</string>
   <string name="runtime_tvos_update_downloaded_install_it_in_software_updates" formatted="false">"tvOS update downloaded. Install it in Software Updates."</string>
-  <string name="runtime_dollar" formatted="false">"Dollar"</string>
   <string name="runtime_unexpected_apk_package_or_version" formatted="false">"Unexpected APK package or version"</string>
   <string name="runtime_apk_requires_a_newer_android_version" formatted="false">"APK requires a newer Android version"</string>
   <string name="runtime_android_returned_no_apk_signing_certificate" formatted="false">"Android returned no APK signing certificate"</string>
@@ -84,14 +83,12 @@
   <string name="runtime_no_weather_data_right_now" formatted="false">"No weather data right now."</string>
   <string name="runtime_sunrise" formatted="false">"Sunrise "</string>
   <string name="runtime_sunset" formatted="false">"Sunset "</string>
-  <string name="runtime_crypto" formatted="false">"Crypto"</string>
   <string name="runtime_24h_change" formatted="false">"24h change"</string>
   <string name="runtime_for_you" formatted="false">"For You"</string>
   <string name="runtime_couldn_t_open" formatted="false">"Couldn\'t open "</string>
   <string name="runtime_of" formatted="false">" of "</string>
   <string name="runtime_tab" formatted="false">", tab "</string>
   <string name="runtime_of_3" formatted="false">" of 3"</string>
-  <string name="runtime_prices_from" formatted="false">"prices from "</string>
   <string name="runtime_starting" formatted="false">"Starting…"</string>
   <string name="runtime_original" formatted="false">"Original"</string>
   <string name="runtime_home_screen" formatted="false">"Home Screen, "</string>
@@ -131,7 +128,6 @@
   <string name="runtime_next_hours" formatted="false">" Next hours: "</string>
   <string name="runtime_sunrise_2" formatted="false">" Sunrise "</string>
   <string name="runtime_sunset_2" formatted="false">" Sunset "</string>
-  <string name="runtime_quotes_widget" formatted="false">"Quotes widget"</string>
   <string name="runtime_on" formatted="false">"On"</string>
   <string name="runtime_off" formatted="false">"Off"</string>
   <string name="runtime_shelf" formatted="false">"Shelf"</string>

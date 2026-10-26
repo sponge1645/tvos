@@ -7,14 +7,13 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import java.util.function.Consumer;
 
-/** Widget content and bounded drawing caches; no glass or navigation ownership. */
+/** Weather content and bounded drawing caches; no glass or navigation ownership. */
 final class HomeWidgets {
-    private static final int L_INK=0xFF1D1D1F,L_DIM=0xFF6E6E73,L_FAINT=0xFF8E8E93;
-    private static final int UP_COLOR=0xFF30D158,DOWN_COLOR=0xFFFF453A;
+    private static final int L_INK=0xFF1D1D1F,L_DIM=0xFF6E6E73;
     private final Context context;
     private final HomeData data;
     private float k=1,night;
-    private Paint cardTitle,cardText,cardDim,cardDimRight,bigTemp,hourPaint,hourTemp,pricePaint,changePaint;
+    private Paint cardTitle,cardText,cardDim,bigTemp,hourPaint,hourTemp;
     private final Paint fill=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF tmp=new RectF();
     HomeWidgets(Context context,HomeData data){this.context=context.getApplicationContext();this.data=data;}
@@ -22,76 +21,34 @@ final class HomeWidgets {
         cardTitle = Ui.text(Ui.semibold, 25 * k, 0xB3FFFFFF);
         cardText = Ui.text(Ui.medium, 29 * k, 0xF2FFFFFF);
         cardDim = Ui.numbers(Ui.medium, 23 * k, 0xADFFFFFF);
-        cardDimRight = Ui.text(Ui.medium, 21 * k, 0x99FFFFFF);
-        cardDimRight.setTextAlign(Paint.Align.RIGHT);
         bigTemp = Ui.numbers(Ui.light, 100 * k, 0xFFFFFFFF);
         hourPaint = Ui.numbers(Ui.medium, 22 * k, 0xADFFFFFF);
         hourPaint.setTextAlign(Paint.Align.CENTER);
         hourTemp = Ui.numbers(Ui.medium, 31.2f * k, 0xF2FFFFFF);
         hourTemp.setTextAlign(Paint.Align.CENTER);
-        pricePaint = Ui.numbers(Ui.medium, 26 * k, 0xF2FFFFFF);
-        pricePaint.setTextAlign(Paint.Align.RIGHT);
-        changePaint = Ui.numbers(Ui.semibold, 21 * k, 0xFFFFFFFF);
-        changePaint.setTextAlign(Paint.Align.CENTER);
         clear();
     }
-    void clear(){weatherSnapshot.clear();quotesSnapshot.clear();}
+    void clear(){weatherSnapshot.clear();}
     private void prepare(float night){
         this.night=night;
         cardTitle.setColor(tone(L_DIM,0xB3FFFFFF));cardText.setColor(drawerInk(.95f));
-        cardDim.setColor(tone(L_DIM,0xADFFFFFF));cardDimRight.setColor(tone(L_FAINT,0x99FFFFFF));
+        cardDim.setColor(tone(L_DIM,0xADFFFFFF));
         bigTemp.setColor(drawerInk(1));hourPaint.setColor(tone(L_DIM,0xADFFFFFF));
-        hourTemp.setColor(drawerInk(.95f));pricePaint.setColor(drawerInk(.95f));
+        hourTemp.setColor(drawerInk(.95f));
     }
     void weather(Canvas c,RectF r,float night){prepare(night);
         if(Ui.LEGACY)weatherSnapshot.draw(c,r,drawerCardsKey(),cc->drawWeather(cc,r));else drawWeather(c,r);
     }
-    void prices(Canvas c,RectF r,float night){prepare(night);
-        if(Ui.LEGACY)quotesSnapshot.draw(c,r,drawerCardsKey(),cc->drawPrices(cc,r));else drawPrices(c,r);
-    }
+
     private float dark(){return night;}
     private int tone(int light,int dark){return blend(light,dark,night);}
     private int drawerInk(float alpha){return Ui.alpha(tone(L_INK,0xFFFFFFFF),alpha);}
     private HomeData.Weather textWeather;
-    private long textPricesAt = -1, textMinute = -1;
     private int textPrefs = -1;
     private String textLanguage;
-    private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText, staleText;
+    private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText;
     private final String[] hourText = new String[6], hourTempText = new String[6];
-    private final String[] priceText = new String[HomeData.COINS.length], changeText = new String[HomeData.COINS.length];
-    private Quotes quotes;
-    private final Snapshot weatherSnapshot=new Snapshot(),quotesSnapshot=new Snapshot();
-    private final class Quotes {
-        final int[] coins;
-        final double[] prices;
-        final float size, cap, halfCap;
-        final String[] values;
-        final float[] glyphs, widths;
-
-        Quotes(int[] coins, double[] all, Paint text) {
-            this.coins = coins;
-            size = text.getTextSize();
-            cap = Ui.cap(text);
-            halfCap = Ui.halfCap(text);
-            int n = coins.length;
-            prices = new double[n];
-            values = new String[n];
-            glyphs = new float[n];
-            widths = new float[n];
-            for (int i = 0; i < n; i++) {
-                prices[i] = all[coins[i]];
-                values[i] = HomeData.compact(prices[i]);
-                glyphs[i] = Glyphs.width(context, HomeData.COINS[coins[i]], cap);
-                widths[i] = text.measureText(values[i]);
-            }
-        }
-
-        boolean matches(int[] now, double[] all, float textSize) {
-            if (now != coins || textSize != size) return false;
-            for (int i = 0; i < coins.length; i++) if (Double.compare(all[coins[i]], prices[i]) != 0) return false;
-            return true;
-        }
-    }
+    private final Snapshot weatherSnapshot=new Snapshot();
 
     private void drawWeather(Canvas c, RectF r) {
         refreshDrawerText();
@@ -148,17 +105,7 @@ final class HomeWidgets {
             sunriseText = AppStrings.get(R.string.home_sunrise) + Ui.time(wx.sunrise);
             sunsetText = AppStrings.get(R.string.home_sunset) + Ui.time(wx.sunset);
         }
-        long minute = System.currentTimeMillis() / 60_000;
-        if (data.pricesAt != textPricesAt || minute != textMinute || settings) {
-            textPricesAt = data.pricesAt;
-            textMinute = minute;
-            String stale = HomeData.staleness(data.pricesAt, 5 * 60_000L);
-            staleText = stale.isEmpty() ? AppStrings.get(R.string.home_daily_change) : stale;
-            for (int i = 0; i < HomeData.COINS.length; i++) {
-                priceText[i] = HomeData.brl(data.prices[i]);
-                changeText[i] = HomeData.change(data.changes[i]);
-            }
-        }
+
     }
 
     private float sunItem(Canvas c, String symbol, String label, float x, float base) {
@@ -169,8 +116,8 @@ final class HomeWidgets {
     }
 
     private String drawerCardsKey() {
-        return data.weatherAt + "|" + data.pricesAt + "|" + Prefs.version + "|" + Ui.language + "|"
-                + Float.floatToIntBits(dark()) + "|" + System.currentTimeMillis() / 60_000;
+        return data.weatherAt + "|" + Prefs.version + "|" + Ui.language + "|"
+                + Float.floatToIntBits(dark());
     }
 
     private static final class Snapshot {
@@ -197,32 +144,6 @@ final class HomeWidgets {
         }
     }
 
-    private void drawPrices(Canvas c, RectF r) {
-        float x = r.left + 34 * k, right = r.right - 34 * k;
-        refreshDrawerText();
-        c.drawText(AppStrings.get(R.string.home_crypto), x, r.top + 54 * k, cardTitle);
-        c.drawText(staleText, right, r.top + 54 * k, cardDimRight);
-        float cap = Ui.cap(cardText);
-        int[] coins = HomeData.active();
-        for (int j = 0; j < coins.length; j++) {
-            int i = coins[j];
-            float base = r.top + (110 + 52 * j) * k, mid = base - cap / 2;
-            float gw = Glyphs.width(context, HomeData.COINS[i], cap);
-            Glyphs.coin(context, c, HomeData.COINS[i], x + 14 * k, mid, cap, tone(L_DIM, 0xCCFFFFFF));
-            c.drawText(HomeData.coinName(i), x + Math.max(gw, 28 * k) / 2 + 30 * k, base, cardText);
-            c.drawText(priceText[i], right - 128 * k, base, pricePaint);
-            double change = data.changes[i];
-            if (Double.isNaN(change)) continue;
-            int color = change >= 0 ? tone(0xFF248A3D, UP_COLOR) : tone(0xFFD70015, DOWN_COLOR);
-            tmp.set(right - 108 * k, mid - 17 * k, right, mid + 17 * k);
-            fill.setShader(null);
-            fill.setColor(Ui.alpha(color, 0.2f));
-            c.drawRoundRect(tmp, 17 * k, 17 * k, fill);
-            changePaint.setColor(color);
-            c.drawText(changeText[i], tmp.centerX(), mid + Ui.halfCap(changePaint), changePaint);
-        }
-    }
-
     private static int blend(int a, int b, float f) {
         int aa = a >>> 24, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
         int ba = b >>> 24, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
@@ -230,35 +151,4 @@ final class HomeWidgets {
                 | (Math.round(ag + (bg - ag) * f) << 8) | Math.round(ab + (bb - ab) * f);
     }
 
-    void quotes(Canvas c, Paint text, Paint staleQuote, boolean clock, float right, float anchorY, float fade, int coinColor, float scale) {
-        k=scale;
-        int textColor = text.getColor();
-        text.setColor(Ui.alpha(textColor, fade));
-        int n = HomeData.coinCount();
-        if (n == 0) { text.setColor(textColor); return; }
-        // Measured once per set of prices: this row is redrawn on every frame of the cards' focus animation, and
-        // measuring text there cost ~3 ms a frame on a Mi Box 3.
-        int[] coins = HomeData.active();
-        Quotes q = quotes;
-        if (q == null || !q.matches(coins, data.prices, text.getTextSize())) {
-            q = quotes = new Quotes(coins, data.prices, text);
-        }
-        // On the tab row, at the right.
-        float base = clock ? anchorY : anchorY + q.halfCap;
-        float cap = q.cap, gap = (clock ? 8 : 6) * k, spacing = (clock ? 32 : 24) * k;
-        float total = spacing * (n - 1);
-        for (int i = 0; i < n; i++) total += q.glyphs[i] + gap + q.widths[i];
-        float x = clock ? 80 * k : right - total;
-        for (int i = 0; i < n; i++) {
-            Glyphs.coin(context, c, HomeData.COINS[coins[i]], x + q.glyphs[i] / 2, base - cap / 2, cap, coinColor);
-            x += q.glyphs[i] + gap;
-            c.drawText(q.values[i], x, base, text);
-            x += q.widths[i] + spacing;
-        }
-        text.setColor(textColor);
-        String stale = HomeData.staleness(data.pricesAt, 5 * 60_000L);
-        if (stale.isEmpty()) return;
-        if (clock) c.drawText(stale, x - spacing + 24 * k + staleQuote.measureText(stale), base, staleQuote);
-        else c.drawText(stale, right - total - 24 * k, base, staleQuote);
-    }
 }
