@@ -78,4 +78,107 @@
     <string name="settings_app_kinopub_description" formatted="false">Movies and series from KinoPub.\nAn account with viewing access is required.</string>
     <string name="settings_choose_app" formatted="false">Choose app</string>
     <string name="settings_settings" formatted="false">Settings</string>
+    <string name="settings_no_ads_with_the_new_screensaver" formatted="false">no ads, with the new screensaver</string>
+    <string name="settings_the_tv_s_factory_home_screen" formatted="false">the TV\'s factory home screen</string>
+    <string name="settings_in_use" formatted="false">. In use</string>
+    <string name="settings_of_2" formatted="false">" of 2"</string>
+    <string name="settings_selected" formatted="false">, selected</string>
+    <string name="settings_of" formatted="false">" of "</string>
+    <string name="settings_vpn_app" formatted="false">VPN App</string>
+    <string name="settings_position" formatted="false">"Position "</string>
+    <string name="settings_off" formatted="false">Off</string>
+    <string name="settings_on_the_shelf_place" formatted="false">"on the shelf, place "</string>
+    <string name="settings_not_on_the_shelf" formatted="false">not on the shelf</string>
+    <string name="settings_light" formatted="false">Light</string>
+    <string name="settings_dark" formatted="false">Dark</string>
+    <string name="settings_automatic" formatted="false">Automatic</string>
+    <string name="settings_24_h" formatted="false">24 h</string>
+    <string name="settings_12_h" formatted="false">12 h</string>
+    <string name="settings_built_in" formatted="false">Built-in</string>
+    <string name="settings_not_selected" formatted="false">Not selected</string>
+    <string name="settings_not_found" formatted="false">Not found</string>
+    <string name="settings_unknown" formatted="false">Unknown</string>
+    <string name="settings_unavailable" formatted="false">Unavailable</string>
+    <string name="settings_network_unavailable" formatted="false">Unavailable</string>
+    <string name="settings_wi_fi_name_unavailable" formatted="false">Wi-Fi (name unavailable)</string>
+    <string name="settings_recommendations" formatted="false">RECOMMENDATIONS</string>
+    <string name="settings_no_tmdb_key_see_the_readme_config_properties" formatted="false">No TMDB key: see the README (config.properties).</string>
+    <string name="settings_error" formatted="false">"Error: "</string>
+    <string name="settings_fetching_titles" formatted="false">Fetching titles…</string>
+    <string name="settings_this_product_uses_the_tmdb_api_but_is_not_endorsed_or_certified_b" formatted="false">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="settings_comparison" formatted="false">COMPARISON</string>
+    <string name="settings_original" formatted="false">Original</string>
+    <string name="settings_home_button" formatted="false">Home button</string>
+    <string name="settings_free_memory" formatted="false">Free memory</string>
+    <string name="settings_home_screen_memory" formatted="false">Home screen memory</string>
+    <string name="settings_notices" formatted="false">NOTICES</string>
+    <string name="settings_none_yet" formatted="false">None yet.</string>
+    <string name="settings_now" formatted="false">now</string>
+    <string name="settings_tvos_update" formatted="false">tvOS Update</string>
+    <string name="settings_could_not_update_tvos" formatted="false">Could not update tvOS</string>
+    <string name="settings_checking_for_updates" formatted="false">Checking for updates…</string>
+    <string name="settings_downloading_update" formatted="false">Downloading update…</string>
+    <string name="settings_update_downloaded" formatted="false">Update downloaded</string>
+    <string name="settings_version" formatted="false">"Version "</string>
+    <string name="settings_tvos_is_up_to_date" formatted="false">tvOS is up to date</string>
+    <string name="settings_clear_cache_confirmation" formatted="false">Clear cache?</string>
+    <string name="settings_temporary_posters_images_and_screensaver_cache_will_be_deleted_se" formatted="false">Temporary posters, images and screensaver cache will be deleted. Settings are preserved.</string>
+    <string name="settings_cancel" formatted="false">Cancel</string>
+    <string name="settings_clear" formatted="false">Clear</string>
+    <string name="settings_cache_cleared" formatted="false">Cache cleared</string>
+    <string name="settings_some_cache_could_not_be_cleared" formatted="false">Some cache could not be cleared</string>
+    <string name="settings_reset_tvos_confirmation" formatted="false">Reset tvOS?</string>
+    <string name="settings_all_tvos_settings_selected_apps_and_app_data_will_be_erased_this_" formatted="false">All tvOS settings, selected apps and app data will be erased. This cannot be undone.</string>
+    <string name="settings_reset_tvos_3" formatted="false">Reset tvOS</string>
+    <string name="settings_could_not_reset_tvos" formatted="false">Could not reset tvOS</string>
+    <string name="settings_theme" formatted="false">Theme</string>
+    <string name="settings_weather_widget" formatted="false">Weather widget</string>
+    <string name="settings_dollar" formatted="false">Dollar</string>
+    <string name="settings_automatic_value" formatted="false">Automatic</string>
+    <string name="settings_theme_light" formatted="false">Light</string>
+    <string name="settings_theme_dark" formatted="false">Dark</string>
+    <string name="settings_on" formatted="false">On</string>
+    <string name="settings_netflix_button" formatted="false">Netflix Button</string>
+    <string name="settings_youtube_button" formatted="false">YouTube Button</string>
+    <string name="settings_prime_video_button" formatted="false">Prime Video Button</string>
+    <string name="settings_tcl_channel_button" formatted="false">TCL Channel Button</string>
+    <string name="settings_not_installed" formatted="false">Not installed</string>
+    <string name="settings_airplay_is_not_installed_or_unavailable" formatted="false">AirPlay is not installed or unavailable</string>
+    <string name="settings_search" formatted="false">Search</string>
+    <string name="settings_tv" formatted="false">TV</string>
+    <string name="settings_clock" formatted="false">Clock</string>
+    <string name="settings_network" formatted="false">Network</string>
+    <string name="settings_new" formatted="false">New</string>
+    <string name="settings_movies" formatted="false">Movies</string>
+    <string name="settings_detectives" formatted="false">Detectives</string>
+    <string name="settings_shows" formatted="false">Shows</string>
+    <string name="settings_random_movie" formatted="false">Random Movie</string>
+    <string name="settings_save" formatted="false">Save</string>
+    <string name="settings_ms" formatted="false">" ms"</string>
+    <string name="settings_gigabytes_format" formatted="false">%.2f GB</string>
+    <string name="settings_mb" formatted="false">" MB"</string>
+    <string name="settings_city" formatted="false">City</string>
+    <string name="settings_city_searching" formatted="false">Searching…</string>
+    <string name="settings_city_name_hint" formatted="false">Type the city\'s name</string>
+    <string name="settings_find_city" formatted="false">Search</string>
+    <string name="settings_city_not_found" formatted="false">No city with that name.</string>
+    <string name="settings_city_search_error_prefix" formatted="false">"Couldn\'t search now: "</string>
+    <string name="settings_update_available" formatted="true">Update %1$s is available.</string>
+    <string name="settings_download_and_install_it_now" formatted="false">Download and install it now?</string>
+    <string name="settings_confirm_installation_on_your_tv" formatted="false">Confirm installation on your TV.</string>
+    <string name="settings_do_not_turn_off_your_tv_during_download" formatted="false">Do not turn off your TV during download</string>
+    <string name="settings_or_installation" formatted="false">or installation.</string>
+    <string name="settings_download_and_install" formatted="false">Download and Install</string>
+    <string name="settings_update_later" formatted="false">Update Later</string>
+    <string name="settings_install" formatted="false">Install</string>
+    <string name="settings_later" formatted="false">Later</string>
+    <string name="settings_last_check_never" formatted="false">Last check: Never</string>
+    <string name="settings_last_check_date_pattern" formatted="false">MMMM d, yyyy \'at\' HH:mm:ss</string>
+    <string name="settings_last_check" formatted="true">Last check: %1$s</string>
+    <string name="settings_recommendations_count" formatted="true">On · %1$d titles from the TV\'s apps, 3 new ones every hour.</string>
+    <string name="settings_minutes_ago" formatted="true">%1$d min ago</string>
+    <string name="settings_hours_ago" formatted="true">%1$d h ago</string>
+    <plurals name="settings_days_ago">
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
 </resources>

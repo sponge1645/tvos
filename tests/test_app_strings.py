@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from settings_strings_fixture import sources
 fixtures=sources()
-resource_values=fixtures.pop('io/tvos/AppStrings.java').replace('final class AppStrings','public final class XmlTexts').replace('static String get','public static String get')
+resource_values=fixtures.pop('io/tvos/AppStrings.java').replace('final class AppStrings','public final class XmlTexts').replace('static String get','public static String get').replace('static String quantity','public static String quantity')
 fixtures.update({
 'io/tvos/XmlTexts.java':resource_values,
 'io/tvos/AppStrings.java':Path('app/src/io/tvos/AppStrings.java').read_text(),
@@ -12,6 +12,7 @@ fixtures.update({
 'android/content/res/Resources.java':'''package android.content.res;public class Resources {
  public static int reads;private final Configuration config;public Resources(Configuration c){config=c;}public Configuration getConfiguration(){return config;}
  public String getString(int id){reads++;return io.tvos.XmlTexts.get(id,config.locale.getLanguage().equals("ru"));}
+ public String getQuantityString(int id,int n){reads++;return io.tvos.XmlTexts.quantity(id,config.locale.getLanguage().equals("ru"),n);}
 }''',
 'android/content/Context.java':'''package android.content;import android.content.res.*;public class Context {
  public static int overrides;private final Resources resources;private final Context app;
@@ -38,6 +39,13 @@ public class StringsHarness {
   check(AppStrings.get(id,false).equals("Screen Saver"),"switching language reuses correct text");
   check(AppStrings.get(R.string.settings_help_airplay,false).contains("\\n"),"description newline preserved");
   check(AppStrings.get(R.string.settings_help_launcher,false).contains("TV's"),"Android apostrophe escaping preserved");
+  check(AppStrings.get(R.string.settings_position,true).equals("Позиция "),"trailing space preserved for spoken position");
+  check(AppStrings.get(R.string.settings_ms,false).equals(" ms"),"leading space preserved for metric suffix");
+  check(String.format(Locale.US,AppStrings.get(R.string.settings_update_available,false),"1.2").equals("Update 1.2 is available."),"version placeholder follows translation");
+  int before=Context.overrides;
+  check(AppStrings.quantity(R.plurals.settings_days_ago,true,22).equals("%1$d дня назад"),"plural lookup uses app Russian");
+  check(AppStrings.quantity(R.plurals.settings_days_ago,false,22).equals("%1$d days ago"),"plural lookup uses app English");
+  check(Context.overrides==before,"plural lookup reuses locale resources");
   AppStrings.init(activity);check(Context.overrides==2,"initializing another Activity does not reset cached resources");
   System.out.println("PASS: real XML translations, app/system language independence, application context, cached lookups and escaping");
  }

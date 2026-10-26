@@ -1,4 +1,5 @@
 """Production persistence/editor/layout/navigation for every Menu Bar order and visibility mask."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess,tempfile
 
@@ -11,6 +12,7 @@ prefs_body='\n'.join(method(prefs,s) for s in ['    private static void put(Stri
 editor='\n'.join(method(settings,s) for s in ['        private String menuButtonLabel(', '        private void rebuildMenuButtonRows(', '        private void openMenuButtonEditor(', '        private void toggleMenuButton(', '        private void moveMenuButton('])
 nav='\n'.join(method(home,s) for s in ['    private boolean topButtonEnabled(', '    private boolean clockButtonEnabled(', '    private boolean topControlVisible(', '    private int nextTopControl(', '    private int availableTopButton(', '    private int posterCornerTarget(', '    private void layoutTopActions('])
 header='''import java.util.*;
+class Ui {static boolean ru;}
 class Prefs {
  static int version,topButtonVersion=-1,topButtonMask;static int[] topButtonOrderCache;
  static final int[] DEFAULT_TOP_BUTTON_ORDER={0,1,2,3,5,4};
@@ -90,5 +92,6 @@ public class TopButtonsHarness {
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'TopButtonsHarness.java';p.write_text(header)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',d,str(p)],check=True)
+ write_strings(Path(d),package=False)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'TopButtonsHarness'],check=True)

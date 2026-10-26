@@ -21,6 +21,18 @@ final class AppStrings {
         SparseArray<String> cache = ru ? russian : english;
         String value = cache.get(id);
         if (value != null) return value;
+        value = localizedResources(ru).getString(id);
+        cache.put(id, value);
+        return value;
+    }
+
+    /** The plural template is selected by Android; callers format it with the app locale. */
+    static synchronized String quantity(int id, boolean ru, int count) {
+        return localizedResources(ru).getQuantityString(id, count);
+    }
+
+    // Called under the class monitor by get/quantity; never creates a context per frame.
+    private static Resources localizedResources(boolean ru) {
         if (application == null) throw new IllegalStateException("AppStrings not initialized");
         int index = ru ? 1 : 0;
         if (resources[index] == null) {
@@ -28,8 +40,6 @@ final class AppStrings {
             config.setLocale(ru ? new Locale("ru", "RU") : Locale.US);
             resources[index] = application.createConfigurationContext(config).getResources();
         }
-        value = resources[index].getString(id);
-        cache.put(id, value);
-        return value;
+        return resources[index];
     }
 }

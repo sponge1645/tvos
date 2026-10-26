@@ -1,5 +1,6 @@
 # Run from project root with Python 3 and JDK 17+.
 # Production methods exercised with deterministic Android/network stubs.
+from settings_strings_fixture import write as write_strings
 import os, subprocess, tempfile
 from pathlib import Path
 
@@ -53,6 +54,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
     '''
     (destination/'CityHarness.java').write_text(header+method('        void pause()')+method('        private void searchCity(')+tests)
 
+    write_strings(destination)
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', str(destination), 'app/src/io/tvos/UiRequest.java', str(destination / 'CityHarness.java')], check=True)
+    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', str(destination), 'app/src/io/tvos/UiRequest.java', *map(str,destination.rglob('*.java'))], check=True)
     subprocess.run([java, '-cp', str(destination), 'io.tvos.CityHarness'], check=True)

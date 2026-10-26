@@ -376,10 +376,10 @@ public class SettingsActivity extends Activity {
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
                 case HOME_CHOICE: {
-                    String name = row == 0 ? "tvOS, " + Ui.tr("sem anúncios, com a tela de descanso nova", "no ads, with the new screensaver")
-                            : "Built-in, " + Ui.tr("o Início de fábrica da TV", "the TV's factory home screen");
+                    String name = row == 0 ? "tvOS, " + AppStrings.get(R.string.settings_no_ads_with_the_new_screensaver, Ui.ru)
+                            : "Built-in, " + AppStrings.get(R.string.settings_the_tv_s_factory_home_screen, Ui.ru);
                     boolean inUse = (row == 0) == freeActive();
-                    return name + (inUse ? Ui.tr(". Em uso", ". In use") : "") + ", " + (row + 1) + Ui.tr(" de 2", " of 2");
+                    return name + (inUse ? AppStrings.get(R.string.settings_in_use, Ui.ru) : "") + ", " + (row + 1) + AppStrings.get(R.string.settings_of_2, Ui.ru);
                 }
                 case HOME_SETTINGS:
                 case REMOTE_KEYS: {
@@ -391,29 +391,29 @@ public class SettingsActivity extends Activity {
                 case PICKER: {
                     int at = pickScroll + row;
                     if (at >= pickLabels.size()) return "";
-                    return pickLabels.get(at) + (at == pickCurrent ? Ui.tr(", escolhido", ", selected") : "")
-                            + ", " + (at + 1) + Ui.tr(" de ", " of ") + pickLabels.size();
+                    return pickLabels.get(at) + (at == pickCurrent ? AppStrings.get(R.string.settings_selected, Ui.ru) : "")
+                            + ", " + (at + 1) + AppStrings.get(R.string.settings_of, Ui.ru) + pickLabels.size();
                 }
                 case MENU_BUTTONS: {
-                    if (row == menuButtonRows.size()) return tr("Приложение VPN", "VPN App");
+                    if (row == menuButtonRows.size()) return AppStrings.get(R.string.settings_vpn_app, Ui.ru);
                     if (row < 0 || row >= menuButtonRows.size()) return "";
                     int id = menuButtonRows.get(row);
                     return menuButtonLabel(id) + ", " + (Prefs.topButtonEnabled(id)
-                            ? tr("Позиция ", "Position ") + Prefs.topButtonPosition(id) : tr("Выкл.", "Off"));
+                            ? AppStrings.get(R.string.settings_position, Ui.ru) + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off, Ui.ru));
                 }
                 case CATEGORY_EDIT: {
                     if (row < 0 || row >= categoryRows.size()) return "";
                     int id = categoryRows.get(row);
                     return categoryLabel(id) + ", " + (Prefs.categoryEnabled(id)
-                            ? tr("Позиция ", "Position ") + Prefs.categoryPosition(id) : tr("Выкл.", "Off"));
+                            ? AppStrings.get(R.string.settings_position, Ui.ru) + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off, Ui.ru));
                 }
                 case SHELF_EDIT: {
                     int at = pickScroll + row;
                     if (at >= shelfRows.size()) return "";
                     String[] app = shelfRows.get(at);
                     int place = shelfOrder.indexOf(app[0]);
-                    return app[1] + ", " + (place >= 0 ? Ui.tr("na prateleira, posição ", "on the shelf, place ") + (place + 1)
-                            : Ui.tr("fora da prateleira", "not on the shelf"));
+                    return app[1] + ", " + (place >= 0 ? AppStrings.get(R.string.settings_on_the_shelf_place, Ui.ru) + (place + 1)
+                            : AppStrings.get(R.string.settings_not_on_the_shelf, Ui.ru));
                 }
                 default:
                     return "";
@@ -822,7 +822,6 @@ public class SettingsActivity extends Activity {
             HomeData.get(getContext()).settingsChanged();
             invalidate();
         }
-        private String tr(String ru, String en) { return Ui.ru ? ru : en; }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
         private void toggleVpnTop() { Prefs.setTopButtonEnabled(2, !vpnTopEnabled()); invalidate(); }
         // Legacy display/Wi-Fi information remains available on older TV firmware.
@@ -832,12 +831,12 @@ public class SettingsActivity extends Activity {
             java.util.Arrays.fill(v, "");
             if (screen == GENERAL) {
                 String theme = Prefs.theme();
-                v[1] = "light".equals(theme) ? tr("Светлое", "Light") : "dark".equals(theme) ? tr("Тёмное", "Dark") : tr("Авто", "Automatic");
+                v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light, Ui.ru) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark, Ui.ru) : AppStrings.get(R.string.settings_automatic, Ui.ru);
                 v[2] = settingValues()[0];
                 v[3] = Prefs.city();
                 v[4] = "";
                 v[5] = settingValues()[1];
-                v[6] = Prefs.hour24() ? tr("24 ч", "24 h") : tr("12 ч", "12 h");
+                v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h, Ui.ru) : AppStrings.get(R.string.settings_12_h, Ui.ru);
                 v[7] = onOff(localPrefs().getBoolean("navigation_clicks", true));
                 
             } else if (screen == UPDATES) {
@@ -845,16 +844,16 @@ public class SettingsActivity extends Activity {
             } else if (screen == ACCESSIBILITY) {
                 v[0] = onOff(localFlag("reduce_transparency"));
                 v[1] = onOff(localFlag("reduce_motion"));
-                v[2] = freeActive() ? "tvOS" : tr("Встроенный", "Built-in");
+                v[2] = freeActive() ? "tvOS" : AppStrings.get(R.string.settings_built_in, Ui.ru);
             } else if (screen == VPN_SETTINGS) {
                 v[0] = onOff(vpnTopEnabled());
                 String vpn = localPrefs().getString("vpn_app", "");
-                if (vpn.isEmpty()) v[1] = tr("Не выбрано", "Not selected");
-                else { try { v[1] = String.valueOf(getContext().getPackageManager().getApplicationLabel(getContext().getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = tr("Не найдено", "Not found"); } }
+                if (vpn.isEmpty()) v[1] = AppStrings.get(R.string.settings_not_selected, Ui.ru);
+                else { try { v[1] = String.valueOf(getContext().getPackageManager().getApplicationLabel(getContext().getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = AppStrings.get(R.string.settings_not_found, Ui.ru); } }
             } else if (screen == MENU_BUTTONS) {
                 for (int i = 0; i < menuButtonRows.size(); i++) {
                     int id = menuButtonRows.get(i);
-                    v[i] = Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : tr("Выкл.", "Off");
+                    v[i] = Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off, Ui.ru);
                 }
             } else if (screen == SCREENSAVER) {
                 String src = localPrefs().getString("video_dream_source", "google");
@@ -871,8 +870,8 @@ public class SettingsActivity extends Activity {
                 v[0] = onOff(weatherVisible(true)); v[1] = onOff(weatherVisible(false));
             } else if (screen == ABOUT) {
                 v[0] = android.os.Build.MODEL == null || android.os.Build.MODEL.trim().isEmpty()
-                        ? tr("Неизвестно", "Unknown") : android.os.Build.MODEL.trim();
-                v[1] = tr("Недоступен", "Unavailable");
+                        ? AppStrings.get(R.string.settings_unknown, Ui.ru) : android.os.Build.MODEL.trim();
+                v[1] = AppStrings.get(R.string.settings_unavailable, Ui.ru);
                 try {
                     String serial = android.os.Build.getSerial();
                     if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
@@ -885,7 +884,7 @@ public class SettingsActivity extends Activity {
                 android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
                 activity.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
                 v[4] = dm.widthPixels + " × " + dm.heightPixels;
-                v[5] = tr("Недоступно", "Unavailable");
+                v[5] = AppStrings.get(R.string.settings_network_unavailable, Ui.ru);
                 v[6] = "—";
                 v[7] = localPrefs().getString("device_name", "ТВ");
                 LocalNetwork.Info network = LocalNetwork.read(getContext());
@@ -893,7 +892,7 @@ public class SettingsActivity extends Activity {
                     v[6] = network.address;
                     if (network.ethernet) v[5] = "Ethernet";
                     else {
-                        v[5] = tr("Wi-Fi (имя недоступно)", "Wi-Fi (name unavailable)");
+                        v[5] = AppStrings.get(R.string.settings_wi_fi_name_unavailable, Ui.ru);
                         try {
                             android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
                                     getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -1061,19 +1060,18 @@ public class SettingsActivity extends Activity {
         /** Home screen picks: status, and the credit TMDB asks for. */
         private float drawRecs(Canvas c, float y) {
             float x = LIST_X * k + 30 * k;
-            c.drawText(Ui.tr("RECOMENDAÇÕES", "RECOMMENDATIONS"), x, y, header);
+            c.drawText(AppStrings.get(R.string.settings_recommendations, Ui.ru), x, y, header);
             String line;
             String error = recs.optString("error");
             int count = recs.optInt("count");
-            if (!hasKey) line = Ui.tr("Sem chave do TMDB: veja o README (config.properties).", "No TMDB key: see the README (config.properties).");
-            else if (!error.isEmpty()) line = Ui.tr("Erro: ", "Error: ") + error + ".";
-            else if (count > 0) line = Ui.tr("Ligadas · " + count + " títulos nos apps da TV, 3 novos a cada hora.",
-                    "On · " + count + " titles from the TV's apps, 3 new ones every hour.");
-            else line = Ui.tr("Buscando os títulos…", "Fetching titles…");
+            if (!hasKey) line = AppStrings.get(R.string.settings_no_tmdb_key_see_the_readme_config_properties, Ui.ru);
+            else if (!error.isEmpty()) line = AppStrings.get(R.string.settings_error, Ui.ru) + error + ".";
+            else if (count > 0) line = String.format(Ui.locale(),
+                    AppStrings.get(R.string.settings_recommendations_count, Ui.ru), count);
+            else line = AppStrings.get(R.string.settings_fetching_titles, Ui.ru);
             c.drawText(TextUtils.ellipsize(line, notice, 790 * k, TextUtils.TruncateAt.END).toString(), x, y + 42 * k, notice);
             version.setTextAlign(Paint.Align.LEFT);
-            c.drawText(Ui.tr("Usa a API do TMDB, sem endosso ou certificação do TMDB.",
-                    "This product uses the TMDB API but is not endorsed or certified by TMDB."), x, y + 78 * k, version);
+            c.drawText(AppStrings.get(R.string.settings_this_product_uses_the_tmdb_api_but_is_not_endorsed_or_certified_b, Ui.ru), x, y + 78 * k, version);
             version.setTextAlign(Paint.Align.CENTER);
             return y + 78 * k;
         }
@@ -1114,16 +1112,16 @@ public class SettingsActivity extends Activity {
 
         private float drawComparison(Canvas c, float y) {
             float x = LIST_X * k + 30 * k, colA = LIST_R * k - 220 * k, colB = LIST_R * k - 30 * k;
-            c.drawText(Ui.tr("COMPARAÇÃO", "COMPARISON"), x, y, header);
+            c.drawText(AppStrings.get(R.string.settings_comparison, Ui.ru), x, y, header);
             cellValue.setColor(0x73FFFFFF);
-            c.drawText(Ui.tr("Original", "Original"), colA, y, cellValue);
+            c.drawText(AppStrings.get(R.string.settings_original, Ui.ru), colA, y, cellValue);
             c.drawText("tvOS", colB, y, cellValue);
             cellValue.setColor(0xD9FFFFFF);
             JSONObject metrics = state.optJSONObject("metrics");
             JSONObject a = metrics == null ? null : metrics.optJSONObject(HomeMode.ORIGINAL);
             JSONObject b = metrics == null ? null : metrics.optJSONObject(HomeMode.FREE);
-            String[][] rows = {{Ui.tr("Botão Início", "Home button"), "homeMs"}, {Ui.tr("Memória livre", "Free memory"), "memAvailableMB"},
-                    {Ui.tr("Memória do Início", "Home screen memory"), "homePssMB"}};
+            String[][] rows = {{AppStrings.get(R.string.settings_home_button, Ui.ru), "homeMs"}, {AppStrings.get(R.string.settings_free_memory, Ui.ru), "memAvailableMB"},
+                    {AppStrings.get(R.string.settings_home_screen_memory, Ui.ru), "homePssMB"}};
             for (int i = 0; i < rows.length; i++) {
                 float base = y + (46 + 40 * i) * k;
                 c.drawText(rows[i][0], x, base, cellLabel);
@@ -1135,7 +1133,7 @@ public class SettingsActivity extends Activity {
 
         private void drawNotices(Canvas c, float y) {
             float x = LIST_X * k + 30 * k;
-            c.drawText(Ui.tr("AVISOS", "NOTICES"), x, y, header);
+            c.drawText(AppStrings.get(R.string.settings_notices, Ui.ru), x, y, header);
             JSONArray notices = state.optJSONArray("notices");
             int shown = 0;
             for (int i = 0; notices != null && i < notices.length() && shown < 2; i++) {
@@ -1145,12 +1143,12 @@ public class SettingsActivity extends Activity {
                 c.drawText(TextUtils.ellipsize(line, notice, 790 * k, TextUtils.TruncateAt.END).toString(), x, y + (42 + 38 * shown) * k, notice);
                 shown++;
             }
-            if (shown == 0) c.drawText(Ui.tr("Nenhum ainda.", "None yet."), x, y + 42 * k, notice);
+            if (shown == 0) c.drawText(AppStrings.get(R.string.settings_none_yet, Ui.ru), x, y + 42 * k, notice);
         }
 
         /** Home launcher selection, using the same compact tvOS capsules as other screens. */
         private void drawChoice(Canvas c) {
-            String[] options = {"tvOS", tr("Встроенный", "Built-in")};
+            String[] options = {"tvOS", AppStrings.get(R.string.settings_built_in, Ui.ru)};
             int current = freeActive() ? 0 : 1;
             for (int i = 0; i < options.length; i++) {
                 setApprovedRowRect(i);
@@ -1201,12 +1199,13 @@ public class SettingsActivity extends Activity {
         }
 
         private static String formatLastUpdateCheck(long checkedAt, boolean russian) {
-            if (checkedAt <= 0) return russian ? "Последняя проверка: ещё не выполнялась" : "Last check: Never";
+            if (checkedAt <= 0) return AppStrings.get(R.string.settings_last_check_never, russian);
             java.text.SimpleDateFormat format = new java.text.SimpleDateFormat(
-                    russian ? "d MMMM yyyy 'г. в' HH:mm:ss" : "MMMM d, yyyy 'at' HH:mm:ss",
+                    AppStrings.get(R.string.settings_last_check_date_pattern, russian),
                     russian ? new java.util.Locale("ru", "RU") : java.util.Locale.US);
-            return (russian ? "Последняя проверка: " : "Last check: ")
-                    + format.format(new java.util.Date(checkedAt));
+            return String.format(russian ? new java.util.Locale("ru", "RU") : java.util.Locale.US,
+                    AppStrings.get(R.string.settings_last_check, russian),
+                    format.format(new java.util.Date(checkedAt)));
         }
 
         private static int blend(int a, int b, float f) {
@@ -1219,17 +1218,19 @@ public class SettingsActivity extends Activity {
         private static String metric(JSONObject m, String key) {
             if (m == null || !m.has(key)) return "—";
             long v = m.optLong(key);
-            if (key.equals("homeMs")) return v + (Ui.ru ? " мс" : " ms");
-            if (key.equals("memAvailableMB") && v >= 1024) return String.format(Ui.locale(), Ui.ru ? "%.2f ГБ" : "%.2f GB", v / 1024.0);
-            return v + (Ui.ru ? " МБ" : " MB");
+            if (key.equals("homeMs")) return v + AppStrings.get(R.string.settings_ms, Ui.ru);
+            if (key.equals("memAvailableMB") && v >= 1024) return String.format(Ui.locale(), AppStrings.get(R.string.settings_gigabytes_format, Ui.ru), v / 1024.0);
+            return v + AppStrings.get(R.string.settings_mb, Ui.ru);
         }
 
         private static String ago(long at) {
             long minutes = Math.max(0, (System.currentTimeMillis() - at) / 60_000);
-            if (minutes < 1) return Ui.tr("agora", "now");
-            if (minutes < 60) return Ui.tr("há " + minutes + " min", minutes + " min ago");
-            if (minutes < 48 * 60) return Ui.tr("há " + (minutes / 60) + " h", (minutes / 60) + " h ago");
-            return Ui.tr("há " + (minutes / 1440) + " dias", (minutes / 1440) + " days ago");
+            if (minutes < 1) return AppStrings.get(R.string.settings_now, Ui.ru);
+            if (minutes < 60) return String.format(Ui.locale(), AppStrings.get(R.string.settings_minutes_ago, Ui.ru), minutes);
+            if (minutes < 48 * 60) return String.format(Ui.locale(), AppStrings.get(R.string.settings_hours_ago, Ui.ru), minutes / 60);
+            long days = minutes / 1440;
+            return String.format(Ui.locale(),
+                    AppStrings.quantity(R.plurals.settings_days_ago, Ui.ru, (int) Math.min(Integer.MAX_VALUE, days)), days);
         }
 
         private static String versionName(Context c) {
@@ -1352,28 +1353,30 @@ public class SettingsActivity extends Activity {
             heading.setColor(lightSettings() ? 0xFF202631 : 0xFFFFFFFF);
             Paint body = popupBody;
             body.setColor(lightSettings() ? 0xFF364050 : 0xFFE5E9F3);
-            c.drawText(tr("Обновление tvOS", "tvOS Update"), cx, top+100*k, heading);
+            c.drawText(AppStrings.get(R.string.settings_tvos_update, Ui.ru), cx, top+100*k, heading);
             String[] lines;
             SelfUpdate.Status update = SelfUpdate.get(getContext()).status();
             String availableVersion = update.release == null ? "" : update.release.versionName;
-            if (updatePopup == 2) lines = Ui.ru ? new String[] {
-                "Доступно обновление до версии " + availableVersion + ".", "Загрузить и установить его сейчас?",
-                "Установку потребуется подтвердить на ТВ.", "Не отключайте ТВ во время загрузки", "и установки обновления."
-            } : new String[] {"Update " + availableVersion + " is available.", "Download and install it now?",
-                "Confirm installation on your TV.", "Do not turn off your TV during download", "or installation."};
-            else if (updatePopup == 3) lines = new String[] {tr("Не удалось обновить tvOS", "Could not update tvOS"),
+            if (updatePopup == 2) lines = new String[] {
+                AppStrings.get(R.string.settings_update_available, Ui.ru).replace("%1$s", availableVersion),
+                AppStrings.get(R.string.settings_download_and_install_it_now, Ui.ru),
+                AppStrings.get(R.string.settings_confirm_installation_on_your_tv, Ui.ru),
+                AppStrings.get(R.string.settings_do_not_turn_off_your_tv_during_download, Ui.ru),
+                AppStrings.get(R.string.settings_or_installation, Ui.ru)
+            };
+            else if (updatePopup == 3) lines = new String[] {AppStrings.get(R.string.settings_could_not_update_tvos, Ui.ru),
                     update.message.length() <= 44 ? update.message : update.message.substring(0, 44),
                     update.message.length() <= 44 ? "" : update.message.substring(44)};
-            else if (updatePopup == 4) lines = new String[] {tr("Проверка обновлений…", "Checking for updates…")};
-            else if (updatePopup == 5) lines = new String[] {tr("Загрузка обновления…", "Downloading update…"),
+            else if (updatePopup == 4) lines = new String[] {AppStrings.get(R.string.settings_checking_for_updates, Ui.ru)};
+            else if (updatePopup == 5) lines = new String[] {AppStrings.get(R.string.settings_downloading_update, Ui.ru),
                     update.percent < 0 ? "" : update.percent + "%"};
-            else if (updatePopup == 6) lines = new String[] {tr("Обновление загружено", "Update downloaded"),
-                    tr("Версия ", "Version ") + availableVersion};
-            else lines = new String[] {tr("tvOS актуальна", "tvOS is up to date"), versionName(getContext()).replace("tvOS ", "")};
+            else if (updatePopup == 6) lines = new String[] {AppStrings.get(R.string.settings_update_downloaded, Ui.ru),
+                    AppStrings.get(R.string.settings_version, Ui.ru) + availableVersion};
+            else lines = new String[] {AppStrings.get(R.string.settings_tvos_is_up_to_date, Ui.ru), versionName(getContext()).replace("tvOS ", "")};
             float lineY = top+(updatePopup == 1 ? 203 : 167)*k;
             for (String line : lines) { c.drawText(line, cx, lineY, body); lineY += 49*k; }
-            String[] buttons = updatePopup == 2 ? (Ui.ru ? new String[] {"Загрузить и установить", "Обновить позже"} : new String[] {"Download and Install", "Update Later"})
-                    : updatePopup == 6 ? (Ui.ru ? new String[] {"Установить", "Позже"} : new String[] {"Install", "Later"}) : new String[] {"OK"};
+            String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install, Ui.ru), AppStrings.get(R.string.settings_update_later, Ui.ru)}
+                    : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install, Ui.ru), AppStrings.get(R.string.settings_later, Ui.ru)} : new String[] {"OK"};
             float buttonTop = bottom - (buttons.length*78+45)*k;
             Paint buttonText = popupButtonText;
             for (int i=0; i<buttons.length; i++) {
@@ -1494,32 +1497,30 @@ public class SettingsActivity extends Activity {
 
         private void confirmClearCache() {
             new AlertDialog.Builder(activity)
-                    .setTitle(tr("Очистить кеш?", "Clear cache?"))
-                    .setMessage(tr("Удалятся временные постеры, изображения и кеш заставок. Настройки сохранятся.",
-                            "Temporary posters, images and screensaver cache will be deleted. Settings are preserved."))
-                    .setNegativeButton(tr("Отмена", "Cancel"), null)
-                    .setPositiveButton(tr("Очистить", "Clear"), (dialog, which) -> {
+                    .setTitle(AppStrings.get(R.string.settings_clear_cache_confirmation, Ui.ru))
+                    .setMessage(AppStrings.get(R.string.settings_temporary_posters_images_and_screensaver_cache_will_be_deleted_se, Ui.ru))
+                    .setNegativeButton(AppStrings.get(R.string.settings_cancel, Ui.ru), null)
+                    .setPositiveButton(AppStrings.get(R.string.settings_clear, Ui.ru), (dialog, which) -> {
                         boolean ok = deleteCacheContents(activity.getCacheDir());
                         java.io.File external = activity.getExternalCacheDir();
                         if (external != null) ok &= deleteCacheContents(external);
                         android.widget.Toast.makeText(activity,
-                                ok ? tr("Кеш очищен", "Cache cleared") : tr("Не весь кеш удалось очистить", "Some cache could not be cleared"),
+                                ok ? AppStrings.get(R.string.settings_cache_cleared, Ui.ru) : AppStrings.get(R.string.settings_some_cache_could_not_be_cleared, Ui.ru),
                                 android.widget.Toast.LENGTH_SHORT).show();
                     }).show();
         }
 
         private void confirmResetTvos() {
             new AlertDialog.Builder(activity)
-                    .setTitle(tr("Сбросить tvOS?", "Reset tvOS?"))
-                    .setMessage(tr("Все настройки, выбранные приложения и данные tvOS будут удалены. Отменить действие нельзя.",
-                            "All tvOS settings, selected apps and app data will be erased. This cannot be undone."))
-                    .setNegativeButton(tr("Отмена", "Cancel"), null)
-                    .setPositiveButton(tr("Сбросить tvOS", "Reset tvOS"), (dialog, which) -> {
+                    .setTitle(AppStrings.get(R.string.settings_reset_tvos_confirmation, Ui.ru))
+                    .setMessage(AppStrings.get(R.string.settings_all_tvos_settings_selected_apps_and_app_data_will_be_erased_this_, Ui.ru))
+                    .setNegativeButton(AppStrings.get(R.string.settings_cancel, Ui.ru), null)
+                    .setPositiveButton(AppStrings.get(R.string.settings_reset_tvos_3, Ui.ru), (dialog, which) -> {
                         android.app.ActivityManager am = (android.app.ActivityManager)
                                 activity.getSystemService(Context.ACTIVITY_SERVICE);
                         if (am == null || !am.clearApplicationUserData())
                             android.widget.Toast.makeText(activity,
-                                    tr("Не удалось сбросить tvOS", "Could not reset tvOS"),
+                                    AppStrings.get(R.string.settings_could_not_reset_tvos, Ui.ru),
                                     android.widget.Toast.LENGTH_LONG).show();
                     }).show();
         }
@@ -1538,18 +1539,18 @@ public class SettingsActivity extends Activity {
 
         private String[] settingLabels() {
             List<String> l = new ArrayList<>();
-            l.add(Ui.tr("Idioma", "Language"));
-            l.add(Ui.tr("Temperatura", "Temperature"));
-            l.add(Ui.tr("Tema", "Theme"));
-            l.add(Ui.tr("Widget do clima", "Weather widget"));
-            l.add((Ui.ru ? "Город" : Ui.tr("Cidade", "City")));
-            l.add(Ui.ru ? "Показывать на нижней панели" : "Show in Bottom Menu");
+            l.add(AppStrings.get(R.string.settings_language, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_temperature, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_theme, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_weather_widget, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_city, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_show_in_bottom_menu, Ui.ru));
             l.add("Bitcoin");
             l.add("Ethereum");
             l.add("Solana");
-            if (dollar()) l.add(Ui.tr("Dólar", "Dollar"));
-            l.add(Ui.ru ? "Детективы" : "Detectives");
-            l.add(Ui.ru ? "Случайный фильм" : "Random Movie");
+            if (dollar()) l.add(AppStrings.get(R.string.settings_dollar, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_detectives, Ui.ru));
+            l.add(AppStrings.get(R.string.settings_random_movie, Ui.ru));
             return l.toArray(new String[0]);
         }
 
@@ -1559,9 +1560,9 @@ public class SettingsActivity extends Activity {
             String lang = Prefs.language();
             v[0] = lang.equals("ru") ? "Русский" : "English";
             String unit = Prefs.temperature();
-            v[1] = unit.equals("C") ? "°C" : unit.equals("F") ? "°F" : Ui.tr("Automática", "Automatic");
+            v[1] = unit.equals("C") ? "°C" : unit.equals("F") ? "°F" : AppStrings.get(R.string.settings_automatic_value, Ui.ru);
             String theme = Prefs.theme();
-            v[2] = theme.equals("light") ? Ui.tr("Claro", "Light") : theme.equals("dark") ? Ui.tr("Escuro", "Dark") : Ui.tr("Automático", "Automatic");
+            v[2] = theme.equals("light") ? AppStrings.get(R.string.settings_theme_light, Ui.ru) : theme.equals("dark") ? AppStrings.get(R.string.settings_theme_dark, Ui.ru) : AppStrings.get(R.string.settings_automatic_value, Ui.ru);
             v[3] = onOff(Prefs.weather());
             v[CITY_ROW] = !cityStatus.isEmpty() ? cityStatus : Prefs.city().isEmpty() ? "—" : Prefs.city();
             v[5] = onOff(Prefs.quotes());
@@ -1592,19 +1593,19 @@ public class SettingsActivity extends Activity {
             return focus;
         }
         private static String onOff(boolean on) {
-            return on ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
+            return on ? AppStrings.get(R.string.settings_on, Ui.ru) : AppStrings.get(R.string.settings_off, Ui.ru);
         }
 
         private String[] keyLabels() {
-            return new String[] {Ui.tr("Botão Netflix", "Netflix Button"), Ui.tr("Botão YouTube", "YouTube Button"),
-                    Ui.tr("Botão Prime Video", "Prime Video Button"), Ui.tr("Botão TCL Channel", "TCL Channel Button")};
+            return new String[] {AppStrings.get(R.string.settings_netflix_button, Ui.ru), AppStrings.get(R.string.settings_youtube_button, Ui.ru),
+                    AppStrings.get(R.string.settings_prime_video_button, Ui.ru), AppStrings.get(R.string.settings_tcl_channel_button, Ui.ru)};
         }
 
         private String[] keyValues() {
             String[] v = new String[Prefs.KEYS.length];
             for (int i = 0; i < v.length; i++) {
                 int at = appPkgs.indexOf(Prefs.keyApp(Prefs.KEYS[i]));
-                v[i] = at >= 0 ? appLabels.get(at) : Ui.tr("Não instalado", "Not installed");
+                v[i] = at >= 0 ? appLabels.get(at) : AppStrings.get(R.string.settings_not_installed, Ui.ru);
             }
             return v;
         }
@@ -1624,7 +1625,7 @@ public class SettingsActivity extends Activity {
             appPkgs.clear();
             appLabels.clear();
             appPkgs.add("");
-            appLabels.add(tr("Не выбрано", "Not selected"));
+            appLabels.add(AppStrings.get(R.string.settings_not_selected, Ui.ru));
             for (String[] f : found) {
                 appPkgs.add(f[0]);
                 appLabels.add(f[1]);
@@ -1644,25 +1645,25 @@ public class SettingsActivity extends Activity {
                 } catch (Exception ignored) { }
             }
             android.widget.Toast.makeText(getContext(),
-                    tr("AirPlay не установлен или недоступен", "AirPlay is not installed or unavailable"),
+                    AppStrings.get(R.string.settings_airplay_is_not_installed_or_unavailable, Ui.ru),
                     android.widget.Toast.LENGTH_SHORT).show();
         }
 
         private String[] menuButtonLabels() {
             String[] labels = new String[menuButtonRows.size() + 1];
             for (int i = 0; i < menuButtonRows.size(); i++) labels[i] = menuButtonLabel(menuButtonRows.get(i));
-            labels[menuButtonRows.size()] = tr("Приложение VPN", "VPN App");
+            labels[menuButtonRows.size()] = AppStrings.get(R.string.settings_vpn_app, Ui.ru);
             return labels;
         }
 
         private String menuButtonLabel(int id) {
             switch (id) {
-                case 0: return tr("Поиск", "Search");
-                case 1: return tr("ТВ", "TV");
+                case 0: return AppStrings.get(R.string.settings_search, Ui.ru);
+                case 1: return AppStrings.get(R.string.settings_tv, Ui.ru);
                 case 2: return "VPN";
-                case 3: return tr("Настройки", "Settings");
-                case 4: return tr("Часы", "Clock");
-                default: return tr("Сеть", "Network");
+                case 3: return AppStrings.get(R.string.settings_settings, Ui.ru);
+                case 4: return AppStrings.get(R.string.settings_clock, Ui.ru);
+                default: return AppStrings.get(R.string.settings_network, Ui.ru);
             }
         }
 
@@ -1705,9 +1706,9 @@ public class SettingsActivity extends Activity {
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 boolean vpnApp = row == menuButtonRows.size();
                 int id = vpnApp ? -1 : menuButtonRows.get(row);
-                drawTrackedText(c, vpnApp ? tr("Приложение VPN", "VPN App") : menuButtonLabel(id),
+                drawTrackedText(c, vpnApp ? AppStrings.get(R.string.settings_vpn_app, Ui.ru) : menuButtonLabel(id),
                         rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : tr("Выкл.", "Off"),
+                if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off, Ui.ru),
                         rowRect.right - 61 * k, base, rowValue, 0.02f);
                 drawApprovedChevron(c);
             }
@@ -1790,16 +1791,16 @@ public class SettingsActivity extends Activity {
         }
 
         private void askCity() {
-            if ((Ui.ru ? "Поиск…" : Ui.tr("Procurando…", "Searching…")).equals(cityStatus)) return;
+            if (AppStrings.get(R.string.settings_city_searching, Ui.ru).equals(cityStatus)) return;
             EditText field = new EditText(activity);
             field.setSingleLine(true);
-            field.setHint((Ui.ru ? "Введите название города" : Ui.tr("Digite o nome da cidade", "Type the city's name")));
+            field.setHint(AppStrings.get(R.string.settings_city_name_hint, Ui.ru));
             field.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
             AlertDialog dialog = new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle((Ui.ru ? "Город" : Ui.tr("Cidade", "City")))
+                    .setTitle(AppStrings.get(R.string.settings_city, Ui.ru))
                     .setView(field)
-                    .setPositiveButton((Ui.ru ? "Найти" : Ui.tr("Buscar", "Search")), (d, which) -> searchCity(field.getText().toString()))
-                    .setNegativeButton((Ui.ru ? "Отмена" : Ui.tr("Cancelar", "Cancel")), null)
+                    .setPositiveButton(AppStrings.get(R.string.settings_find_city, Ui.ru), (d, which) -> searchCity(field.getText().toString()))
+                    .setNegativeButton(AppStrings.get(R.string.settings_cancel, Ui.ru), null)
                     .create();
             field.setOnEditorActionListener((v, action, event) -> {
                 dialog.dismiss();
@@ -1817,17 +1818,17 @@ public class SettingsActivity extends Activity {
             final int originScreen = screen;
             UiRequest request = new UiRequest(CITY_IO);
             cityRequest = request;
-            cityStatus = (Ui.ru ? "Поиск…" : Ui.tr("Procurando…", "Searching…"));
+            cityStatus = AppStrings.get(R.string.settings_city_searching, Ui.ru);
             invalidate();
             request.start(() -> {
                 List<String[]> found;
                 String error;
                 try {
                     found = HomeData.findCity(name);
-                    error = found.isEmpty() ? (Ui.ru ? "Город не найден." : Ui.tr("Nenhuma cidade com esse nome.", "No city with that name.")) : "";
+                    error = found.isEmpty() ? AppStrings.get(R.string.settings_city_not_found, Ui.ru) : "";
                 } catch (Exception e) {
                     found = new ArrayList<>();
-                    error = (Ui.ru ? "Ошибка поиска города: " : Ui.tr("Não deu para buscar agora: ", "Couldn't search now: ")) + e.getMessage();
+                    error = AppStrings.get(R.string.settings_city_search_error_prefix, Ui.ru) + e.getMessage();
                     AppLog.w("city search: " + e.getMessage());
                 }
                 List<String[]> result = found;
@@ -1860,11 +1861,11 @@ public class SettingsActivity extends Activity {
 
         private String categoryLabel(int id) {
             switch (id) {
-                case 0: return tr("Новинки", "New");
-                case 1: return tr("Фильмы", "Movies");
-                case 2: return tr("Детективы", "Detectives");
-                case 3: return tr("Сериалы", "Shows");
-                default: return tr("Случайный фильм", "Random Movie");
+                case 0: return AppStrings.get(R.string.settings_new, Ui.ru);
+                case 1: return AppStrings.get(R.string.settings_movies, Ui.ru);
+                case 2: return AppStrings.get(R.string.settings_detectives, Ui.ru);
+                case 3: return AppStrings.get(R.string.settings_shows, Ui.ru);
+                default: return AppStrings.get(R.string.settings_random_movie, Ui.ru);
             }
         }
 
@@ -1912,7 +1913,7 @@ public class SettingsActivity extends Activity {
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
                         base, rowLabel, 0.02f);
-                drawTrackedText(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : tr("Выкл.", "Off"),
+                drawTrackedText(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off, Ui.ru),
                         rowRect.right - 61 * k, base, rowValue, 0.02f);
                 drawApprovedChevron(c);
             }
@@ -1986,7 +1987,7 @@ public class SettingsActivity extends Activity {
                 rowValue.setColor(ABOUT_SECONDARY_COLOR);
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                drawTrackedText(c, place >= 0 ? "#" + (place + 1) : Ui.tr("Fora", "Off"), rowRect.right - 61 * k, base, rowValue, 0.02f);
+                drawTrackedText(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off, Ui.ru), rowRect.right - 61 * k, base, rowValue, 0.02f);
                 drawApprovedChevron(c);
             }
         }
@@ -2090,10 +2091,10 @@ public class SettingsActivity extends Activity {
             input.selectAll();
 
             new android.app.AlertDialog.Builder(getContext())
-                    .setTitle(tr("Имя", "Name"))
+                    .setTitle(AppStrings.get(R.string.settings_name, Ui.ru))
                     .setView(input)
-                    .setNegativeButton(tr("Отмена", "Cancel"), null)
-                    .setPositiveButton(tr("Сохранить", "Save"), (dialog, which) -> {
+                    .setNegativeButton(AppStrings.get(R.string.settings_cancel, Ui.ru), null)
+                    .setPositiveButton(AppStrings.get(R.string.settings_save, Ui.ru), (dialog, which) -> {
                         String name = input.getText().toString().trim();
                         if (name.isEmpty()) name = "ТВ";
                         localPrefs().edit()

@@ -78,4 +78,110 @@
     <string name="settings_app_kinopub_description" formatted="false">Фильмы и сериалы из сервиса KinoPub.\nДля просмотра нужен аккаунт с доступом.</string>
     <string name="settings_choose_app" formatted="false">Выбор приложения</string>
     <string name="settings_settings" formatted="false">Настройки</string>
+    <string name="settings_no_ads_with_the_new_screensaver" formatted="false">без рекламы, с новой заставкой</string>
+    <string name="settings_the_tv_s_factory_home_screen" formatted="false">заводской главный экран телевизора</string>
+    <string name="settings_in_use" formatted="false">. Используется</string>
+    <string name="settings_of_2" formatted="false">" из 2"</string>
+    <string name="settings_selected" formatted="false">, выбрано</string>
+    <string name="settings_of" formatted="false">" из "</string>
+    <string name="settings_vpn_app" formatted="false">Приложение VPN</string>
+    <string name="settings_position" formatted="false">"Позиция "</string>
+    <string name="settings_off" formatted="false">Выкл.</string>
+    <string name="settings_on_the_shelf_place" formatted="false">"в избранном, позиция "</string>
+    <string name="settings_not_on_the_shelf" formatted="false">не в избранном</string>
+    <string name="settings_light" formatted="false">Светлое</string>
+    <string name="settings_dark" formatted="false">Тёмное</string>
+    <string name="settings_automatic" formatted="false">Авто</string>
+    <string name="settings_24_h" formatted="false">24 ч</string>
+    <string name="settings_12_h" formatted="false">12 ч</string>
+    <string name="settings_built_in" formatted="false">Встроенный</string>
+    <string name="settings_not_selected" formatted="false">Не выбрано</string>
+    <string name="settings_not_found" formatted="false">Не найдено</string>
+    <string name="settings_unknown" formatted="false">Неизвестно</string>
+    <string name="settings_unavailable" formatted="false">Недоступен</string>
+    <string name="settings_network_unavailable" formatted="false">Недоступно</string>
+    <string name="settings_wi_fi_name_unavailable" formatted="false">Wi-Fi (имя недоступно)</string>
+    <string name="settings_recommendations" formatted="false">РЕКОМЕНДАЦИИ</string>
+    <string name="settings_no_tmdb_key_see_the_readme_config_properties" formatted="false">Нет ключа TMDB: см. README (config.properties).</string>
+    <string name="settings_error" formatted="false">"Ошибка: "</string>
+    <string name="settings_fetching_titles" formatted="false">Загрузка рекомендаций…</string>
+    <string name="settings_this_product_uses_the_tmdb_api_but_is_not_endorsed_or_certified_b" formatted="false">Продукт использует API TMDB, но не одобрен и не сертифицирован TMDB.</string>
+    <string name="settings_comparison" formatted="false">СРАВНЕНИЕ</string>
+    <string name="settings_original" formatted="false">Заводской</string>
+    <string name="settings_home_button" formatted="false">Кнопка «Домой»</string>
+    <string name="settings_free_memory" formatted="false">Свободная память</string>
+    <string name="settings_home_screen_memory" formatted="false">Память главного экрана</string>
+    <string name="settings_notices" formatted="false">УВЕДОМЛЕНИЯ</string>
+    <string name="settings_none_yet" formatted="false">Пока нет.</string>
+    <string name="settings_now" formatted="false">сейчас</string>
+    <string name="settings_tvos_update" formatted="false">Обновление tvOS</string>
+    <string name="settings_could_not_update_tvos" formatted="false">Не удалось обновить tvOS</string>
+    <string name="settings_checking_for_updates" formatted="false">Проверка обновлений…</string>
+    <string name="settings_downloading_update" formatted="false">Загрузка обновления…</string>
+    <string name="settings_update_downloaded" formatted="false">Обновление загружено</string>
+    <string name="settings_version" formatted="false">"Версия "</string>
+    <string name="settings_tvos_is_up_to_date" formatted="false">tvOS актуальна</string>
+    <string name="settings_clear_cache_confirmation" formatted="false">Очистить кеш?</string>
+    <string name="settings_temporary_posters_images_and_screensaver_cache_will_be_deleted_se" formatted="false">Удалятся временные постеры, изображения и кеш заставок. Настройки сохранятся.</string>
+    <string name="settings_cancel" formatted="false">Отмена</string>
+    <string name="settings_clear" formatted="false">Очистить</string>
+    <string name="settings_cache_cleared" formatted="false">Кеш очищен</string>
+    <string name="settings_some_cache_could_not_be_cleared" formatted="false">Не весь кеш удалось очистить</string>
+    <string name="settings_reset_tvos_confirmation" formatted="false">Сбросить tvOS?</string>
+    <string name="settings_all_tvos_settings_selected_apps_and_app_data_will_be_erased_this_" formatted="false">Все настройки, выбранные приложения и данные tvOS будут удалены. Отменить действие нельзя.</string>
+    <string name="settings_reset_tvos_3" formatted="false">Сбросить tvOS</string>
+    <string name="settings_could_not_reset_tvos" formatted="false">Не удалось сбросить tvOS</string>
+    <string name="settings_theme" formatted="false">Тема</string>
+    <string name="settings_weather_widget" formatted="false">Виджет погоды</string>
+    <string name="settings_dollar" formatted="false">Доллар</string>
+    <string name="settings_automatic_value" formatted="false">Автоматически</string>
+    <string name="settings_theme_light" formatted="false">Светлая</string>
+    <string name="settings_theme_dark" formatted="false">Тёмная</string>
+    <string name="settings_on" formatted="false">Вкл.</string>
+    <string name="settings_netflix_button" formatted="false">Кнопка Netflix</string>
+    <string name="settings_youtube_button" formatted="false">Кнопка YouTube</string>
+    <string name="settings_prime_video_button" formatted="false">Кнопка Prime Video</string>
+    <string name="settings_tcl_channel_button" formatted="false">Кнопка TCL Channel</string>
+    <string name="settings_not_installed" formatted="false">Не установлено</string>
+    <string name="settings_airplay_is_not_installed_or_unavailable" formatted="false">AirPlay не установлен или недоступен</string>
+    <string name="settings_search" formatted="false">Поиск</string>
+    <string name="settings_tv" formatted="false">ТВ</string>
+    <string name="settings_clock" formatted="false">Часы</string>
+    <string name="settings_network" formatted="false">Сеть</string>
+    <string name="settings_new" formatted="false">Новинки</string>
+    <string name="settings_movies" formatted="false">Фильмы</string>
+    <string name="settings_detectives" formatted="false">Детективы</string>
+    <string name="settings_shows" formatted="false">Сериалы</string>
+    <string name="settings_random_movie" formatted="false">Случайный фильм</string>
+    <string name="settings_save" formatted="false">Сохранить</string>
+    <string name="settings_ms" formatted="false">" мс"</string>
+    <string name="settings_gigabytes_format" formatted="false">%.2f ГБ</string>
+    <string name="settings_mb" formatted="false">" МБ"</string>
+    <string name="settings_city" formatted="false">Город</string>
+    <string name="settings_city_searching" formatted="false">Поиск…</string>
+    <string name="settings_city_name_hint" formatted="false">Введите название города</string>
+    <string name="settings_find_city" formatted="false">Найти</string>
+    <string name="settings_city_not_found" formatted="false">Город не найден.</string>
+    <string name="settings_city_search_error_prefix" formatted="false">"Ошибка поиска города: "</string>
+    <string name="settings_update_available" formatted="true">Доступно обновление до версии %1$s.</string>
+    <string name="settings_download_and_install_it_now" formatted="false">Загрузить и установить его сейчас?</string>
+    <string name="settings_confirm_installation_on_your_tv" formatted="false">Установку потребуется подтвердить на ТВ.</string>
+    <string name="settings_do_not_turn_off_your_tv_during_download" formatted="false">Не отключайте ТВ во время загрузки</string>
+    <string name="settings_or_installation" formatted="false">и установки обновления.</string>
+    <string name="settings_download_and_install" formatted="false">Загрузить и установить</string>
+    <string name="settings_update_later" formatted="false">Обновить позже</string>
+    <string name="settings_install" formatted="false">Установить</string>
+    <string name="settings_later" formatted="false">Позже</string>
+    <string name="settings_last_check_never" formatted="false">Последняя проверка: ещё не выполнялась</string>
+    <string name="settings_last_check_date_pattern" formatted="false">d MMMM yyyy \'г. в\' HH:mm:ss</string>
+    <string name="settings_last_check" formatted="true">Последняя проверка: %1$s</string>
+    <string name="settings_recommendations_count" formatted="true">Вкл. · Рекомендаций из приложений телевизора: %1$d; 3 новых каждый час.</string>
+    <string name="settings_minutes_ago" formatted="true">%1$d мин назад</string>
+    <string name="settings_hours_ago" formatted="true">%1$d ч назад</string>
+    <plurals name="settings_days_ago">
+        <item quantity="one">%1$d день назад</item>
+        <item quantity="few">%1$d дня назад</item>
+        <item quantity="many">%1$d дней назад</item>
+        <item quantity="other">%1$d дня назад</item>
+    </plurals>
 </resources>

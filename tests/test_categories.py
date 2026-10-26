@@ -1,4 +1,5 @@
 """Production category persistence, Dock-style editor and ordered home navigation on JVM."""
+from settings_strings_fixture import write as write_strings
 from pathlib import Path
 import subprocess
 import tempfile
@@ -25,6 +26,7 @@ nav_body=''.join(method(home,s) for s in [
  '    private boolean topControlVisible(', '    private int nextTopControl(', '    private static boolean tabEnabled(',
  '    private void syncVisibleTabs(', '    private int availableTopButton(', '    private boolean clockButtonEnabled('])
 harness='''import java.util.*;
+class Ui {static boolean ru;}
 class Prefs {
  static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}
  static int version;private static int categoryVersion=-1,categoryMask;private static int[] categoryOrderCache;
@@ -123,5 +125,6 @@ public class CategoriesHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-categories-') as directory:
     root=Path(directory);p=root/'CategoriesHarness.java';p.write_text(harness)
-    subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,str(p)],check=True)
+    write_strings(root,package=False)
+    subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
     subprocess.run(['java','-cp',directory,'CategoriesHarness'],check=True)
