@@ -425,18 +425,6 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         return "";
     }
 
-    private static int scoreAsset(String url, String type) {
-        if (!url.startsWith("https://") || url.contains(" ")) return -1;
-        String u = (url + " " + type).toLowerCase(Locale.US);
-        if (!u.contains(".mov") && !u.contains(".mp4")) return -1;
-        if (u.contains("hdr") || u.contains("dolby") || u.contains("dv") || u.contains("4k")) return -1;
-        if (u.contains("hevc") || u.contains("h265") || u.contains("h.265")) return -1;
-        int score = 10;
-        if (u.contains("1080") || u.contains("h264") || u.contains("h.264") || u.contains("avc")) score += 30;
-        if (u.contains("sdr")) score += 10;
-        return score;
-    }
-
     /** The same pre-rendered glyph shadow and 24 sp badge used by both photo sources. */
     private static final class AerialWeatherView extends View {
         private final ScreensaverWeather badge;

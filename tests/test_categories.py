@@ -24,7 +24,7 @@ editor_body=''.join(method(settings,s) for s in [
  '        private void toggleCategory(', '        private void moveCategory('])
 nav_body=''.join(method(home,s) for s in [
  '    private boolean topControlVisible(', '    private int nextTopControl(', '    private static boolean tabEnabled(',
- '    private void syncVisibleTabs(', '    private int availableTopButton(', '    private boolean clockButtonEnabled('])
+ '    private void syncVisibleTabs(', '    private int availableTopButton('])
 harness='''import java.util.*;
 class Ui {static boolean ru;}
 class Prefs {

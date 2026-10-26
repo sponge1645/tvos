@@ -242,10 +242,6 @@ final class HomeAppsRenderer {
         dockLogos.draw(c, it, box, s, mode, frame.tileRects.length == 0 ? null : frame.tileRects[0], FOCUS_GROW);
     }
 
-    private int drawerInk(float alpha) {
-        return Ui.alpha(tone(L_INK, 0xFFFFFFFF), alpha);
-    }
-
     private void drawerGlass(Canvas c, RectF r, float radius, float lightTint, int shadowColor, float drop) {
         float dk = frame.night;
         if (dk < 0.999f) {

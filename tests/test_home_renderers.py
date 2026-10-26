@@ -21,7 +21,11 @@ public class HomeRenderHarness {
   b.tickFade(1800,true);check(scene.glass==next.lightGlass&&!b.tickFade(1801,true),"settled target no longer retains active transition");
   b.checkNight(true,false);check(b.night()==1&&scene.glass==next.nightGlass&&changes[0]==1,"immediate night updates glass");
   c=new Canvas();b.draw(c,0);check(entries(c,"bitmap").size()==1&&entries(c,"bitmap").get(0).text.equals("21"),"night image");check(b.profilePixels()==next.nightFrost,"profile uses existing tiny night pixels");
-  SystemClock.now=2000;b.checkNight(false,true);check(b.tickNight(4000)&&b.night()==0&&!b.tickNight(4001),"day transition settles and stops ticking");
+  SystemClock.now=2000;b.checkNight(false,true);
+  check(b.tickNight(2500),"reverse transition starts");near(b.night(),.84375f,"quarter transition is smooth");int pairs=scene.pairs;
+  b.tickNight(3000);near(b.night(),.5f,"half transition");check(scene.frost[0]==0xFF777777,"midpoint glass frost uses mixed pixels");
+  b.tickNight(3500);near(b.night(),.15625f,"three-quarter transition");check(scene.pairs==pairs,"glass pair reused through transition");
+  check(b.tickNight(4000)&&b.night()==0&&!b.tickNight(4001),"day transition settles and stops ticking");
   SystemClock.now=4100;b.show(null);b.tickFade(4900,true);check(scene.glass!=null&&b.profilePixels()==null,"gradient restores neutral glass");
   int count=LinearGradient.allocations;b.resize(1280,720);b.draw(new Canvas(),0);check(LinearGradient.allocations==count+2,"gradients rebuilt for resize");
  }
@@ -60,10 +64,16 @@ public class HomeRenderHarness {
   f.searchMode=true;f.headingOpacity=1;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==1,"search replaces category titles");
   f.searchMode=false;Prefs.categories[2]=false;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==4,"disabled category skipped");Prefs.categories[2]=true;h.clearFrame();
  }
- static void notices(){
+ static void notices()throws Exception{
   Context ctx=new Context();Handler handler=new Handler();List<Runnable> worker=new ArrayList<>();int[] invalidates={0},wakes={0},announces={0};HomeNotices n=new HomeNotices(ctx,new Scene(),worker::add,handler,()->invalidates[0]++,()->wakes[0]++,text->announces[0]++);n.resize(1,1920);n.add("First");n.add("Second");check(n.busy()&&!n.visible()&&announces[0]==2&&wakes[0]==2,"queue announcement and wake");SystemClock.now=100;check(n.tick(100)&&n.visible(),"initial fade begins");Canvas c=new Canvas();SystemClock.now=500;n.draw(c);text(c,"First");check(c.depth==0,"toast layers balanced");check(!n.tick(1000),"stable toast no fade invalidation");n.tick(6101);c=new Canvas();SystemClock.now=6600;n.draw(c);text(c,"Second");n.tick(12102);check(!n.busy(),"queue drains in order");
   long now=System.currentTimeMillis();HomeMode.state=new JSONObject().put("notices",new JSONArray().put(new JSONObject().put("at",now).put("text","Newest")).put(new JSONObject().put("at",now-1000).put("text","Older")).put(new JSONObject().put("at",now-100_000_000).put("text","Expired")));
   n.check();worker.remove(0).run();check(ctx.prefs.getLong("seenNotice",0)==now&&!n.busy(),"worker persists cursor before UI delivery");handler.drain();check(n.busy(),"fresh notices delivered on main handler");n.check();worker.remove(0).run();check(handler.work.isEmpty(),"seen cursor avoids duplicate delivery");
+  List<String> spoken=new ArrayList<>();Context translatedContext=new Context();Handler translatedHandler=new Handler();List<Runnable> translatedWorker=new ArrayList<>();
+  HomeNotices translated=new HomeNotices(translatedContext,new Scene(),translatedWorker::add,translatedHandler,()->{},()->{},spoken::add);
+  translated.resize(1,1920);AppLanguage.select("en");JSONObject message=new JSONObject().put("at",now).put("text","stale English fallback").put("message",NoticeText.message(R.string.runtime_mode_enabled,7));
+  HomeMode.state=new JSONObject().put("notices",new JSONArray().put(message));translated.check();translatedWorker.remove(0).run();AppLanguage.select("ru");translatedHandler.drain();
+  check(spoken.size()==1&&spoken.get(0).equals("tvOS включён: новый главный экран и заставка; отключено приложений: 7."),"home notice follows language at UI delivery instead of stored fallback");
+  translated.tick(100);SystemClock.now=500;Canvas localized=new Canvas();translated.draw(localized);text(localized,spoken.get(0));AppLanguage.select("en");
  }
  public static void main(String[] args)throws Exception{AppLanguage.select("en");background();images();posters();apps();header();notices();System.out.println("PASS: whole background/images/poster/apps/header/notices classes, drawing geometry, focus, cache identities, theme/resize, marquee timing, queue and persisted notice cursor");}
 }'''

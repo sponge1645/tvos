@@ -98,7 +98,7 @@ final class HomeBackground {
 
     boolean tickNight(long up) {
         if (nightAt == 0) return false;
-        float t = Ui.clamp((up - nightAt) / NIGHT_MS), to = nightTarget ? 1 : 0;
+        float t = Ui.clamp((up - nightAt) / (float) NIGHT_MS), to = nightTarget ? 1 : 0;
         night = nightFrom + (to - nightFrom) * t * t * (3 - 2 * t);
         if (t >= 1) {
             night = to;

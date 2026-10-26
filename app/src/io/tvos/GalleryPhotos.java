@@ -18,26 +18,19 @@ final class GalleryPhotos {
     private final String source;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private final ArrayList<File> ready = new ArrayList<>();
+    private final GalleryCache cache;
     private final File folder;
     private boolean loading;
-    private int next;
 
     GalleryPhotos(Context context, String source) {
         this.source = source;
         folder = new File(context.getCacheDir(), "tvos_gallery_v2_" + source);
-        folder.mkdirs();
-        File[] existing = folder.listFiles((dir, name) -> name.endsWith(".jpg"));
-        if (existing != null) for (File f : existing) if (f.length() > 80_000) ready.add(f);
-        Collections.shuffle(ready);
+        cache = new GalleryCache(folder);
     }
 
-    boolean hasImages() { return !ready.isEmpty(); }
-    File next() {
-        if (ready.isEmpty()) return null;
-        if (next >= ready.size()) { next = 0; Collections.shuffle(ready); }
-        return ready.get(next++);
-    }
+    boolean hasImages() { return cache.hasImages(); }
+    File next() { return cache.next(); }
+    void release(File file) { cache.release(file); }
 
     void refresh(Runnable onReady) {
         if (loading) return;
@@ -68,24 +61,12 @@ final class GalleryPhotos {
                         } catch (Exception e) { temp.delete(); continue; }
                     }
                     added++;
+                    cache.prune();
                     main.post(() -> {
-                        if (!ready.contains(file)) ready.add(file);
-                        if (onReady != null) onReady.run();
+                        if (cache.add(file) && onReady != null) onReady.run();
                     });
                 }
-                // Bound disk usage without deleting photos currently in the in-memory playlist.
-                File[] cached = folder.listFiles((dir, name) -> name.endsWith(".jpg"));
-                if (cached != null && cached.length > 80) {
-                    Arrays.sort(cached, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
-                    for (int i = 0; i < cached.length - 80; i++) {
-                        // Only remove from the next session, not from an active slideshow.
-                        File f = cached[i];
-                        if (!ready.contains(f)) {
-                            f.delete();
-                            new File(folder, f.getName().replace(".jpg", ".json")).delete();
-                        }
-                    }
-                }
+                cache.prune();
             } catch (Exception e) { AppLog.w("gallery " + source + ": " + e); }
             finally { main.post(() -> loading = false); }
         });

@@ -1,7 +1,6 @@
 package io.tvos;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,17 +14,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -151,47 +146,11 @@ final class Recs {
 
     String error() { return error; }
 
-    static String periodLabel() {
-        switch(period(System.currentTimeMillis())) {case 0:return AppStrings.get(R.string.runtime_period_morning);case 1:return AppStrings.get(R.string.runtime_period_afternoon);default:return AppStrings.get(R.string.runtime_period_night);}
-    }
-
     private static int period(long now) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(now);
         int hour = cal.get(Calendar.HOUR_OF_DAY);
         return hour >= 5 && hour < 12 ? MANHA : hour >= 12 && hour < 18 ? TARDE : NOITE;
-    }
-
-    /** This hour's picks (the first is the featured one; the arrows switch to the others). */
-    List<Pick> now() {
-        return now(null);
-    }
-
-    /** This hour's 3, movies only ("movie") or shows only ("tv"); null = both (the home screen tabs). */
-    List<Pick> now(String kind) {
-        List<Pick> list = new ArrayList<>();
-        if (!hasKey(context)) return list;    // no TMDB key: no recommendations
-        for (Pick p : picks) {
-            if (kind == null || kind.equals(p.kind)) list.add(p);
-        }
-        if (list.isEmpty()) return list;
-        long hour = System.currentTimeMillis() / 3600_000L;
-        // Three per hour, never two from the same franchise ("Law & Order" and "Law & Order: Special…").
-        List<Pick> out = new ArrayList<>();
-        java.util.Set<String> seen = new java.util.HashSet<>();
-        for (int i = 0; i < list.size() && out.size() < 3; i++) {
-            Pick p = list.get((int) ((hour * 3 + i) % list.size()));
-            if (seen.add(franchise(p.title))) out.add(p);
-        }
-        return out;
-    }
-
-    /** "Law & Order: Special Victims Unit" → "law & order" (what comes before ":" or " - "). */
-    private static String franchise(String title) {
-        String t = title == null ? "" : title.toLowerCase(Locale.ROOT);
-        int cut = t.indexOf(':');
-        if (cut < 0) cut = t.indexOf(" - ");
-        return (cut > 0 ? t.substring(0, cut) : t).trim();
     }
 
     /** Name of the service the pick is on ("Netflix"), or empty. */

@@ -37,9 +37,10 @@ def files():
  f['io/tvos/Prefs.java']='''package io.tvos;class Prefs {static boolean[] buttons={true,true,true,true,true,true},categories={true,true,true,true,true};static boolean topButtonEnabled(int i){return buttons[i];}static boolean categoryEnabled(int i){return categories[i];}}'''
  f['io/tvos/Recs.java']='''package io.tvos;import android.graphics.Bitmap;class Recs {'''+block(Path('app/src/io/tvos/Recs.java').read_text(),'    static final class Pick {')+'''boolean missing;Bitmap poster(Pick p){return missing||p==null?null:new Bitmap(p.id);}}'''
  f['org/json/JSONObject.java']=JSON.replace(' public boolean optBoolean', ' public long optLong(String k){Object v=m.get(k);return v instanceof Number?((Number)v).longValue():0;}public boolean optBoolean')
- f['org/json/JSONArray.java']=ARRAY
+ f['org/json/JSONObject.java']=f['org/json/JSONObject.java'][:-1]+'public boolean has(String key){return m.containsKey(key);}}'
+ f['org/json/JSONArray.java']=ARRAY[:-1]+'public Object opt(int i){return i>=0&&i<a.size()?a.get(i):null;}public JSONArray put(int i,Object v){while(a.size()<=i)a.add(null);a.set(i,v);return this;}}'
  f['org/json/JSONException.java']='package org.json;public class JSONException extends Exception {public JSONException(String s){super(s);}}'
  f['io/tvos/HomeMode.java']='''package io.tvos;class HomeMode {static org.json.JSONObject state=new org.json.JSONObject();static org.json.JSONObject state(android.content.Context c){return state;}}'''
- for name in ['HomeBackground','HomeNotices','RoundedImages','PosterRenderer','HomeAppsRenderer','HomeHeaderRenderer','PosterText','RatingStyle','Spring','AppBranding']:
+ for name in ['HomeBackground','HomeNotices','RoundedImages','PosterRenderer','HomeAppsRenderer','HomeHeaderRenderer','PosterText','RatingStyle','Spring','AppBranding','NoticeText','ResourceFailure']:
   f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
  return f

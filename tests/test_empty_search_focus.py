@@ -46,6 +46,10 @@ tests='''
   check(category.zone==Z_TOP&&category.topIndex==2,"empty ordinary category still focuses its visible tab");
   SearchFocusHarness noCatalog=new SearchFocusHarness();noCatalog.enabled=false;noCatalog.searchMode=false;noCatalog.actions=0;noCatalog.moveLight(0,-1);
   check(noCatalog.zone==Z_SHELF,"no catalog and all actions hidden keeps focus in Dock");
+  SearchFocusHarness emptyDock=new SearchFocusHarness();emptyDock.shelf.clear();emptyDock.actions=32;
+  emptyDock.moveLight(0,-1);check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==10,"empty Dock reaches the visible Network action");
+  emptyDock.searchMode=false;emptyDock.tab=2;emptyDock.zone=Z_SHELF;emptyDock.moveLight(0,-1);
+  check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==2,"empty Dock with recommendations reaches current category");
   System.out.println("PASS: empty search focus across all tabs/button masks, repeated up/down, empty cards, populated results, ordinary empty category");
  }
 }'''

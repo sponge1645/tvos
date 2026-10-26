@@ -30,7 +30,7 @@ public class LocalizedSettingsHarness {
  int updatePopup;Object activity=this;Object getContext(){return this;}String versionName(Object c){return "tvOS 1.1";}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
-methods=''.join(method(s) for s in ['        private static String metric(', '        private static String ago(', '        private String[] keyLabels()', '        private String menuButtonLabel(', '        private String categoryLabel(', '        private static String onOff('])
+methods=''.join(method(s) for s in ['        private String[] keyLabels()', '        private String menuButtonLabel(', '        private String categoryLabel(', '        private static String onOff('])
 tests='''
  public static void main(String[] args){
   LocalizedSettingsHarness h=new LocalizedSettingsHarness();
@@ -40,11 +40,6 @@ tests='''
    check(h.onOff(true).equals(russian?"Вкл.":"On"),"enabled value");
    check(h.menuButtonLabel(5).equals(russian?"Сеть":"Network"),"network reorder label");
    check(h.categoryLabel(4).equals(russian?"Случайный фильм":"Random Movie"),"category label");
-   JSONObject m=new JSONObject();m.v.put("homeMs",12L);m.v.put("memAvailableMB",2048L);m.v.put("homePssMB",32L);
-   check(metric(m,"homeMs").equals(russian?"12 мс":"12 ms"),"metric suffix keeps space");
-   check(metric(m,"memAvailableMB").equals(russian?"2,00 ГБ":"2.00 GB"),"metric follows app number format");
-   check(metric(m,"homePssMB").equals(russian?"32 МБ":"32 MB"),"memory suffix");
-   check(metric(null,"homeMs").equals("—"),"missing metric fallback");
    h.updatePopup=2;String[][] copy=h.popup();
    check(copy[0].length==5&&copy[1].length==2,"update dialog keeps line/button geometry");
    check(copy[0][0].equals(russian?"Доступно обновление до версии 1.2.3.":"Update 1.2.3 is available."),"version slot");
@@ -56,16 +51,8 @@ tests='''
    h.updatePopup=3;SelfUpdate.status.message="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
    copy=h.popup();check(copy[0][1].length()==44&&copy[0][2].equals("STUVWXYZ"),"error wrapping unchanged");
    h.updatePopup=1;copy=h.popup();check(copy[0][1].equals("1.1")&&copy[1][0].equals("OK"),"installed version and OK");
-   for(int days:new int[]{2,5,11,21,22,25,111,112,114}){
-    String[] forms={"дня","дней","дней","день","дня","дней","дней","дней","дней"};
-    int at=java.util.Arrays.binarySearch(new int[]{2,5,11,21,22,25,111,112,114},days);
-    String expected=days+(russian?" "+forms[at]+" назад":" days ago");
-    check(ago(System.currentTimeMillis()-days*86400000L-60000).equals(expected),"plural day age: "+days);
-   }
-   check(ago(System.currentTimeMillis()-180000).equals(russian?"3 мин назад":"3 min ago"),"minute age");
-   check(ago(System.currentTimeMillis()-3600000*3L-60000).equals(russian?"3 ч назад":"3 h ago"),"hour age");
   }
-  System.out.println("PASS: RU/EN update dialogs, version/progress/error states, metrics, menu labels and plural ages");
+  System.out.println("PASS: RU/EN update dialogs, version/progress/error states, menu labels and resource argument parity");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-localized-settings-') as tmp:

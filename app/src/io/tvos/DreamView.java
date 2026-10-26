@@ -15,16 +15,11 @@ import android.graphics.Shader;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.text.Layout;
-import android.text.StaticLayout;
-import android.text.TextPaint;
-import android.text.TextUtils;
 import android.view.Choreographer;
 import android.view.View;
 
 import java.io.File;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,12 +35,12 @@ import java.util.concurrent.Executors;
  * Baked photo gradients and glyph shadows keep overlays readable. Any key exits (as on Apple TV).
  * Without photos (no TMDB key, or before the first fetch): the big clock over the night aurora.
  */
-final class DreamView extends View implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
+final class DreamView extends View implements Choreographer.FrameCallback, HomeData.Listener {
     private static final long SHOW_MS = 30_000, FADE_MS = 3_000, FIRST_MS = 1_600;
     private static final float ZOOM = 0.1f;
     /** Photos 10% larger than the screen (the zoom goes up to 1.1 without upscaling). */
     private static final int PW = 2112, PH = 1188;
-    private static final float MARGIN = 80, RIGHT = 1840, TITLE_W = 900, META_BASE = 1008;
+    private static final float MARGIN = 80, RIGHT = 1840;
     private static final float DATE_BASE = 92, CLOCK_TOP = 120, CLOCK_SIZE = 200;
     private static final double DRIFT_PERIOD_S = 600;
 
@@ -57,7 +52,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         final float lightCaption, lightClock;
         final boolean zoomIn;
         final float panX, panY;
-        final Recording caption = Recording.create("caption");
         long startedAt;
 
         Slide(Recs.Pick pick, Bitmap image, Bitmap frost, float lightCaption, float lightClock, int n) {
@@ -105,7 +99,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private final float[] orbRadius = {0.48f, 0.43f, 0.38f, 0.31f};
     private final int[] orbColor = {0x603E65B6, 0x585B3A95, 0x40358D9D, 0x443C4D96};
     private final HomeData data;
-    private final Recs recs;
     private final GalleryPhotos gallery;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -118,7 +111,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private final Paint black = new Paint();
     private final Paint shadowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint glassPaint = new Paint();
-    private final Set<String> failed = new HashSet<>();     // Recs.key: a movie and a series can have the same ID
     private RuntimeShader glassShader;
     private boolean running, dirty = true, chromeDirty = true;
     private boolean fallback;       // the aurora with the clock (no photos)
@@ -133,8 +125,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private long minute = -1;
     private String clock = "", date = "";
     private Paint datePaint, clockPaint, weatherPaint, weatherDim;
-    private Paint cornerDate, cornerClock, labelPaint, metaPaint;
-    private TextPaint titlePaint;
+    private Paint cornerDate, cornerClock;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -171,7 +162,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         this.settings = settings;
         weatherBadge = new ScreensaverWeather(c);
         data = HomeData.get(c);
-        recs = Recs.get(c);
         String source = settings.getString("video_dream_source", "google");
         gallery = new GalleryPhotos(c, ("na".equals(source) || "nasa".equals(source)) ? "na" : "google");
         Shaders.dream(scene.palette);
@@ -195,11 +185,9 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         if (worker.isShutdown()) worker = Executors.newSingleThreadExecutor();
         startedAt = clock();
         lastFrame = 0;
-        failed.clear();
         fallback = !gallery.hasImages();
         gallery.refresh(() -> { if (running) { prepareNext(); invalidate(); } });
         data.addListener(this);
-        recs.addListener(this);
         data.refreshIfStale();
 
         prepareNext();
@@ -217,7 +205,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         Choreographer.getInstance().removeFrameCallback(this);
         handler.removeCallbacks(tick);
         data.removeListener(this);
-        recs.removeListener(this);
         // The photos stay in GPU memory until the garbage collector runs: release them now (after the last frame).
         final java.util.Set<Bitmap> gone = new java.util.HashSet<>();
         for (Slide s : new Slide[] {current, incoming, prepared}) {
@@ -244,10 +231,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         invalidate();
     }
 
-    @Override public void onRecs() {
-        if (running) prepareNext();
-    }
-
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         w = width;
         h = height;
@@ -272,23 +255,16 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         clockPaint.setLetterSpacing(-0.01f);
         weatherPaint = Ui.numbers(Ui.medium, 30 * k, 0xC7FFFFFF);
         weatherDim = Ui.numbers(Ui.regular, 28 * k, 0x80FFFFFF);
-        // With photos: the corner (date and clock) and the caption.
+        // With photos: the corner date and clock.
         cornerDate = Ui.numbers(Ui.semibold, 30 * k, 0xEBFFFFFF);
         cornerClock = Ui.numbers(Ui.displaySemibold, CLOCK_SIZE * k, 0xF2FFFFFF);
         cornerClock.setShader(new LinearGradient(0, CLOCK_TOP * k, 0, (CLOCK_TOP + CLOCK_SIZE) * k, new int[]{0xFFFDF6EC, 0xFFE7E4E0, 0xFF999B9F, 0xFFF0D1B7}, null, Shader.TileMode.CLAMP));
-        labelPaint = Ui.text(Ui.medium, 25 * k, 0xB8FFFFFF);
-        labelPaint.setLetterSpacing(0.1f);
-        titlePaint = new TextPaint(Ui.text(Ui.displayMedium, 76 * k, 0xFFFFFFFF));
-        titlePaint.setLetterSpacing(0.005f);
-        metaPaint = Ui.text(Ui.medium, 29 * k, 0xC7FFFFFF);
-        metaPaint.setLetterSpacing(0.014f);
-        for (Paint p : new Paint[] {cornerDate, cornerClock, labelPaint, titlePaint, metaPaint}) {
+        for (Paint p : new Paint[] {cornerDate, cornerClock}) {
             p.setShadowLayer(18 * k, 0, 2 * k, 0x66000000);
         }
         glassFor = "";
         dirty = true;
         chromeDirty = true;
-        for (Slide s : new Slide[] {current, incoming, prepared}) if (s != null) recordCaption(s);
     }
 
     // MARK: - Photos
@@ -304,6 +280,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         pick.title = "";
         if (current != null && current.pick.id == pick.id && gallery.hasImages()) {
             prepared = newSlide(pick, current.image, current.frost, current.lightCaption, current.lightClock);
+            gallery.release(file);
             return;
         }
         decoding = true;
@@ -317,6 +294,8 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
                 images[0] = Backdrop.gpu(withScrims(images[0], light[0]));
             } catch (Exception | OutOfMemoryError e) {
                 AppLog.w("screensaver: photo for “" + chosen.title + "”: " + e.getMessage());
+            } finally {
+                gallery.release(file);
             }
             final Bitmap[] ready = images;
             handler.post(() -> {
@@ -339,7 +318,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
     private Slide newSlide(Recs.Pick pick, Bitmap image, Bitmap frost, float lightCaption, float lightClock) {
         Slide s = new Slide(pick, image, frost, lightCaption, lightClock, slides++);
-        if (w > 0) recordCaption(s);
         return s;
     }
 
@@ -657,54 +635,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
                 if (add < n) sum += in[base + add * step];
                 if (sub >= 0) sum -= in[base + sub * step];
             }
-        }
-    }
-
-    // MARK: - Photo caption (bottom left)
-
-    private void recordCaption(Slide s) {
-        Canvas c = s.caption.beginRecording(w, h);
-        try {
-            float x = MARGIN * k, metaBase = META_BASE * k, titleBase = metaBase - 58 * k;
-            String title = s.pick.title == null ? "" : s.pick.title;
-            StaticLayout t = StaticLayout.Builder.obtain(title, 0, title.length(), titlePaint, Math.round(TITLE_W * k))
-                    .setMaxLines(2).setEllipsize(TextUtils.TruncateAt.END).setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                    .setIncludePad(false).build();
-            float originY = titleBase - t.getLineBaseline(t.getLineCount() - 1);
-            float capTop = originY + t.getLineBaseline(0) - Ui.cap(titlePaint);
-            c.drawText(Recs.periodLabel(), x, capTop - 30 * k, labelPaint);
-            c.save();
-            c.translate(x - Ui.leftBearing(titlePaint, title), originY);
-            t.draw(c);
-            c.restore();
-            if (s.pick.meta != null && !s.pick.meta.isEmpty()) c.drawText(s.pick.meta, x, metaBase, metaPaint);
-        } finally {
-            s.caption.endRecording();
-        }
-        s.caption.setPosition(0, 0, w, h);
-    }
-
-    /** The caption fades out fast; the new one rises in once the photo has partly changed (like the home screen). */
-    private void drawCaptions(Canvas c, long up) {
-        if (incoming == null) {
-            float a = current.startedAt == firstAt ? fadeIn(up - firstAt - 700, 900) : 1;
-            current.caption.setAlpha(a);
-            current.caption.setTranslationY(14 * k * (1 - a));
-            current.caption.draw(c);
-            return;
-        }
-        long t = up - incoming.startedAt;
-        float out = 1 - Ui.clamp(t / 500f);
-        if (out > 0.004f) {
-            current.caption.setAlpha(out);
-            current.caption.setTranslationY(0);
-            current.caption.draw(c);
-        }
-        float in = fadeIn(t - 1300, 900);
-        if (in > 0.004f) {
-            incoming.caption.setAlpha(in);
-            incoming.caption.setTranslationY(14 * k * (1 - in));
-            incoming.caption.draw(c);
         }
     }
 

@@ -6,7 +6,6 @@ import static io.tvos.SettingsValues.*;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -144,8 +143,7 @@ public class SettingsActivity extends Activity {
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
         private final SettingsBackground background = new SettingsBackground();
         private final SettingsUpdateDialog updateDialog;
-        private JSONObject state = new JSONObject(), recs = new JSONObject();
-        private boolean hasKey;
+        private JSONObject state = new JSONObject();
         private int screen = MAIN, focus, settingsGroup = GENERAL, returnFocus = 0;
         // Shared, short-lived Canvas transition for all settings submenus.
         private static final long MENU_TRANSITION_MS = 280;
@@ -169,7 +167,7 @@ public class SettingsActivity extends Activity {
         private long startedAt, lastNanos, pendingAt, lastSky;
         private int w, h;
         private float k = 1;
-        private Paint title, subtitle, version, rowLabel, rowValue, rowSub, header, cellLabel, cellValue, warn, spinner, white, shadow;
+        private Paint title, subtitle, rowLabel, rowValue, rowSub, warn, spinner, white, shadow;
 
         // Пробная отрисовка с дополнительным межбуквенным интервалом.
         private void drawTrackedText(Canvas canvas, String text,
@@ -203,14 +201,11 @@ public class SettingsActivity extends Activity {
         }
 
         private Paint pageTitle, logoInk, logoTile, rim = new Paint(Paint.ANTI_ALIAS_FLAG), capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private TextPaint notice;
 
         private final Runnable poll = new Runnable() {
             @Override public void run() {
                 if (!running) return;
                 state = HomeMode.state(getContext());
-                hasKey = Recs.hasKey(getContext());
-                recs = Recs.status(getContext());
                 boolean nowBusy = !busyText().isEmpty();
                 if (nowBusy) pendingAt = 0;
                 // A switch just ended: TalkBack reads how it went (the newest notice).
@@ -419,19 +414,11 @@ public class SettingsActivity extends Activity {
             title.setTextAlign(Paint.Align.CENTER);
             subtitle = Ui.text(Ui.regular, 28 * k, 0x99FFFFFF);
             subtitle.setTextAlign(Paint.Align.CENTER);
-            version = Ui.text(Ui.regular, 24 * k, 0x66FFFFFF);
-            version.setTextAlign(Paint.Align.CENTER);
             rowLabel = Ui.text(Ui.displaySemibold, 36 * k, 0xF2FFFFFF);
             rowValue = Ui.text(Ui.displayRegular, 36 * k, 0x8CFFFFFF);
             rowValue.setTextAlign(Paint.Align.RIGHT);
             rowSub = Ui.text(Ui.regular, 27 * k, 0x8CFFFFFF);
-            header = Ui.text(Ui.semibold, 21 * k, 0x73FFFFFF);
-            header.setLetterSpacing(0.06f);
-            cellLabel = Ui.text(Ui.regular, 27 * k, 0xD9FFFFFF);
-            cellValue = Ui.numbers(Ui.regular, 27 * k, 0xD9FFFFFF);
-            cellValue.setTextAlign(Paint.Align.RIGHT);
             warn = Ui.text(Ui.regular, 27 * k, AMBER);
-            notice = new TextPaint(Ui.text(Ui.regular, 27 * k, 0xB3FFFFFF));
             spinner = new Paint(Paint.ANTI_ALIAS_FLAG);
             spinner.setStyle(Paint.Style.STROKE);
             spinner.setStrokeCap(Paint.Cap.ROUND);
@@ -800,26 +787,7 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        /** Home screen picks: status, and the credit TMDB asks for. */
-        private float drawRecs(Canvas c, float y) {
-            float x = LIST_X * k + 30 * k;
-            c.drawText(AppStrings.get(R.string.settings_recommendations), x, y, header);
-            String line;
-            String error = recs.optString("error");
-            int count = recs.optInt("count");
-            if (!hasKey) line = AppStrings.get(R.string.settings_no_tmdb_key_see_the_readme_config_properties);
-            else if (!error.isEmpty()) line = AppStrings.get(R.string.settings_error) + error + ".";
-            else if (count > 0) line = String.format(Ui.locale(),
-                    AppStrings.get(R.string.settings_recommendations_count), count);
-            else line = AppStrings.get(R.string.settings_fetching_titles);
-            c.drawText(TextUtils.ellipsize(line, notice, 790 * k, TextUtils.TruncateAt.END).toString(), x, y + 42 * k, notice);
-            version.setTextAlign(Paint.Align.LEFT);
-            c.drawText(AppStrings.get(R.string.settings_this_product_uses_the_tmdb_api_but_is_not_endorsed_or_certified_b), x, y + 78 * k, version);
-            version.setTextAlign(Paint.Align.CENTER);
-            return y + 78 * k;
-        }
-
-        /** tvOS-style soft graphite capsules; focused row lifts into an opaque white pill. */
+            /** tvOS-style soft graphite capsules; focused row lifts into an opaque white pill. */
         private float drawRowBackground(Canvas c, int i) {
             float f = i >= 0 && i < pop.length ? Ui.clamp(pop[i].value) : 0f;
             float radius = rowRect.height() / 2f;
@@ -851,42 +819,6 @@ public class SettingsActivity extends Activity {
                 rowRect.set(tmp);
             }
             return f;
-        }
-
-        private float drawComparison(Canvas c, float y) {
-            float x = LIST_X * k + 30 * k, colA = LIST_R * k - 220 * k, colB = LIST_R * k - 30 * k;
-            c.drawText(AppStrings.get(R.string.settings_comparison), x, y, header);
-            cellValue.setColor(0x73FFFFFF);
-            c.drawText(AppStrings.get(R.string.settings_original), colA, y, cellValue);
-            c.drawText("tvOS", colB, y, cellValue);
-            cellValue.setColor(0xD9FFFFFF);
-            JSONObject metrics = state.optJSONObject("metrics");
-            JSONObject a = metrics == null ? null : metrics.optJSONObject(HomeMode.ORIGINAL);
-            JSONObject b = metrics == null ? null : metrics.optJSONObject(HomeMode.FREE);
-            String[][] rows = {{AppStrings.get(R.string.settings_home_button), "homeMs"}, {AppStrings.get(R.string.settings_free_memory), "memAvailableMB"},
-                    {AppStrings.get(R.string.settings_home_screen_memory), "homePssMB"}};
-            for (int i = 0; i < rows.length; i++) {
-                float base = y + (46 + 40 * i) * k;
-                c.drawText(rows[i][0], x, base, cellLabel);
-                c.drawText(metric(a, rows[i][1]), colA, base, cellValue);
-                c.drawText(metric(b, rows[i][1]), colB, base, cellValue);
-            }
-            return y + (46 + 40 * rows.length) * k;
-        }
-
-        private void drawNotices(Canvas c, float y) {
-            float x = LIST_X * k + 30 * k;
-            c.drawText(AppStrings.get(R.string.settings_notices), x, y, header);
-            JSONArray notices = state.optJSONArray("notices");
-            int shown = 0;
-            for (int i = 0; notices != null && i < notices.length() && shown < 2; i++) {
-                JSONObject o = notices.optJSONObject(i);
-                if (o == null) continue;
-                String line = ago(o.optLong("at")) + " · " + NoticeText.render(o);
-                c.drawText(TextUtils.ellipsize(line, notice, 790 * k, TextUtils.TruncateAt.END).toString(), x, y + (42 + 38 * shown) * k, notice);
-                shown++;
-            }
-            if (shown == 0) c.drawText(AppStrings.get(R.string.settings_none_yet), x, y + 42 * k, notice);
         }
 
         /** Home launcher selection, using the same compact tvOS capsules as other screens. */
@@ -956,24 +888,6 @@ public class SettingsActivity extends Activity {
             int ba = b >>> 24, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
             return (Math.round(aa + (ba - aa) * f) << 24) | (Math.round(ar + (br - ar) * f) << 16)
                     | (Math.round(ag + (bg - ag) * f) << 8) | Math.round(ab + (bb - ab) * f);
-        }
-
-        private static String metric(JSONObject m, String key) {
-            if (m == null || !m.has(key)) return "—";
-            long v = m.optLong(key);
-            if (key.equals("homeMs")) return v + AppStrings.get(R.string.settings_ms);
-            if (key.equals("memAvailableMB") && v >= 1024) return String.format(Ui.locale(), AppStrings.get(R.string.settings_gigabytes_format), v / 1024.0);
-            return v + AppStrings.get(R.string.settings_mb);
-        }
-
-        private static String ago(long at) {
-            long minutes = Math.max(0, (System.currentTimeMillis() - at) / 60_000);
-            if (minutes < 1) return AppStrings.get(R.string.settings_now);
-            if (minutes < 60) return String.format(Ui.locale(), AppStrings.get(R.string.settings_minutes_ago), minutes);
-            if (minutes < 48 * 60) return String.format(Ui.locale(), AppStrings.get(R.string.settings_hours_ago), minutes / 60);
-            long days = minutes / 1440;
-            return String.format(Ui.locale(),
-                    AppStrings.quantity(R.plurals.settings_days_ago, (int) Math.min(Integer.MAX_VALUE, days)), days);
         }
 
         private void toggleAutomaticUpdates() {

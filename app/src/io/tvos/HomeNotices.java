@@ -110,17 +110,17 @@ final class HomeNotices {
             if (list == null) return;
             long seen = ui.getLong("seenNotice", 0), newest = seen;
             long cutoff = System.currentTimeMillis() - 24 * 3600_000L;
-            final List<String> fresh = new ArrayList<>();
+            final List<JSONObject> fresh = new ArrayList<>();
             for (int i = list.length() - 1; i >= 0; i--) {   // the list comes newest first
                 JSONObject o = list.optJSONObject(i);
                 if (o == null) continue;
                 long at = o.optLong("at");
                 if (at <= seen || at < cutoff) continue;
-                fresh.add(o.optString("text"));
+                fresh.add(o);
                 newest = Math.max(newest, at);
             }
             if (newest > seen) ui.edit().putLong("seenNotice", newest).apply();
-            if (!fresh.isEmpty()) handler.post(() -> { for (String t : fresh) add(t); });
+            if (!fresh.isEmpty()) handler.post(() -> { for (JSONObject notice : fresh) add(NoticeText.render(notice)); });
         });
     }
 }
