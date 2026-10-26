@@ -153,6 +153,31 @@ final class Recs {
         return hour >= 5 && hour < 12 ? MANHA : hour >= 12 && hour < 18 ? TARDE : NOITE;
     }
 
+    List<Pick> now(String kind) {
+        List<Pick> list = new ArrayList<>();
+        if (!hasKey(context)) return list;    // no TMDB key: no recommendations
+        for (Pick p : picks) {
+            if (kind == null || kind.equals(p.kind)) list.add(p);
+        }
+        if (list.isEmpty()) return list;
+        long hour = System.currentTimeMillis() / 3600_000L;
+        // Three per hour, never two from the same franchise ("Law & Order" and "Law & Order: Special…").
+        List<Pick> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int i = 0; i < list.size() && out.size() < 3; i++) {
+            Pick p = list.get((int) ((hour * 3 + i) % list.size()));
+            if (seen.add(franchise(p.title))) out.add(p);
+        }
+        return out;
+    }
+
+    private static String franchise(String title) {
+        String t = title == null ? "" : title.toLowerCase(Locale.ROOT);
+        int cut = t.indexOf(':');
+        if (cut < 0) cut = t.indexOf(" - ");
+        return (cut > 0 ? t.substring(0, cut) : t).trim();
+    }
+
     /** Name of the service the pick is on ("Netflix"), or empty. */
     static String serviceName(Pick p) {
         return TmdbMetadata.serviceName(p);
