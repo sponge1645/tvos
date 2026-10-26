@@ -10,8 +10,7 @@ data=Path('app/src/io/tvos/HomeData.java').read_text()
 recs=Path('app/src/io/tvos/Recs.java').read_text()
 fields=ui[ui.index('    static volatile String language ='):ui.index('    static Typeface')]
 ui_methods=''.join(block(ui,s) for s in [
- '    static void applyLanguage()', '    static String tr(String unused, String english)',
- '    static String tr(String unused, String english, String unusedSpanish)',
+ '    static void applyLanguage()',
  '    static Locale locale()', '    static String clock(', '    static String time(',
  '    static String date(', '    static String once('
 ])
@@ -50,18 +49,16 @@ public class LanguageHarness {
   String[] detached=AppLanguage.searchOrder("ru");detached[0]="bad";check(AppLanguage.searchOrder("ru")[0].equals("ru"),"callers cannot mutate catalog search order");
 
   check(Prefs.language().equals("ru"),"boot reads configured language before Context exists");
-  Ui.applyLanguage();check(AppLanguage.current()==AppLanguage.RUSSIAN&&Ui.ru&&!Ui.en&&!Ui.es&&!Ui.de,"Ui initialization synchronizes registry and compatibility flags");
+  Ui.applyLanguage();check(AppLanguage.current()==AppLanguage.RUSSIAN,"Ui initialization synchronizes registry and compatibility flags");
   Prefs.app=new Object();Prefs.store.language="en";Ui.applyLanguage();
   check(AppLanguage.current()==AppLanguage.ENGLISH&&Ui.locale().equals(Locale.US),"persisted choice overrides config/system language");
   check(lang().equals("en-US"),"TMDB uses same selection");
   Prefs.setLanguage("en-US");check(Recs.changes==0&&HomeData.codes.isEmpty(),"equivalent normalized selection does not invalidate catalog/city");
   Prefs.setLanguage(" RU ");check(Recs.changes==1&&Recs.observed.equals("ru")&&HomeData.codes.equals(Arrays.asList("ru")),"effective language change reaches catalog/city after registry update");
-  check(Ui.language.equals("ru")&&Ui.ru&&!Ui.en&&lang().equals("ru-RU"),"compatibility state and API tag remain synchronized");
-  check(Ui.tr("ignored","Settings").equals("Настройки")&&Ui.tr("ignored","Settings","ignored").equals("Настройки"),"remaining Java-copy bridge uses shared selection");
+  check(Ui.language.equals("ru")&&lang().equals("ru-RU"),"compatibility state and API tag remain synchronized");
   Prefs.setLanguage("ru-RU");check(Recs.changes==1,"equivalent Russian tag does not refetch");
   Prefs.setLanguage("es");check(Prefs.language().equals("en")&&AppLanguage.current()==AppLanguage.ENGLISH&&Recs.changes==2,"unsupported saved choice keeps old English fallback");
   check(HomeData.codes.equals(Arrays.asList("ru","en")),"city receives canonical language codes");
-  check(Ui.tr("ignored","Settings").equals("Settings"),"legacy English bridge");
 
   long at=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).parse("2026-10-24 07:18:10").getTime();
   Prefs.h24=false;check(Ui.clock(at).equals("7:18 AM")&&Ui.time(at).equals("7:18 AM"),"English 12-hour formats preserved");

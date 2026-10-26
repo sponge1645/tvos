@@ -36,27 +36,27 @@ public class ContentHarness {
    h.screen=APPS_DOWNLOADS;String[] expected={"AirPlay","Apple Music","TizenTube","INCY","Seena","Lampa","KinoPub"};
    for(int i=0;i<7;i++){
     check(h.menuLabels()[i].endsWith(expected[i]),"download app order");
-    String description=SettingsContent.description(h.screen,i,0,0,0,AppLanguage.fromRussian(russian));
+    String description=SettingsContent.description(h.screen,i,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH));
     check(description!=null&&description.contains("\\n"),"each download keeps its two-line description");
    }
-   check(SettingsContent.description(APPS_DOWNLOADS,7,0,0,0,AppLanguage.fromRussian(russian))==null,"no stale description beyond downloads");
+   check(SettingsContent.description(APPS_DOWNLOADS,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"no stale description beyond downloads");
    h.screen=PICKER;h.pickFor=PICK_CITY;check(h.screenTitle().equals(russian?"Регион":"Region"),"city picker title");
    h.pickFor=PICK_VPN;check(h.screenTitle().equals("VPN"),"VPN picker title");
    h.pickFor=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
-   check(SettingsContent.description(GENERAL,3,0,0,0,AppLanguage.fromRussian(russian)).equals(SettingsContent.description(PICKER,0,PICK_CITY,0,0,AppLanguage.fromRussian(russian))),"same weather region explanation");
-   check(SettingsContent.description(GENERAL,2,0,0,0,AppLanguage.fromRussian(russian))==null,"neighbor row has no inherited region description");
-   check(SettingsContent.description(SCREENSAVER,3,0,0,0,AppLanguage.fromRussian(russian)).contains(russian?"Регион":"Region"),"screensaver weather guidance");
-   check(SettingsContent.description(UPDATES,0,0,0,0,AppLanguage.fromRussian(russian))==null,"dynamic update data stays with view");
+   check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(PICKER,0,PICK_CITY,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"same weather region explanation");
+   check(SettingsContent.description(GENERAL,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");
+   check(SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"Регион":"Region"),"screensaver weather guidance");
+   check(SettingsContent.description(UPDATES,0,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"dynamic update data stays with view");
    for(int count=0;count<=6;count++){
     h.screen=MENU_BUTTONS;h.dynamicRows=count;check(h.menuLabels().length==count+1,"dynamic menu labels delegated to view");
-    check(SettingsContent.description(MENU_BUTTONS,count,0,0,count,AppLanguage.fromRussian(russian)).contains("VPN"),"VPN footer follows live row count");
-    if(count>0)check(!SettingsContent.description(MENU_BUTTONS,0,0,0,count,AppLanguage.fromRussian(russian)).contains("VPN"),"ordinary button retains reorder guidance");
+    check(SettingsContent.description(MENU_BUTTONS,count,0,0,count,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("VPN"),"VPN footer follows live row count");
+    if(count>0)check(!SettingsContent.description(MENU_BUTTONS,0,0,0,count,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("VPN"),"ordinary button retains reorder guidance");
    }
    h.screen=HOME_SETTINGS;h.settingsGroup=WIDGETS;check(h.screenTitle().equals(russian?"Котировки":"Quotes"),"widget subgroup title");
    h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Категории":"Categories"),"category subgroup title");
-   check(!SettingsContent.description(HOME_SETTINGS,0,0,SYSTEM,0,AppLanguage.fromRussian(russian)).equals(SettingsContent.description(HOME_SETTINGS,0,0,GENERAL,0,AppLanguage.fromRussian(russian))),"subgroup-specific guidance");
-   check(SettingsContent.description(MAIN,2,0,0,0,AppLanguage.fromRussian(russian)).contains("AirPlay"),"AirPlay dependency description");
-   check(SettingsContent.description(MAIN,6,0,0,0,AppLanguage.fromRussian(russian)).contains("Dock"),"Dock description");
+   check(!SettingsContent.description(HOME_SETTINGS,0,0,SYSTEM,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(HOME_SETTINGS,0,0,GENERAL,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"subgroup-specific guidance");
+   check(SettingsContent.description(MAIN,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");
+   check(SettingsContent.description(MAIN,6,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("Dock"),"Dock description");
   }
   System.out.println("PASS: settings titles, row order/count, RU/EN descriptions, dynamic menu/VPN rows, live language and stable IDs");
  }

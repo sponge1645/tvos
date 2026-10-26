@@ -36,8 +36,6 @@ enum AppLanguage {
         return ENGLISH;
     }
 
-    static AppLanguage fromRussian(boolean russian) { return russian ? RUSSIAN : ENGLISH; }
-
     static AppLanguage step(String code, int direction) {
         int offset = Math.floorMod(direction, ORDER.length);
         return ORDER[(from(code).ordinal() + offset) % ORDER.length];
@@ -55,6 +53,6 @@ enum AppLanguage {
         return codes;
     }
 
-    /** Used only until the remaining Java-based copy is migrated to XML. */
+    /** Resolves known external/older messages and genre names; translated copy is stored in XML. */
     String legacyText(String english) { return this == RUSSIAN ? Russian.text(english) : english; }
 }

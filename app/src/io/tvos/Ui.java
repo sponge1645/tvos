@@ -24,10 +24,8 @@ final class Ui {
 
     /** Android 9 to 11: older TVs and boxes, whose GPUs need the cheaper drawing paths (Shadows, rounded images). */
     static final boolean LEGACY = Build.VERSION.SDK_INT < 31;
-    /** Legacy flags kept for compatibility with existing views; only Russian and English are selectable. */
+    /** Canonical language code used by existing data/cache identity checks. */
     static volatile String language = AppLanguage.select(Prefs.language()).code;
-    static volatile boolean en = AppLanguage.current() == AppLanguage.ENGLISH,
-            ru = AppLanguage.current() == AppLanguage.RUSSIAN, es = false, de = false;
     static Typeface thin, light, displayMedium, displaySemibold, displayBold, displayRegular, regular, medium, semibold;
     private static boolean loaded;
     private static final Rect BOUNDS = new Rect();
@@ -57,10 +55,6 @@ final class Ui {
     static void applyLanguage() {
         AppLanguage selected = AppLanguage.select(Prefs.language());
         language = selected.code;
-        en = selected == AppLanguage.ENGLISH;
-        ru = selected == AppLanguage.RUSSIAN;
-        es = false;
-        de = false;
     }
 
     static Paint text(Typeface face, float size, int color) {
@@ -107,12 +101,6 @@ final class Ui {
 
     static float clamp(float v) {
         return Math.max(0, Math.min(1, v));
-    }
-
-    static String tr(String unused, String english) { return AppLanguage.current().legacyText(english); }
-
-    static String tr(String unused, String english, String unusedSpanish) {
-        return AppLanguage.current().legacyText(english);
     }
 
     static Locale locale() { return AppLanguage.current().locale; }

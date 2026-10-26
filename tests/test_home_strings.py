@@ -61,11 +61,11 @@ public class HomeStringsHarness {
    check(h.highLow.equals(ru?"Макс. 22°   Мин. 5°":"H:22°   L:5°"),"new weather snapshot refreshes text");
    Prefs.city="";fresh.temp=Double.NaN;check(h.weatherText().equals(ru?"Погода. Сейчас нет данных о погоде.":"Weather. No weather data right now."),"missing weather fallback");
 
-   check(AppStrings.get(R.string.home_movies_loading_toast,AppLanguage.fromRussian(ru)).equals(ru?"Загружаем фильмы…":"Loading movies…"),"toast and roulette keep their distinct Russian wording");
-   check(AppStrings.get(R.string.home_roulette_loading,AppLanguage.fromRussian(ru)).equals(ru?"Загрузка фильмов…":"Loading movies…"),"roulette wording");
-   check(AppStrings.get(R.string.home_roulette_title,AppLanguage.fromRussian(ru)).equals(ru?"🎲  Случайный фильм":"🎲  Random Movie"),"dice title keeps double space");
-   check(AppStrings.get(R.string.home_dock_edit_hint,AppLanguage.fromRussian(ru)).equals(ru?"← → – переместить. ОК – сохранить. Назад – отменить.":"← → – move. OK – save. Back – cancel."),"Dock hint localized");
-   check(AppStrings.get(R.string.home_spoken_of,AppLanguage.fromRussian(ru)).equals(ru?" из ":" of "),"spoken count separators");
+   check(AppStrings.get(R.string.home_movies_loading_toast,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"Загружаем фильмы…":"Loading movies…"),"toast and roulette keep their distinct Russian wording");
+   check(AppStrings.get(R.string.home_roulette_loading,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"Загрузка фильмов…":"Loading movies…"),"roulette wording");
+   check(AppStrings.get(R.string.home_roulette_title,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"🎲  Случайный фильм":"🎲  Random Movie"),"dice title keeps double space");
+   check(AppStrings.get(R.string.home_dock_edit_hint,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"← → – переместить. ОК – сохранить. Назад – отменить.":"← → – move. OK – save. Back – cancel."),"Dock hint localized");
+   check(AppStrings.get(R.string.home_spoken_of,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?" из ":" of "),"spoken count separators");
   }
   System.out.println("PASS: real home tabs/network/weather methods, cached labels/templates, language switches, missing/late data and significant whitespace");
  }
