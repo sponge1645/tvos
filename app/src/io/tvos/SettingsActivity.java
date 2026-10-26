@@ -55,27 +55,15 @@ import java.util.Set;
  */
 public class SettingsActivity extends Activity {
     private SettingsView view;
-    private android.widget.FrameLayout previewHost;
-    private View previewCover;
-    private ScreensaverFade previewFade;
-    private boolean previewTransition;
-    private VideoDream preview;   // "Screen Saver": the screensaver right here, without changing the system setting
+    private SettingsPreview preview;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Watchdog.install(this);
         Ui.init(this);
         view = new SettingsView(this);
-        previewHost = new android.widget.FrameLayout(this);
-        previewHost.setBackgroundColor(android.graphics.Color.BLACK);
-        previewHost.addView(view, new android.widget.FrameLayout.LayoutParams(-1, -1));
-        previewCover = new View(this);
-        previewCover.setBackgroundColor(android.graphics.Color.BLACK);
-        previewCover.setAlpha(0f);
-        previewCover.setVisibility(View.GONE);
-        previewFade = new ScreensaverFade(previewCover);
-        previewHost.addView(previewCover, new android.widget.FrameLayout.LayoutParams(-1, -1));
-        setContentView(previewHost);
+        preview = new SettingsPreview(this, view, view::resume);
+        setContentView(preview.host());
         WifiPermission.requestOnce(this);
     }
 
@@ -83,7 +71,7 @@ public class SettingsActivity extends Activity {
         super.onResume();
         view.resume();
         // From ADB: am start -n io.tvos/.SettingsActivity --ez screensaver true (straight to the preview).
-        if (preview == null && getIntent().getBooleanExtra("screensaver", false)) {
+        if (!preview.hasDream() && getIntent().getBooleanExtra("screensaver", false)) {
             getIntent().removeExtra("screensaver");
             view.pause();
             showPreview();
@@ -96,86 +84,18 @@ public class SettingsActivity extends Activity {
     }
 
     @Override protected void onPause() {
-        closePreview();     // before pausing the view: closing the preview resumes it (view.resume)
+        preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
         super.onPause();
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
-        if (previewTransition) return true;
-        if (preview != null) {
-            // Like the real screensaver: arrows, OK or Back close it (other keys go on to the system).
-            switch (event.getKeyCode()) {
-                case KeyEvent.KEYCODE_DPAD_UP:
-                    
-                case KeyEvent.KEYCODE_DPAD_DOWN:
-                    
-                case KeyEvent.KEYCODE_DPAD_LEFT:
-                case KeyEvent.KEYCODE_DPAD_RIGHT:
-                case KeyEvent.KEYCODE_DPAD_CENTER:
-                case KeyEvent.KEYCODE_ENTER:
-                case KeyEvent.KEYCODE_BACK:
-                    if (event.getAction() == KeyEvent.ACTION_UP) preview.fadeExit(this::finishPreview);
-                    return true;
-                default:
-                    return super.dispatchKeyEvent(event);
-            }
-        }
-        if (view.onKey(event)) return true;
+        if (preview.onKey(event)) return true;
+        if (!preview.active() && view.onKey(event)) return true;
         return super.dispatchKeyEvent(event);
     }
 
-    void showPreview() {
-        if (preview != null || previewTransition) return;
-        previewTransition = true;
-        previewFade.cancel();
-        previewCover.setVisibility(View.VISIBLE);
-        previewCover.setAlpha(0f);
-        // Keep settings on screen until they have faded completely to black.
-        previewFade.start(1f, VideoDream.TRANSITION_MS, () -> {
-            view.setVisibility(View.GONE);
-            preview = new VideoDream(this);
-            previewHost.addView(preview, 1, new android.widget.FrameLayout.LayoutParams(-1, -1));
-            preview.start();
-            // VideoDream starts black and reveals only ready content, with the same fade.
-            previewCover.setVisibility(View.GONE);
-            previewTransition = false;
-        });
-    }
-
-    private void finishPreview() {
-        if (preview == null || previewTransition) return;
-        previewTransition = true;
-        // Replace the black dream with settings underneath another fully opaque black cover.
-        previewFade.cancel();
-        previewCover.setAlpha(1f);
-        previewCover.setVisibility(View.VISIBLE);
-        preview.stop();
-        previewHost.removeView(preview);
-        preview = null;
-        view.setVisibility(View.VISIBLE);
-        view.resume();
-        previewFade.start(0f, VideoDream.TRANSITION_MS, () -> {
-            previewCover.setVisibility(View.GONE);
-            previewTransition = false;
-        });
-    }
-
-    /** Forced Activity pause cancels either leg; no delayed callback may reopen a preview. */
-    private void closePreview() {
-        if (preview == null && !previewTransition) return;
-        previewFade.cancel();
-        previewTransition = false;
-        if (preview != null) {
-            preview.stop();
-            previewHost.removeView(preview);
-            preview = null;
-        }
-        previewCover.setVisibility(View.GONE);
-        previewCover.setAlpha(0f);
-        view.setVisibility(View.VISIBLE);
-        view.resume();
-    }
+    void showPreview() { preview.show(); }
 
     static final class SettingsView extends View implements Choreographer.FrameCallback {
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
