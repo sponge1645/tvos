@@ -8,13 +8,16 @@ def method(signature):
  while depth:
   depth+=(source[end]=='{')-(source[end]=='}');end+=1
  return source[start:end]
-fields=source[source.index('    private final java.util.Map<String, List<Pick>> durationWaiters'):source.index('    /** Discover omits runtime/country')]
 header='''package io.tvos;
 import java.util.*;import java.io.*;import org.json.*;import io.tvos.Recs.Pick;
 public class EnrichmentHarness {
- static class Queue {List<Runnable> tasks=new ArrayList<>();void execute(Runnable r){tasks.add(r);}void post(Runnable r){tasks.add(r);}void run(){while(!tasks.isEmpty())tasks.remove(0).run();}}
+ static class Queue implements java.util.concurrent.Executor {List<Runnable> tasks=new ArrayList<>();public void execute(Runnable r){tasks.add(r);}void post(Runnable r){tasks.add(r);}void run(){while(!tasks.isEmpty())tasks.remove(0).run();}}
  static class AppLog {static void w(String m){}static void unexpected(String m,RuntimeException e){}}
- Queue durationIo=new Queue(),main=new Queue();Set<String> durationRequested=new HashSet<>();Map<String,Long> durationLastAttempt=new HashMap<>();
+ Queue durationIo=new Queue(),main=new Queue();
+ final MovieEnrichment enrichment=new MovieEnrichment(durationIo,main::post,this::get,()->this.notices++);
+ Set<String> durationRequested=field("durationRequested");Map<String,JSONObject> durationResults=field("durationResults");
+ @SuppressWarnings("unchecked") <T>T field(String name){try{java.lang.reflect.Field f=MovieEnrichment.class.getDeclaredField(name);f.setAccessible(true);return (T)f.get(enrichment);}catch(Exception e){throw new AssertionError(e);}}
+ void requestDuration(Pick p){enrichment.request(p);}
  int requests,notices;boolean fallbackError;JSONObject response;
  JSONObject get(String path)throws IOException,JSONException{requests++;if(fallbackError&&requests%2==0)throw new IOException("offline");return response;}
  void save(){}void notifyListeners(){notices++;}
@@ -43,7 +46,9 @@ tests='''
 }
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-enrichment-') as tmp:
- root=Path(tmp);sources=files();sources['io/tvos/EnrichmentHarness.java']=header+fields+method('    void requestDuration(')+method('    private static void applyMovieMetadata(')+tests
+ root=Path(tmp);sources=files();sources['io/tvos/EnrichmentHarness.java']=header+tests
+ for name in ['MovieEnrichment','TmdbSource']:sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
+ sources['io/tvos/AppLog.java']='package io.tvos;final class AppLog {static void w(String s){}static void unexpected(String s,RuntimeException e){}}'
  for name,content in sources.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(content)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)

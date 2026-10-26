@@ -3,7 +3,6 @@ package io.tvos;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -21,7 +20,6 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -50,10 +48,7 @@ final class Recs {
 
     interface Listener { void onRecs(); }
 
-    private static final String IMAGES = "https://image.tmdb.org/t/p/original";
     private static final long LIST_EVERY = 6 * 3600_000L;
-    /** Bump when what is saved for each title changes (the saved list is discarded and fetched again). */
-    private static final int CACHE_VERSION = 16; // Discard catalogs previously labeled English but fetched in Russian
     private static final int MANHA = 0, TARDE = 1, NOITE = 2;
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
     private static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
@@ -66,7 +61,7 @@ final class Recs {
     }
 
     private final Context context;
-    private final SharedPreferences cache;
+    private final RecsStore store;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     // Interactive queries must not wait behind catalog refresh and backdrop construction.
     private final java.util.concurrent.ThreadPoolExecutor requestIo = new java.util.concurrent.ThreadPoolExecutor(
@@ -74,8 +69,8 @@ final class Recs {
             new java.util.concurrent.LinkedBlockingQueue<Runnable>());
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Listener> listeners = new ArrayList<>();
-    private final Map<String, Backdrop> images = new LinkedHashMap<>(16, 0.75f, true);   // access-order LRU: visible artwork survives
-    private final java.util.Set<String> pending = new java.util.HashSet<>();
+    private final BackdropCache backdropCache;
+    private final CatalogBuilder catalogBuilder;
     private volatile List<Pick> picks = new ArrayList<>();
     private volatile List<Pick> newPicks = new ArrayList<>();
     private volatile List<Pick> detectivePicks = new ArrayList<>();
@@ -83,7 +78,6 @@ final class Recs {
     private volatile long listAt;
     private volatile boolean fetching;
     private volatile String error = "";
-    private volatile boolean light;     // light design: builds only the cards (all three tabs' cards fit in memory)
     private volatile long failedAt, keyStamp;
     private volatile String listLanguage = "";   // language used for the saved titles, genres and texts
 
@@ -99,7 +93,7 @@ final class Recs {
         listLanguage = "";
         listAt = failedAt = keyStamp = 0;
         error = "";
-        synchronized (durationRequested) { durationLastAttempt.clear(); }
+        movieEnrichment.resetAttempts();
         notifyListeners();
         refreshIfStale();
     }
@@ -107,24 +101,19 @@ final class Recs {
     private Recs(Context c) {
         context = c;
         posterCache = new PosterCache(c, this::notifyListeners);
-        cache = c.getSharedPreferences("recs", Context.MODE_PRIVATE);
-        if (cache.getInt("version", 0) != CACHE_VERSION) cache.edit().clear().putInt("version", CACHE_VERSION).apply();
-        try {
-            String saved = cache.getString("picks", null);
-            if (saved != null) picks = parse(new JSONArray(saved));
-            String savedNew = cache.getString("newPicks", null);
-            if (savedNew != null) newPicks = parse(new JSONArray(savedNew));
-            String savedDetectives = cache.getString("detectivePicks", null);
-            if (savedDetectives != null) detectivePicks = parse(new JSONArray(savedDetectives));
-            period = cache.getInt("period", -1);
-            listAt = cache.getLong("listAt", 0);
-            listLanguage = cache.getString("language", cache.getBoolean("english", false) ? "en" : "pt");
-            keyStamp = cache.getLong("keyStamp", 0);
-        } catch (org.json.JSONException | ClassCastException e) {
-            AppLog.w("recommendations cache read: " + e.getClass().getSimpleName());
-        } catch (RuntimeException e) {
-            AppLog.unexpected("recommendations cache read", e);
-        }
+        backdropCache = new BackdropCache(c, io, this::notifyListeners, () -> newPicks);
+        catalogBuilder = new CatalogBuilder(this::get);
+        movieEnrichment = new MovieEnrichment(Executors.newSingleThreadExecutor(), main::post,
+                this::get, () -> { save(); notifyListeners(); });
+        store = new RecsStore(c.getSharedPreferences("recs", Context.MODE_PRIVATE));
+        RecsStore.Snapshot saved = store.load();
+        picks = saved.picks;
+        newPicks = saved.newPicks;
+        detectivePicks = saved.detectivePicks;
+        period = saved.period;
+        listAt = saved.listAt;
+        listLanguage = saved.listLanguage;
+        keyStamp = saved.keyStamp;
     }
 
     void addListener(Listener l) { if (!listeners.contains(l)) listeners.add(l); }
@@ -211,90 +200,9 @@ final class Recs {
     }
 
     private final PosterCache posterCache;
-    private final ExecutorService durationIo = Executors.newSingleThreadExecutor();
-    private final java.util.Set<String> durationRequested = new java.util.HashSet<>();
-    private final java.util.Map<String, Long> durationLastAttempt = new java.util.HashMap<>();
+    private final MovieEnrichment movieEnrichment;
 
-    private final java.util.Map<String, List<Pick>> durationWaiters = new java.util.HashMap<>();
-    private final java.util.Map<String, JSONObject> durationResults = new java.util.LinkedHashMap<String, JSONObject>(16, .75f, true) {
-        private static final long serialVersionUID = 1L;
-        @Override protected boolean removeEldestEntry(Map.Entry<String, JSONObject> entry) {
-            return size() > 128;
-        }
-    };
-
-    /** Discover omits runtime/country. Share details across distinct cards for the same title. */
-    void requestDuration(Pick p) {
-        if (p == null || !"movie".equals(p.kind)) return;
-        final String language = Ui.language;
-        final String id = language + ":" + key(p);
-        synchronized (durationRequested) {
-            JSONObject cached = durationResults.get(id);
-            if (cached != null) applyMovieMetadata(p, cached);
-            if (p.duration != null && !p.duration.isEmpty()
-                    && p.movieOrigin != null && p.movieOrigin.contains(" · ")) return;
-            if (durationRequested.contains(id)) {
-                List<Pick> waiting = durationWaiters.get(id);
-                if (waiting != null && !waiting.contains(p)) waiting.add(p);
-                return;
-            }
-            Long last = durationLastAttempt.get(id);
-            if (last != null && System.currentTimeMillis() - last < 24 * 60 * 60 * 1000L) return;
-            durationRequested.add(id);
-            List<Pick> waiting = new ArrayList<>();
-            waiting.add(p);
-            durationWaiters.put(id, waiting);
-            durationLastAttempt.put(id, System.currentTimeMillis());
-        }
-        durationIo.execute(() -> {
-            JSONObject result = null;
-            boolean fallbackFailed = false;
-            try {
-                result = get("/movie/" + p.id + "?language=" + AppLanguage.from(language).apiTag);
-                if (result.optInt("runtime", 0) <= 0 || result.optJSONArray("production_countries") == null
-                        || result.optJSONArray("production_countries").length() == 0) {
-                    try {
-                        JSONObject fallback = get("/movie/" + p.id + "?language=en-US");
-                        if (result.optInt("runtime", 0) <= 0) result.put("runtime", fallback.optInt("runtime", 0));
-                        if (result.optJSONArray("production_countries") == null
-                                || result.optJSONArray("production_countries").length() == 0)
-                            result.put("production_countries", fallback.optJSONArray("production_countries"));
-                    } catch (IOException | org.json.JSONException e) {
-                        // Keep usable fields from the first response if the optional fallback fails.
-                        fallbackFailed = true;
-                        AppLog.w("movie metadata fallback: " + e.getMessage());
-                    }
-                }
-            } catch (IOException | org.json.JSONException e) {
-                AppLog.w("movie metadata: " + e.getMessage());
-            } catch (RuntimeException e) {
-                AppLog.unexpected("movie metadata", e);
-            }
-            final JSONObject details = result;
-            final boolean retrySoon = fallbackFailed;
-            main.post(() -> {
-                synchronized (durationRequested) {
-                    List<Pick> waiting = durationWaiters.remove(id);
-                    durationRequested.remove(id);
-                    if (details == null || retrySoon) durationLastAttempt.put(id,
-                            System.currentTimeMillis() - 24 * 60 * 60 * 1000L + 30_000L);
-                    if (!language.equals(Ui.language) || details == null) return;
-                    durationResults.put(id, details);
-                    if (waiting != null) for (Pick pick : waiting) applyMovieMetadata(pick, details);
-                }
-                save();
-                notifyListeners();
-            });
-        });
-    }
-
-    private static void applyMovieMetadata(Pick p, JSONObject details) {
-        int minutes = details.optInt("runtime", 0);
-        if (minutes > 0) p.duration = String.format(Ui.locale(), AppStrings.get(R.string.runtime_minutes), minutes);
-        String origin = movieOrigin(details, p.movieOrigin);
-        if (!origin.isEmpty()) p.movieOrigin = origin;
-    }
-
+    void requestDuration(Pick p) { movieEnrichment.request(p); }
 
     void setPosterWindow(List<Pick> window) {
         java.util.Set<String> wanted = new java.util.HashSet<>();
@@ -305,31 +213,7 @@ final class Recs {
     Bitmap poster(Pick p) { return p == null ? null : posterCache.poster(p.poster); }
 
     /** The pick's ready backdrop (or null: builds it in the background and notifies when it's ready). */
-    Backdrop backdrop(Pick p) {
-        if (p == null || p.backdrop == null) return null;
-        final String key = p.backdrop;    // the details may swap the image midway
-        synchronized (images) {
-            Backdrop b = images.get(key);
-            if (b != null) return b;
-            if (!pending.add(key)) return null;
-        }
-        io.execute(() -> {
-            try {
-                loadImage(p);
-            } finally {
-                synchronized (images) { pending.remove(key); }
-            }
-        });
-        return null;
-    }
-
-    private boolean hasImage(Pick p) {
-        return p.backdrop != null && imageFile(p).exists();
-    }
-
-    private File imageFile(Pick p) {
-        return new File(new File(context.getCacheDir(), "recs"), p.backdrop.replace("/", ""));
-    }
+    Backdrop backdrop(Pick p) { return backdropCache.backdrop(p); }
 
     /** With a key: fetches the list if stale or the time of day (morning/afternoon/night) changed; then the details. */
     void refreshIfStale() {
@@ -344,7 +228,7 @@ final class Recs {
         boolean stale = newKey || p != period || now - listAt > LIST_EVERY || now < listAt || picks.isEmpty()
                 || !listLanguage.equals(Ui.language) || newPicks.isEmpty() || detectivePicks.isEmpty();
         boolean missing = false;
-        for (Pick pick : wanted()) missing |= !pick.detailed || !hasImage(pick);
+        for (Pick pick : wanted()) missing |= !pick.detailed || !backdropCache.hasImage(pick);
         if (!stale && !missing) return;
         keyStamp = stamp;
         fetching = true;
@@ -360,7 +244,7 @@ final class Recs {
                     tried++;
                     try {
                         if (!pick.detailed) fetchDetails(pick);
-                        if (pick.backdrop != null) download(pick);
+                        if (pick.backdrop != null) backdropCache.download(pick);
                     } catch (IOException | org.json.JSONException e) {
                         failures++;
                         last = e.getMessage() == null ? e.toString() : e.getMessage();
@@ -397,13 +281,7 @@ final class Recs {
     }
 
     /** Home screen design: the ready images are rebuilt for it (the light design uses cards, not the whole photo). */
-    void setLight(boolean value) {
-        if (value == light) return;
-        light = value;
-        synchronized (images) {
-            images.clear();
-        }
-    }
+    void setLight(boolean value) { backdropCache.setLight(value); }
 
     /**
      * Screensaver: the picks with an app on the TV and an image already on disk, starting with this hour's (the
@@ -413,9 +291,9 @@ final class Recs {
         List<Pick> out = new ArrayList<>();
         if (!hasKey(context)) return out;
         java.util.Set<String> seen = new java.util.HashSet<>();
-        for (Pick p : wanted()) if (hasImage(p) && seen.add(franchise(p.title))) out.add(p);
+        for (Pick p : wanted()) if (backdropCache.hasImage(p) && seen.add(franchise(p.title))) out.add(p);
         for (Pick p : picks) {
-            if (p.detailed && hasImage(p)
+            if (p.detailed && backdropCache.hasImage(p)
                     && seen.add(franchise(p.title))) out.add(p);
         }
         return out;
@@ -423,7 +301,7 @@ final class Recs {
 
     /** The pick's original image if it's already on disk (the screensaver loads it in its own way), or null. */
     File readyImage(Pick p) {
-        return hasImage(p) ? imageFile(p) : null;
+        return backdropCache.hasImage(p) ? backdropCache.imageFile(p) : null;
     }
 
     /**
@@ -435,7 +313,7 @@ final class Recs {
         long sinceFail = System.currentTimeMillis() - failedAt;
         if (failedAt != 0 && sinceFail >= 0 && sinceFail < 10 * 60_000L) return;
         List<Pick> todo = new ArrayList<>();
-        for (Pick p : picks) if (!p.detailed || !hasImage(p)) todo.add(p);
+        for (Pick p : picks) if (!p.detailed || !backdropCache.hasImage(p)) todo.add(p);
         if (todo.isEmpty()) return;
         fetching = true;
         io.execute(() -> {
@@ -446,7 +324,7 @@ final class Recs {
                 for (Pick p : todo) {
                     try {
                         if (!p.detailed) fetchDetails(p);
-                        if (p.backdrop != null) download(p);
+                        if (p.backdrop != null) backdropCache.download(p);
                     } catch (IOException | org.json.JSONException e) {
                         failures++;
                         last = e.getMessage() == null ? e.toString() : e.getMessage();
@@ -491,101 +369,13 @@ final class Recs {
     // MARK: - TMDB
 
     private boolean fetchList(int p, String language) throws IOException, org.json.JSONException {
-        String apiLanguage = AppLanguage.from(language).apiTag;
-        // Popularity is TMDB's global popularity score, filtered by Russian release context.
-        // It is NOT a measurement of viewing figures in Russia.
-        List<Pick> popular = new ArrayList<>();
-        java.util.Set<String> seen = new java.util.HashSet<>();
-        for (String kind : new String[] {"movie", "tv"}) {
-            for (int page = 1; page <= 2; page++) {
-                String path = "/discover/" + kind + "?language=" + apiLanguage + "&region=RU"
-                        + "&sort_by=popularity.desc&include_adult=false&page=" + page;
-                if (!language.equals(Ui.language)) return false;
-                JSONArray results = get(path).getJSONArray("results");
-                for (int i = 0; i < results.length(); i++) {
-                    List<Pick> one = new ArrayList<>();
-                    add(one, results.getJSONObject(i), kind);
-                    if (!one.isEmpty() && seen.add(key(one.get(0)))) popular.add(one.get(0));
-                }
-            }
-        }
-        if (popular.isEmpty()) throw new IOException("TMDB returned no popular titles");
-
-        // Recent releases: last 180 days, at least 200 votes, ranked by popularity.
-        // Separate movie and TV queries are merged into one ranked showcase.
-        List<Pick> fresh = new ArrayList<>();
-        java.util.Set<String> freshSeen = new java.util.HashSet<>();
-        String from = day(-180), to = day(0);
-        for (String kind : new String[] {"movie", "tv"}) {
-            String dateField = "movie".equals(kind) ? "primary_release_date" : "first_air_date";
-            for (int page = 1; page <= 4; page++) {
-                String path = "/discover/" + kind + "?language=" + apiLanguage + "&region=RU"
-                        + "&sort_by=popularity.desc&vote_count.gte=200&include_adult=false"
-                        + "&" + dateField + ".gte=" + from + "&" + dateField + ".lte=" + to
-                        + "&page=" + page;
-                if (!language.equals(Ui.language)) return false;
-                JSONArray results = get(path).getJSONArray("results");
-                for (int i = 0; i < results.length(); i++) {
-                    JSONObject o = results.getJSONObject(i);
-                    String date = o.optString("movie".equals(kind) ? "release_date" : "first_air_date", "");
-                    if (date.compareTo(from) < 0 || date.compareTo(to) > 0) continue;
-                    if (o.optDouble("vote_average", 0) < 6.0 || o.optInt("vote_count", 0) < 200) continue;
-                    List<Pick> one = new ArrayList<>();
-                    add(one, o, kind);
-                    if (!one.isEmpty() && freshSeen.add(key(one.get(0)))) fresh.add(one.get(0));
-                }
-            }
-        }
-        // The discover API returns each type ordered by TMDB popularity.
-        // Interleave movies and series so one type cannot monopolize New Releases.
-        List<Pick> freshMovies = new ArrayList<>();
-        List<Pick> freshShows = new ArrayList<>();
-        for (Pick item : fresh) {
-            if ("movie".equals(item.kind)) freshMovies.add(item);
-            else freshShows.add(item);
-        }
-        List<Pick> mixed = new ArrayList<>();
-        alternate(mixed, new java.util.HashSet<String>(), freshMovies, freshShows, 80);
-        fresh = mixed;
-        // Do not leave the landing tab blank if recent results are temporarily scarce.
-        if (fresh.isEmpty()) {
-            for (Pick pick : popular) if (fresh.size() < 12) fresh.add(pick);
-        }
-        // Mystery (TMDB genre 9648), movies only, rating strictly above 7.5.
-        // An unavailable discover endpoint must not prevent the regular catalog refreshing.
-        List<Pick> detectives = new ArrayList<>();
-        try {
-            java.util.Set<Integer> detectiveIds = new java.util.HashSet<>();
-            for (int page = 1; page <= 5; page++) {
-                if (!language.equals(Ui.language)) return false;
-                JSONArray results = get("/discover/movie?language=" + apiLanguage
-                        + "&with_genres=9648&vote_average.gte=7.5&vote_count.gte=200"
-                        + "&sort_by=vote_average.desc&include_adult=false&page=" + page)
-                        .getJSONArray("results");
-                for (int i = 0; i < results.length(); i++) {
-                    JSONObject item = results.getJSONObject(i);
-                    if (item.optDouble("vote_average", 0) <= 7.5
-                            || item.optInt("vote_count", 0) < 200) continue;
-                    JSONArray genres = item.optJSONArray("genre_ids");
-                    boolean mystery = false;
-                    if (genres != null) for (int j = 0; j < genres.length(); j++)
-                        if (genres.optInt(j) == 9648) mystery = true;
-                    if (!mystery || !detectiveIds.add(item.optInt("id"))) continue;
-                    add(detectives, item, "movie");
-                }
-            }
-        } catch (IOException | org.json.JSONException e) {
-            if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
-            AppLog.w("detective recommendations: " + e.getMessage());
-        } catch (RuntimeException e) {
-            AppLog.unexpected("detective recommendations", e);
-            if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
-        }
+        CatalogBuilder.Result result = catalogBuilder.fetch(language, listLanguage, detectivePicks);
+        if (result == null) return false;
         synchronized (this) {
             if (!language.equals(Ui.language)) return false;
-            picks = popular;
-            newPicks = fresh;
-            detectivePicks = detectives;
+            picks = result.popular;
+            newPicks = result.fresh;
+            detectivePicks = result.detectives;
             period = p;
             listAt = System.currentTimeMillis();
             listLanguage = language;
@@ -696,27 +486,8 @@ final class Recs {
     /** Language of titles and genres; the services come from the region. */
     private static String lang() { return AppLanguage.current().apiTag; }
 
-    private static void alternate(List<Pick> out, java.util.Set<String> seen, List<Pick> a, List<Pick> b, int max) {
-        for (int i = 0; i < Math.max(a.size(), b.size()) && out.size() < max; i++) {
-            if (i < a.size() && seen.add(key(a.get(i)))) out.add(a.get(i));
-            if (i < b.size() && out.size() < max && seen.add(key(b.get(i)))) out.add(b.get(i));
-        }
-    }
-
-    /** The date `offset` days from today, as "2026-10-19" (negative = in the past). */
-    private static String day(int offset) {
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_YEAR, offset);
-        return String.format(Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
-    }
-
     private static void add(List<Pick> list, JSONObject o, String kind) {
         TmdbMetadata.add(list, o, kind);
-    }
-
-    /** Movie production country (first TMDB country) and theatrical release year. */
-    private static String movieOrigin(JSONObject details, String fallback) {
-        return TmdbMetadata.movieOrigin(details, fallback);
     }
 
     /** Genre, runtime (or seasons) and the service it's on, among the ones the TV has. */
@@ -726,10 +497,7 @@ final class Recs {
         TmdbMetadata.applyDetails(p, o, REGION, this::installed);
     }
 
-    /**
-     * The title's best backdrop: no text written over it (our own text goes on top of it), the closest to 1920 wide
-     * (larger only costs download, disk and decoding) and, on a tie, the highest rated.
-     */
+    /** Whether a provider has a launchable app on this TV. */
     private boolean installed(String pkg) {
         try {
             return HomeApps.launchIntent(context.getPackageManager(), pkg) != null;
@@ -747,178 +515,17 @@ final class Recs {
         return TmdbClient.get(path);
     }
 
-    // MARK: - Images (TMDB originals on disk, up to 24 so the whole list fits; this hour's kept ready in memory)
-
-    private void download(Pick p) throws IOException {
-        if (p.backdrop == null || p.backdrop.isEmpty()) return;
-        File f = imageFile(p);
-        if (f.exists()) return;
-        //noinspection ResultOfMethodCallIgnored
-        f.getParentFile().mkdirs();
-        File part = new File(f.getPath() + ".part");
-        HttpURLConnection c = (HttpURLConnection) new URL(IMAGES + p.backdrop).openConnection();
-        c.setConnectTimeout(8000);
-        c.setReadTimeout(20000);
-        try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(part)) {
-            byte[] buffer = new byte[16384];
-            int n;
-            while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
-        } catch (IOException e) {
-            //noinspection ResultOfMethodCallIgnored
-            part.delete();
-            throw e;
-        } finally {
-            c.disconnect();
-        }
-        if (!part.renameTo(f)) throw new IOException("couldn't save the image");
-        prune(f.getParentFile());
-    }
-
-    /** Reads the original (≥ 1920 wide) and builds the backdrop (Backdrop: cards plus frosted and glass versions). */
-    private void loadImage(Pick p) {
-        synchronized (images) {
-            if (images.containsKey(p.backdrop)) return;
-        }
-        File f = imageFile(p);
-        try {
-            download(p);
-            BitmapFactory.Options bounds = new BitmapFactory.Options();
-            bounds.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(f.getPath(), bounds);
-            BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inSampleSize = 1;
-            while (bounds.outWidth / (opts.inSampleSize * 2) >= Backdrop.W) opts.inSampleSize *= 2;
-            Bitmap b = BitmapFactory.decodeFile(f.getPath(), opts);
-            if (b == null) throw new IOException("unreadable image");
-            AppLog.w("backdrop \u201c" + p.title + "\u201d: " + bounds.outWidth + "×" + bounds.outHeight);
-            boolean forLight = light;
-            Backdrop backdrop = Backdrop.make(b, forLight);
-            if (forLight != light) return;   // the design changed midway: this one is stale
-            synchronized (images) {
-                images.put(p.backdrop, backdrop);
-                // Keep the first three New Releases backdrops resident while browsing far to the right.
-                // Otherwise returning to the beginning flashes blank cards during disk decode.
-                // Evict other LRU entries first, retaining the same overall memory cap.
-                while (images.size() > (forLight ? 10 : 4)) {
-                    String victim = null;
-                    for (String candidate : images.keySet()) {
-                        if (!isInitialNewReleaseBackdrop(candidate)) {
-                            victim = candidate;
-                            break;
-                        }
-                    }
-                    if (victim == null) victim = images.keySet().iterator().next();
-                    images.remove(victim);
-                }
-            }
-            notifyListeners();
-        } catch (IOException | RuntimeException | OutOfMemoryError e) {
-            //noinspection ResultOfMethodCallIgnored
-            f.delete();
-            // TV bitmap/shader implementations can fail at runtime; keep the visual fallback,
-            // but make unexpected code/platform faults visible without logging private payloads.
-            if (e instanceof RuntimeException && !(e instanceof IllegalArgumentException)
-                    && !(e instanceof SecurityException))
-                AppLog.unexpected("recommendation image", (RuntimeException) e);
-            else AppLog.w("recommendation image: " + e.getMessage());
-        }
-    }
-
-    /** The first cards are revisited often; protect their decoded images from LRU eviction. */
-    private boolean isInitialNewReleaseBackdrop(String key) {
-        List<Pick> initial = newPicks;
-        for (int i = 0; i < Math.min(3, initial.size()); i++) {
-            Pick p = initial.get(i);
-            if (key.equals(p.backdrop)) return true;
-        }
-        return false;
-    }
-
     void trim() {
         // Explore's picks stay: the home screen opens on that tab, so its cards are never gray when you come back.
         java.util.Set<String> keep = new java.util.HashSet<>();
         for (Pick p : now(null)) if (p.backdrop != null) keep.add(p.backdrop);
-        synchronized (images) {
-            images.keySet().retainAll(keep);
-        }
-    }
-
-    private static void prune(File dir) {
-        // A download cut off when the system stopped the app leaves its .part behind.
-        long stale = System.currentTimeMillis() - 10 * 60_000L;
-        File[] parts = dir.listFiles((d, name) -> name.endsWith(".part"));
-        for (int i = 0; parts != null && i < parts.length; i++) {
-            //noinspection ResultOfMethodCallIgnored
-            if (parts[i].lastModified() < stale) parts[i].delete();
-        }
-        File[] files = dir.listFiles((d, name) -> !name.endsWith(".part"));
-        if (files == null || files.length <= 24) return;
-        Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
-        for (int i = 0; i < files.length - 24; i++) {
-            //noinspection ResultOfMethodCallIgnored
-            files[i].delete();
-        }
+        backdropCache.retain(keep);
     }
 
     // MARK: - List cache
 
     private void save() {
-        try {
-            JSONArray a = new JSONArray();
-            for (Pick p : picks) {
-                a.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("title", p.title).put("backdrop", p.backdrop)
-                        .put("poster", p.poster == null ? "" : p.poster).put("rating", p.rating).put("meta", p.meta).put("duration", p.duration).put("tvOrigin", p.tvOrigin).put("movieOrigin", p.movieOrigin).put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
-                        .put("detailed", p.detailed));
-            }
-            JSONArray d = new JSONArray();
-            for (Pick p : detectivePicks) {
-                d.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("title", p.title)
-                        .put("backdrop", p.backdrop).put("poster", p.poster == null ? "" : p.poster)
-                        .put("rating", p.rating).put("meta", p.meta).put("duration", p.duration)
-                        .put("tvOrigin", p.tvOrigin).put("movieOrigin", p.movieOrigin)
-                        .put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
-                        .put("detailed", p.detailed));
-            }
-            JSONArray n = new JSONArray();
-            for (Pick p : newPicks) {
-                n.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("title", p.title).put("backdrop", p.backdrop)
-                        .put("poster", p.poster == null ? "" : p.poster).put("rating", p.rating).put("meta", p.meta)
-                        .put("duration", p.duration).put("tvOrigin", p.tvOrigin).put("movieOrigin", p.movieOrigin)
-                        .put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
-                        .put("detailed", p.detailed));
-            }
-            cache.edit().putString("newPicks", n.toString()).putString("detectivePicks", d.toString()).putString("picks", a.toString()).putInt("period", period).putLong("listAt", listAt)
-                    .putString("language", listLanguage)
-                    .putLong("keyStamp", keyStamp).putInt("version", CACHE_VERSION).apply();
-        } catch (org.json.JSONException e) {
-            AppLog.w("recommendations cache write: " + e.getClass().getSimpleName());
-        } catch (RuntimeException e) {
-            AppLog.unexpected("recommendations cache write", e);
-        }
-    }
-
-    private static List<Pick> parse(JSONArray a) {
-        List<Pick> out = new ArrayList<>();
-        for (int i = 0; i < a.length(); i++) {
-            JSONObject o = a.optJSONObject(i);
-            if (o == null) continue;
-            Pick p = new Pick();
-            p.id = o.optInt("id");
-            p.kind = o.optString("kind");
-            p.title = o.optString("title");
-            p.backdrop = o.optString("backdrop");
-            p.poster = o.optString("poster", "");
-            p.meta = o.optString("meta");
-            p.rating = o.optDouble("rating", 0);
-            p.duration = o.optString("duration", "");
-            p.tvOrigin = o.optString("tvOrigin", "");
-            p.movieOrigin = o.optString("movieOrigin", "");
-            p.app = o.optString("app").isEmpty() ? null : o.optString("app");
-            p.pkg = o.optString("pkg").isEmpty() ? null : o.optString("pkg");
-            p.detailed = o.optBoolean("detailed");
-            out.add(p);
-        }
-        return out;
+        store.save(picks, newPicks, detectivePicks, period, listAt, listLanguage, keyStamp);
     }
 
     private static String read(InputStream in) throws IOException {

@@ -33,7 +33,7 @@ def files():
   'org/json/JSONObject.java':JSON,
   'org/json/JSONArray.java':ARRAY,
   'org/json/JSONException.java':'package org.json;public class JSONException extends Exception {public JSONException(String s){super(s);}}',
-  'io/tvos/Recs.java':'package io.tvos;final class Recs {\n'+block(source,'    static final class Pick {')+'\n}',
+  'io/tvos/Recs.java':'package io.tvos;final class Recs {\n'+block(source,'    static final class Pick {')+'\n'+block(source,'    static String key(')+'\n}',
   'io/tvos/Ui.java':'''package io.tvos;final class Ui {
    static String language="en";static boolean ru,en=true,de,es;
    static void language(String s){AppLanguage.select(s);language=s;ru=s.equals("ru");en=s.equals("en");de=s.equals("de");es=s.equals("es");}
