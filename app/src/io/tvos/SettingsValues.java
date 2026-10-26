@@ -31,6 +31,8 @@ final class SettingsValues {
     private SharedPreferences localPrefs() { return activity.getSharedPreferences("settings", Context.MODE_PRIVATE); }
     private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
 
+    // Keep the same display/Wi-Fi reads on Android 9+ TVs during this extraction.
+    @SuppressWarnings("deprecation")
     String[] menu(int screen, int rowCount) {
         String[] v = new String[rowCount];
         java.util.Arrays.fill(v, "");

@@ -189,7 +189,7 @@ public class SettingsActivity extends Activity {
         private final Shadows rowShadows = new Shadows();
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final SettingsCitySearch citySearch;
-        private final SettingsValues values;
+        private final SettingsValues valueSource;
         private final Spring[] pop = new Spring[12];
         private final List<String> appPkgs = new ArrayList<>(), appLabels = new ArrayList<>();
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
@@ -309,7 +309,7 @@ public class SettingsActivity extends Activity {
             activity = a;
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this);
-            values = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
+            valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             HomeData.Weather wx = HomeData.get(a).weather;
@@ -353,7 +353,7 @@ public class SettingsActivity extends Activity {
                     return row < names.length ? names[row] : "";
                 }
                 case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case TOP_PANEL: {
-                    String[] names = menuLabels(), values = values.menu(screen, rowCount());
+                    String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
                 case HOME_CHOICE: {
@@ -366,7 +366,7 @@ public class SettingsActivity extends Activity {
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
                     String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingsGroup == WIDGETS ? widgetLabels() : settingLabels();
-                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {values.settings()[detectivesRow()], values.settings()[randomRow()]} : settingsGroup == WIDGETS ? values.widgets() : values.settings();
+                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : settingsGroup == WIDGETS ? valueSource.widgets() : valueSource.settings();
                     return row < labels.length ? labels[row] + ", " + values[row] : "";
                 }
                 case PICKER: {
@@ -850,7 +850,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void drawMenu(Canvas c) {
-            String[] labels = menuLabels(), values = values.menu(screen, rowCount());
+            String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
             for (int i = 0; i < labels.length; i++) {
                 float y = (LIST_TOP + i * (ROW_H + ABOUT_ROW_GAP)
                         + (screen == ABOUT ? (i == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET)) * k;
@@ -1561,7 +1561,7 @@ public class SettingsActivity extends Activity {
         private void drawList(Canvas c) {
             boolean keys = screen == REMOTE_KEYS;
             String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingsGroup == WIDGETS ? widgetLabels() : settingLabels();
-            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {values.settings()[detectivesRow()], values.settings()[randomRow()]} : settingsGroup == WIDGETS ? values.widgets() : values.settings();
+            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : settingsGroup == WIDGETS ? valueSource.widgets() : valueSource.settings();
             // The screen title is already drawn centrally; no legacy subtitle.
             for (int i = 0; i < labels.length; i++) {
                 setApprovedRowRect(i);
