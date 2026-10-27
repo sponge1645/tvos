@@ -18,6 +18,8 @@ final class SettingsUpdateDialog {
     private final SettingsPopupBackdrop.Source backdropSource;
     private final Paint popupPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint popupHeading, popupBody, popupButtonText;
+    private final Paint.FontMetrics headingMetrics = new Paint.FontMetrics();
+    private final Paint.FontMetrics bodyMetrics = new Paint.FontMetrics();
     private final RectF popupPanel = new RectF(), popupButton = new RectF();
     private long updatePopupStarted;
     private boolean updatePopupClosing;
@@ -57,10 +59,12 @@ final class SettingsUpdateDialog {
     void resize(float scale) {
         k = scale;
         backdrop.clear();
-        popupHeading = Ui.text(Ui.displaySemibold, 33*k, 0xFFFFFFFF);
+        popupHeading = Ui.text(Ui.displayBold, 33*k, 0xFFFFFFFF);
         popupHeading.setTextAlign(Paint.Align.LEFT);
-        popupBody = Ui.text(Ui.regular, 25*k, 0xFF899295);
+        popupBody = Ui.text(Ui.displayMedium, 25*k, 0xFF899295);
         popupBody.setTextAlign(Paint.Align.LEFT);
+        popupHeading.getFontMetrics(headingMetrics);
+        popupBody.getFontMetrics(bodyMetrics);
         popupButtonText = Ui.text(Ui.displaySemibold, 30*k, 0xFFFFFFFF);
         popupButtonText.setTextAlign(Paint.Align.CENTER);
     }
@@ -194,10 +198,13 @@ final class SettingsUpdateDialog {
                 AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(activity))};
         String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install), AppStrings.get(R.string.settings_update_later)}
                 : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install), AppStrings.get(R.string.settings_later)} : new String[] {"OK"};
-        float left = 724.8f*k, right = 1195.2f*k;
+        float left = 710*k, right = 1210*k;
         float textHeight = 0;
-        for (String line : lines) textHeight = drawParagraph(null, line, 0, textHeight, right-left-100*k, popupBody);
-        float panelHeight = 142*k + textHeight + (8 + buttons.length*72 + (buttons.length-1)*12 + 32)*k;
+        for (String line : lines) textHeight = drawParagraph(null, line, 0, textHeight, right-left-90*k, popupBody);
+        float headingHeight = headingMetrics.descent-headingMetrics.ascent;
+        float bodyHeight = textHeight-33*k + bodyMetrics.descent-bodyMetrics.ascent;
+        float bodyTop = 50*k + headingHeight + 30*k;
+        float panelHeight = bodyTop + bodyHeight + (40 + buttons.length*72 + (buttons.length-1)*12 + 25)*k;
         float top = (h-panelHeight)/2f, bottom = top+panelHeight;
         float cx = (left+right)/2f, cy = (top+bottom)/2f;
         float scale = 0.94f + 0.06f*ease;
@@ -226,14 +233,14 @@ final class SettingsUpdateDialog {
         heading.setColor(0xFFFFFFFF);
         Paint body = popupBody;
         body.setColor(0xFF899295);
-        c.drawText(AppStrings.get(R.string.settings_tvos_update), left+50*k, top+86*k, heading);
-        float lineY = top+142*k;
-        for (String line : lines) lineY = drawParagraph(c, line, left+50*k, lineY, right-left-100*k, body);
-        float buttonTop = bottom - (buttons.length*72+(buttons.length-1)*12+32)*k;
+        c.drawText(AppStrings.get(R.string.settings_tvos_update), left+45*k, top+50*k-headingMetrics.ascent, heading);
+        float lineY = top+bodyTop-bodyMetrics.ascent;
+        for (String line : lines) lineY = drawParagraph(c, line, left+45*k, lineY, right-left-90*k, body);
+        float buttonTop = bottom - (buttons.length*72+(buttons.length-1)*12+25)*k;
         Paint buttonText = popupButtonText;
         for (int i=0; i<buttons.length; i++) {
             RectF b = popupButton;
-            b.set(left+24*k, buttonTop+i*84*k, right-24*k, buttonTop+(i*84+72)*k);
+            b.set(left+25*k, buttonTop+i*84*k, right-25*k, buttonTop+(i*84+72)*k);
             boolean selected = i == updatePopupFocus || buttons.length == 1;
             // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
             p.clearShadowLayer();
