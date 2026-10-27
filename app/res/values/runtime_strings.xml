@@ -61,7 +61,7 @@
   <string name="runtime_choose_avatar" formatted="false">"Choose avatar"</string>
   <string name="runtime_back_to_home" formatted="false">"Back to Home"</string>
   <string name="runtime_choose_nyour_avatar" formatted="false">"Choose\nyour avatar"</string>
-  <string name="runtime_your_profile_non_tvos" formatted="false">Set Up Your tvOS Profile</string>
+  <string name="runtime_your_profile_non_tvos" formatted="false">"Set Up Your\ntvOS Profile"</string>
   <string name="runtime_use_the_arrows_to_choose_then_press_ok" formatted="false">"Use the arrows to choose, then press OK."</string>
   <string name="runtime_make_yourself_at_home_nyour_avatar_will_appear_beside_the_clock_n" formatted="false">"Make yourself at home.\nYour avatar will appear beside the clock\non the Home screen."</string>
   <string name="runtime_series" formatted="false">"Series"</string>

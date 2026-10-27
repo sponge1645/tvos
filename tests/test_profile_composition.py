@@ -12,7 +12,7 @@ import android.graphics.*;import java.util.*;
 public class ProfileCompositionHarness {
  final Scene scene=new Scene();final ActionSurface surface=new ActionSurface(scene,new Shadows());
  final Spring[] buttons={new Spring(.26f,.85f,1),new Spring(.26f,.85f,0)},avatarFocus=new Spring[18];final Spring chooser=new Spring(.38f,1,0);
- final RectF[] buttonRects={new RectF(270,650,830,722),new RectF(270,723,830,795)};
+ final RectF[] buttonRects={new RectF(326,650,774,722),new RectF(326,723,774,795)};
  final Paint buttonText=Ui.text(Ui.displayMedium,28,0xFFFFFFFF);int selected;boolean night;
 '''+positions+methods+'''
  ProfileCompositionHarness(){for(int i=0;i<18;i++)avatarFocus[i]=new Spring(.26f,.85f,0);}
