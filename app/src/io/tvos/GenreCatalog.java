@@ -58,7 +58,7 @@ final class GenreCatalog {
             Collator collator = Collator.getInstance(language.locale);
             result.sort((a, b) -> collator.compare(a.name, b.name));
             if (result.isEmpty()) throw new IOException("No TMDB genres");
-            result = Collections.unmodifiableList(new ArrayList<>(result.subList(0, Math.min(5, result.size()))));
+            result = Collections.unmodifiableList(new ArrayList<>(result));
             genres.put(language, new Cached<>(result));
             return result;
         }, callback);

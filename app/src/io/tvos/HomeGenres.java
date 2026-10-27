@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.animation.OvershootInterpolator;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import java.util.List;
 
@@ -31,6 +32,7 @@ final class HomeGenres {
     }
     // All labels share one text column; the checkmark occupies its own fixed gutter.
     private static final float TEXT_LEFT = 54, CHECK_LEFT = 22;
+    private static final int VISIBLE_GENRES = 7;
     private static final class MenuRow extends TextView {
         private final Paint checkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path checkPath;
@@ -114,12 +116,20 @@ final class HomeGenres {
         root.setBackground(panel);
         root.setFocusableInTouchMode(true);
         root.setOnKeyListener(this::initialRelease);
+        row(root, null, k); // Pinned reset, outside the scrolling genre list.
         heading(root, AppStrings.get(R.string.home_genre), k);
-        row(root, null, k);
-        for (int i = 0; i < 5; i++) {
+        ScrollView scroll = new ScrollView(context);
+        scroll.setFillViewport(true);
+        scroll.setSmoothScrollingEnabled(true);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout list = new LinearLayout(context);
+        list.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(list, new ScrollView.LayoutParams(-1, -2));
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, VISIBLE_GENRES * Math.round(68 * k)));
+        for (int i = 0; i < VISIBLE_GENRES; i++) {
             TextView placeholder = text(i == 0 ? AppStrings.get(R.string.home_genre_loading) : "", 26, k);
             placeholder.setTextColor(0xFF999999);
-            root.addView(placeholder, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
+            list.addView(placeholder, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
         }
         PopupWindow window = new PopupWindow(root, Math.round(420 * k), android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup = window;
@@ -158,20 +168,18 @@ final class HomeGenres {
         }
         genreRequest = catalog.genres(AppLanguage.current(), choices -> {
             if (popup != window) return;
-            root.removeAllViews();
-            heading(root, AppStrings.get(R.string.home_genre), k);
-            row(root, null, k);
+            list.removeAllViews();
             if (choices == null) {
-                heading(root, AppStrings.get(R.string.home_genre_failed), k);
-                root.getChildAt(1).requestFocus();
+                heading(list, AppStrings.get(R.string.home_genre_failed), k);
+                root.getChildAt(0).requestFocus();
             } else {
-                int focus = 1;
+                int focus = 0;
                 for (GenreCatalog.Genre genre : choices) {
-                    row(root, genre, k);
-                    if (selected != null && selected.id == genre.id) focus = root.getChildCount() - 1;
+                    row(list, genre, k);
+                    if (selected != null && selected.id == genre.id) focus = list.getChildCount() - 1;
                 }
-                if (selected == null && choices.size() > 0) focus = 2;
-                root.getChildAt(focus).requestFocus();
+                if (list.getChildCount() > 0) list.getChildAt(focus).requestFocus();
+                else root.getChildAt(0).requestFocus();
             }
             window.update();
         });

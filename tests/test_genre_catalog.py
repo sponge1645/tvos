@@ -17,7 +17,7 @@ public class GenreHarness {
   public JSONObject get(String path)throws java.io.IOException{
    calls.add(path);if(fail)throw new java.io.IOException("offline");
    if(path.startsWith("/genre/")){
-    boolean ru=path.contains("ru-RU");String[] names=ru?new String[]{"драма","детектив","вестерн","боевик","военный","комедия",""}:new String[]{"Drama","Crime","Comedy","Action","Adventure","Animation",""};
+    boolean ru=path.contains("ru-RU");String[] names=ru?new String[]{"драма","детектив","вестерн","боевик","военный","комедия","музыка","приключения","семейный",""}:new String[]{"Drama","Crime","Comedy","Action","Adventure","Animation","Documentary","Family","Fantasy",""};
     JSONArray a=new JSONArray();for(int i=0;i<names.length;i++)a.put(new JSONObject().put("id",i+1).put("name",names[i]));a.put(new JSONObject().put("id",1).put("name",names[0]));return new JSONObject().put("genres",a);
    }
    check(path.contains("sort_by=vote_average.desc")&&path.contains("vote_count.gte=200")&&path.contains("include_adult=false")&&path.contains("include_video=false"),"server filters and ranking");
@@ -32,7 +32,7 @@ public class GenreHarness {
   ThreadPoolExecutor io=new ThreadPoolExecutor(1,1,0,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>());Handler main=new Handler();Transport source=new Transport();GenreCatalog c=new GenreCatalog(source,io,main);
   try{
    Ui.language("ru");List<List<GenreCatalog.Genre>> lists=new ArrayList<>();c.genres(AppLanguage.current(),lists::add);main.deliver();List<GenreCatalog.Genre> ru=lists.get(0);
-   check(ru.size()==5,"only five test genres");check(ru.get(0).name.equals("Боевик")&&ru.get(1).name.equals("Вестерн")&&ru.get(2).name.equals("Военный")&&ru.get(3).name.equals("Детектив")&&ru.get(4).name.equals("Драма"),"Russian locale alphabet and title case from TMDB names");
+   check(ru.size()==9,"all valid official genres retained, including those beyond seven visible rows");check(ru.get(0).name.equals("Боевик")&&ru.get(1).name.equals("Вестерн")&&ru.get(2).name.equals("Военный")&&ru.get(3).name.equals("Детектив")&&ru.get(4).name.equals("Драма"),"Russian locale alphabet and title case from TMDB names");
    int calls=source.calls.size();c.genres(AppLanguage.current(),lists::add);main.deliver();check(source.calls.size()==calls,"genre list cache");
    List<List<Recs.Pick>> catalogs=new ArrayList<>();c.movies(ru.get(0),AppLanguage.current(),catalogs::add);main.deliver();List<Recs.Pick> picks=catalogs.get(0);check(picks.size()==25,"five pages of five posters, bounded at 25");double rating=Double.POSITIVE_INFINITY;Set<Integer> ids=new HashSet<>();for(Recs.Pick p:picks){check(p.rating<=rating,"descending rating after merging pages");rating=p.rating;check(ids.add(p.id)&&p.id!=2&&p.id!=3&&p.id!=4,"duplicates, low-vote, adult and wrong-genre movies excluded");check(p.kind.equals("movie"),"movies only");}check(picks.get(0).id==40,"highest rated title first");
    calls=source.calls.size();c.movies(ru.get(0),AppLanguage.current(),catalogs::add);main.deliver();check(source.calls.size()==calls&&catalogs.get(0)==catalogs.get(1),"catalog cache reuses metadata objects");
@@ -41,7 +41,7 @@ public class GenreHarness {
    // A callback already posted for a previous language must not publish its titles.
    c.genres(AppLanguage.current(),lists::add);io.submit(()->{}).get();int delivered=lists.size();Ui.language("en");main.deliver();check(lists.size()==delivered,"late previous-language callback rejected");c.genres(AppLanguage.current(),lists::add);main.deliver();check(lists.get(lists.size()-1).get(0).name.equals("Action"),"English genre cache and order independent of Russian");
    CountDownLatch gate=new CountDownLatch(1),started=new CountDownLatch(1);io.execute(()->{started.countDown();try{gate.await();}catch(InterruptedException e){throw new AssertionError(e);}});started.await();calls=source.calls.size();UiRequest cancelled=c.movies(new GenreCatalog.Genre(77,"queued"),AppLanguage.current(),catalogs::add);cancelled.cancel();gate.countDown();io.submit(()->{}).get();check(source.calls.size()==calls&&main.queue.isEmpty(),"cancelled queued request performs no network or delivery");
-   System.out.println("PASS: actual TMDB genre requests, RU/EN alphabetical first five, rating/vote/genre filters, top-25 paging, bounded LRU, cache reuse, errors, stale language and cancellation");
+   System.out.println("PASS: actual TMDB genre requests, RU/EN complete alphabetical lists, rating/vote/genre filters, top-25 paging, bounded LRU, cache reuse, errors, stale language and cancellation");
   }finally{io.shutdownNow();}
  }
 }'''
