@@ -29,6 +29,14 @@ public class DockLogoHarness {
      check((mode==1)==(c.filter!=null),"tint mode preserved");check(c.paint.filter==null,"tint cleared after draw");
     }
    }
+  HomeApps.Item music=item("com.applemusicktv",162,201);music.logoInk=.35076253f;
+  for(float screenScale:new float[]{.6666667f,1,2})for(float focusScale:new float[]{1,1.1f,1.2f,1.23f}){
+   float w=HomeLayout.MAX_TILE_WIDTH*screenScale,ht=w/HomeLayout.DOCK_ASPECT;
+   h.tileRects=new RectF[]{new RectF(0,0,w,ht)};RectF musicBox=new RectF(0,0,w*focusScale,ht*focusScale);
+   h.drawLogo(c,music,musicBox,focusScale,0);
+   close(musicBox.right-c.r,92*screenScale*focusScale,"music right inset scales through focus and resize");
+   check(c.l<musicBox.right-c.r,"music keeps smaller left inset");
+  }
   h.tileRects=new RectF[]{new RectF(0,0,224,126)};
   HomeApps.Item base=item("watch.kino",540,252),mod=item("watch.kino.mod",540,252);mod.logo=base.logo;
   Canvas baseCanvas=new Canvas(),modCanvas=new Canvas();h.drawLogo(baseCanvas,base,box,1.2f,0);h.drawLogo(modCanvas,mod,box,1.2f,0);
@@ -52,7 +60,7 @@ public class DockLogoHarness {
 files=dict(GRAPHICS)
 files['io/tvos/HomeApps.java']='package io.tvos;final class HomeApps {static class Item {String key,pkg;android.graphics.Bitmap logo,logoDark;float logoInk,logoScale;}}'
 files['io/tvos/DockLogoHarness.java']=harness
-for name in ('Spring','AppBranding','DockLogoRenderer'):files[f'io/tvos/{name}.java']=Path(f'app/src/io/tvos/{name}.java').read_text()
+for name in ('Spring','AppBranding','DockLogoRenderer','HomeLayout'):files[f'io/tvos/{name}.java']=Path(f'app/src/io/tvos/{name}.java').read_text()
 with tempfile.TemporaryDirectory() as directory:
  root=Path(directory)
  for name,text in files.items():

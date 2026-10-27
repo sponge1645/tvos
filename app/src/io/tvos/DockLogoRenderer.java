@@ -38,6 +38,10 @@ final class DockLogoRenderer {
         float boost = AppBranding.dockBoost(item.pkg, item.key);
         float width = logo.getWidth() * scale * boost, height = logo.getHeight() * scale * boost;
         float left = box.centerX() - width / 2, top = box.centerY() - height / 2;
+        if ("com.applemusicktv".equals(item.pkg)) {
+            // Anchor to a proportional right inset so focus/resize keeps the intentional asymmetry.
+            left = box.right - box.width() * (92f / HomeLayout.MAX_TILE_WIDTH) - width;
+        }
         // Preserve fractional coordinates through focus overshoot, reversal and settling.
         destination.set(left, top, left + width, top + height);
         paint.setColorFilter(mode == 1 ? white : null);
