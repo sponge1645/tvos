@@ -215,13 +215,14 @@ final class SettingsUpdateDialog {
         if (fading) c.saveLayerAlpha(left-70*k, top-70*k, right+70*k, bottom+70*k, Math.round(255*alpha));
         RectF panel = popupPanel;
         panel.set(left, top, right, bottom);
-        // Solid panel palette is shared by both settings themes.
+        // Theme tint overlays the same softly blurred settings snapshot.
         p.clearShadowLayer();
         p.setAlpha(255);
         p.setStyle(Paint.Style.FILL);
         p.setShader(null);
         if (!reduceTransparency) backdrop.draw(c, panel, 60*k);
-        p.setColor(reduceTransparency ? 0xFF1E2425 : 0xB31E2425);
+        int panelTint = light ? 0xFFC4D5EB : 0xFF1E2425;
+        p.setColor(reduceTransparency ? panelTint : (panelTint & 0x00FFFFFF) | 0xB3000000);
         c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
@@ -230,9 +231,9 @@ final class SettingsUpdateDialog {
         c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setStyle(Paint.Style.FILL);
         Paint heading = popupHeading;
-        heading.setColor(0xFFFFFFFF);
+        heading.setColor(light ? 0xFF1C1C1E : 0xFFFFFFFF);
         Paint body = popupBody;
-        body.setColor(0xFF899295);
+        body.setColor(light ? 0xFF1C1C1E : 0xFF899295);
         c.drawText(AppStrings.get(R.string.settings_tvos_update), left+45*k, top+50*k-headingMetrics.ascent, heading);
         float lineY = top+bodyTop-bodyMetrics.ascent;
         for (String line : lines) lineY = drawParagraph(c, line, left+45*k, lineY, right-left-90*k, body);
@@ -247,9 +248,9 @@ final class SettingsUpdateDialog {
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);
             boolean primary = selected && (buttons.length == 1 || updatePopup == 2 || updatePopup == 6);
-            p.setColor(primary ? 0xFFF7F8FA : 0xFF292D2C);
+            p.setColor(primary ? 0xFFF7F8FA : light ? 0xFFB9C5D3 : 0xFF292D2C);
             c.drawRoundRect(b, 36*k, 36*k, p);
-            buttonText.setColor(primary ? 0xFF171A1F : 0xFFF7F8FA);
+            buttonText.setColor(primary ? 0xFF171A1F : light ? 0xFF1C1C1E : 0xFFF7F8FA);
             c.drawText(buttons[i], b.centerX(), b.centerY()+Ui.halfCap(buttonText), buttonText);
         }
         if (fading) c.restore();
