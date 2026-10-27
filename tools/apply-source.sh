@@ -22,7 +22,8 @@ for RETIRED_FILE in \
   app/res/drawable/coin_btc.xml app/res/drawable/coin_eth.xml \
   app/res/drawable/coin_sol.xml app/res/drawable/coin_usdt.xml \
   app/assets/symbols/bitcoin.svg app/assets/symbols/bitcoin.png \
-  app/assets/settings/light.webp app/assets/settings/dark.webp; do
+  app/assets/settings/light.webp app/assets/settings/dark.webp \
+  app/res/anim/screensaver_window_enter.xml app/res/anim/screensaver_window_exit.xml; do
   rm -f -- "$TARGET/$RETIRED_FILE"
 done
 # These fonts were replaced by SF Pro Display. The complete previous app is already in BACKUP.

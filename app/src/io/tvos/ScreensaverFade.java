@@ -38,6 +38,12 @@ final class ScreensaverFade {
         if (!frameDriven) host.animate().cancel();
     }
 
+    void reset(float target) {
+        cancel();
+        value = target;
+        alpha.set(target);
+    }
+
     void start(float target, long duration, Runnable finished) {
         cancel();
         final int token = generation;

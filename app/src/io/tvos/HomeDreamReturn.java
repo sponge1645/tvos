@@ -10,10 +10,22 @@ import android.os.SystemClock;
 /** Tracks a real system dream over a visible home, independently of DreamService's process. */
 @SuppressWarnings("deprecation") // Observe the system-only close-dialogs signal on old and new firmware.
 final class HomeDreamReturn extends BroadcastReceiver {
+    private static final String OPAQUE = "io.tvos.DREAM_OPAQUE";
+    static void opaque(Context context) {
+        context.sendBroadcast(new Intent(OPAQUE).setPackage(context.getPackageName()));
+    }
+    private final BroadcastReceiver opaqueReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context ignored, Intent intent) {
+            if (OPAQUE.equals(intent.getAction()) && dreaming && armed && !staged) {
+                staged = true;
+                prepare.run(); // The translucent entrance has finished; changing home is now hidden.
+            }
+        }
+    };
     private final Context context;
     private final Runnable prepare, reveal, cancel;
     private long pendingUntil;
-    private boolean visible, resumed, focused, dreaming, armed, pending;
+    private boolean visible, resumed, focused, dreaming, armed, pending, staged;
 
     HomeDreamReturn(Context context, Runnable prepare, Runnable reveal, Runnable cancel) {
         this.context = context;
@@ -26,6 +38,9 @@ final class HomeDreamReturn extends BroadcastReceiver {
         filter.addAction(Intent.ACTION_DREAMING_STOPPED);
         if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(this, filter, Context.RECEIVER_EXPORTED);
         else context.registerReceiver(this, filter);
+        IntentFilter own = new IntentFilter(OPAQUE);
+        if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(opaqueReceiver, own, Context.RECEIVER_NOT_EXPORTED);
+        else context.registerReceiver(opaqueReceiver, own);
     }
 
     void started() { expire(); visible = true; }
@@ -45,8 +60,9 @@ final class HomeDreamReturn extends BroadcastReceiver {
     }
     void close() {
         context.unregisterReceiver(this);
+        context.unregisterReceiver(opaqueReceiver);
         cancel.run();
-        visible = resumed = focused = dreaming = armed = pending = false;
+        visible = resumed = focused = dreaming = armed = pending = staged = false;
     }
 
     @Override public void onReceive(Context ignored, Intent intent) {
@@ -58,7 +74,7 @@ final class HomeDreamReturn extends BroadcastReceiver {
         } else if (Intent.ACTION_DREAMING_STARTED.equals(action)) {
             if (!dreaming) {
                 armed |= visible;
-                if (armed) prepare.run(); // Stage under the dream, never on a later visible home frame.
+                staged = false; // Leave home intact while the new dream window is still translucent.
             }
             dreaming = true;
         } else if (Intent.ACTION_DREAMING_STOPPED.equals(action) && dreaming) {
@@ -78,6 +94,8 @@ final class HomeDreamReturn extends BroadcastReceiver {
 
     private void play() {
         pending = armed = false; // A late/duplicate STOP must never restart the entrance.
-        reveal.run();
+        if (staged) reveal.run();
+        else cancel.run(); // Interrupted entrance: keep the still-visible home unchanged.
+        staged = false;
     }
 }

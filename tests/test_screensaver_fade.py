@@ -56,6 +56,9 @@ public class FadeHarness {
   check(near(window[0],.5f)&&decor.alpha==1,"window target is independent of decor alpha");
   w.start(0,600,()->calls[0]++);decor.tick(600);check(near(window[0],.25f),"window reversal preserves actual opacity");
   decor.tick(900);check(window[0]==0&&calls[0]==2,"window reaches transparent before finish");
+  w.start(1,600,()->calls[0]++);Runnable beforeReset=decor.frames.get(0);w.reset(0);
+  beforeReset.run();decor.tick(1600);check(window[0]==0&&calls[0]==2&&decor.frames.isEmpty(),"reset discards stale fade without completion");
+  w.start(1,600,null);decor.tick(1900);check(near(window[0],.5f),"reset becomes next fade origin");
   System.out.println("PASS: Android 9/10 frame fades, symmetric timing, cancellation, interruption, delayed frames, chained phases, modern path, window alpha");
  }
 }'''

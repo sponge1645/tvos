@@ -13,6 +13,25 @@ final class HomeSearchInput {
         boolean running(); String query(); void queryChanged(String query);
         void restore(); void dismissed(); void paused(); void syncGlass(View panel);
     }
+    private static final class SearchIcon extends android.graphics.drawable.Drawable {
+        private final android.content.Context context;
+        private final float size;
+        private final int color;
+        private int alpha = 255;
+        SearchIcon(android.content.Context context, float size, int color) {
+            this.context = context; this.size = size; this.color = color;
+            setBounds(0, 0, Math.max(1, (int) Math.ceil(Symbols.width(context, "search", size))),
+                    Math.max(1, (int) Math.ceil(Symbols.height(context, "search", size))));
+        }
+        @Override public void draw(android.graphics.Canvas canvas) {
+            Symbols.draw(context, canvas, "search", getBounds().exactCenterX(), getBounds().exactCenterY(), size,
+                    (color & 0x00FFFFFF) | ((color >>> 24) * alpha / 255) << 24);
+        }
+        @Override public void setAlpha(int value) { alpha = value; invalidateSelf(); }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+        @SuppressWarnings("deprecation") // Drawable's opacity contract is required on the supported old SDKs.
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
     private final Activity activity;
     private final View owner,searchGlassLayer;
     private final Host host;
@@ -87,7 +106,7 @@ final class HomeSearchInput {
         // Glass is drawn by the HomeView canvas through scene.liquid(), not a Dialog Drawable.
         // The dialog contains only a transparent text field and the system keyboard.
         panel.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        final EditText input = new EditText(activity);
+        final EditText input = new EditText(activity, null, 0, R.style.SearchInput);
         input.setSingleLine(true);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
@@ -95,6 +114,8 @@ final class HomeSearchInput {
         input.setHintTextColor(dark ? 0xAABBBBBB : 0xFF777777);
         input.setTextSize(21);
         input.setCompoundDrawablePadding(pad / 2);
+        input.setCompoundDrawablesRelative(new SearchIcon(activity,
+                24 * activity.getResources().getDisplayMetrics().density, dark ? 0xAABBBBBB : 0xFF777777), null, null, null);
         input.setHint(AppStrings.get(R.string.home_search_movies_and_series));
         input.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         panel.addView(input, new android.widget.LinearLayout.LayoutParams(

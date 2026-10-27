@@ -21,7 +21,7 @@
     <string name="home_vpn_choose_app" formatted="false">"Выберите приложение VPN в Настройки → Основные → VPN"</string>
     <string name="home_vpn_app_not_found" formatted="false">"Приложение VPN не найдено"</string>
     <string name="home_could_not_open_vpn" formatted="false">"Не удалось открыть VPN"</string>
-    <string name="home_search_movies_and_series" formatted="false">"Поиск фильмов и сериалов…"</string>
+    <string name="home_search_movies_and_series" formatted="false">"Поиск…"</string>
     <string name="home_no_launchable_apps_found" formatted="false">"Не установлены Lampa, Seena, VK Видео или kino.watch"</string>
     <string name="home_open_app" formatted="false">"Открыть приложение"</string>
     <string name="home_couldn_t_open_seena_search" formatted="false">"Не удалось открыть поиск Seena"</string>

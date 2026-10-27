@@ -41,7 +41,7 @@ final class HomeGenres {
     private static final class GenreScroll extends ScrollView {
         private final int fadeLength;
         GenreScroll(Context context, float k) {
-            super(context);
+            super(context, null, 0, R.style.GenreScroll);
             fadeLength = Math.max(1, Math.round(24 * k));
             setVerticalScrollBarEnabled(true);
             setScrollBarStyle(View.SCROLLBARS_INSIDE_INSET);

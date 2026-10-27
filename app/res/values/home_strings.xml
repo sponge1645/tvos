@@ -21,7 +21,7 @@
     <string name="home_vpn_choose_app" formatted="false">"Choose a VPN app in Settings → General → VPN"</string>
     <string name="home_vpn_app_not_found" formatted="false">"VPN app not found"</string>
     <string name="home_could_not_open_vpn" formatted="false">"Could not open VPN"</string>
-    <string name="home_search_movies_and_series" formatted="false">"Search movies and series…"</string>
+    <string name="home_search_movies_and_series" formatted="false">"Search…"</string>
     <string name="home_no_launchable_apps_found" formatted="false">"No launchable apps found"</string>
     <string name="home_open_app" formatted="false">"Open app"</string>
     <string name="home_couldn_t_open_seena_search" formatted="false">"Couldn\'t open Seena search"</string>

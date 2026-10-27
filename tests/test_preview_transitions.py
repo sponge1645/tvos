@@ -1,46 +1,54 @@
-"""Execute the production preview controller and validate dream window fade resources."""
+"""Run real preview/window/system-dream controllers: ready-frame alpha, no black phase, lifecycle and old SDKs."""
 from pathlib import Path
 import subprocess,tempfile,xml.etree.ElementTree as ET
-sources={
+s={
 'android/content/Context.java':'package android.content;public class Context {}',
-'android/graphics/Color.java':'package android.graphics;public class Color {public static final int BLACK=0xFF000000;}',
-'android/view/View.java':'''package android.view;public class View {public static final int VISIBLE=0,GONE=8;public float alpha;public int visibility=VISIBLE;public View(android.content.Context c){}public void setBackgroundColor(int c){}public void setAlpha(float a){alpha=a;}public void setVisibility(int v){visibility=v;}}''',
+'android/content/ContextWrapper.java':'package android.content;public class ContextWrapper extends Context {Context base;public ContextWrapper(Context b){base=b;}public Context getBaseContext(){return base;}}',
+'android/graphics/Color.java':'package android.graphics;public class Color {public static final int TRANSPARENT=0;}',
+'android/graphics/PixelFormat.java':'package android.graphics;public class PixelFormat {public static final int TRANSLUCENT=-3;}',
+'android/graphics/drawable/ColorDrawable.java':'package android.graphics.drawable;public class ColorDrawable {public final int color;public ColorDrawable(int c){color=c;}}',
+'android/os/Build.java':'package android.os;public class Build {public static class VERSION {public static int SDK_INT=28;}}',
 'android/view/KeyEvent.java':'''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_BACK=4;final int action,code;public KeyEvent(int a,int c){action=a;code=c;}public int getAction(){return action;}public int getKeyCode(){return code;}}''',
-'android/widget/FrameLayout.java':'''package android.widget;import java.util.*;import android.view.View;public class FrameLayout extends View {public final List<View> children=new ArrayList<>();public FrameLayout(android.content.Context c){super(c);}public static class LayoutParams {public LayoutParams(int w,int h){}}public void addView(View v,LayoutParams p){children.add(v);}public void addView(View v,int i,LayoutParams p){children.add(i,v);}public void removeView(View v){children.remove(v);}}''',
-'io/tvos/ScreensaverFade.java':'''package io.tvos;import android.view.View;final class ScreensaverFade {static ScreensaverFade last;final View view;Runnable end;float target;long duration;ScreensaverFade(View v){last=this;view=v;}void cancel(){end=null;}void start(float t,long d,Runnable r){target=t;duration=d;end=r;}void complete(){view.setAlpha(target);Runnable r=end;end=null;if(r!=null)r.run();}}''',
-'io/tvos/VideoDream.java':'''package io.tvos;final class VideoDream extends android.view.View {static final long TRANSITION_MS=600;static VideoDream last;boolean started,stopped;Runnable exit;VideoDream(android.content.Context c){super(c);last=this;}void start(){started=true;}void stop(){stopped=true;exit=null;}void fadeExit(Runnable r){exit=r;}void completeExit(){Runnable r=exit;exit=null;if(r!=null)r.run();}}''',
-'io/tvos/PreviewHarness.java':'''package io.tvos;import android.view.*;import android.content.Context;import android.widget.FrameLayout;
+'android/view/View.java':'''package android.view;import java.util.*;public class View {public static final int VISIBLE=0,INVISIBLE=4;public int visibility=0;public static List<Runnable> tasks=new ArrayList<>();public View(android.content.Context c){}public void setVisibility(int v){visibility=v;}public void post(Runnable r){tasks.add(r);}public static void drain(){for(Runnable r:new ArrayList<>(tasks)){tasks.remove(r);r.run();}}}''',
+'android/view/WindowManager.java':'package android.view;public class WindowManager {public static class LayoutParams {public static final int FLAG_DIM_BEHIND=2;public float alpha=1,dimAmount=.5f;public int windowAnimations=123,flags=2;}}',
+'android/view/Window.java':'''package android.view;import android.content.Context;import android.graphics.drawable.ColorDrawable;public class Window {public final Context context;public int format,width,height;public ColorDrawable background;public WindowManager.LayoutParams attrs=new WindowManager.LayoutParams();public Window(Context c){context=c;}public Context getContext(){return context;}public void setBackgroundDrawable(ColorDrawable b){background=b;}public void setFormat(int f){format=f;}public void clearFlags(int flags){attrs.flags&=~flags;}public WindowManager.LayoutParams getAttributes(){return attrs;}public void setAttributes(WindowManager.LayoutParams a){attrs=a;}public void setLayout(int w,int h){width=w;height=h;}}''',
+'android/app/Activity.java':'package android.app;public class Activity extends android.content.ContextWrapper {public int conversions,overrides;public boolean translucent=true;public Activity(){super(new android.content.Context());}public boolean setTranslucent(boolean value){if(!value)throw new AssertionError();conversions++;return translucent;}public void overridePendingTransition(int a,int b){if(a!=0||b!=0)throw new AssertionError("double native animation");overrides++;}}',
+'android/app/Dialog.java':'''package android.app;import android.view.*;public class Dialog {public static Dialog last;public final Window window;public View content;public boolean showing;public int style;public interface Dismiss {void dismissed(Object d);}Dismiss listener;public Dialog(android.content.Context c,int style){last=this;this.style=style;window=new Window(c);}public Window getWindow(){return window;}public void setContentView(View v){content=v;}public void show(){showing=true;}public void dismiss(){if(!showing)return;showing=false;if(listener!=null)listener.dismissed(this);}public void setOnDismissListener(Dismiss d){listener=d;}public boolean dispatchKeyEvent(KeyEvent e){return false;}public void onBackPressed(){}}''',
+'android/service/dreams/DreamService.java':'''package android.service.dreams;public class DreamService extends android.content.ContextWrapper {public android.view.Window window=new android.view.Window(new android.app.Activity());public android.view.View content;public int finishes;public DreamService(){super(new android.content.Context());}public android.view.Window getWindow(){return window;}public void setContentView(android.view.View v){content=v;}public void finish(){finishes++;}public void setInteractive(boolean b){}public void setFullscreen(boolean b){}public void setScreenBright(boolean b){}public void onAttachedToWindow(){}public void onDreamingStarted(){}public void onWakeUp(){}public void onDreamingStopped(){}public void onDetachedFromWindow(){}}''',
+'android/widget/FrameLayout.java':'package android.widget;import java.util.*;public class FrameLayout extends android.view.View {public final List<android.view.View> children=new ArrayList<>();public FrameLayout(android.content.Context c){super(c);}public static class LayoutParams {public LayoutParams(int w,int h){}}public void addView(android.view.View v,LayoutParams p){children.add(v);}}',
+'io/tvos/R.java':'package io.tvos;class R {static class style {static final int ScreensaverPreview=8;}}',
+'io/tvos/AppLog.java':'package io.tvos;class AppLog {static int warnings;static void w(String s){warnings++;}static void unexpected(String s,Throwable t){warnings++;}}',
+'io/tvos/Watchdog.java':'package io.tvos;class Watchdog {static void install(android.content.Context c){}}',
+'io/tvos/Ui.java':'package io.tvos;class Ui {static void init(android.content.Context c){}}',
+'io/tvos/HomeDreamReturn.java':'package io.tvos;class HomeDreamReturn {static int opaque;static void opaque(android.content.Context c){opaque++;}}',
+'io/tvos/ScreensaverFade.java':'package io.tvos;class ScreensaverFade {interface Alpha {void set(float a);}}',
+'io/tvos/VideoDream.java':'''package io.tvos;class VideoDream extends android.view.View {static VideoDream last;boolean started,stopped,exiting;ScreensaverFade.Alpha alpha;Runnable exit,opaque;VideoDream(android.content.Context c){super(c);last=this;}void useWindowAlpha(ScreensaverFade.Alpha a){alpha=a;alpha.set(0);}void setOnOpaqueListener(Runnable r){opaque=r;}void start(){started=true;alpha.set(0);}void ready(){if(!stopped&&!exiting){alpha.set(1);if(opaque!=null)opaque.run();}}void fadeExit(Runnable r){exiting=true;if(!started){r.run();return;}exit=r;}void completeExit(){alpha.set(0);Runnable r=exit;exit=null;if(r!=null)r.run();}void stop(){stopped=true;alpha.set(0);exit=null;}}''',
+'io/tvos/PreviewHarness.java':'''package io.tvos;import android.view.*;import android.content.*;import android.app.*;import android.os.Build;
 public class PreviewHarness {
  static void check(boolean b,String s){if(!b)throw new AssertionError(s);}
- static boolean key(SettingsPreview p,int action,int code){return p.onKey(new KeyEvent(action,code));}
- public static void main(String[] args){
-  Context context=new Context();View view=new View(context);int[] resumed={0};SettingsPreview p=new SettingsPreview(context,view,()->resumed[0]++);FrameLayout host=p.host();View cover=host.children.get(1);ScreensaverFade fade=ScreensaverFade.last;
-  check(!p.active()&&!key(p,0,23),"closed preview does not intercept settings input");p.show();
-  check(!p.hasDream()&&view.visibility==View.VISIBLE&&cover.visibility==View.VISIBLE&&cover.alpha==0&&fade.target==1,"settings stay visible while black cover fades in");
-  check(key(p,1,4)&&key(p,1,24),"transition consumes input");p.show();fade.complete();
-  VideoDream dream=VideoDream.last;check(dream.started&&p.hasDream()&&view.visibility==View.GONE&&host.children.size()==3&&host.children.get(2)==cover,"preview starts only at black; cover remains topmost");
-  check(!key(p,1,24),"volume keys pass to system");key(p,0,23);check(dream.exit==null,"key-down does not close dream");key(p,1,23);check(dream.exit!=null,"key-up starts dream fade");dream.completeExit();
-  check(dream.stopped&&!p.hasDream()&&cover.alpha==1&&view.visibility==View.VISIBLE&&resumed[0]==1,"settings restored beneath opaque cover");
-  check(fade.target==0&&fade.duration==600&&p.active(),"settings reveal uses matching fade");fade.complete();check(!p.active()&&cover.visibility==View.GONE,"input restored after reveal");
-  p.show();p.close();check(fade.end==null&&!p.active()&&cover.visibility==View.GONE&&cover.alpha==0,"pause cancels opening with no delayed preview");fade.complete();check(!p.hasDream(),"cancelled opening cannot create dream");
-  p.show();fade.complete();dream=VideoDream.last;p.close();check(dream.stopped&&host.children.size()==2&&!p.active(),"pause stops visible dream and removes its view");
-  p.show();fade.complete();key(p,1,4);VideoDream.last.completeExit();p.close();check(fade.end==null&&cover.visibility==View.GONE&&!p.active(),"pause cancels reveal");
-  int before=resumed[0];p.close();check(resumed[0]==before,"repeated close is no-op");
-  for(int code:new int[]{19,20,21,22,23,66,4}){p.show();fade.complete();check(key(p,1,code),"exit key consumed");VideoDream.last.completeExit();fade.complete();check(!p.active(),"all navigation keys complete preview exit");}
-  System.out.println("PASS: actual preview controller, black-only swaps, matching fades, repeated open, key routing and pause in all stages");
+ static void window(Window w){check(w.attrs.alpha==0&&w.attrs.dimAmount==0&&w.attrs.windowAnimations==0&&w.attrs.flags==0&&w.format==-3&&w.background.color==0,"transparent window, no dim or extra black/native fade");}
+ public static void main(String[] args){Context context=new Context();View view=new View(context);int[] resumed={0};SettingsPreview p=new SettingsPreview(context,view,()->resumed[0]++);check(p.host().children.size()==1,"settings retained in host with no black cover layer");
+  p.show();Dialog d=Dialog.last;VideoDream video=VideoDream.last;check(video.started&&p.active()&&view.visibility==0,"settings remain visible during media preparation");window(d.window);check(d.window.width==-1&&d.window.height==-1,"preview is fullscreen separate window");video.ready();check(d.window.attrs.alpha==1&&view.visibility==4,"hide only fully covered settings, retain layout");
+  check(!d.dispatchKeyEvent(new KeyEvent(1,24)),"volume passes");d.dispatchKeyEvent(new KeyEvent(0,23));check(video.exit==null,"release-only exit");d.dispatchKeyEvent(new KeyEvent(1,23));check(view.visibility==0&&video.exit!=null&&d.showing,"settings restored before dream fades out");video.completeExit();check(!p.active()&&!d.showing&&video.stopped&&d.window.attrs.alpha==0,"remove preview only when transparent");
+  p.show();video=VideoDream.last;d=Dialog.last;d.onBackPressed();video.completeExit();check(!p.active()&&view.visibility==0,"Back before first media frame never blanks settings");p.show();video=VideoDream.last;d=Dialog.last;p.close();video.ready();check(video.stopped&&!d.showing&&!p.active()&&view.visibility==0,"forced close cancels late media readiness");int count=resumed[0];p.close();check(resumed[0]==count,"idempotent close");
+  for(int sdk:new int[]{28,29,30,33,34}){Build.VERSION.SDK_INT=sdk;Screensaver dream=new Screensaver();Activity activity=new Activity();dream.window=new Window(sdk<30?new Context():activity);dream.onAttachedToWindow();window(dream.window);check(activity.conversions==(sdk<30?0:1),"public DreamActivity translucency only where supported");dream.onDreamingStarted();View.drain();video=VideoDream.last;check(video.started&&dream.window.attrs.alpha==0,"system dream waits transparently for ready frame");int opaque=HomeDreamReturn.opaque;video.ready();check(dream.window.attrs.alpha==1&&HomeDreamReturn.opaque==opaque+1,"home preparation signaled only after complete entrance");dream.onWakeUp();check(dream.finishes==0&&video.exit!=null,"wake preserves live media until fade");video.completeExit();check(dream.finishes==1&&dream.window.attrs.alpha==0,"transparent before system finish");dream.onDreamingStopped();check(video.stopped,"system stop releases media");dream.onDetachedFromWindow();}
+  Screensaver early=new Screensaver();early.onAttachedToWindow();early.onDreamingStarted();early.onWakeUp();View.drain();check(!VideoDream.last.started&&early.finishes==1,"wake before posted start cannot replay dream");early.onDetachedFromWindow();
+  System.out.println("PASS: real preview/system dream controllers and translucent window helper, SDK28/29/30/33/34, ready entry, no black phase, wake/early-close/pause and cleanup");
  }
 }'''
 }
-sources['io/tvos/SettingsPreview.java']=Path('app/src/io/tvos/SettingsPreview.java').read_text()
+for name in ['SettingsPreview','ScreensaverWindow','Screensaver']:s['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-preview-') as tmp:
  root=Path(tmp)
- for name,content in sources.items():
-  path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)
+ for name,text in s.items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.PreviewHarness'],check=True)
+# These XML drawables and styles also apply on API28, without private cursor/scrollbar reflection.
 ns='{http://schemas.android.com/apk/res/android}'
-for name,first,last in [('enter','0','1'),('exit','1','0')]:
- root=ET.parse('app/res/anim/screensaver_window_'+name+'.xml').getroot()
- assert root.get(ns+'fromAlpha')==first and root.get(ns+'toAlpha')==last
- assert root.get(ns+'duration')=='600' and root.get(ns+'interpolator')=='@android:anim/accelerate_decelerate_interpolator'
-print('PASS: dream window fades use matching duration and easing')
+for file,width,color in [('genre_scrollbar_thumb','3dp','#AFFFFFFF'),('search_cursor','2dp','#618FEF')]:
+ r=ET.parse('app/res/drawable/'+file+'.xml').getroot();assert r.find('size').get(ns+'width')==width and r.find('solid').get(ns+'color')==color and r.find('corners') is not None
+styles={r.get('name'):r for r in ET.parse('app/res/values/styles.xml').getroot().findall('style')}
+assert styles['GenreScroll'].find("item[@name='android:scrollbarThumbVertical']").text=='@drawable/genre_scrollbar_thumb'
+assert styles['SearchInput'].find("item[@name='android:textCursorDrawable']").text=='@drawable/search_cursor'
+print('PASS: rounded native scrollbar and blue cursor XML styles cover Android 9')
