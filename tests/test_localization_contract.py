@@ -2,7 +2,8 @@
 from pathlib import Path
 import re,subprocess,tempfile
 from settings_strings_fixture import write
-allowed={'HomeApps.java':{'игровая приставка','игровая консоль'},'AppLanguage.java':{'Русский'},'SettingsDeviceDialogs.java':{'ТВ'},'SettingsValues.java':{'ТВ'},'Recs.java':{'ы','и','а','ов'},'PosterText.java':{' г.',' г'}}
+# П is a non-displayed capital-height reference for sizing the search SVG.
+allowed={'HomeSearchInput.java':{'П'},'HomeApps.java':{'игровая приставка','игровая консоль'},'AppLanguage.java':{'Русский'},'SettingsDeviceDialogs.java':{'ТВ'},'SettingsValues.java':{'ТВ'},'Recs.java':{'ы','и','а','ов'},'PosterText.java':{' г.',' г'}}
 for p in Path('app/src/io/tvos').glob('*.java'):
  text=p.read_text()
  assert not re.search(r'Ui\.(?:ru|en|es|de|tr)\b',text),p
