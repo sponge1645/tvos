@@ -233,7 +233,7 @@ final class SettingsUpdateDialog {
             p.clearShadowLayer();
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);
-            boolean primary = selected && (updatePopup == 2 || updatePopup == 6);
+            boolean primary = selected && (updatePopup == 1 || updatePopup == 2 || updatePopup == 6);
             p.setColor(primary ? 0xFFF7F8FA : light ? 0x906F858D : 0xB33B4649);
             c.drawRoundRect(b, 36*k, 36*k, p);
             buttonText.setColor(primary ? 0xFF171A1F : light ? 0xFF202631 : 0xFFF7F8FA);

@@ -348,8 +348,11 @@ public final class ProfileActivity extends Activity {
 
         private void drawPage(Canvas c, int pageIndex) {
             int center = selected / 9 == pageIndex ? selected : pageIndex * 9;
-            for (int i = pageIndex * 9; i < pageIndex * 9 + 9; i++) if (i != center) drawAvatar(c, i);
+            int panda = pageIndex == 0 ? 6 : -1;
+            for (int i = pageIndex * 9; i < pageIndex * 9 + 9; i++)
+                if (i != center && i != panda) drawAvatar(c, i);
             drawAvatar(c, center);
+            if (panda >= 0 && panda != center) drawAvatar(c, panda);
         }
 
         private void changePage(int next) {
