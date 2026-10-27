@@ -3,10 +3,8 @@ package io.tvos;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.View;
@@ -56,7 +54,7 @@ final class SettingsUpdateDialog {
         k = scale;
         popupHeading = Ui.text(Ui.displaySemibold, 38*k, 0xFFFFFFFF);
         popupHeading.setTextAlign(Paint.Align.LEFT);
-        popupBody = Ui.text(Ui.regular, 30*k, 0xFFE5E9F3);
+        popupBody = Ui.text(Ui.regular, 25*k, 0xFF999999);
         popupBody.setTextAlign(Paint.Align.LEFT);
         popupButtonText = Ui.text(Ui.displaySemibold, 30*k, 0xFFFFFFFF);
         popupButtonText.setTextAlign(Paint.Align.CENTER);
@@ -186,7 +184,7 @@ final class SettingsUpdateDialog {
                 AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(activity))};
         String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install), AppStrings.get(R.string.settings_update_later)}
                 : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install), AppStrings.get(R.string.settings_later)} : new String[] {"OK"};
-        float left = 666*k, right = 1254*k;
+        float left = 724.8f*k, right = 1195.2f*k;
         float textHeight = 0;
         for (String line : lines) textHeight = drawParagraph(null, line, 0, textHeight, right-left-100*k, popupBody);
         float panelHeight = 142*k + textHeight + (8 + buttons.length*72 + (buttons.length-1)*12 + 32)*k;
@@ -200,15 +198,12 @@ final class SettingsUpdateDialog {
         if (fading) c.saveLayerAlpha(left-70*k, top-70*k, right+70*k, bottom+70*k, Math.round(255*alpha));
         RectF panel = popupPanel;
         panel.set(left, top, right, bottom);
-        // Flat, frosted Apple TV panel: no heavy shadow or bright gloss strip.
-        // The subtle vertical tint echoes the light/dark settings backgrounds.
+        // Solid panel palette is shared by both settings themes.
         p.clearShadowLayer();
         p.setAlpha(255);
         p.setStyle(Paint.Style.FILL);
-        p.setShader(new LinearGradient(left, top, left, bottom,
-                light ? 0xF2DEE4E1 : 0xF21F2223,
-                light ? 0xF2BFCFD0 : 0xF2232526,
-                Shader.TileMode.CLAMP));
+        p.setShader(null);
+        p.setColor(0xFF1E2425);
         c.drawRoundRect(panel, 72*k, 72*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
@@ -217,9 +212,9 @@ final class SettingsUpdateDialog {
         c.drawRoundRect(panel, 72*k, 72*k, p);
         p.setStyle(Paint.Style.FILL);
         Paint heading = popupHeading;
-        heading.setColor(light ? 0xFF202631 : 0xFFFFFFFF);
+        heading.setColor(0xFFFFFFFF);
         Paint body = popupBody;
-        body.setColor(light ? 0xFF364050 : 0xFFE5E9F3);
+        body.setColor(0xFF999999);
         c.drawText(AppStrings.get(R.string.settings_tvos_update), left+50*k, top+86*k, heading);
         float lineY = top+142*k;
         for (String line : lines) lineY = drawParagraph(c, line, left+50*k, lineY, right-left-100*k, body);
@@ -234,9 +229,9 @@ final class SettingsUpdateDialog {
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);
             boolean primary = selected && (updatePopup == 1 || updatePopup == 2 || updatePopup == 6);
-            p.setColor(primary ? 0xFFF7F8FA : light ? 0x906F858D : 0xB33B4649);
+            p.setColor(primary ? 0xFFF7F8FA : 0xFF292D2C);
             c.drawRoundRect(b, 36*k, 36*k, p);
-            buttonText.setColor(primary ? 0xFF171A1F : light ? 0xFF202631 : 0xFFF7F8FA);
+            buttonText.setColor(primary ? 0xFF171A1F : 0xFFF7F8FA);
             c.drawText(buttons[i], b.centerX(), b.centerY()+Ui.halfCap(buttonText), buttonText);
         }
         if (fading) c.restore();
@@ -251,14 +246,14 @@ final class SettingsUpdateDialog {
             String candidate = line.length() == 0 ? word : line + " " + word;
             if (line.length() > 0 && paint.measureText(candidate) > width) {
                 if (c != null) c.drawText(line.toString(), x, y, paint);
-                y += 38*k;
+                y += 33*k;
                 line.setLength(0);
             }
             if (line.length() > 0) line.append(' ');
             line.append(word);
         }
         if (c != null) c.drawText(line.toString(), x, y, paint);
-        return y + 38*k;
+        return y + 33*k;
     }
 
 }

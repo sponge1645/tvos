@@ -81,6 +81,7 @@ public final class ProfileActivity extends Activity {
         private final TextPaint body = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private final Spoken spoken;
         private StaticLayout headingLayout, bodyLayout;
+        private float bodyTop;
         private Bitmap background;
         private Click click;
         private int selected, focus, avatarIndex, page, previousPage;
@@ -197,8 +198,8 @@ public final class ProfileActivity extends Activity {
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build();
             bodyLayout = StaticLayout.Builder.obtain(description, 0, description.length(), body, 800)
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).setLineSpacing(5, 1).build();
-            float textGap = Math.max(0, 510 - (280 + headingLayout.getHeight()));
-            float buttonTop = 510 + bodyLayout.getHeight() + textGap;
+            bodyTop = 280 + headingLayout.getHeight() + 50;
+            float buttonTop = bodyTop + bodyLayout.getHeight() + 50;
             buttonRects[0].set(303.6f, buttonTop, 796.4f, buttonTop + 72);
             buttonRects[1].set(303.6f, buttonTop + 73, 796.4f, buttonTop + 145);
         }
@@ -284,7 +285,7 @@ public final class ProfileActivity extends Activity {
             headingLayout.draw(c);
             c.restoreToCount(textSave);
             textSave = c.save();
-            c.translate(150, 510);
+            c.translate(150, bodyTop);
             bodyLayout.draw(c);
             c.restoreToCount(textSave);
             if (!choosing) for (int i = 0; i < buttons.length; i++) drawButton(c, i);

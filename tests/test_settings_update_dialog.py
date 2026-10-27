@@ -43,7 +43,7 @@ public class UpdateDialogHarness {
   Canvas c;
   u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,false);
   check(String.join(" ",c.text).contains("Update 1.2.3 is available.")&&c.text.contains("Download and Install")&&c.text.contains("Update Later"),"available copy and two buttons");
-  check(c.panelLeft==666f&&c.panelTop>90f&&c.panelBottom-c.panelTop<900&&c.buttonRadius==36&&c.dimAlpha==175,"panel geometry and dark dimming retained");
+  check(Math.abs(c.panelLeft-724.8f)<.01f&&c.panelTop>90f&&c.panelBottom-c.panelTop<900&&c.buttonRadius==36&&c.dimAlpha==175,"panel geometry and dark dimming retained");
   d.onKey(new KeyEvent(KeyEvent.ACTION_DOWN,OK));check(u.downloads==0,"download only on key release");
   key(d,DOWN);key(d,UP);key(d,OK);check(u.downloads==1,"focused primary downloads once");
   u.emit(SelfUpdate.DOWNLOADING,47,"");SystemClock.now+=260;c=draw(d,true);check(!d.visible()&&progress.kind==SelfUpdate.DOWNLOADING&&progress.percent==47,"download fades to inline page progress");
@@ -59,12 +59,12 @@ public class UpdateDialogHarness {
   d=create();u=SelfUpdate.instance;d.check();u.emit(SelfUpdate.READY,100,"");key(d,OK);check(u.installs==1,"ready primary installs immediately");
   for(String language:new String[]{"en","ru"}){
    AppLanguage.select(language);boolean ru=language.equals("ru");
-   u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;c=draw(d,true);check(String.join(" ",c.text).contains(ru?"На ТВ установлена актуальная версия ПО: tvOS 1.1":"Your TV has the latest software: tvOS 1.1")&&c.text.contains("1.1"),"current version localized");check(c.text.get(0).equals(AppStrings.get(R.string.settings_tvos_update))&&c.text.get(1).equals("1.1")&&c.ys.get(2)-c.ys.get(1)==38&&c.panelBottom-c.panelTop<455,"current layout keeps title, adjacent version/body lines, compact height and capsule button");
+   u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;c=draw(d,true);check(String.join(" ",c.text).contains(ru?"На ТВ установлена актуальная версия ПО: tvOS 1.1":"Your TV has the latest software: tvOS 1.1")&&c.text.contains("1.1"),"current version localized");check(c.text.get(0).equals(AppStrings.get(R.string.settings_tvos_update))&&c.text.get(1).equals("1.1")&&c.ys.get(2)-c.ys.get(1)==33&&c.panelBottom-c.panelTop<455,"current layout keeps title, adjacent version/body lines, compact height and capsule button");
    u.emit(SelfUpdate.ERROR,-1,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");SystemClock.now+=260;c=draw(d,false);check(c.text.contains("STUVWXYZ"),"error split retains remainder");
    u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Загрузить и установить":"Download and Install"),"language read at drawing time");
    u.emit(SelfUpdate.READY,100,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Версия 1.2.3":"Version 1.2.3"),"ready version spacing");
   }
-  d.resize(.5f);c=draw(d,true);check(c.panelLeft==333f&&c.panelTop>45f&&c.sizes.get(0)==19f,"resize updates geometry and fonts");
+  d.resize(.5f);c=draw(d,true);check(Math.abs(c.panelLeft-362.4f)<.01f&&c.panelTop>45f&&c.sizes.get(0)==19f,"resize updates geometry and fonts");
   Activity a=new Activity();check(SettingsUpdateDialog.versionName(a).equals("tvOS 1.1"),"installed version lookup");a.pm.missing=true;check(SettingsUpdateDialog.versionName(a).equals("tvOS"),"missing version safe fallback");
   System.out.println("PASS: actual update modal lifecycle, input, status transitions, deferred install, cancellation, fades, geometry and live localization");
  }
