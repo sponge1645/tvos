@@ -44,3 +44,7 @@ release/
 # Font/avatar bytes are supplied by the external asset pack at build time.
 app/assets/fonts/
 app/assets/avatars/
+
+# Local signing configuration and rotation proofs
+signing.local.json
+*.lineage

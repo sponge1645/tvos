@@ -12,12 +12,14 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
  for name in retired:
   p=target/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('retired')
  (target/'config.properties').write_text('personal config')
+ (target/'signing.local.json').write_text('private signing config')
  (target/'freemytv.keystore').write_bytes(b'test-signing-key')
  (target/'app/custom.txt').write_text('custom')
  subprocess.run(['bash',str(source/'tools/apply-source.sh'),str(target)],check=True,capture_output=True,text=True)
  assert all(not (target/name).exists() for name in retired)
  assert (target/'app/src/io/tvos/HomeView.java').read_text()=='new source'
  assert (target/'config.properties').read_text()=='personal config'
+ assert (target/'signing.local.json').read_text()=='private signing config'
  assert (target/'freemytv.keystore').read_bytes()==b'test-signing-key'
  assert (target/'app/custom.txt').read_text()=='custom'
  backup=next((target/'patch-backups').glob('github-updater-*'))

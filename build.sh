@@ -17,7 +17,6 @@ BT="$SDK/build-tools/$(ls "$SDK/build-tools" | sort -V | tail -1)"
 AJ="$(ls -d "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1 || true)"
 [ -f "${AJ:-}" ] || { echo "Android platform not found. Run: sdkmanager \"platforms;android-34\""; exit 1; }
 JAVAC="${JAVA_HOME:+$JAVA_HOME/bin/}javac"
-KEYTOOL="${JAVA_HOME:+$JAVA_HOME/bin/}keytool"
 command -v "$JAVAC" >/dev/null 2>&1 || { echo "JDK not found. Install JDK 17 and set JAVA_HOME."; exit 1; }
 
 # --- Settings: config.properties -> Config.java
@@ -74,12 +73,8 @@ if [ "${TVOS_STRICT_JAVA:-0}" = "1" ]; then JAVAC_CHECKS+=(-Werror); fi
 (cd out && zip -qj base.apk classes.dex)
 "$BT/zipalign" -f -p 4 out/base.apk out/aligned.apk
 
-# --- Sign with your own key (created once; updates need the same key, so keep freemytv.keystore)
-if [ ! -f freemytv.keystore ]; then
-  "$KEYTOOL" -genkeypair -keystore freemytv.keystore -alias freemytv -keyalg RSA -keysize 2048 -validity 20000 \
-    -storepass freemytv -keypass freemytv -dname "CN=tvOS" >/dev/null 2>&1
-fi
-"$BT/apksigner" sign --ks freemytv.keystore --ks-pass pass:freemytv --key-pass pass:freemytv --out tvOS.apk out/aligned.apk
+# --- Sign with the configured local release identity (CI has its own disposable mode).
+python3 tools/signing.py sign "$BT" out/aligned.apk tvOS.apk
 python3 tools/prepare-assets.py --verify-apk tvOS.apk
 echo "Built tvOS.apk ($(du -h tvOS.apk | cut -f1)). Install: adb install -r tvOS.apk"
 

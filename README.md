@@ -23,7 +23,7 @@ See [asset pack configuration](docs/ASSETS.md) for URL overrides and offline bui
 
 For an existing installation, copy your current config.properties and freemytv.keystore
 into this directory before building. Do not overwrite or publish the existing key.
-The signing key must stay the same for APK updates to work. Keep a separate backup of it.
+The first release with a new key requires a valid signing lineage. Keep the original key for the 1.0.4 bridge. Run `python3 tools/signing.py init` once on your Mac; see [key rotation](docs/KEY-ROTATION.md).
 
 ## Current snapshot
 
@@ -39,8 +39,7 @@ Installation uses Android's installer and requires confirmation. Update APKs mus
 package and current signing certificate set, matching version metadata and SHA-256.
 
 `./build.sh` also creates `release/tvOS.apk` and `release/update.json` from the same build.
-For the next version, run `./release.sh 1.0.1`, commit the version change and upload both assets to
-release tag `v1.0.1`. See [release instructions in Russian](docs/RELEASING.md).
+Use `release.sh` and `tools/publish-release.py` as documented in [release instructions](docs/RELEASING.md). Legacy GitHub Latest stays at 1.0.4; modern OTA uses the separate ota-v1 manifest.
 
 GitHub Actions compiles with a disposable CI key and never publishes its test APK.
 
@@ -66,7 +65,7 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.96` (versionCode 102), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.97` (versionCode 103), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 

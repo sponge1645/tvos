@@ -37,7 +37,7 @@ public class OtaRefreshHarness {
  static String text(String ru,String en){return en;}
  static String offered="old";static List<Response> requests=new ArrayList<>();
  static class Response extends HttpURLConnection {
-  final boolean redirect;boolean disconnected;Response(URL u){super(u);redirect=u.getPath().contains("/latest/");}
+  final boolean redirect;boolean disconnected;Response(URL u){super(u);redirect=u.getPath().contains("/download/ota-v1/");}
   public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){disconnected=true;}
   public int getResponseCode(){return redirect?302:200;}
   public String getHeaderField(String key){return key.equals("Location")?"/releases/download/"+offered+"/update.json":null;}
