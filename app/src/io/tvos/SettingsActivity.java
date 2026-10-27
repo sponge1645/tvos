@@ -133,13 +133,11 @@ public class SettingsActivity extends Activity {
         private StaticLayout descriptionLayout;
         private String descriptionText;
         private int descriptionWidth;
-        private final Matrix capsuleMatrix = new Matrix();
-        private final Shader lightCapsuleGradient = new LinearGradient(0, 0, 1, 0,
-                new int[]{0x96ECFCFF, 0xA8DFF6FA, 0x92E8F8FD},
-                new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP);
-        private final Shader darkCapsuleGradient = new LinearGradient(0, 0, 1, 0,
-                new int[]{0xB3475A63, 0xB13B484E, 0xB43B4145},
-                new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP);
+        private final Matrix logoMatrix = new Matrix();
+        private final Path logoCutout = new Path();
+        private final Shader darkLogoGradient = new LinearGradient(0, 1, 1, 0,
+                0xFF52595B, 0xFF54646A, Shader.TileMode.CLAMP);
+        private float logoScale = -1;
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
         private final SettingsBackground background = new SettingsBackground();
@@ -202,7 +200,7 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        private Paint pageTitle, logoInk, logoTile, rim = new Paint(Paint.ANTI_ALIAS_FLAG), capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private Paint pageTitle, logoInk, logoTile, capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         private final Runnable poll = new Runnable() {
             @Override public void run() {
@@ -434,9 +432,7 @@ public class SettingsActivity extends Activity {
             logoInk = Ui.text(Ui.displaySemibold, 58 * k, 0xFF173344);
             logoInk.setTextAlign(Paint.Align.CENTER);
             logoTile = new Paint(Paint.ANTI_ALIAS_FLAG);
-            logoTile.setColor(0x70B9C8CD);
-            rim.setStyle(Paint.Style.STROKE);
-            rim.setStrokeWidth(1.4f * k);
+            logoTile.setColor(0xFF8DA8AC);
         }
 
         private boolean busy() {
@@ -501,30 +497,37 @@ public class SettingsActivity extends Activity {
             }
             background.draw(c, w, h, lightSettings());
 
-            // tvOS-inspired settings layout: quiet title and a large rounded app tile.
-            pageTitle.setColor(lightSettings() ? 0x66607985 : 0x73FFFFFF);
-            logoInk.setColor(lightSettings() ? 0xFFECFFFF : 0xFF173344);
-            logoTile.setColor(lightSettings() ? 0x9A678B96 : 0x70B9C8CD);
+            pageTitle.setColor(lightSettings() ? 0xFF789092 : 0xFF57666C);
             drawPageTitle(c, up);
-            RectF logo = logoBounds;
-            logo.set(254 * k, 236 * k, 790 * k, 772 * k);
-            c.drawRoundRect(logo, 116 * k, 116 * k, logoTile);
-            rim.setColor(0x50FFFFFF);
-            c.drawRoundRect(logo, 116 * k, 116 * k, rim);
-            // Centered tvOS wordmark: approximately half the tile width.
-            logoInk.setTextSize(58 * k);
-            float wordmarkWidth = logoInk.measureText("tvOS");
-            if (wordmarkWidth > 0f) {
-                logoInk.setTextSize(logoInk.getTextSize() * (logo.width() / 2f) / wordmarkWidth);
-            }
-            Paint.FontMetrics wordmarkMetrics = logoMetrics;
-            logoInk.getFontMetrics(wordmarkMetrics);
-            float wordmarkBaseline = logo.centerY() - (wordmarkMetrics.ascent + wordmarkMetrics.descent) / 2f;
-            c.drawText("tvOS", logo.centerX(), wordmarkBaseline, logoInk);
+            drawSettingsLogo(c);
 
             drawListViewport(c);
             drawTileDescription(c);
             if (updateDialog.visible()) updateDialog.draw(c, w, h, lightSettings());
+        }
+
+        /** The wordmark is a real cutout: the existing background remains visible through it. */
+        private void drawSettingsLogo(Canvas c) {
+            if (logoScale != k) {
+                logoScale = k;
+                logoBounds.set(254 * k, 236 * k, 790 * k, 772 * k);
+                logoInk.setTextSize(58 * k);
+                float width = logoInk.measureText("tvOS");
+                if (width > 0f) logoInk.setTextSize(logoInk.getTextSize() * logoBounds.width() / (2f * width));
+                logoInk.getFontMetrics(logoMetrics);
+                float baseline = logoBounds.centerY() - (logoMetrics.ascent + logoMetrics.descent) / 2f;
+                logoCutout.reset();
+                logoInk.getTextPath("tvOS", 0, 4, logoBounds.centerX(), baseline, logoCutout);
+                logoMatrix.setScale(logoBounds.width(), logoBounds.height());
+                logoMatrix.postTranslate(logoBounds.left, logoBounds.top);
+                darkLogoGradient.setLocalMatrix(logoMatrix);
+            }
+            logoTile.setColor(0xFF8DA8AC);
+            logoTile.setShader(lightSettings() ? null : darkLogoGradient);
+            c.save();
+            c.clipOutPath(logoCutout);
+            c.drawRoundRect(logoBounds, 116 * k, 116 * k, logoTile);
+            c.restore();
         }
 
         /** Reset inherited selection before drawing either page of a menu transition. */
@@ -597,7 +600,8 @@ public class SettingsActivity extends Activity {
         private boolean lightSettings() { return lightAppearance; }
 
         private int normalInk() { return lightSettings() ? 0xE5162730 : 0xF2FFFFFF; }
-        private int secondaryInk() { return lightSettings() ? 0x99182731 : 0x8CFFFFFF; }
+        private int secondaryInk() { return lightSettings() ? 0xFF7C9295 : 0xFF69777E; }
+        private int valueInk(float focusAmount) { return blend(secondaryInk(), 0xFF999999, focusAmount); }
         private int arrowInk() { return lightSettings() ? 0x8A34444C : 0x66FFFFFF; }
 
         private String screenTitle() {
@@ -647,7 +651,6 @@ public class SettingsActivity extends Activity {
         private static final float ABOUT_NAME_Y_OFFSET = 3f;
         private static final float ABOUT_DETAILS_Y_OFFSET = 13f;
         private static final float ABOUT_NAME_RIGHT_EXTENSION = 6f;
-        private static final int ABOUT_SECONDARY_COLOR = 0xFFA1A3A1;
         private static final float ABOUT_ARROW_STROKE = 3.4425f;
         private static final float ABOUT_ARROW_HALF_HEIGHT = 13.77f;
         private static final float ABOUT_ARROW_LEFT = 11.475f;
@@ -785,29 +788,21 @@ public class SettingsActivity extends Activity {
                                 f > 0.5f ? 0xFF777777 : secondaryInk(), reduced);
                         if (running && !reduced) postInvalidateDelayed(80);
                     } else if (menuChevronVisible(i)) drawApprovedChevron(c);
-                    rowValue.setColor(screen == VPN_SETTINGS && i == 1 && !vpnTopEnabled() ? 0x66808080 : ABOUT_SECONDARY_COLOR);
+                    rowValue.setColor(valueInk(f));
                     drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
                 } else {
-                    rowValue.setColor(blend(secondaryInk(), 0x8C1C1C1E, f));
+                    rowValue.setColor(valueInk(f));
                     drawTrackedText(c, values[i], right + 20 * k, base, rowValue, 0.02f);
                 }
             }
         }
 
-            /** tvOS-style soft graphite capsules; focused row lifts into an opaque white pill. */
+            /** Theme-colored capsules; focused row lifts into an opaque white pill. */
         private float drawRowBackground(Canvas c, int i) {
             float f = i >= 0 && i < pop.length ? Ui.clamp(pop[i].value) : 0f;
             float radius = rowRect.height() / 2f;
-            // Light mode uses pale frosted cyan pills; dark mode keeps graphite.
-            Shader gradient = lightSettings() ? lightCapsuleGradient : darkCapsuleGradient;
-            float gradientLength = (float) Math.hypot(rowRect.width(), rowRect.height());
-            capsuleMatrix.setSinCos(rowRect.height() / gradientLength, rowRect.width() / gradientLength);
-            capsuleMatrix.postScale(gradientLength, gradientLength);
-            capsuleMatrix.postTranslate(rowRect.left, rowRect.top);
-            gradient.setLocalMatrix(capsuleMatrix);
-            capsule.setShader(gradient);
+            capsule.setColor(lightSettings() ? 0xFFD3F3F5 : 0xFF2F3D43);
             c.drawRoundRect(rowRect, radius, radius, capsule);
-            capsule.setShader(null);
             if (f > 0.01f) {
                 float scale = 1f + 0.012f * f;
                 float cx = rowRect.centerX(), cy = rowRect.centerY();
@@ -857,7 +852,7 @@ public class SettingsActivity extends Activity {
                 return;
             }
             if (info == null) return;
-            descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xB3C9D5D9);
+            descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xFF878A8D);
             int width = Math.round(740 * k);
             if (descriptionLayout == null || !info.equals(descriptionText) || width != descriptionWidth) {
                 descriptionPaint.setTypeface(Ui.displaySemibold);
@@ -1078,7 +1073,7 @@ public class SettingsActivity extends Activity {
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(ABOUT_SECONDARY_COLOR);
+                rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 boolean vpnApp = row == buttonEditor.size();
                 int id = vpnApp ? -1 : buttonEditor.get(row);
@@ -1230,7 +1225,7 @@ public class SettingsActivity extends Activity {
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(ABOUT_SECONDARY_COLOR);
+                rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
                         base, rowLabel, 0.02f);
@@ -1277,7 +1272,7 @@ public class SettingsActivity extends Activity {
                 setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(ABOUT_SECONDARY_COLOR);
+                rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 drawTrackedText(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect.right - 61 * k, base, rowValue, 0.02f);
@@ -1365,7 +1360,7 @@ public class SettingsActivity extends Activity {
                 setApprovedRowRect(i);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(ABOUT_SECONDARY_COLOR);
+                rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
