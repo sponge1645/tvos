@@ -27,6 +27,16 @@ public class Screensaver extends DreamService {
         return null;
     }
 
+    /** DreamService replaces Window.Callback; setAttributes alone does not relayout its window. */
+    private void applyWindowAttributes(android.view.WindowManager.LayoutParams attrs) {
+        android.view.Window window = getWindow();
+        if (window == null) return;
+        window.setAttributes(attrs);
+        android.view.View decor = window.getDecorView();
+        android.view.WindowManager manager = window.getWindowManager();
+        if (manager != null && decor.isAttachedToWindow()) manager.updateViewLayout(decor, attrs);
+    }
+
     // Avoid a second system fade after our window has already become transparent.
     @SuppressWarnings("deprecation")
     private void finishWindow() {
@@ -83,12 +93,13 @@ public class Screensaver extends DreamService {
                     if (getWindow() == null) return;
                     android.view.WindowManager.LayoutParams current = getWindow().getAttributes();
                     current.alpha = value;
-                    getWindow().setAttributes(current);
+                    applyWindowAttributes(current);
                 }, 0f);
             }
-            getWindow().setAttributes(attrs);
+            applyWindowAttributes(attrs);
             android.util.Log.i("tvOS-Dream", "Attached SDK=" + android.os.Build.VERSION.SDK_INT
                     + " windowFade=" + controlled
+                    + " attached=" + getWindow().getDecorView().isAttachedToWindow()
                     + " animatorsEnabled=" + android.animation.ValueAnimator.areAnimatorsEnabled());
         }
         // Match the in-place preview: do not attach a SurfaceView until the

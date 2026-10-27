@@ -4,7 +4,7 @@ import ast, subprocess, tempfile
 module=ast.parse(Path('tests/test_screensaver_fade.py').read_text())
 stubs=ast.literal_eval(next(n.value for n in module.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='stubs' for t in n.targets)))
 stubs.pop('io/tvos/FadeHarness.java')
-stubs['android/view/View.java']=stubs['android/view/View.java'].replace('public float alpha;', 'public View(){}public View(Object c){}public void setBackgroundColor(int c){}public void post(Runnable r){frames.add(r);}public void postDelayed(Runnable r,long delay){frames.add(r);}public float alpha;')
+stubs['android/view/View.java']=stubs['android/view/View.java'].replace('public float alpha;', 'public boolean attached=true;public boolean isAttachedToWindow(){return attached;}public View(){}public View(Object c){}public void setBackgroundColor(int c){}public void post(Runnable r){frames.add(r);}public void postDelayed(Runnable r,long delay){frames.add(r);}public float alpha;')
 stubs.update({
 'android/graphics/Color.java':'package android.graphics;public class Color {public static final int BLACK=0;}',
 'android/content/Context.java':'package android.content;public class Context {}',
@@ -14,9 +14,9 @@ stubs.update({
  public boolean setTranslucent(boolean b){if(android.os.Build.VERSION.SDK_INT<30)throw new AssertionError("API guard");conversions++;if(deny)throw new SecurityException();return translucent;}
  public void overridePendingTransition(int a,int b){enter=a;exit=b;}
 }''',
-'android/view/WindowManager.java':'package android.view;public class WindowManager {public static class LayoutParams {public float alpha=1;public int windowAnimations;}}',
+'android/view/WindowManager.java':'''package android.view;public class WindowManager {public float serverAlpha=1;public int serverAnimations=0x1030001,relayouts;public void updateViewLayout(View view,LayoutParams attrs){if(!view.isAttachedToWindow())throw new IllegalStateException("detached");serverAlpha=attrs.alpha;serverAnimations=attrs.windowAnimations;relayouts++;}public static class LayoutParams {public float alpha=1;public int windowAnimations;}}''',
 'android/view/Window.java':'''package android.view;public class Window {
- public android.content.Context context;public View decor=new View();public WindowManager.LayoutParams attrs=new WindowManager.LayoutParams();public int updates;
+ public WindowManager manager=new WindowManager();public WindowManager getWindowManager(){return manager;}public android.content.Context context;public View decor=new View();public WindowManager.LayoutParams attrs=new WindowManager.LayoutParams();public int updates;
  public Window(android.content.Context c){context=c;}public android.content.Context getContext(){return context;}public View getDecorView(){return decor;}
  public WindowManager.LayoutParams getAttributes(){return attrs;}public void setAttributes(WindowManager.LayoutParams a){attrs=a;updates++;}
 }''',
@@ -24,7 +24,7 @@ stubs.update({
 'android/animation/ValueAnimator.java':'package android.animation;public class ValueAnimator {public static boolean areAnimatorsEnabled(){return true;}}',
 'android/service/dreams/DreamService.java':'''package android.service.dreams;public class DreamService extends android.content.Context {
  public android.view.Window window;public android.view.View content;public int finishes;public float firstContentAlpha=-1;public android.view.Window getWindow(){return window;}
- public void finish(){if(window!=null&&window.attrs.alpha!=0&&window.attrs.windowAnimations==0)throw new AssertionError("finish before full transparent frame");finishes++;}
+ public void finish(){if(window!=null&&window.manager.serverAlpha!=0&&window.manager.serverAnimations==0)throw new AssertionError("finish before full transparent frame");finishes++;}
  public void setContentView(android.view.View v){content=v;firstContentAlpha=window.attrs.alpha;}
  public void setInteractive(boolean b){}public void setFullscreen(boolean b){}public void setScreenBright(boolean b){}
  public void onAttachedToWindow(){}public void onDreamingStarted(){}public void onDreamingStopped(){}public void onDetachedFromWindow(){}public void onWakeUp(){}
@@ -47,15 +47,15 @@ public class WindowHarness {
  static void fades(int sdk){
   Activity a=sdk<30?null:new Activity();Screensaver s=create(sdk,a);
   check(VideoDream.last==null,"no video surface during initial window attachment");
-  check(s.firstContentAlpha==0&&s.window.attrs.alpha==0&&s.window.attrs.windowAnimations==0,"first content is hidden, no native transition: "+sdk);
+  check(s.firstContentAlpha==0&&s.window.manager.serverAlpha==0&&s.window.attrs.windowAnimations==0,"first content is hidden, no native transition: "+sdk);
   if(a!=null)check(a.conversions==1,"modern dream activity made translucent");
   s.onDreamingStarted();check(VideoDream.last==null,"entry waits for posted start");s.content.tick(0);
-  s.window.decor.tick(300);near(s.window.attrs.alpha,.5f,"previous screen gradually dims to black");check(s.finishes==0&&VideoDream.last==null,"no decoder surface can punch through the half-transparent window");
-  s.window.decor.tick(600);near(s.window.attrs.alpha,1,"black window fully opaque before surface attachment");
+  s.window.decor.tick(300);near(s.window.attrs.alpha,.5f,"local opacity halfway");near(s.window.manager.serverAlpha,.5f,"WindowManager receives actual intermediate opacity");check(s.window.manager.serverAnimations==0,"native animation override reaches WindowManager");check(s.finishes==0&&VideoDream.last==null,"no decoder surface can punch through the half-transparent window");
+  s.window.decor.tick(600);near(s.window.manager.serverAlpha,1,"actual window fully opaque before surface attachment");
   VideoDream video=VideoDream.last;check(video!=null&&video.starts==1&&s.content==video,"create/start video only after full black, without another window delay");
   s.onWakeUp();check(s.window.attrs.alpha==1&&s.finishes==0,"video first fades to black");video.exit.run();video.exit.run();
-  s.window.decor.tick(900);near(s.window.attrs.alpha,.5f,"black window gradually reveals previous screen");check(s.finishes==0,"decoder lifetime extends through exit");
-  s.window.decor.tick(1200);check(s.window.attrs.alpha==0&&s.finishes==1&&s.window.decor.frames.isEmpty(),"single finish after final transparent frame");
+  s.window.decor.tick(900);near(s.window.manager.serverAlpha,.5f,"actual black window gradually reveals previous screen");check(s.finishes==0,"decoder lifetime extends through exit");
+  s.window.decor.tick(1200);check(s.window.manager.serverAlpha==0&&s.finishes==1&&s.window.decor.frames.isEmpty(),"single finish after final transparent frame");
   if(a!=null)check(a.enter==0&&a.exit==0,"no duplicate framework transition");
   s.onDreamingStopped();s.onDetachedFromWindow();check(s.window.decor.frames.isEmpty(),"lifecycle removes pending frames");
  }
@@ -68,7 +68,7 @@ public class WindowHarness {
   Screensaver early=create(33,new Activity());early.onDreamingStarted();early.onWakeUp();early.content.tick(0);check(VideoDream.last==null,"wake prevents queued surface creation");early.window.decor.tick(600);check(early.finishes==1,"early wake finishes safely");
   Screensaver stopped=create(33,new Activity());stopped.onDreamingStarted();stopped.onDetachedFromWindow();stopped.content.tick(0);check(VideoDream.last==null&&stopped.window.decor.frames.isEmpty(),"detach cannot revive queued work");
   Screensaver during=create(33,new Activity());during.onDreamingStarted();during.content.tick(0);Runnable stale=during.window.decor.frames.get(0);during.onDreamingStopped();stale.run();during.window.decor.tick(600);check(during.window.attrs.alpha==0&&during.window.decor.frames.isEmpty(),"stopped frame cannot publish opacity");
-  System.out.println("PASS: real system dream + real window fade on SDK28/29/30/33/34, surface created strictly after black entrance, hidden initial content, symmetric black phases, native fallback/refusal, interrupted/duplicate wake and lifecycle cleanup");
+  System.out.println("PASS: real system dream + real window fade on SDK28/29/30/33/34, independent WindowManager state/relayout, surface created strictly after black entrance, hidden initial content, symmetric black phases, native fallback/refusal, interrupted/duplicate wake and lifecycle cleanup");
  }
 }'''
 })
