@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
-methods='\n'.join(block(home,s) for s in ['    void revealFromDream(', '    private void updateMotion(', '    private static void show(', '    private static float smoothstep('])
+methods='\n'.join(block(home,s) for s in ['    void prepareDreamReturn(', '    void cancelDreamReturn(', '    private boolean reducedDreamMotion(', '    void revealFromDream(', '    private void updateMotion(', '    private static void show(', '    private static float smoothstep('])
 files={
 'android/content/BroadcastReceiver.java':'package android.content;public abstract class BroadcastReceiver {public abstract void onReceive(Context c,Intent i);}',
 'android/content/Intent.java':'''package android.content;public class Intent {public static final String ACTION_CLOSE_SYSTEM_DIALOGS="close",ACTION_DREAMING_STARTED="start",ACTION_DREAMING_STOPPED="stop";final String action;String reason;public Intent(String action){this.action=action;}public Intent putExtra(String k,String v){reason=v;return this;}public String getAction(){return action;}public String getStringExtra(String k){return reason;}}''',
@@ -29,30 +29,35 @@ public class DreamReturnHarness {
 '''+methods+'''
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b,String why){check(Math.abs(a-b)<.0001,why+" "+a+" != "+b);}
  static void broadcasts(int sdk){
-  Build.VERSION.SDK_INT=sdk;SystemClock.now=100;DreamReturnHarness v=new DreamReturnHarness();HomeDreamReturn d=new HomeDreamReturn(v.context,v::revealFromDream);
+  Build.VERSION.SDK_INT=sdk;SystemClock.now=100;DreamReturnHarness v=new DreamReturnHarness();HomeDreamReturn d=new HomeDreamReturn(v.context,v::prepareDreamReturn,v::revealFromDream,v::cancelDreamReturn);
   check(v.context.flags==(sdk>=33?2:0),"receiver registration matches platform");d.started();d.resumed();d.focused(true);check(v.wakes==0,"cold start never reveals");
   d.paused();d.stopped();d.started();d.resumed();d.focused(true);check(v.wakes==0,"ordinary activity round trip never reveals");
   v.context.dreamClose();d.focused(false);d.paused();d.stopped();v.context.send(Intent.ACTION_DREAMING_STARTED);v.context.send(Intent.ACTION_DREAMING_STARTED);
-  v.context.send(Intent.ACTION_DREAMING_STOPPED);v.context.send(Intent.ACTION_DREAMING_STOPPED);check(v.wakes==0,"waits for underlying home resume/focus");d.started();d.resumed();check(v.wakes==0,"resume alone is insufficient");d.focused(true);check(v.wakes==1&&v.reveal.active(),"cross-process dream returns to home once");d.focused(true);v.context.send(Intent.ACTION_DREAMING_STOPPED);check(v.wakes==1,"duplicate focus/stop cannot replay");
+  check(v.reveal.prepared()&&!v.reveal.active(),"home staged while covered, no animation clock");near(v.sky.sx,.90f,"under-dream depth prepared");near(v.tiles.y,312,"Dock already offscreen before return");SystemClock.now+=10000;check(!v.reveal.tick(SystemClock.now),"long dream cannot consume staged animation");near(v.reveal.remaining(),1,"preparation stays at first frame");
+  // STOP can arrive first; resume must start before focus, rather than expose an ordinary frame.
+  v.context.send(Intent.ACTION_DREAMING_STOPPED);v.context.send(Intent.ACTION_DREAMING_STOPPED);check(v.wakes==0,"hidden home waits for return");d.started();d.resumed();check(v.wakes==1&&v.reveal.active(),"resume starts without waiting for focus");near(v.sky.sx,.90f,"first resumed frame starts in depth");d.focused(true);v.context.send(Intent.ACTION_DREAMING_STOPPED);check(v.wakes==1,"duplicate focus/stop cannot replay");
+  // Delayed STOP after resume/focus must not restart an already visible animation.
+  v.context.dreamClose();d.focused(false);d.paused();d.stopped();v.context.send(Intent.ACTION_DREAMING_STARTED);d.started();d.resumed();check(v.wakes==2,"resume before STOP starts immediately");d.focused(true);v.context.send(Intent.ACTION_DREAMING_STOPPED);check(v.wakes==2,"late STOP cannot restart");
   // Android 9-style dream window: activity remains resumed, only window focus changes.
-  v.context.send(Intent.ACTION_DREAMING_STARTED);d.focused(false);v.context.send(Intent.ACTION_DREAMING_STOPPED);d.focused(true);check(v.wakes==2,"dream without activity pause");
+  v.context.send(Intent.ACTION_DREAMING_STARTED);d.focused(false);check(v.reveal.prepared(),"resumed-only window staged");d.focused(true);check(v.wakes==3,"focus before STOP starts immediately");v.context.send(Intent.ACTION_DREAMING_STOPPED);check(v.wakes==3,"late STOP on legacy window ignored");
   // A dream on top of another app must never become a later home entrance.
-  d.paused();d.stopped();v.context.dreamClose();v.context.send(Intent.ACTION_DREAMING_STARTED);v.context.send(Intent.ACTION_DREAMING_STOPPED);d.started();d.resumed();d.focused(true);check(v.wakes==2,"dream over foreign app excluded");
-  v.context.send(Intent.ACTION_DREAMING_STARTED);d.paused();d.stopped();v.context.send(Intent.ACTION_DREAMING_STOPPED);SystemClock.now+=3001;d.started();d.resumed();d.focused(true);check(v.wakes==2,"stale return expires");
+  d.paused();d.stopped();v.context.dreamClose();v.context.send(Intent.ACTION_DREAMING_STARTED);v.context.send(Intent.ACTION_DREAMING_STOPPED);d.started();d.resumed();d.focused(true);check(v.wakes==3,"dream over foreign app excluded");
+  v.context.send(Intent.ACTION_DREAMING_STARTED);d.paused();d.stopped();v.context.send(Intent.ACTION_DREAMING_STOPPED);SystemClock.now+=3001;d.started();check(!v.reveal.prepared()&&!v.reveal.active(),"stale preparation cancelled before visible draw");near(v.sky.sx,1,"expired entrance restores normal background");near(v.tiles.y,0,"expired entrance restores normal Dock");d.resumed();d.focused(true);check(v.wakes==3,"stale return expires");
   d.close();check(v.context.receiver==null,"destroy unregisters receiver");
  }
  public static void main(String[] args){
   for(int sdk:new int[]{28,30,33,34})broadcasts(sdk);
-  DreamReturnHarness v=new DreamReturnHarness();SystemClock.now=1000;v.revealFromDream();near(v.sky.sx,.95f,"background starts in depth");near(v.heroLayer.sx,.95f,"content shares background scale");near(v.status.sx,1,"right-hand buttons stay static");near(v.tiles.y,312,"Dock starts completely below screen");near(v.platter.y,v.tiles.y,"Dock platter/icons move together");
+  DreamReturnHarness v=new DreamReturnHarness();SystemClock.now=1000;v.revealFromDream();near(v.sky.sx,.90f,"background starts in depth");near(v.heroLayer.sx,.90f,"content shares background scale");near(v.status.sx,1,"right-hand buttons stay static");near(v.tiles.y,312,"Dock starts completely below screen");near(v.platter.y,v.tiles.y,"Dock platter/icons move together");
   float[] rest={1,.421875f,.125f,.015625f,0};long[] at={1000,1162,1325,1487,1650};float last=2;
   for(int i=0;i<at.length;i++){v.reveal.tick(at[i]);v.updateMotion();check(v.reveal.remaining()<=last,"monotonic ease-out");last=v.reveal.remaining();if(i==2)near(last,rest[i],"half time has only one eighth movement left");}
   check(!v.reveal.active()&&!v.reveal.tick(2000),"animation ends without extra ticking");near(v.sky.sx,1,"final scale exactly normal");near(v.tiles.y,0,"final Dock position exactly normal");
-  v.context.reduced=true;v.revealFromDream();check(!v.reveal.active(),"Reduce Motion skips effect");near(v.sky.sx,1,"Reduce Motion preserves normal content");near(v.tiles.y,0,"Reduce Motion preserves normal Dock");
-  v.context.reduced=false;android.animation.ValueAnimator.enabled=false;v.revealFromDream();check(!v.reveal.active(),"system animation disable respected");android.animation.ValueAnimator.enabled=true;
+  v.prepareDreamReturn();check(v.reveal.prepared(),"prepare state present");v.cancelDreamReturn();check(!v.reveal.prepared(),"cancel clears preparation");near(v.sky.sx,1,"cancel restores identity");
+  v.context.reduced=true;v.prepareDreamReturn();check(!v.reveal.prepared(),"Reduce Motion skips preparation");v.revealFromDream();check(!v.reveal.active(),"Reduce Motion skips effect");near(v.sky.sx,1,"Reduce Motion preserves normal content");near(v.tiles.y,0,"Reduce Motion preserves normal Dock");
+  v.context.reduced=false;android.animation.ValueAnimator.enabled=false;v.prepareDreamReturn();check(!v.reveal.prepared(),"system animations disabled skips preparation");v.revealFromDream();check(!v.reveal.active(),"system animation disable respected");android.animation.ValueAnimator.enabled=true;
   v.revealFromDream();v.reveal.cancel();v.updateMotion();near(v.sky.sx,1,"pause cancellation resets scale");near(v.tiles.y,0,"pause cancellation resets translation");
   for(int guard=0;guard<4;guard++){v.running=guard!=0;v.drawerOpen=guard==1;v.sheetOpen=guard==2;v.searchMode=guard==3;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
   v.running=true;v.drawerOpen=v.sheetOpen=v.searchMode=false;v.drawer.value=1;v.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
-  System.out.println("PASS: actual dream receiver/lifecycle, SDK 28/30/33/34, duplicate/stale/foreign-app guards, real HomeView transforms, cubic ease-out, Reduce Motion and cleanup");
+  System.out.println("PASS: actual dream receiver/lifecycle, SDK 28/30/33/34, staged first frame, delayed STOP/focus/resume ordering, duplicate/stale/foreign-app guards, real HomeView transforms, cubic ease-out, Reduce Motion and cleanup");
  }
 }'''}
 # Lifecycle and existing frame-loop wiring are also checked at their actual call sites.
@@ -60,7 +65,9 @@ activity=Path('app/src/io/tvos/HomeActivity.java').read_text()
 for signature,call in [('    @Override protected void onResume(', 'dreamReturn.resumed()'),('    @Override protected void onPause(', 'dreamReturn.paused()'),('    @Override protected void onStop(', 'dreamReturn.stopped()'),('    @Override protected void onDestroy(', 'dreamReturn.close()')]:
  assert call in block(activity,signature)
 assert 'revealContent = new View[] {sky, heroLayer};' in home
-assert 'reveal.cancel();' in block(home,'    void pause(')
+assert 'if (!reveal.prepared()) reveal.cancel();' in block(home,'    void pause(')
+assert 'updateMotion();' in block(home,'    void resume(')
+assert 'home::prepareDreamReturn, home::revealFromDream, home::cancelDreamReturn' in activity
 assert 'reveal.tick(up)' in block(home,'    @Override public void doFrame(')
 with tempfile.TemporaryDirectory(prefix='tvos-dream-return-') as tmp:
  root=Path(tmp)

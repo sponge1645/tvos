@@ -361,6 +361,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (sheetOpen) closeSheet();
         sheet.snap(sheet.target);
         motionDirty = true;
+        updateMotion(); // Keep a staged dream return applied before the first resumed draw.
         invalidateAll();
         idle = false;
         Choreographer.getInstance().postFrameCallback(this);
@@ -369,11 +370,25 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchWork.resume(searchQuery);
     }
 
+    void prepareDreamReturn() {
+        if (drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
+        reveal.prepare(reducedDreamMotion());
+        updateMotion();
+    }
+
+    void cancelDreamReturn() {
+        reveal.cancel();
+        updateMotion();
+    }
+
+    private boolean reducedDreamMotion() {
+        return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("reduce_motion", false) || !android.animation.ValueAnimator.areAnimatorsEnabled();
+    }
+
     void revealFromDream() {
         if (!running || drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
-        boolean reduced = getContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean("reduce_motion", false);
-        reveal.start(SystemClock.uptimeMillis(), reduced || !android.animation.ValueAnimator.areAnimatorsEnabled());
+        reveal.start(SystemClock.uptimeMillis(), reducedDreamMotion());
         updateMotion();
         wake();
     }
@@ -381,7 +396,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
-        reveal.cancel();
+        if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
         workEpoch++;

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="io.tvos"
-    android:versionCode="57"
-    android:versionName="1.1.0-dev.51">
+    android:versionCode="58"
+    android:versionName="1.1.0-dev.52">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

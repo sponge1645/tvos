@@ -11,13 +11,15 @@ import android.os.SystemClock;
 @SuppressWarnings("deprecation") // Observe the system-only close-dialogs signal on old and new firmware.
 final class HomeDreamReturn extends BroadcastReceiver {
     private final Context context;
-    private final Runnable reveal;
+    private final Runnable prepare, reveal, cancel;
     private long pendingUntil;
     private boolean visible, resumed, focused, dreaming, armed, pending;
 
-    HomeDreamReturn(Context context, Runnable reveal) {
+    HomeDreamReturn(Context context, Runnable prepare, Runnable reveal, Runnable cancel) {
         this.context = context;
+        this.prepare = prepare;
         this.reveal = reveal;
+        this.cancel = cancel;
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         filter.addAction(Intent.ACTION_DREAMING_STARTED);
@@ -26,17 +28,24 @@ final class HomeDreamReturn extends BroadcastReceiver {
         else context.registerReceiver(this, filter);
     }
 
-    void started() { visible = true; }
-    void resumed() { resumed = true; deliver(); }
+    void started() { expire(); visible = true; }
+    void resumed() {
+        resumed = true;
+        // Lifecycle callbacks run before the resumed window draws. Do not wait for a late STOP
+        // broadcast or for focus (some TV firmware delivers both after the first visible frame).
+        if (!expire() && armed) play();
+    }
     void paused() { resumed = false; focused = false; }
     void stopped() { visible = false; }
     void focused(boolean value) {
+        boolean gained = value && !focused;
         focused = value;
-        deliver();
-        if (value && !dreaming && !pending) armed = false;
+        // Dreams on older firmware can leave the activity resumed and only change window focus.
+        if (!expire() && gained && resumed && armed) play();
     }
     void close() {
         context.unregisterReceiver(this);
+        cancel.run();
         visible = resumed = focused = dreaming = armed = pending = false;
     }
 
@@ -47,20 +56,28 @@ final class HomeDreamReturn extends BroadcastReceiver {
             // even when DreamActivity pauses/stops it before DREAMING_STARTED is delivered.
             if (!dreaming) armed = visible;
         } else if (Intent.ACTION_DREAMING_STARTED.equals(action)) {
-            if (!dreaming) armed |= visible;
+            if (!dreaming) {
+                armed |= visible;
+                if (armed) prepare.run(); // Stage under the dream, never on a later visible home frame.
+            }
             dreaming = true;
         } else if (Intent.ACTION_DREAMING_STOPPED.equals(action) && dreaming) {
-            pending = dreaming && armed;
+            pending = armed;
             pendingUntil = SystemClock.uptimeMillis() + 3000;
-            dreaming = armed = false;
-            deliver();
+            dreaming = false;
+            if (pending && resumed && focused) play();
         }
     }
 
-    private void deliver() {
-        if (pending && SystemClock.uptimeMillis() > pendingUntil) pending = false;
-        if (!pending || !resumed || !focused || dreaming) return;
-        pending = false;
+    private boolean expire() {
+        if (!pending || SystemClock.uptimeMillis() <= pendingUntil) return false;
+        pending = armed = false;
+        cancel.run();
+        return true;
+    }
+
+    private void play() {
+        pending = armed = false; // A late/duplicate STOP must never restart the entrance.
         reveal.run();
     }
 }

@@ -48,7 +48,7 @@ public class HomeActivity extends Activity {
         Ui.init(this);
         home = new HomeView(this);
         setContentView(home);
-        dreamReturn = new HomeDreamReturn(this, home::revealFromDream);
+        dreamReturn = new HomeDreamReturn(this, home::prepareDreamReturn, home::revealFromDream, home::cancelDreamReturn);
         getWindow().setBackgroundDrawable(null);
         WifiPermission.requestOnce(this);
     }

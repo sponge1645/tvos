@@ -5,15 +5,22 @@ final class HomeReveal {
     static final long DURATION_MS = 650;
     private long started;
     private float remaining;
+    private boolean prepared;
 
+    void prepare(boolean reduced) {
+        prepared = !reduced;
+        remaining = reduced ? 0 : 1;
+    }
+    boolean prepared() { return prepared; }
     void start(long now, boolean reduced) {
+        prepared = false;
         started = now;
         remaining = reduced ? 0 : 1;
     }
-    void cancel() { remaining = 0; }
-    boolean active() { return remaining > 0; }
+    void cancel() { prepared = false; remaining = 0; }
+    boolean active() { return !prepared && remaining > 0; }
     float remaining() { return remaining; }
-    float scale() { return 1 - 0.05f * remaining; }
+    float scale() { return 1 - 0.10f * remaining; }
     boolean tick(long now) {
         if (!active()) return false;
         float t = Math.max(0, Math.min(1, (now - started) / (float) DURATION_MS));
