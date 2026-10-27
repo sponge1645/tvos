@@ -3,6 +3,9 @@ package io.tvos;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
@@ -25,6 +28,32 @@ final class HomeGenres {
         void opened();
         void changed();
         void message(String text);
+    }
+    // All labels share one text column; the checkmark occupies its own fixed gutter.
+    private static final float TEXT_LEFT = 54, CHECK_LEFT = 22;
+    private static final class MenuRow extends TextView {
+        private final Paint checkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path checkPath;
+        MenuRow(Context context, boolean checked, float k) {
+            super(context);
+            checkPath = checked ? new Path() : null;
+            if (checked) {
+                checkPaint.setStyle(Paint.Style.STROKE);
+                checkPaint.setStrokeWidth(3 * k);
+                checkPaint.setStrokeCap(Paint.Cap.ROUND);
+                checkPaint.setStrokeJoin(Paint.Join.ROUND);
+                checkPath.moveTo(CHECK_LEFT * k, 34 * k);
+                checkPath.lineTo((CHECK_LEFT + 7) * k, 41 * k);
+                checkPath.lineTo((CHECK_LEFT + 20) * k, 25 * k);
+            }
+        }
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if (checkPath != null) {
+                checkPaint.setColor(getCurrentTextColor());
+                canvas.drawPath(checkPath, checkPaint);
+            }
+        }
     }
     private final View home;
     private final Context context;
@@ -52,12 +81,15 @@ final class HomeGenres {
     }
     void cancelHold() { handler.removeCallbacks(hold); }
     void released() { cancelHold(); openingRelease = false; }
-    void pause() {
+    boolean pause() {
+        boolean changed = selected != null;
         cancelHold();
         if (popup != null) popup.dismiss();
         if (genreRequest != null) genreRequest.cancel();
         if (movieRequest != null) movieRequest.cancel();
         genreRequest = movieRequest = null;
+        selected = null; movies = null; openingRelease = false;
+        return changed;
     }
     private boolean initialRelease(View view, int code, KeyEvent event) {
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
@@ -146,13 +178,16 @@ final class HomeGenres {
     }
     private TextView text(String label, float size, float k) {
         TextView text = new TextView(context);
+        styleText(text, label, size, k);
+        return text;
+    }
+    private void styleText(TextView text, String label, float size, float k) {
         text.setText(label);
         text.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * k);
         text.setTypeface(Ui.displayMedium);
         text.setGravity(Gravity.CENTER_VERTICAL);
-        text.setPadding(Math.round(30 * k), 0, Math.round(18 * k), 0);
+        text.setPadding(Math.round(TEXT_LEFT * k), 0, Math.round(18 * k), 0);
         text.setSingleLine(true);
-        return text;
     }
     private void heading(LinearLayout root, String label, float k) {
         TextView title = text(label, 26, k);
@@ -162,7 +197,8 @@ final class HomeGenres {
     private void row(LinearLayout root, GenreCatalog.Genre genre, float k) {
         boolean checked = genre == null ? selected == null : selected != null && genre.id == selected.id;
         String label = genre == null ? AppStrings.get(R.string.home_tab_movies) : genre.name;
-        TextView row = text((checked ? "✓ " : "   ") + label, 34, k);
+        TextView row = new MenuRow(context, checked, k);
+        styleText(row, label, 34, k);
         row.setTextColor(Color.WHITE);
         row.setFocusable(true); row.setClickable(true);
         row.setOnKeyListener(this::initialRelease);

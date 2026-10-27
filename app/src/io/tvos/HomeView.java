@@ -415,7 +415,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
-        genres.pause();
+        if (genres.pause() && tab == 1 && !searchMode) cardPage = cardIndex = 0;
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
