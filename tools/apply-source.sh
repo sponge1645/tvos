@@ -18,6 +18,29 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  app/assets/avatars/cat_face.webp \
+  app/assets/avatars/clapper_board.webp \
+  app/assets/avatars/dog_face.webp \
+  app/assets/avatars/fox.webp \
+  app/assets/avatars/frog.webp \
+  app/assets/avatars/hot_dog.webp \
+  app/assets/avatars/lion.webp \
+  app/assets/avatars/man.webp \
+  app/assets/avatars/monkey_face.webp \
+  app/assets/avatars/panda.webp \
+  app/assets/avatars/pig_face.webp \
+  app/assets/avatars/pile_of_poo.webp \
+  app/assets/avatars/popcorn.webp \
+  app/assets/avatars/rabbit_face.webp \
+  app/assets/avatars/robot.webp \
+  app/assets/avatars/statue_of_liberty.webp \
+  app/assets/avatars/videocassette.webp \
+  app/assets/avatars/woman.webp \
+  app/assets/fonts/sf_display_bold.otf \
+  app/assets/fonts/sf_display_light.otf \
+  app/assets/fonts/sf_display_medium.otf \
+  app/assets/fonts/sf_display_regular.otf \
+  app/assets/fonts/sf_display_semibold.otf \
   app/src/io/tvos/FakeUpdate.java tests/test_fake_update.py \
   app/src/io/tvos/Russian.java app/src/io/tvos/Glyphs.java \
   app/res/drawable/coin_btc.xml app/res/drawable/coin_eth.xml \

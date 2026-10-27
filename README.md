@@ -5,7 +5,7 @@ Original MIT license and copyright are retained in LICENSE. Original project doc
 
 ## Build
 
-Requires JDK 17+, Android SDK build-tools 34+ and an Android platform 34+.
+Requires Python 3.8+, curl, JDK 17+, Android SDK build-tools 34+ and an Android platform 34+.
 Set ANDROID_HOME if your SDK is not in a standard location.
 
 ```bash
@@ -14,6 +14,12 @@ cp config.example.properties config.properties
 ./build.sh
 adb install -r tvOS.apk
 ```
+
+Fonts and profile avatars are not stored in the current source tree. The first build downloads
+the pinned asset ZIP from Dropbox, checks the archive and all 23 file hashes, then stages them
+under `out/assets`. Later builds reuse `.tvos-assets/` and can work offline. The APK still embeds
+the assets; moving downloads outside Git does not grant any rights to their contents.
+See [asset pack configuration](docs/ASSETS.md) for URL overrides and offline builds.
 
 For an existing installation, copy your current config.properties and freemytv.keystore
 into this directory before building. Do not overwrite or publish the existing key.
@@ -60,7 +66,7 @@ or backup directories. APKs are distributed as release assets rather than source
 
 ## tvOS 1.1 development
 
-Branch `dev-1.1`, preview `1.1.0-dev.71` (versionCode 77), based on stable 1.0.3.
+Branch `dev-1.1`, preview `1.1.0-dev.96` (versionCode 102), based on stable 1.0.3.
 
 The first development step uses 34 monochrome SVG symbols from the approved export. A small parser loads the bundled absolute M/L/C/Z paths once, including even-odd holes and layered opacity. Canvas draws the cached paths directly at the current icon size. Source PNGs remain an asset fallback. Existing layout reference sizes and tint alpha are preserved; only multi-layer icons with translucent tint use a bounded composition layer. The cached screensaver weather badge rasterizes its SVG mask at the actual glyph output size so its existing shadow remains intact. No external SVG library or per-frame XML parsing is added. Colored app logos remain unchanged.
 

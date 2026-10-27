@@ -41,6 +41,7 @@ LON="$(number longitude -74.0060)"
 ASSIST=false; [ "$(prop disable_assistant false)" = "true" ] && ASSIST=true
 
 rm -rf out && mkdir -p out/gen/io/tvos out/classes
+python3 tools/prepare-assets.py
 cat > out/gen/io/tvos/Config.java <<EOF
 package io.tvos;
 
@@ -63,7 +64,7 @@ EOF
 "$BT/aapt2" compile --dir app/res -o out/res.zip
 # Fonts uncompressed: Android reads them straight from the APK.
 "$BT/aapt2" link -o out/base.apk -I "$AJ" --manifest app/AndroidManifest.xml --java out/gen out/res.zip \
-  --min-sdk-version 28 --target-sdk-version 33 -A app/assets -0 ttf -0 otf
+  --min-sdk-version 28 --target-sdk-version 33 -A out/assets -0 ttf -0 otf
 # Report every code warning; source/target-8 toolchain notices are not code issues.
 JAVAC_CHECKS=(-Xlint:all,-options)
 if [ "${TVOS_STRICT_JAVA:-0}" = "1" ]; then JAVAC_CHECKS+=(-Werror); fi
@@ -79,6 +80,7 @@ if [ ! -f freemytv.keystore ]; then
     -storepass freemytv -keypass freemytv -dname "CN=tvOS" >/dev/null 2>&1
 fi
 "$BT/apksigner" sign --ks freemytv.keystore --ks-pass pass:freemytv --key-pass pass:freemytv --out tvOS.apk out/aligned.apk
+python3 tools/prepare-assets.py --verify-apk tvOS.apk
 echo "Built tvOS.apk ($(du -h tvOS.apk | cut -f1)). Install: adb install -r tvOS.apk"
 
 # Matching metadata is generated immediately after signing this exact APK.

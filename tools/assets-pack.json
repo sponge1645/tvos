@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "url": "https://www.dropbox.com/scl/fi/nq7bin3cu9ackx7xxfm1w/tvOS-assets-v1.zip?rlkey=ut0b2ycx7fn69e1duy1guxb8t&dl=1",
+  "sha256": "c9f4e303cd3c0ca4b736391348b4f9b7ee1b46c2cc448dea1e2739fde64f03ed",
+  "files": {
+    "avatars/cat_face.webp": {
+      "sha256": "bc8251aba5b2e3ae167f59ea5943fadcf363e975f319f94f1f277fe179f6ec07",
+      "size": 5564
+    },
+    "avatars/clapper_board.webp": {
+      "sha256": "be97e6826118009a2a2e4876bb62079a285db4304fbbf89a5bd1a4c8cac6b802",
+      "size": 4994
+    },
+    "avatars/dog_face.webp": {
+      "sha256": "d01cdd957227b8cb9a8141d54a9225e16e4acbb86f21fe2afce1d8834de32ea6",
+      "size": 5092
+    },
+    "avatars/fox.webp": {
+      "sha256": "17e73ead8444898462a83dcb53241563620a9b2bc5cc8704a4e53fb4bb472bd0",
+      "size": 6008
+    },
+    "avatars/frog.webp": {
+      "sha256": "9029731ec57664784a75e56345583de30825ae1e42d309260f80a7ed19f7c590",
+      "size": 5694
+    },
+    "avatars/hot_dog.webp": {
+      "sha256": "75dcc255d6170cb5494fc847c22982fd290a74e599ddc3d5aa0200cba5e93bfd",
+      "size": 5528
+    },
+    "avatars/lion.webp": {
+      "sha256": "5d6c29a250e15b0013b5ecf08a10bb12a206578a50ee1f8b4b9d913dbacfc308",
+      "size": 7710
+    },
+    "avatars/man.webp": {
+      "sha256": "71f6f829f0b48a620963f1289f027f3891794d737f8ca591ea61cff8360c05af",
+      "size": 5124
+    },
+    "avatars/monkey_face.webp": {
+      "sha256": "057f04568b950d3260d12bd5a5ed3ad4ec8a6d86fd12914a245499083dba5316",
+      "size": 5366
+    },
+    "avatars/panda.webp": {
+      "sha256": "98aff270a12ad4d88fa81e9a0e412e5e4ef089d2b23916353c6206d0be49198f",
+      "size": 5006
+    },
+    "avatars/pig_face.webp": {
+      "sha256": "e1dbccc9636c256b37080791d8d9bdff6f28cafabee0e7b8e0570d781e1370a5",
+      "size": 5096
+    },
+    "avatars/pile_of_poo.webp": {
+      "sha256": "a683652e667415e919b7dd21c2c8f18b8d5dbbcb1d2cedbb9296ee3ad620372f",
+      "size": 5180
+    },
+    "avatars/popcorn.webp": {
+      "sha256": "c7409c85bb55299d925aa2200f9c67a771d6d1c02831e123ef87cdd80b13ef12",
+      "size": 6336
+    },
+    "avatars/rabbit_face.webp": {
+      "sha256": "869c879075481ef727adfee79863fdb89abe55bf76bc0bf9a7cc3fe107d69fc5",
+      "size": 5450
+    },
+    "avatars/robot.webp": {
+      "sha256": "4063d1af2ca2f585b4f0c8cc4321382c4ce8611f36cae9c210558ce08f25ccf6",
+      "size": 5806
+    },
+    "avatars/statue_of_liberty.webp": {
+      "sha256": "cf40d863d87b3545cbf77a993aba49ef17812068790f6f44bff713af2f2f3930",
+      "size": 6122
+    },
+    "avatars/videocassette.webp": {
+      "sha256": "a541a04c30449ca568e3393d5f77955ba8c17eb1d46707592b96f1c23fbf5259",
+      "size": 3454
+    },
+    "avatars/woman.webp": {
+      "sha256": "fbac201349ef3770160e5cbd14d5e7bc6ce3709140901c0aab94a8b311b8c0df",
+      "size": 6926
+    },
+    "fonts/sf_display_bold.otf": {
+      "sha256": "9661ed5e91885b6a80cd458d5ef068db320574c2cb7c1ed2d77864fb91cb8adc",
+      "size": 2298456
+    },
+    "fonts/sf_display_light.otf": {
+      "sha256": "2c79861d4ba3a6301ee16438640376469dbbc721337bb3db718ee4e96f35d1a1",
+      "size": 2283060
+    },
+    "fonts/sf_display_medium.otf": {
+      "sha256": "05865eda9d9a6880538034210becfcf21622fc1a0b30723acdb670009ddbf51c",
+      "size": 2320104
+    },
+    "fonts/sf_display_regular.otf": {
+      "sha256": "7dc04ac11000f759c973a45c6109e2c164372db0db23dd4796c887df73048cd0",
+      "size": 2230364
+    },
+    "fonts/sf_display_semibold.otf": {
+      "sha256": "6c4fa1be203ec1b7a5135cf636d87e1e23a91a9aabd556309664251745fd8249",
+      "size": 2325324
+    }
+  }
+}
