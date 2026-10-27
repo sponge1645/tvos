@@ -100,7 +100,7 @@ public class SettingsActivity extends Activity {
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
         private static final int PICK_VISIBLE = 10;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
-        private static final float SETTINGS_SHADOW_BLUR = 14, SETTINGS_SHADOW_DROP = 12, SETTINGS_SHADOW_OPACITY = 0.40f;
+        private static final float SETTINGS_SHADOW_BLUR = 40, SETTINGS_SHADOW_DROP = 15, SETTINGS_SHADOW_OPACITY = 0.40f;
         private static final int AMBER = 0xFFFFC266, INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
@@ -811,7 +811,7 @@ public class SettingsActivity extends Activity {
                         cx + rowRect.width() * scale / 2f,
                         cy + rowRect.height() * scale / 2f);
                 float r = tmp.height() / 2f;
-                // A tighter downward shadow, matching the approved settings reference.
+                // Downward shadow; the filter and legacy cached mask use the same blur.
                 tmp.offset(0, SETTINGS_SHADOW_DROP * k * f);
                 shadow.setColor(Ui.alpha(0xFF000000, SETTINGS_SHADOW_OPACITY * f));
                 rowShadows.draw(c, tmp, r, SETTINGS_SHADOW_BLUR * k, shadow);

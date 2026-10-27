@@ -20,9 +20,9 @@ public class SettingsShadowHarness {
    h.k=k;h.light=light;h.pop[0].snap(f);h.rowRect.set(1000*k,200*k,1824*k,272*k);h.shadow.setMaskFilter(new BlurMaskFilter(SETTINGS_SHADOW_BLUR*k,BlurMaskFilter.Blur.NORMAL));Canvas c=new Canvas();near(h.drawRowBackground(c,0),f,"focus state retained");
    check(entries(c,"round").get(0).color==(light?0xFFD3F3F5:0xFF2F3D43),"theme-specific unfocused capsule color");
    if(f==0){check(entries(c,"shadow").isEmpty(),"no focus shadow at rest");continue;}
-   Canvas.Entry shadow=entries(c,"shadow").get(0),pill=entries(c,"round").get(1);near(shadow.t-pill.t,12*k*f,"shadow points down");near(shadow.l,pill.l,"no horizontal displacement");near(shadow.blur,14*k,"tighter blur in both themes/scales");check((shadow.color>>>24)==Math.round(255*.4f*f),"focus-weighted 40 percent opacity");near(pill.r-pill.l,824*k*(1+.012f*f),"focused pill geometry retained");
+   Canvas.Entry shadow=entries(c,"shadow").get(0),pill=entries(c,"round").get(1);near(shadow.t-pill.t,15*k*f,"shadow points down");near(shadow.l,pill.l,"no horizontal displacement");near(shadow.blur,40*k,"requested blur in both themes/scales");check((shadow.color>>>24)==Math.round(255*.4f*f),"focus-weighted 40 percent opacity");near(pill.r-pill.l,824*k*(1+.012f*f),"focused pill geometry retained");
   }
-  System.out.println("PASS: actual settings row shadow direction, 14px blur/mask consistency, 40% opacity, preserved pill geometry, themes and 720p/1080p/4K");
+  System.out.println("PASS: actual settings row shadow direction, 40px blur/mask consistency, 40% opacity, preserved pill geometry, themes and 720p/1080p/4K");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-settings-shadow-') as tmp:
