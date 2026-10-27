@@ -24,7 +24,7 @@ public class SettingsShadowHarness {
    if(f==0){check(entries(c,"shadow").isEmpty(),"no focus shadow at rest");continue;}
    Canvas.Entry shadow=entries(c,"shadow").get(0),pill=entries(c,"round").get(1);near(shadow.t-pill.t,15*k*f,"shadow points down");near(shadow.l,pill.l,"no horizontal displacement");near(shadow.blur,40*k,"requested blur in both themes/scales");check((shadow.color>>>24)==Math.round(255*.4f*f),"focus-weighted 40 percent opacity");near(pill.r-pill.l,824*k*(1+.012f*f),"focused pill geometry retained");
   }
-  for(boolean light:new boolean[]{false,true}){h.light=light;check(h.valueInk(0)==(light?0xFF758390:0xFF69777E),"unfocused value palette");check(h.valueInk(1)==0xFF999999,"focused value palette");}
+  for(boolean light:new boolean[]{false,true}){h.light=light;check(h.valueInk(0)==(light?0xFF758390:0xFF6C7B81),"unfocused value palette");check(h.valueInk(1)==0xFF999999,"focused value palette");}
   h.k=1;h.shadow.setMaskFilter(new BlurMaskFilter(SETTINGS_SHADOW_BLUR,BlurMaskFilter.Blur.NORMAL));h.white.setColor(0xFFF5F5F7);
   for(int count=1;count<=12;count++)for(int active=0;active<count;active++){
    for(int i=0;i<12;i++)h.pop[i].snap(i==active?1:0);Canvas c=new Canvas();Set<Integer> seen=new HashSet<>();
