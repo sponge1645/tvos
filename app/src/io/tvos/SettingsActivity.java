@@ -601,7 +601,7 @@ public class SettingsActivity extends Activity {
 
         private int normalInk() { return lightSettings() ? 0xE5162730 : 0xF2FFFFFF; }
         private int secondaryInk() { return lightSettings() ? 0xFF758390 : 0xFF6C7B81; }
-        private int valueInk(float focusAmount) { return blend(secondaryInk(), 0xFF999999, focusAmount); }
+        private int valueInk(float focusAmount) { return lightSettings() ? blend(secondaryInk(), 0xFF999999, focusAmount) : 0xFF999999; }
         private int arrowInk() { return lightSettings() ? 0x8A34444C : 0x66FFFFFF; }
 
         private String screenTitle() {
