@@ -21,7 +21,7 @@ public class DreamReturnHarness {
  static final int VISIBLE=0,INVISIBLE=4;static final float SHIFT=560;
  final Context context=new Context();final HomeReveal reveal=new HomeReveal();
  static class Spring {float value;}final Spring drawer=new Spring(),sheet=new Spring();
- final View sky=new View(),heroLayer=new View(),status=new View(),platter=new View(),tiles=new View(),drawerLayer=new View(),sheetLayer=new View();
+ final View revealBackdrop=new View(),sky=new View(),heroLayer=new View(),status=new View(),platter=new View(),tiles=new View(),drawerLayer=new View(),sheetLayer=new View();
  final View[] revealContent={sky,heroLayer};float h=1080,k=1;boolean running=true,drawerOpen,sheetOpen,searchMode;int wakes;
  static class Rect {float top=788;}final Rect platterRect=new Rect();static class Editor {boolean editing(){return false;}}final Editor dockEditor=new Editor();
  static class Ui {static float clamp(float n){return Math.max(0,Math.min(1,n));}}
@@ -48,12 +48,12 @@ public class DreamReturnHarness {
  public static void main(String[] args){
   for(int sdk:new int[]{28,30,33,34})broadcasts(sdk);
   DreamReturnHarness transparent=new DreamReturnHarness();HomeDreamReturn tracked=new HomeDreamReturn(transparent.context,transparent::prepareDreamReturn,transparent::revealFromDream,transparent::cancelDreamReturn);tracked.started();tracked.resumed();tracked.focused(true);transparent.context.dreamClose();tracked.paused();tracked.stopped();transparent.context.send(Intent.ACTION_DREAMING_STARTED);check(!transparent.reveal.prepared()&&transparent.sky.sx==1&&transparent.tiles.y==0,"home stays intact throughout translucent dream entry");transparent.context.send(Intent.ACTION_DREAMING_STOPPED);tracked.started();tracked.resumed();tracked.focused(true);check(transparent.wakes==0,"early exit before opacity never jumps home to depth state");tracked.close();
-  DreamReturnHarness v=new DreamReturnHarness();SystemClock.now=1000;v.revealFromDream();near(v.sky.sx,.90f,"background starts in depth");near(v.heroLayer.sx,.90f,"content shares background scale");near(v.status.sx,1,"right-hand buttons stay static");near(v.tiles.y,312,"Dock starts completely below screen");near(v.platter.y,v.tiles.y,"Dock platter/icons move together");
+  DreamReturnHarness v=new DreamReturnHarness();SystemClock.now=1000;v.revealFromDream();near(v.sky.sx,.90f,"background starts in depth");check(v.revealBackdrop.visibility==VISIBLE&&v.revealBackdrop.sx==1&&v.revealBackdrop.sy==1,"full-screen backdrop covers exposed edges without scaling");near(v.heroLayer.sx,.90f,"content shares background scale");near(v.status.sx,1,"right-hand buttons stay static");near(v.tiles.y,312,"Dock starts completely below screen");near(v.platter.y,v.tiles.y,"Dock platter/icons move together");
   float[] rest={1,.421875f,.125f,.015625f,0};long[] at={1000,1162,1325,1487,1650};float last=2;
   for(int i=0;i<at.length;i++){v.reveal.tick(at[i]);v.updateMotion();check(v.reveal.remaining()<=last,"monotonic ease-out");last=v.reveal.remaining();if(i==2)near(last,rest[i],"half time has only one eighth movement left");}
-  check(!v.reveal.active()&&!v.reveal.tick(2000),"animation ends without extra ticking");near(v.sky.sx,1,"final scale exactly normal");near(v.tiles.y,0,"final Dock position exactly normal");
-  v.prepareDreamReturn();check(v.reveal.prepared(),"prepare state present");v.cancelDreamReturn();check(!v.reveal.prepared(),"cancel clears preparation");near(v.sky.sx,1,"cancel restores identity");
-  v.context.reduced=true;v.prepareDreamReturn();check(!v.reveal.prepared(),"Reduce Motion skips preparation");v.revealFromDream();check(!v.reveal.active(),"Reduce Motion skips effect");near(v.sky.sx,1,"Reduce Motion preserves normal content");near(v.tiles.y,0,"Reduce Motion preserves normal Dock");
+  check(!v.reveal.active()&&!v.reveal.tick(2000),"animation ends without extra ticking");near(v.sky.sx,1,"final scale exactly normal");check(v.revealBackdrop.visibility==INVISIBLE,"backdrop removed at identity");near(v.tiles.y,0,"final Dock position exactly normal");
+  v.prepareDreamReturn();check(v.reveal.prepared(),"prepare state present");v.cancelDreamReturn();check(!v.reveal.prepared(),"cancel clears preparation");near(v.sky.sx,1,"cancel restores identity");check(v.revealBackdrop.visibility==INVISIBLE,"cancel removes backdrop");
+  v.context.reduced=true;v.prepareDreamReturn();check(!v.reveal.prepared(),"Reduce Motion skips preparation");v.revealFromDream();check(!v.reveal.active(),"Reduce Motion skips effect");near(v.sky.sx,1,"Reduce Motion preserves normal content");check(v.revealBackdrop.visibility==INVISIBLE,"Reduce Motion adds no backdrop draw");near(v.tiles.y,0,"Reduce Motion preserves normal Dock");
   v.context.reduced=false;android.animation.ValueAnimator.enabled=false;v.prepareDreamReturn();check(!v.reveal.prepared(),"system animations disabled skips preparation");v.revealFromDream();check(!v.reveal.active(),"system animation disable respected");android.animation.ValueAnimator.enabled=true;
   v.revealFromDream();v.reveal.cancel();v.updateMotion();near(v.sky.sx,1,"pause cancellation resets scale");near(v.tiles.y,0,"pause cancellation resets translation");
   for(int guard=0;guard<4;guard++){v.running=guard!=0;v.drawerOpen=guard==1;v.sheetOpen=guard==2;v.searchMode=guard==3;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
@@ -66,6 +66,9 @@ activity=Path('app/src/io/tvos/HomeActivity.java').read_text()
 for signature,call in [('    @Override protected void onResume(', 'dreamReturn.resumed()'),('    @Override protected void onPause(', 'dreamReturn.paused()'),('    @Override protected void onStop(', 'dreamReturn.stopped()'),('    @Override protected void onDestroy(', 'dreamReturn.close()')]:
  assert call in block(activity,signature)
 assert 'revealContent = new View[] {sky, heroLayer};' in home
+assert 'new View[] {revealBackdrop, sky, heroLayer' in home
+assert 'revealBackdrop.layout(0, 0, width, height)' in home
+assert 'measure(revealBackdrop, width, height)' in home
 assert 'if (!reveal.prepared()) reveal.cancel();' in block(home,'    void pause(')
 assert 'updateMotion();' in block(home,'    void resume(')
 assert 'home::prepareDreamReturn, home::revealFromDream, home::cancelDreamReturn' in activity

@@ -84,7 +84,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final TvInputManager tvInputs;
     private final HomeAccessibility accessibility;
     private final Spoken spoken;
-    private final Layer sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer;
+    private final Layer revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer;
     private int zone = Z_SHELF;
 
     // At the top: tabs (0 to 2) and icon-only buttons (3 to 5); the three cards
@@ -277,6 +277,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
         setFocusable(true);
         setBackgroundColor(0xFF000000);
+        revealBackdrop = new Layer(a, SKY);
+        revealBackdrop.setVisibility(INVISIBLE);
         sky = new Layer(a, SKY);
         heroLayer = new Layer(a, HERO);
         status = new Layer(a, STATUS);
@@ -320,7 +322,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // frame cost more than drawing straight to the screen (measured: focus on the picks 33 → 12 ms a frame, the
         // drawer 19 → 17 ms).
         for (View v : new View[] {heroLayer, status, platter, tiles, drawerLayer, sheetLayer}) v.setLayerType(Ui.LEGACY ? LAYER_TYPE_NONE : LAYER_TYPE_HARDWARE, null);
-        for (View v : new View[] {sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer}) {
+        for (View v : new View[] {revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer}) {
             v.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);   // TalkBack reads the items (Spoken)
             addView(v);
         }
@@ -551,7 +553,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void invalidateAll() {
-        for (View v : new View[] {sky, heroLayer, status, platter, tiles, drawerLayer}) v.invalidate();
+        for (View v : new View[] {revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer}) v.invalidate();
     }
 
     // MARK: - Size and layers
@@ -559,6 +561,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     @Override protected void onMeasure(int widthSpec, int heightSpec) {
         int width = MeasureSpec.getSize(widthSpec), height = MeasureSpec.getSize(heightSpec);
         float kk = width / 1920f;
+        measure(revealBackdrop, width, height);
         measure(sky, width, height);
         measure(heroLayer, width, Math.round(HomeLayout.CARDS_LAYER_HEIGHT * kk));
         measure(status, Math.round(1160 * kk), Math.round(240 * kk));
@@ -580,6 +583,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
         int width = r - l, height = b - t;
         float kk = width / 1920f;
+        revealBackdrop.layout(0, 0, width, height);
         sky.layout(0, 0, width, height);
         place(heroLayer, 0, 0);
         place(status, width - status.getMeasuredWidth(), 0);
@@ -683,7 +687,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (heroMoving || heroDirty || searchHeadingMoving) heroLayer.invalidate();
         if (drawerItemsMoving || drawerDirty || bgFading) drawerLayer.invalidate();
         if (gridMoving || gridDirty) sheetLayer.invalidate();
-        if (drawerMoving || bgFading) sky.invalidate();
+        if (drawerMoving || bgFading) { sky.invalidate(); revealBackdrop.invalidate(); }
         if (bgFading || (drawerWasMoving && !drawerMoving)) platter.invalidate();
         drawerWasMoving = drawerMoving;
         tilesDirty = statusDirty = heroDirty = drawerDirty = gridDirty = motionDirty = false;
@@ -736,6 +740,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float dockOffset = (h - platterRect.top + 20 * k) * reveal.remaining();
         show(platter, home, lift + dockOffset);
         show(tiles, home, lift + dockOffset);
+        revealBackdrop.setVisibility(reveal.remaining() > 0 ? VISIBLE : INVISIBLE);
         float contentScale = reveal.scale();
         for (View layer : revealContent) {
             layer.setScaleX(contentScale);
@@ -788,6 +793,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void backgroundChanged() {
         heroDirty = statusDirty = tilesDirty = drawerDirty = true;
         sky.invalidate();
+        revealBackdrop.invalidate();
         platter.invalidate();
     }
 
