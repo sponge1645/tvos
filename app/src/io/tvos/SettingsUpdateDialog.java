@@ -14,6 +14,8 @@ final class SettingsUpdateDialog {
     private final Activity activity;
     private final View owner;
     private final SettingsUpdateProgress progress;
+    private final SettingsPopupBackdrop backdrop = new SettingsPopupBackdrop();
+    private final SettingsPopupBackdrop.Source backdropSource;
     private final Paint popupPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint popupHeading, popupBody, popupButtonText;
     private final RectF popupPanel = new RectF(), popupButton = new RectF();
@@ -24,10 +26,11 @@ final class SettingsUpdateDialog {
     private final SelfUpdate.Listener updateListener = this::onSelfUpdate;
     private float k = 1;
 
-    SettingsUpdateDialog(Activity activity, View owner, SettingsUpdateProgress progress) {
+    SettingsUpdateDialog(Activity activity, View owner, SettingsUpdateProgress progress, SettingsPopupBackdrop.Source backdropSource) {
         this.activity = activity;
         this.owner = owner;
         this.progress = progress;
+        this.backdropSource = backdropSource;
     }
 
     boolean visible() { return updatePopup != 0; }
@@ -42,6 +45,7 @@ final class SettingsUpdateDialog {
     void pause() {
         running = false;
         SelfUpdate.get(activity).removeListener(updateListener);
+        backdrop.clear();
     }
 
     void check() {
@@ -52,7 +56,8 @@ final class SettingsUpdateDialog {
 
     void resize(float scale) {
         k = scale;
-        popupHeading = Ui.text(Ui.displaySemibold, 38*k, 0xFFFFFFFF);
+        backdrop.clear();
+        popupHeading = Ui.text(Ui.displaySemibold, 33*k, 0xFFFFFFFF);
         popupHeading.setTextAlign(Paint.Align.LEFT);
         popupBody = Ui.text(Ui.regular, 25*k, 0xFF899295);
         popupBody.setTextAlign(Paint.Align.LEFT);
@@ -89,6 +94,7 @@ final class SettingsUpdateDialog {
             updateRequested = false;
             updatePopup = 0;
             updatePopupClosing = false;
+            backdrop.clear();
             updater.install(activity);
             if (updater.status().kind == SelfUpdate.ERROR) {
                 updateRequested = true;
@@ -106,6 +112,7 @@ final class SettingsUpdateDialog {
     }
 
     private void showUpdatePopup(int mode) {
+        backdrop.clear();
         updatePopup = mode;
         updatePopupFocus = 0;
         updatePopupClosing = false;
@@ -145,7 +152,7 @@ final class SettingsUpdateDialog {
         return true;
     }
 
-    void draw(Canvas c, int w, int h, boolean light) {
+    void draw(Canvas c, int w, int h, boolean light, boolean reduceTransparency) {
         long elapsed = SystemClock.uptimeMillis() - updatePopupStarted;
         float t = Math.min(1f, elapsed / 260f);
         float ease = 1f - (1f-t)*(1f-t)*(1f-t);
@@ -153,9 +160,12 @@ final class SettingsUpdateDialog {
         if (updatePopupClosing && t >= 1f) {
             updatePopup = 0;
             updatePopupClosing = false;
+            backdrop.clear();
             return;
         }
         if (t < 1f) owner.postInvalidateDelayed(16);
+        if (reduceTransparency) backdrop.clear();
+        else backdrop.prepare(w, h, light, backdropSource);
         c.save();
         Paint p = popupPaint;
         p.reset();
@@ -203,7 +213,8 @@ final class SettingsUpdateDialog {
         p.setAlpha(255);
         p.setStyle(Paint.Style.FILL);
         p.setShader(null);
-        p.setColor(0xFF1E2425);
+        if (!reduceTransparency) backdrop.draw(c, panel, 72*k);
+        p.setColor(reduceTransparency ? 0xFF1E2425 : 0xB31E2425);
         c.drawRoundRect(panel, 72*k, 72*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
@@ -220,10 +231,9 @@ final class SettingsUpdateDialog {
         for (String line : lines) lineY = drawParagraph(c, line, left+50*k, lineY, right-left-100*k, body);
         float buttonTop = bottom - (buttons.length*72+(buttons.length-1)*12+32)*k;
         Paint buttonText = popupButtonText;
-        float buttonHalfWidth = (right-left-48*k)*0.55f;
         for (int i=0; i<buttons.length; i++) {
             RectF b = popupButton;
-            b.set(cx-buttonHalfWidth, buttonTop+i*84*k, cx+buttonHalfWidth, buttonTop+(i*84+72)*k);
+            b.set(left+24*k, buttonTop+i*84*k, right-24*k, buttonTop+(i*84+72)*k);
             boolean selected = i == updatePopupFocus || buttons.length == 1;
             // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
             p.clearShadowLayer();

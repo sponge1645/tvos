@@ -229,7 +229,7 @@ public class SettingsActivity extends Activity {
             activity = a;
             deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
-            updateDialog = new SettingsUpdateDialog(a, this, updateProgress);
+            updateDialog = new SettingsUpdateDialog(a, this, updateProgress, this::drawSettingsContent);
             valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
@@ -501,15 +501,17 @@ public class SettingsActivity extends Activity {
                 lastSky = up;
                 scene.advance(seconds);
             }
+            drawSettingsContent(c);
+            if (updateDialog.visible()) updateDialog.draw(c, w, h, lightSettings(), localFlag("reduce_transparency"));
+        }
+
+        private void drawSettingsContent(Canvas c) {
             background.draw(c, w, h, lightSettings());
-
             pageTitle.setColor(lightSettings() ? 0xFF738190 : 0xFF5A676D);
-            drawPageTitle(c, up);
+            drawPageTitle(c, SystemClock.uptimeMillis());
             drawSettingsLogo(c);
-
             drawListViewport(c);
             drawTileDescription(c);
-            if (updateDialog.visible()) updateDialog.draw(c, w, h, lightSettings());
         }
 
         /** The wordmark is a real cutout: the existing background remains visible through it. */

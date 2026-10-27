@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess, tempfile
 from settings_strings_fixture import write
 stubs={
+'io/tvos/SettingsPopupBackdrop.java':'''package io.tvos;import android.graphics.*;final class SettingsPopupBackdrop {interface Source{void draw(Canvas c);}void clear(){}void prepare(int w,int h,boolean theme,Source source){}void draw(Canvas c,RectF panel,float radius){}}''',
 'io/tvos/SettingsUpdateProgress.java':'package io.tvos;class SettingsUpdateProgress {int kind,percent;void observe(int k,int p,long now){kind=k;percent=p;}}',
 'android/content/Context.java':'''package android.content;public class Context {public final android.content.pm.PackageManager pm=new android.content.pm.PackageManager();public android.content.pm.PackageManager getPackageManager(){return pm;}public String getPackageName(){return "io.tvos";}}''',
 'android/app/Activity.java':'''package android.app;public class Activity extends android.content.Context {}''',
@@ -32,9 +33,9 @@ public class UpdateDialogHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static final int OK=KeyEvent.KEYCODE_DPAD_CENTER,BACK=KeyEvent.KEYCODE_BACK,DOWN=KeyEvent.KEYCODE_DPAD_DOWN,UP=KeyEvent.KEYCODE_DPAD_UP;
  static void key(SettingsUpdateDialog d,int code){check(d.onKey(new KeyEvent(KeyEvent.ACTION_UP,code)),"modal consumes input");}
- static Canvas draw(SettingsUpdateDialog d,boolean light){Canvas c=new Canvas();d.draw(c,1920,1080,light);check(c.depth==0,"balanced canvas state");return c;}
+ static Canvas draw(SettingsUpdateDialog d,boolean light){Canvas c=new Canvas();d.draw(c,1920,1080,light,false);check(c.depth==0,"balanced canvas state");return c;}
  static SettingsUpdateProgress progress;
- static SettingsUpdateDialog create(){SelfUpdate.instance=new SelfUpdate();SettingsUpdateDialog d=new SettingsUpdateDialog(new Activity(),new View(),progress=new SettingsUpdateProgress());d.resize(1);d.resume();return d;}
+ static SettingsUpdateDialog create(){SelfUpdate.instance=new SelfUpdate();SettingsUpdateDialog d=new SettingsUpdateDialog(new Activity(),new View(),progress=new SettingsUpdateProgress(),null);d.resize(1);d.resume();return d;}
  public static void main(String[] args){
   AppLanguage.select("en");SettingsUpdateDialog d=create();SelfUpdate u=SelfUpdate.instance;
   check(!d.visible()&&u.listeners.size()==1&&u.automatic==1,"resume registers once without opening unsolicited modal");
@@ -64,7 +65,7 @@ public class UpdateDialogHarness {
    u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Загрузить и установить":"Download and Install"),"language read at drawing time");
    u.emit(SelfUpdate.READY,100,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Версия 1.2.3":"Version 1.2.3"),"ready version spacing");
   }
-  d.resize(.5f);c=draw(d,true);check(Math.abs(c.panelLeft-362.4f)<.01f&&c.panelTop>45f&&c.sizes.get(0)==19f,"resize updates geometry and fonts");
+  d.resize(.5f);c=draw(d,true);check(Math.abs(c.panelLeft-362.4f)<.01f&&c.panelTop>45f&&c.sizes.get(0)==16.5f,"resize updates geometry and fonts");
   Activity a=new Activity();check(SettingsUpdateDialog.versionName(a).equals("tvOS 1.1"),"installed version lookup");a.pm.missing=true;check(SettingsUpdateDialog.versionName(a).equals("tvOS"),"missing version safe fallback");
   System.out.println("PASS: actual update modal lifecycle, input, status transitions, deferred install, cancellation, fades, geometry and live localization");
  }
