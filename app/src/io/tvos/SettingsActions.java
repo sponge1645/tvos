@@ -7,12 +7,12 @@ final class SettingsActions {
     private SettingsActions() { }
 
     enum Action {
-        NONE, NAME, HOME_MODE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
+        NONE, NAME, HOME_MODE, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         DATE_SETTINGS, MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, FAKE_UPDATE, MENU_BUTTON,
         VPN_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
-        GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
+        MEDIA_SCREEN(MEDIA), MOVIE_SERVICE_SCREEN(MOVIE_SERVICE), GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
         ACCESSIBILITY_SCREEN(ACCESSIBILITY), DOWNLOADS_SCREEN(APPS_DOWNLOADS),
         TOP_PANEL_SCREEN(TOP_PANEL), WIDGETS_SCREEN(WIDGETS), SYSTEM_SCREEN(SYSTEM),
         ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
@@ -76,17 +76,20 @@ final class SettingsActions {
             case MAIN:
                 switch (row) {
                     case 0: return Action.GENERAL_SCREEN;
-                    case 1: return Action.SCREENSAVER_SCREEN;
-                    case 2: return Action.AIRPLAY;
-                    case 3: return Action.REMOTES;
-                    case 4: return Action.ACCESSIBILITY_SCREEN;
-                    case 5: return Action.DOWNLOADS_SCREEN;
-                    case 6: return Action.SHELF_EDITOR;
-                    case 7: return Action.TOP_PANEL_SCREEN;
-                    case 8: return Action.WIDGETS_SCREEN;
-                    case 9: return Action.SYSTEM_SCREEN;
+                    case 1: return Action.MEDIA_SCREEN;
+                    case 2: return Action.SCREENSAVER_SCREEN;
+                    case 3: return Action.AIRPLAY;
+                    case 4: return Action.REMOTES;
+                    case 5: return Action.ACCESSIBILITY_SCREEN;
+                    case 6: return Action.DOWNLOADS_SCREEN;
+                    case 7: return Action.SHELF_EDITOR;
+                    case 8: return Action.TOP_PANEL_SCREEN;
+                    case 9: return Action.WIDGETS_SCREEN;
+                    case 10: return Action.SYSTEM_SCREEN;
                     default: return Action.NONE;
                 }
+            case MEDIA: return Action.MOVIE_SERVICE_SCREEN;
+            case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
             case GENERAL: return row == 3 ? Action.CITY_PICKER : row == 0 ? Action.ABOUT_SCREEN : row == 4 ? Action.DATE_SETTINGS : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
@@ -114,10 +117,12 @@ final class SettingsActions {
             case MAIN: return null;
             case PICKER: return pickFor == PICK_CITY ? new Target(GENERAL, 3)
                     : pickFor == PICK_VPN ? new Target(VPN_SETTINGS, 1) : new Target(REMOTE_KEYS, pickFor - 1);
+            case MEDIA: return new Target(MAIN, 1);
+            case MOVIE_SERVICE: return new Target(MEDIA, 0);
             case HOME_CHOICE: return new Target(SYSTEM, 2);
-            case SCREENSAVER: return new Target(MAIN, 1);
+            case SCREENSAVER: return new Target(MAIN, 2);
             case ABOUT: return new Target(GENERAL, 0);
-            case REMOTE_KEYS: return new Target(MAIN, 3);
+            case REMOTE_KEYS: return new Target(MAIN, 4);
             case MENU_BUTTONS: return new Target(TOP_PANEL, 1);
             case CATEGORY_EDIT: return new Target(TOP_PANEL, 0);
             case VPN_SETTINGS: return new Target(MENU_BUTTONS, buttonCount);
@@ -126,9 +131,9 @@ final class SettingsActions {
             case RESET: return new Target(SYSTEM, 1);
             case WEATHER: return new Target(WIDGETS, 0);
             case DATE_TIME: return new Target(WIDGETS, 1);
-            case SHELF_EDIT: return new Target(MAIN, 6);
-            case APPS_DOWNLOADS: return new Target(MAIN, 5);
-            default: return new Target(MAIN, screen == GENERAL ? 0 : screen == ACCESSIBILITY ? 4 : screen == TOP_PANEL ? 7 : screen == WIDGETS ? 8 : screen == SYSTEM ? 9 : 0);
+            case SHELF_EDIT: return new Target(MAIN, 7);
+            case APPS_DOWNLOADS: return new Target(MAIN, 6);
+            default: return new Target(MAIN, screen == GENERAL ? 0 : screen == ACCESSIBILITY ? 5 : screen == TOP_PANEL ? 8 : screen == WIDGETS ? 9 : screen == SYSTEM ? 10 : 0);
         }
     }
 }

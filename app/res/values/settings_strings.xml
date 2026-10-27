@@ -188,4 +188,9 @@
     </plurals>
     <string name="settings_fake_update" formatted="false">Fake Update</string>
     <string name="settings_fake_update_complete" formatted="false">Test download finished. No update was installed.</string>
+    <string name="settings_video_audio" formatted="false">Video and Audio</string>
+    <string name="settings_default_service" formatted="false">Default Service</string>
+    <string name="settings_ask_every_time" formatted="false">Ask Every Time</string>
+    <string name="settings_service_selected" formatted="false">Selected</string>
+    <string name="settings_help_default_service" formatted="false">Open movies and shows using the selected service.</string>
 </resources>

@@ -48,7 +48,15 @@ final class MovieAppLauncher {
 
     /** Choose a launchable installed TV application. Does not claim the title is available there. */
     void choose(Recs.Pick pick) {
+        if (pick == null) return;
         PackageManager pm = activity.getPackageManager();
+        String service = MovieService.id(MovieService.index(activity.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getString(MovieService.KEY, "")));
+        if (!service.isEmpty()) {
+            String preferred = MovieService.resolve(service, pkg -> HomeApps.launchIntent(pm, pkg) != null);
+            if (!preferred.isEmpty()) { open(pick, preferred, MovieService.label(MovieService.index(service), AppLanguage.current())); return; }
+            host.toast(AppStrings.get(R.string.home_default_service_unavailable));
+        }
         LinkedHashMap<String, String> apps = new LinkedHashMap<>();
         Intent query = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
         for (ResolveInfo ri : pm.queryIntentActivities(query, 0)) {
@@ -81,48 +89,52 @@ final class MovieAppLauncher {
                 .setTitle(AppStrings.get(R.string.home_open_app))
                 .setItems(labels, (dialog, which) -> {
                     Map.Entry<String, String> selected = entries.get(which);
-                    if ("top.rootu.lampa".equals(selected.getKey())) {
-                        try {
-                            Intent link = new Intent(Intent.ACTION_VIEW,
-                                    android.net.Uri.parse("https://www.themoviedb.org/"
-                                            + ("tv".equals(pick.kind) ? "tv/" : "movie/") + pick.id));
-                            link.setPackage("top.rootu.lampa");
-                            if (AppLaunch.start(activity, link, "Lampa title link")) return;
-                        } catch (RuntimeException e) {
-                            AppLog.unexpected("Lampa link preparation", e);
-                        }
-                        // Older Lampa builds may not handle TMDB links; use normal launch.
-                    }
-                    if ("com.seena.app".equals(selected.getKey())) {
-                        // Seena 1.9.0: ACTION_SEARCH with a full query, no delayed relaunch.
-                        try {
-                            Intent search = new Intent(Intent.ACTION_SEARCH);
-                            search.setClassName("com.seena.app", "com.seena.app.MainActivity");
-                            search.putExtra(android.app.SearchManager.QUERY, pick.title);
-                            search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            if (!AppLaunch.start(activity, search, "Seena search"))
-                                host.toast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
-                        } catch (RuntimeException e) {
-                            AppLog.unexpected("Seena search preparation", e);
-                            host.toast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
-                        }
-                        return;
-                    }
-                    if ("com.vk.tv".equals(selected.getKey())) {
-                        openVkVideoSearch(pick.title);
-                        return;
-                    }
-                    if (KinoPubLink.supports(selected.getKey())) {
-                        openKinoPub(pick, selected.getKey());
-                        return;
-                    }
-                    HomeApps.Item app = HomeApps.app(selected.getKey(), selected.getValue());
-                    if (!HomeApps.open(activity, app, anchor, 0, 0, 1, 1)) {
-                        host.toast(AppStrings.get(R.string.home_couldn_t_open_app));
-                    }
+                    open(pick, selected.getKey(), selected.getValue());
                 })
                 .setNegativeButton(AppStrings.get(R.string.home_cancel), null)
                 .show();
+    }
+
+    private void open(Recs.Pick pick, String pkg, String label) {
+        if ("top.rootu.lampa".equals(pkg)) {
+            try {
+                Intent link = new Intent(Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://www.themoviedb.org/"
+                                + ("tv".equals(pick.kind) ? "tv/" : "movie/") + pick.id));
+                link.setPackage("top.rootu.lampa");
+                if (AppLaunch.start(activity, link, "Lampa title link")) return;
+            } catch (RuntimeException e) {
+                AppLog.unexpected("Lampa link preparation", e);
+            }
+            // Older Lampa builds may not handle TMDB links; use normal launch.
+        }
+        if ("com.seena.app".equals(pkg)) {
+            // Seena 1.9.0: ACTION_SEARCH with a full query, no delayed relaunch.
+            try {
+                Intent search = new Intent(Intent.ACTION_SEARCH);
+                search.setClassName("com.seena.app", "com.seena.app.MainActivity");
+                search.putExtra(android.app.SearchManager.QUERY, pick.title);
+                search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (!AppLaunch.start(activity, search, "Seena search"))
+                    host.toast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
+            } catch (RuntimeException e) {
+                AppLog.unexpected("Seena search preparation", e);
+                host.toast(AppStrings.get(R.string.home_couldn_t_open_seena_search));
+            }
+            return;
+        }
+        if ("com.vk.tv".equals(pkg)) {
+            openVkVideoSearch(pick.title);
+            return;
+        }
+        if (KinoPubLink.supports(pkg)) {
+            openKinoPub(pick, pkg);
+            return;
+        }
+        HomeApps.Item app = HomeApps.app(pkg, label);
+        if (!HomeApps.open(activity, app, anchor, 0, 0, 1, 1)) {
+            host.toast(AppStrings.get(R.string.home_couldn_t_open_app));
+        }
     }
 
     /** Open VK Video search with the selected movie title; no automation. */

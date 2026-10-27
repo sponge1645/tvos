@@ -36,7 +36,7 @@ public class CLASSNAME {
   static void setKeyApp(String key,String pkg){note("key:"+key+":"+pkg);}
  }
  static class HomeApps {static List<String> shelfPackages(Context c){return Arrays.asList("llc.itdev.incy","watch.kino");}}
- static class Store {final Map<String,Boolean> flags=new HashMap<>();boolean getBoolean(String key,boolean fallback){return flags.getOrDefault(key,fallback);}Store edit(){return this;}Store putString(String k,String v){note(k+":"+v);return this;}void apply(){}}
+ static class Store {final Map<String,String> strings=new HashMap<>();String getString(String k,String d){return strings.getOrDefault(k,d);}final Map<String,Boolean> flags=new HashMap<>();boolean getBoolean(String key,boolean fallback){return flags.getOrDefault(key,fallback);}Store edit(){return this;}Store putString(String k,String v){strings.put(k,v);note(k+":"+v);return this;}void apply(){}}
  final Store store=new Store();Store localPrefs(){return store;}
  static class HomeData {static HomeData get(Context c){return new HomeData();}void settingsChanged(){note("changed");}}
  static class HomeMode {

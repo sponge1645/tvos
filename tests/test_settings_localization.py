@@ -15,9 +15,9 @@ def extract(source,signature):
 def popup():
  source=Path('app/src/io/tvos/SettingsUpdateDialog.java').read_text()
  a=source.index('        String[] lines;',source.index('void draw('))
- b=source.index('        float lineY',a)
- c=source.index('        String[] buttons =',b);d=source.index('        float buttonTop',c)
- return 'String[][] popup(){'+source[a:b]+source[c:d]+'return new String[][]{lines,buttons};}'
+ b=source.index('        float left =',a)
+ return 'String[][] popup(){'+source[a:b]+'return new String[][]{lines,buttons};}'
+
 # Every locale has the same formatting arguments; translators can reorder them.
 en,ru=tables()
 for key in en:
@@ -49,7 +49,7 @@ tests='''
    // Download copy now belongs to SettingsUpdateProgress, covered by its whole-class regression.
    h.updatePopup=3;SelfUpdate.status.message="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
    copy=h.popup();check(copy[0][1].length()==44&&copy[0][2].equals("STUVWXYZ"),"error wrapping unchanged");
-   h.updatePopup=1;copy=h.popup();check(copy[0][0].endsWith("tvOS 1.1")&&copy[1][0].equals("OK"),"installed version and OK");
+   h.updatePopup=1;copy=h.popup();check(copy[0][0].equals("1.1")&&copy[0][1].endsWith("tvOS 1.1")&&copy[1][0].equals("OK"),"installed version and OK");
   }
   System.out.println("PASS: RU/EN update dialogs, version/error states, menu labels and resource argument parity");
  }

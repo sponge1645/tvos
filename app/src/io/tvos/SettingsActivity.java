@@ -271,7 +271,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case TOP_PANEL: {
+                case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -322,8 +322,8 @@ public class SettingsActivity extends Activity {
 
         private RectF rowBox(int row) {
             float top, height;
-            if (screen == MAIN || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == VPN_SETTINGS || screen == ABOUT || screen == SCREENSAVER) {
-                top = LIST_TOP + row * (ROW_H + ABOUT_ROW_GAP)
+            if (screen == MAIN || screen == MEDIA || screen == MOVIE_SERVICE || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == VPN_SETTINGS || screen == ABOUT || screen == SCREENSAVER) {
+                top = LIST_TOP + row * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
                         + (screen == ABOUT ? (row == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET);
                 height = ROW_H;
             } else if (screen == HOME_CHOICE) {
@@ -453,7 +453,9 @@ public class SettingsActivity extends Activity {
 
         private int rowCount() {
             switch (screen) {
-                case MAIN: return 10;
+                case MAIN: return 11;
+                case MEDIA: return 1;
+                case MOVIE_SERVICE: return MovieService.count();
                 case APPS_DOWNLOADS: return 7;
                 case GENERAL: return 8;
                 case SCREENSAVER: return 5;
@@ -649,7 +651,7 @@ public class SettingsActivity extends Activity {
         // Legacy display/Wi-Fi information remains available on older TV firmware.
         @SuppressWarnings("deprecation")
         // Approved About-screen geometry (all dimensions are scaled by k).
-        private static final float ABOUT_ROW_GAP = 22f;
+        private static final float ABOUT_ROW_GAP = 22f, MAIN_ROW_GAP = 14f;
         private static final float ABOUT_NAME_Y_OFFSET = 3f;
         private static final float ABOUT_DETAILS_Y_OFFSET = 13f;
         private static final float ABOUT_NAME_RIGHT_EXTENSION = 6f;
@@ -685,9 +687,10 @@ public class SettingsActivity extends Activity {
         /** Parent hierarchy also determines animation direction. No per-screen animation code. */
         private int parentScreen(int child) {
             switch (child) {
-                case GENERAL: case SCREENSAVER: case REMOTE_KEYS: case ACCESSIBILITY: case APPS_DOWNLOADS:
+                case MEDIA: case GENERAL: case SCREENSAVER: case REMOTE_KEYS: case ACCESSIBILITY: case APPS_DOWNLOADS:
                 case SHELF_EDIT: case TOP_PANEL: case WIDGETS: case SYSTEM:
                     return MAIN;
+                case MOVIE_SERVICE: return MEDIA;
                 case ABOUT: return GENERAL;
                 case HOME_CHOICE: return SYSTEM;
                 case MENU_BUTTONS: case CATEGORY_EDIT: return TOP_PANEL;
@@ -703,7 +706,7 @@ public class SettingsActivity extends Activity {
 
         private void drawScreenContent(Canvas c) {
             switch (screen) {
-                case MAIN: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
+                case MAIN: case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
                 case ACCESSIBILITY: case APPS_DOWNLOADS: case VPN_SETTINGS: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
@@ -757,7 +760,7 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case SCREENSAVER: return row != 4;
                 case ACCESSIBILITY: return row != 2;
-                case APPS_DOWNLOADS: case RESET: return false;
+                case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: return false;
                 case UPDATES: return row == 1;
                 case SYSTEM: return row != 3;
                 case VPN_SETTINGS: return row != 0 && (vpnTopEnabled() || row != 1);
@@ -769,7 +772,7 @@ public class SettingsActivity extends Activity {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = paintRow(pass, 0, labels.length, focus);
-                float y = (LIST_TOP + i * (ROW_H + ABOUT_ROW_GAP)
+                float y = (LIST_TOP + i * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
                         + (screen == ABOUT ? (i == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET)) * k;
                 rowRect.set(LIST_X * k, y, LIST_R * k, y + ROW_H * k);
                 if (screen != ABOUT || i == 0) rowRect.right += ABOUT_NAME_RIGHT_EXTENSION * k;
@@ -791,7 +794,11 @@ public class SettingsActivity extends Activity {
                                 f > 0.5f ? 0xFF777777 : secondaryInk(), reduced);
                         if (running && !reduced) postInvalidateDelayed(80);
                     } else if (menuChevronVisible(i)) drawApprovedChevron(c);
-                    if (screen == UPDATES && i == 2) {
+                    if (screen == MOVIE_SERVICE) {
+                        if (i == MovieService.index(localPrefs().getString(MovieService.KEY, "")))
+                            Symbols.draw(getContext(), c, "check", rowRect.right - 43 * k, rowRect.centerY(), 24 * k,
+                                    blend(normalInk(), INK, f));
+                    } else if (screen == UPDATES && i == 2) {
                         fakeCheckPaint.setStyle(Paint.Style.STROKE);
                         fakeCheckPaint.setStrokeWidth(2 * k);
                         fakeCheckPaint.setColor(valueInk(f));
@@ -1416,7 +1423,7 @@ public class SettingsActivity extends Activity {
             Context c = getContext();
             if (action.targetScreen >= 0) {
                 screen = action.targetScreen;
-                focus = 0;
+                focus = screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
                 case HOME_MODE:
                     if (!busy()) {
@@ -1425,6 +1432,10 @@ public class SettingsActivity extends Activity {
                     }
                     invalidate();
                     return;
+                case SELECT_MOVIE_SERVICE:
+                    localPrefs().edit().putString(MovieService.KEY, MovieService.id(focus)).apply();
+                    screen = MEDIA; focus = 0;
+                    break;
                 case SELECT_CITY: {
                     String[] city = cities.get(pickScroll + focus);
                     Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);

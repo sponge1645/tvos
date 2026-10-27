@@ -7,7 +7,7 @@ from tmdb_metadata_fixture import JSON,ARRAY,block
 sources=files()
 sources['android/content/Context.java']=sources['android/content/Context.java'].replace('public class Context {','public class Context {public static final int MODE_PRIVATE=0;public SharedPreferences prefs=new SharedPreferences();public SharedPreferences getSharedPreferences(String n,int m){return prefs;}')
 sources['android/content/SharedPreferences.java']='''package android.content;import java.util.*;public class SharedPreferences {
- public Map<String,Integer> data=new HashMap<>();public int writes;public int getInt(String key,int fallback){return data.getOrDefault(key,fallback);}
+ public Map<String,String> strings=new HashMap<>();public String getString(String k,String d){return strings.getOrDefault(k,d);}public Map<String,Integer> data=new HashMap<>();public int writes;public int getInt(String key,int fallback){return data.getOrDefault(key,fallback);}
  public Editor edit(){return new Editor();}public class Editor {String key;int value;public Editor putInt(String k,int v){key=k;value=v;return this;}public void apply(){writes++;data.put(key,value);}}
 }'''
 sources['android/os/Handler.java']='''package android.os;import java.util.*;public class Handler {public List<Runnable> queue=new ArrayList<>();public void post(Runnable r){queue.add(r);}public void drain(){for(Runnable r:new ArrayList<>(queue)){queue.remove(r);r.run();}}}'''
@@ -17,7 +17,7 @@ sources['org/json/JSONArray.java']=ARRAY.replace('private final List<Object> a=n
 sources['org/json/JSONException.java']='package org.json;public class JSONException extends Exception {public JSONException(String message){super(message);}}'
 sources['io/tvos/HomeApps.java']='''package io.tvos;import android.app.Activity;import android.content.*;import android.content.pm.*;import android.view.View;
 class HomeApps {static class Item {String pkg,label;}static Item app(String pkg,String label){Item item=new Item();item.pkg=pkg;item.label=label;return item;}
- static Intent launchIntent(PackageManager pm,String pkg){return AppLaunch.launchIntent(pm,pkg);}
+ static Intent launchIntent(PackageManager pm,String pkg){boolean found=false;for(ResolveInfo ri:pm.tv)found|=ri.activityInfo.packageName.equals(pkg);for(ResolveInfo ri:pm.phone)found|=ri.activityInfo.packageName.equals(pkg);return found?AppLaunch.launchIntent(pm,pkg):null;}
  static boolean open(Activity a,Item i,View v,int x,int y,int w,int h){Intent intent=launchIntent(a.getPackageManager(),i.pkg);return intent!=null&&AppLaunch.start(a,intent,"app");}
 }'''
 sources['io/tvos/Recs.java']='package io.tvos;class Recs {'+block(Path('app/src/io/tvos/Recs.java').read_text(),'    static final class Pick {')+'}'
@@ -42,6 +42,14 @@ public class MovieLauncherHarness implements MovieAppLauncher.Host {
    public int getResponseCode()throws IOException{requests++;if(ioFailure)throw new IOException("private");check(getConnectTimeout()==6000&&getReadTimeout()==6000,"network timeouts retained");return status;}
    public InputStream getInputStream(){return new ByteArrayInputStream("[]".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
   };}}:null);
+  for(String service:new String[]{"lampa","seena","vk","kinopub"}){
+   String pkg=service.equals("lampa")?"top.rootu.lampa":service.equals("seena")?"com.seena.app":service.equals("vk")?"com.vk.tv":"watch.kino.mod";
+   MovieLauncherHarness direct=app(pkg);direct.activity.prefs.strings.put(MovieService.KEY,service);AlertDialog.labels=null;
+   JSONArray.response=Arrays.asList(item(81,"Тест (2024)","movie"));direct.launcher.choose(pick());direct.worker();direct.handler.drain();
+   check(direct.activity.launched!=null&&direct.activity.launched.pkg.equals(pkg)&&AlertDialog.labels==null,"preferred service bypasses chooser and keeps route: "+service);
+  }
+  MovieLauncherHarness fallback=app("com.seena.app");fallback.activity.prefs.strings.put(MovieService.KEY,"lampa");fallback.launcher.choose(pick());check(fallback.toasts==1&&fallback.activity.starts==1,"missing preferred app falls back to installed chooser");
+  check(MovieService.index("unknown")==0&&MovieService.id(99).equals(""),"invalid stored service returns Ask Every Time");
   MovieLauncherHarness missing=new MovieLauncherHarness();missing.launcher.choose(pick());check(missing.toasts==1&&missing.activity.starts==0,"empty providers");
   MovieLauncherHarness lampa=app("top.rootu.lampa");lampa.activity.failureFor=i->Intent.ACTION_VIEW.equals(i.action)?new ActivityNotFoundException("link"):null;
   lampa.launcher.choose(pick());check(lampa.activity.attempts.size()==2&&lampa.toasts==0,"Lampa normal-launch fallback");

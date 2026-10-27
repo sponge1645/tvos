@@ -193,4 +193,9 @@
     </plurals>
     <string name="settings_fake_update" formatted="false">Фейковое обновление</string>
     <string name="settings_fake_update_complete" formatted="false">Тестовая загрузка завершена. Обновление не устанавливалось.</string>
+    <string name="settings_video_audio" formatted="false">Видео и аудио</string>
+    <string name="settings_default_service" formatted="false">Сервис по умолчанию</string>
+    <string name="settings_ask_every_time" formatted="false">Спрашивать каждый раз</string>
+    <string name="settings_service_selected" formatted="false">Выбрано</string>
+    <string name="settings_help_default_service" formatted="false">Открывать фильмы и сериалы через выбранный сервис.</string>
 </resources>

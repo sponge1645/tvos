@@ -36,7 +36,7 @@ public class LaunchHarness extends View {
  static Recs.Pick pick(){Recs.Pick p=new Recs.Pick();p.kind="movie";p.id=42;p.title="A & Б";return p;}
  static LaunchHarness app(String pkg){LaunchHarness h=new LaunchHarness();h.activity.pm.tv.add(new ResolveInfo(pkg,"Video"));
   h.activity.pm.leanback=new Intent("launch").setPackage(pkg);return h;}
-'''+''.join(block(movie,s).replace('void choose(', 'void chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(', '    private void openVkVideoSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
+'''+''.join(block(movie,s).replace('void choose(', 'void chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(', '    private void open(', '    private void openVkVideoSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
  public static void main(String[] args){
   Intent intent=new Intent("test");Context c=new Context();Log.reset();
   check(AppLaunch.start(c,intent,"launch")&&c.launched==intent,"one-argument launch success");
@@ -114,6 +114,7 @@ public class LaunchHarness extends View {
 }
 '''
 sources=files()
+sources['android/content/Context.java']=sources['android/content/Context.java'].replace('public class Context {','public class Context {public static final int MODE_PRIVATE=0;public static class Preferences {public String getString(String k,String d){return d;}}public Preferences getSharedPreferences(String n,int m){return new Preferences();}')
 sources['io/tvos/HomeApps.java']=app_wrapper
 sources['io/tvos/LaunchHarness.java']=harness
 sources['io/tvos/KinoPubLink.java']=Path('app/src/io/tvos/KinoPubLink.java').read_text()

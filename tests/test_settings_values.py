@@ -22,6 +22,8 @@ public class ValuesHarness {
   Activity a=new Activity();String[] status={""};boolean[] free={false};SettingsValues v=new SettingsValues(a,new SettingsOrderEditor(),()->free[0],top->top,()->status[0]);
   for(String lang:new String[]{"en","ru"}){
    AppLanguage.select(lang);boolean ru=lang.equals("ru");
+   check(v.menu(MEDIA,1)[0].equals(ru?"Спрашивать каждый раз":"Ask Every Time"),"default service initially asks every time");
+   a.prefs.data.put(MovieService.KEY,"seena");check(v.menu(MEDIA,1)[0].equals("Seena")&&v.menu(MOVIE_SERVICE,5)[3].equals(ru?"Выбрано":"Selected"),"service value and accessible selected state");a.prefs.data.remove(MovieService.KEY);
    String[] general=v.menu(GENERAL,8);check(general.length==8&&general[0].isEmpty()&&general[3].equals("City"),"general ordering");
    check(general[2].equals(AppLanguage.current().nativeName)&&general[1].equals(ru?"Авто":"Automatic"),"live language and theme");
    Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,8);check(general[5].equals("°C")&&general[6].equals(ru?"24 ч":"24 h"),"units/hour");

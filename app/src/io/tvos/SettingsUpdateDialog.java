@@ -54,7 +54,7 @@ final class SettingsUpdateDialog {
 
     void resize(float scale) {
         k = scale;
-        popupHeading = Ui.text(Ui.displaySemibold, 47*k, 0xFFFFFFFF);
+        popupHeading = Ui.text(Ui.displaySemibold, 38*k, 0xFFFFFFFF);
         popupHeading.setTextAlign(Paint.Align.LEFT);
         popupBody = Ui.text(Ui.regular, 30*k, 0xFFE5E9F3);
         popupBody.setTextAlign(Paint.Align.LEFT);
@@ -167,9 +167,30 @@ final class SettingsUpdateDialog {
         p.setColor(light ? 0xFF62645B : 0xFF000000);
         p.setAlpha(Math.round((light ? 105 : 175) * alpha));
         c.drawRect(0, 0, w, h, p);
+        String[] lines;
+        SelfUpdate.Status update = SelfUpdate.get(activity).status();
+        String availableVersion = update.release == null ? "" : update.release.versionName;
+        if (updatePopup == 2) lines = new String[] {
+            AppStrings.get(R.string.settings_update_available).replace("%1$s", availableVersion),
+            AppStrings.get(R.string.settings_download_and_install_it_now),
+            "",
+            AppStrings.get(R.string.settings_confirm_installation_on_your_tv)
+        };
+        else if (updatePopup == 3) lines = new String[] {AppStrings.get(R.string.settings_could_not_update_tvos),
+                update.message.length() <= 44 ? update.message : update.message.substring(0, 44),
+                update.message.length() <= 44 ? "" : update.message.substring(44)};
+        else if (updatePopup == 4) lines = new String[] {AppStrings.get(R.string.settings_checking_for_updates)};
+        else if (updatePopup == 6) lines = new String[] {AppStrings.get(R.string.settings_update_downloaded),
+                AppStrings.get(R.string.settings_version) + availableVersion};
+        else lines = new String[] {versionName(activity).replace("tvOS ", ""), String.format(AppLanguage.current().locale,
+                AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(activity))};
+        String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install), AppStrings.get(R.string.settings_update_later)}
+                : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install), AppStrings.get(R.string.settings_later)} : new String[] {"OK"};
         float left = 666*k, right = 1254*k;
-        float top = ((updatePopup == 2 || updatePopup == 6) ? 90 : 310)*k;
-        float bottom = ((updatePopup == 2 || updatePopup == 6) ? 990 : 765)*k;
+        float textHeight = 0;
+        for (String line : lines) textHeight = drawParagraph(null, line, 0, textHeight, right-left-100*k, popupBody);
+        float panelHeight = 142*k + textHeight + (8 + buttons.length*72 + (buttons.length-1)*12 + 32)*k;
+        float top = (h-panelHeight)/2f, bottom = top+panelHeight;
         float cx = (left+right)/2f, cy = (top+bottom)/2f;
         float scale = 0.94f + 0.06f*ease;
         if (updatePopupClosing) scale = 1f - 0.06f*ease;
@@ -188,53 +209,34 @@ final class SettingsUpdateDialog {
                 light ? 0xF2DEE4E1 : 0xF21F2223,
                 light ? 0xF2BFCFD0 : 0xF2232526,
                 Shader.TileMode.CLAMP));
-        c.drawRoundRect(panel, 48*k, 48*k, p);
+        c.drawRoundRect(panel, 72*k, 72*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(1.2f*k);
         p.setColor(light ? 0x55FFFFFF : 0x24FFFFFF);
-        c.drawRoundRect(panel, 48*k, 48*k, p);
+        c.drawRoundRect(panel, 72*k, 72*k, p);
         p.setStyle(Paint.Style.FILL);
         Paint heading = popupHeading;
         heading.setColor(light ? 0xFF202631 : 0xFFFFFFFF);
         Paint body = popupBody;
         body.setColor(light ? 0xFF364050 : 0xFFE5E9F3);
-        c.drawText(updatePopup == 1 ? versionName(activity).replace("tvOS ", "")
-                : AppStrings.get(R.string.settings_tvos_update), left+40*k, top+90*k, heading);
-        String[] lines;
-        SelfUpdate.Status update = SelfUpdate.get(activity).status();
-        String availableVersion = update.release == null ? "" : update.release.versionName;
-        if (updatePopup == 2) lines = new String[] {
-            AppStrings.get(R.string.settings_update_available).replace("%1$s", availableVersion),
-            AppStrings.get(R.string.settings_download_and_install_it_now),
-            "",
-            AppStrings.get(R.string.settings_confirm_installation_on_your_tv)
-        };
-        else if (updatePopup == 3) lines = new String[] {AppStrings.get(R.string.settings_could_not_update_tvos),
-                update.message.length() <= 44 ? update.message : update.message.substring(0, 44),
-                update.message.length() <= 44 ? "" : update.message.substring(44)};
-        else if (updatePopup == 4) lines = new String[] {AppStrings.get(R.string.settings_checking_for_updates)};
-        else if (updatePopup == 6) lines = new String[] {AppStrings.get(R.string.settings_update_downloaded),
-                AppStrings.get(R.string.settings_version) + availableVersion};
-        else lines = new String[] {String.format(AppLanguage.current().locale,
-                AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(activity))};
-        float lineY = top+(updatePopup == 1 ? 203 : 167)*k;
-        for (String line : lines) lineY = drawParagraph(c, line, left+40*k, lineY, right-left-80*k, body);
-        String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install), AppStrings.get(R.string.settings_update_later)}
-                : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install), AppStrings.get(R.string.settings_later)} : new String[] {"OK"};
-        float buttonTop = bottom - (buttons.length*78+45)*k;
+        c.drawText(AppStrings.get(R.string.settings_tvos_update), left+50*k, top+86*k, heading);
+        float lineY = top+142*k;
+        for (String line : lines) lineY = drawParagraph(c, line, left+50*k, lineY, right-left-100*k, body);
+        float buttonTop = bottom - (buttons.length*72+(buttons.length-1)*12+32)*k;
         Paint buttonText = popupButtonText;
         for (int i=0; i<buttons.length; i++) {
             RectF b = popupButton;
-            b.set(left+40*k, buttonTop+i*82*k, right-40*k, buttonTop+(i*82+68)*k);
+            b.set(left+24*k, buttonTop+i*84*k, right-24*k, buttonTop+(i*84+72)*k);
             boolean selected = i == updatePopupFocus || buttons.length == 1;
             // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
             p.clearShadowLayer();
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);
-            p.setColor(selected ? 0xF5F7F8FA : 0x709BA4AB);
-            c.drawRoundRect(b, 17*k, 17*k, p);
-            buttonText.setColor(selected ? 0xFF171A1F : 0xDB252A30);
+            boolean primary = selected && (updatePopup == 2 || updatePopup == 6);
+            p.setColor(primary ? 0xFFF7F8FA : light ? 0x906F858D : 0xB33B4649);
+            c.drawRoundRect(b, 36*k, 36*k, p);
+            buttonText.setColor(primary ? 0xFF171A1F : light ? 0xFF202631 : 0xFFF7F8FA);
             c.drawText(buttons[i], b.centerX(), b.centerY()+Ui.halfCap(buttonText), buttonText);
         }
         if (fading) c.restore();
@@ -248,14 +250,14 @@ final class SettingsUpdateDialog {
         for (String word : text.split(" ")) {
             String candidate = line.length() == 0 ? word : line + " " + word;
             if (line.length() > 0 && paint.measureText(candidate) > width) {
-                c.drawText(line.toString(), x, y, paint);
+                if (c != null) c.drawText(line.toString(), x, y, paint);
                 y += 38*k;
                 line.setLength(0);
             }
             if (line.length() > 0) line.append(' ');
             line.append(word);
         }
-        c.drawText(line.toString(), x, y, paint);
+        if (c != null) c.drawText(line.toString(), x, y, paint);
         return y + 38*k;
     }
 

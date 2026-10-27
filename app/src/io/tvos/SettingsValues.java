@@ -36,7 +36,11 @@ final class SettingsValues {
     String[] menu(int screen, int rowCount) {
         String[] v = new String[rowCount];
         java.util.Arrays.fill(v, "");
-        if (screen == GENERAL) {
+        if (screen == MEDIA) {
+            v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
+        } else if (screen == MOVIE_SERVICE) {
+            v[MovieService.index(localPrefs().getString(MovieService.KEY, ""))] = AppStrings.get(R.string.settings_service_selected);
+        } else if (screen == GENERAL) {
             String theme = Prefs.theme();
             v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
             v[2] = settings()[0];

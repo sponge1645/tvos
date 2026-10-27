@@ -12,7 +12,8 @@ def method(signature):
  return source[a:i]
 choose=method('    void choose(')
 assert '"watch.kino.mod"' in choose
-assert 'openKinoPub(pick, selected.getKey());' in choose
+assert 'open(pick, selected.getKey(), selected.getValue());' in choose
+assert 'openKinoPub(pick, pkg);' in method('    private void open(')
 lookup=method('    private void openKinoPub(')
 assert 'launchKinoPub(cached, targetPackage);' in lookup
 assert 'launchKinoPub(resolved, targetPackage);' in lookup

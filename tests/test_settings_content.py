@@ -22,8 +22,8 @@ public class ContentHarness {
 '''+method('        private String screenTitle()')+method('        private String[] menuLabels()')+method('        private int rowCount()')+method('        private boolean menuChevronVisible(')+method('        private int parentScreen(')+'''
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
-  int[] screens={MAIN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,VPN_SETTINGS,SCREENSAVER,ABOUT};
-  int[] rows={10,8,2,2,1,3,4,2,2,7,3,2,5,8};
+  int[] screens={MAIN,MEDIA,MOVIE_SERVICE,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,VPN_SETTINGS,SCREENSAVER,ABOUT};
+  int[] rows={11,1,5,8,2,2,1,3,4,2,2,7,3,2,5,8};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -35,7 +35,7 @@ public class ContentHarness {
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
    h.screen=ACCESSIBILITY;check(!h.menuChevronVisible(2),"TV Settings action has no ghost launcher chevron");
-   h.screen=MAIN;check(h.menuLabels()[1].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
+   h.screen=MAIN;check(h.menuLabels()[2].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
    h.screen=WIDGETS;check(Arrays.equals(h.menuLabels(),russian?new String[]{"Погода","Дата"}:new String[]{"Weather","Date"}),"widget menu contains only weather and date");
    h.screen=ABOUT;check(h.screenTitle().equals(russian?"Об этом устройстве":"About"),"About heading");
    check(h.menuLabels()[2].equals(russian?"Серийный номер":"Serial Number"),"capitalization preserved");
@@ -61,8 +61,8 @@ public class ContentHarness {
    h.screen=HOME_SETTINGS;h.settingsGroup=WIDGETS;check(h.screenTitle().equals(russian?"Основные":"General"),"widget subgroup title");
    h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Категории":"Categories"),"category subgroup title");
    check(!SettingsContent.description(HOME_SETTINGS,0,0,SYSTEM,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(HOME_SETTINGS,0,0,GENERAL,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"subgroup-specific guidance");
-   check(SettingsContent.description(MAIN,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");
-   check(SettingsContent.description(MAIN,6,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("Dock"),"Dock description");
+   check(SettingsContent.description(MAIN,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");
+   check(SettingsContent.description(MAIN,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("Dock"),"Dock description");
   }
   System.out.println("PASS: settings titles, row order/count, RU/EN descriptions, dynamic menu/VPN rows, live language and stable IDs");
  }
