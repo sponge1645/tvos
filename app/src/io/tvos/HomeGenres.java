@@ -33,6 +33,23 @@ final class HomeGenres {
     // All labels share one text column; the checkmark occupies its own fixed gutter.
     private static final float TEXT_LEFT = 54, CHECK_LEFT = 22;
     private static final int VISIBLE_GENRES = 7;
+    private static final class GenreScroll extends ScrollView {
+        private final int fadeLength;
+        GenreScroll(Context context, float k) {
+            super(context);
+            fadeLength = Math.max(1, Math.round(24 * k));
+            setVerticalScrollBarEnabled(true);
+            setScrollBarStyle(View.SCROLLBARS_INSIDE_INSET);
+            setPadding(0, 0, Math.round(10 * k), 0);
+            setClipToPadding(true);
+            setVerticalFadingEdgeEnabled(true);
+            setFadingEdgeLength(fadeLength);
+        }
+        @Override protected float getTopFadingEdgeStrength() {
+            return Math.min(1f, Math.max(0, getScrollY()) / (float) fadeLength);
+        }
+        @Override protected float getBottomFadingEdgeStrength() { return 0; }
+    }
     private static final class MenuRow extends TextView {
         private final Paint checkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path checkPath;
@@ -118,7 +135,7 @@ final class HomeGenres {
         root.setOnKeyListener(this::initialRelease);
         row(root, null, k); // Pinned reset, outside the scrolling genre list.
         heading(root, AppStrings.get(R.string.home_genre), k);
-        ScrollView scroll = new ScrollView(context);
+        ScrollView scroll = new GenreScroll(context, k);
         scroll.setFillViewport(true);
         scroll.setSmoothScrollingEnabled(true);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -147,7 +164,7 @@ final class HomeGenres {
         });
         RectF anchor = host.anchor();
         home.getLocationOnScreen(location);
-        int x = location[0] + Math.round(Math.max(40 * k, Math.min(home.getWidth() - 460 * k, anchor.left)));
+        int x = location[0] + Math.round(Math.max(40 * k, Math.min(home.getWidth() - 460 * k, anchor.left)) - 5 * k);
         int y = location[1] + Math.round(Math.max(40 * k, anchor.top - 44 * k));
         window.showAtLocation(home, Gravity.TOP | Gravity.LEFT, x, y);
         root.requestFocus();
