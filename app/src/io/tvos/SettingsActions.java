@@ -9,7 +9,7 @@ final class SettingsActions {
     enum Action {
         NONE, NAME, HOME_MODE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
-        DATE_SETTINGS, MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
+        DATE_SETTINGS, MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, FAKE_UPDATE, MENU_BUTTON,
         VPN_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
         GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
@@ -25,7 +25,7 @@ final class SettingsActions {
 
     enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        AUTO_UPDATE, TRANSPARENCY, MOTION, VPN, MENU_BUTTON, GENERAL
+        AUTO_UPDATE, FAKE_UPDATE, TRANSPARENCY, MOTION, VPN, MENU_BUTTON, GENERAL
     }
 
     static boolean canAdjust(int screen, int row, int buttonCount) {
@@ -33,7 +33,7 @@ final class SettingsActions {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
             case GENERAL: return row == 1 || row == 2 || row == 5 || row == 6 || row == 7;
             case SCREENSAVER: return row >= 0 && row < 4;
-            case UPDATES: return row == 1;
+            case UPDATES: return row == 1 || row == 2;
             case ACCESSIBILITY: return row < 2;
             case VPN_SETTINGS: return row == 0;
             case MENU_BUTTONS: return row < buttonCount;
@@ -54,7 +54,7 @@ final class SettingsActions {
                     case 3: return Adjustment.DREAM_WEATHER;
                     default: return Adjustment.NONE;
                 }
-            case UPDATES: return row == 1 ? Adjustment.AUTO_UPDATE : Adjustment.NONE;
+            case UPDATES: return row == 1 ? Adjustment.AUTO_UPDATE : row == 2 ? Adjustment.FAKE_UPDATE : Adjustment.NONE;
             case ACCESSIBILITY: return row == 0 ? Adjustment.TRANSPARENCY : row == 1 ? Adjustment.MOTION : Adjustment.NONE;
             case VPN_SETTINGS: return row == 0 ? Adjustment.VPN : Adjustment.NONE;
             case MENU_BUTTONS: return Adjustment.MENU_BUTTON;
@@ -90,7 +90,7 @@ final class SettingsActions {
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
             case GENERAL: return row == 3 ? Action.CITY_PICKER : row == 0 ? Action.ABOUT_SCREEN : row == 4 ? Action.DATE_SETTINGS : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
-            case UPDATES: return row == 0 ? Action.CHECK_UPDATE : Action.AUTO_UPDATE;
+            case UPDATES: return row == 0 ? Action.CHECK_UPDATE : row == 1 ? Action.AUTO_UPDATE : row == 2 ? Action.FAKE_UPDATE : Action.NONE;
             case MENU_BUTTONS: return row == buttonCount ? Action.VPN_SCREEN : Action.MENU_BUTTON;
             case VPN_SETTINGS: return row == 0 ? Action.VPN_TOGGLE : vpnEnabled ? Action.VPN_PICKER : Action.NONE;
             case DATE_TIME: return Action.DATE_TOGGLE;

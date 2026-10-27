@@ -48,6 +48,7 @@ final class SettingsValues {
 
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));
+            if (v.length > 2) v[2] = onOff(localFlag("fake_update"));
         } else if (screen == ACCESSIBILITY) {
             v[0] = onOff(localFlag("reduce_transparency"));
             v[1] = onOff(localFlag("reduce_motion"));

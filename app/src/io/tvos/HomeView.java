@@ -1623,7 +1623,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private List<Recs.Pick> currentCatalog() {
         if (searchMode) return searchResults;
         if (tab == 4) return java.util.Collections.emptyList();
-        List<Recs.Pick> all = new ArrayList<>(baseCatalog());
+        List<Recs.Pick> base = baseCatalog();
+        List<Recs.Pick> all = new ArrayList<>(base.subList(0, Math.min(24, base.size())));
         if (tab != 4 && !all.isEmpty())
             all.add(randomPoster.tail(tab + ":" + randomGenre() + ":" + Ui.language, tab == 3 ? "tv" : "movie"));
         return all;

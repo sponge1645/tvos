@@ -35,7 +35,7 @@
     <string name="settings_download_lampa" formatted="false">Загрузить Lampa</string>
     <string name="settings_download_kinopub" formatted="false">Загрузить KinoPub</string>
     <string name="settings_reduce_transparency" formatted="false">Уменьшение прозрачности</string>
-    <string name="settings_reduce_motion" formatted="false">Уменьшение анимаций</string>
+    <string name="settings_reduce_motion" formatted="false">Уменьшение движения</string>
     <string name="settings_tv_settings" formatted="false">Настройки ТВ</string>
     <string name="settings_vpn" formatted="false">VPN-служба</string>
     <string name="settings_current_selection" formatted="false">Источник</string>
@@ -191,4 +191,6 @@
         <item quantity="many">%1$d минут</item>
         <item quantity="other">%1$d минуты</item>
     </plurals>
+    <string name="settings_fake_update" formatted="false">Фейковое обновление</string>
+    <string name="settings_fake_update_complete" formatted="false">Тестовая загрузка завершена. Обновление не устанавливалось.</string>
 </resources>

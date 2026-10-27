@@ -20,7 +20,7 @@ stubs={
  public long getLong(String k){return ((Number)data.get(k)).longValue();} }'''}
 harness='''package io.tvos;
 import java.util.*;import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.atomic.AtomicBoolean;import org.json.JSONObject;
-public class OtaRefreshHarness {
+public class OtaRefreshHarness {boolean fakeSession;static class Fake {void check(){throw new AssertionError("real refresh entered fake mode");}}final Fake fakeUpdate=new Fake();
  static final int IDLE=0,CHECKING=1,CURRENT=2,AVAILABLE=3,DOWNLOADING=4,READY=5,ERROR=6;
  static final long AUTO_INTERVAL=24*60*60_000L;
  static class Status {int kind;UpdateRelease release;Status(int k,UpdateRelease r,int p,String m){kind=k;release=r;}}

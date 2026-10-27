@@ -55,6 +55,21 @@ final class SelfUpdate {
     // Listeners are registered, removed and notified only on the main thread.
     private final List<Listener> listeners = new ArrayList<>();
     private volatile Status status = new Status(IDLE, null, -1, "");
+    private boolean fakeSession;
+    private final FakeUpdate fakeUpdate = new FakeUpdate(main, (kind, percent) -> {
+        busy.set(kind == CHECKING || kind == DOWNLOADING);
+        publish(kind, UpdateRelease.rehearsal(), percent,
+                kind == ERROR ? AppStrings.get(R.string.settings_fake_update_complete) : "");
+    });
+    void setFake(boolean enabled) {
+        if (busy.get() && !fakeSession) return; // Do not interrupt a real transfer.
+        context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
+                .putBoolean("fake_update", enabled).apply();
+        fakeUpdate.cancel();
+        fakeSession = false;
+        busy.set(false);
+        publish(IDLE, null, -1, "");
+    }
     private SelfUpdate(Context context) { this.context = context; }
     Status status() { return status; }
     void addListener(Listener listener) { if (!listeners.contains(listener)) listeners.add(listener); }
@@ -66,7 +81,7 @@ final class SelfUpdate {
 
     void maybeAutomatic(boolean force) {
         android.content.SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
-        if (!prefs.getBoolean("auto_update", false) || busy.get()) return;
+        if (prefs.getBoolean("fake_update", false) || !prefs.getBoolean("auto_update", false) || busy.get()) return;
         long now = System.currentTimeMillis(), last = prefs.getLong("self_update_attempt", 0);
         if (!force && last != 0 && now >= last && now - last < AUTO_INTERVAL) return;
         check(true);
@@ -76,6 +91,12 @@ final class SelfUpdate {
         if (!busy.compareAndSet(false, true)) return;
         context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
                 .putLong("self_update_attempt", System.currentTimeMillis()).apply();
+        if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("fake_update", false)) {
+            fakeSession = true;
+            fakeUpdate.check();
+            return;
+        }
+        fakeSession = false;
         final Status previous = status;
         publish(CHECKING, null, -1, "");
         io.execute(() -> {
@@ -97,6 +118,7 @@ final class SelfUpdate {
     }
 
     void download() {
+        if (fakeSession) { fakeUpdate.download(); return; }
         final UpdateRelease release = status.release;
         if (release == null || !busy.compareAndSet(false, true)) return;
         publish(DOWNLOADING, release, -1, "");
@@ -204,6 +226,7 @@ final class SelfUpdate {
     }
 
     void install(Activity activity) {
+        if (fakeSession) return;
         if (status.kind != READY || status.release == null || activity.isFinishing() || activity.isDestroyed()) return;
         try {
             File file = new File(context.getCacheDir(), "tvos-update.apk");
