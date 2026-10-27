@@ -74,6 +74,10 @@ final class ProfileAvatar {
     void clear() { for (int i = 0; i < COUNT; i++) images[i] = null; }
 
     void draw(Canvas c, int id, float x, float y, float radius) {
+        draw(c, id, x, y, radius, 1);
+    }
+
+    void draw(Canvas c, int id, float x, float y, float radius, float emojiScale) {
         load(id);
         int saved = c.save();
         c.translate(x, y);
@@ -81,6 +85,7 @@ final class ProfileAvatar {
         paint.setShader(gradients[id]);
         c.drawCircle(0, 0, 1, paint);
         paint.setShader(null);
+        c.scale(emojiScale, emojiScale);
         if (images[id] != null) c.drawBitmap(images[id], null, imageRect, paint);
         c.restoreToCount(saved);
     }

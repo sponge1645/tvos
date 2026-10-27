@@ -61,7 +61,7 @@
   <string name="runtime_choose_avatar" formatted="false">"Выбрать аватар"</string>
   <string name="runtime_back_to_home" formatted="false">"На главный экран"</string>
   <string name="runtime_choose_nyour_avatar" formatted="false">"Выберите\nсвой аватар"</string>
-  <string name="runtime_your_profile_non_tvos" formatted="false">"Ваш профиль\nв tvOS"</string>
+  <string name="runtime_your_profile_non_tvos" formatted="false">Настройте профиль tvOS</string>
   <string name="runtime_use_the_arrows_to_choose_then_press_ok" formatted="false">"Выберите значок стрелками и нажмите ОК."</string>
   <string name="runtime_make_yourself_at_home_nyour_avatar_will_appear_beside_the_clock_n" formatted="false">"Добавьте немного индивидуальности.\nВаш аватар появится рядом с часами\nна главном экране."</string>
   <string name="runtime_series" formatted="false">"Сериал"</string>

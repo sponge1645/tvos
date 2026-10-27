@@ -72,7 +72,7 @@ public final class ProfileActivity extends Activity {
         private final Spring[] avatarFocus = new Spring[ProfileAvatar.COUNT];
         private final Spring chooser = new Spring(0.38f, 1f, 0);
         private final Spring entrance = new Spring(0.55f, 1f, 0);
-        private final RectF[] buttonRects = {new RectF(270, 650, 830, 722), new RectF(270, 755, 830, 827)};
+        private final RectF[] buttonRects = {new RectF(270, 650, 830, 722), new RectF(270, 723, 830, 795)};
         private final RectF scratch = new RectF();
         private final Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -89,7 +89,7 @@ public final class ProfileActivity extends Activity {
         private long lastFrame;
         private float k = 1, ox, oy;
         // Slot zero is the current avatar; satellites match the reference composition.
-        private final float[] xs = {1390, 1160, 1584, 1400, 1670, 1558, 1217, 1417, 1261};
+        private final float[] xs = {1459, 1229, 1653, 1469, 1739, 1627, 1286, 1486, 1330};
         private final float[] ys = {544, 444, 420, 276, 579, 715, 754, 828, 286};
         private final float[] radii = {176, 100, 76, 68, 51, 86, 120, 45, 38};
 
@@ -112,7 +112,7 @@ public final class ProfileActivity extends Activity {
             scene.applyPalette();
             heading.setTypeface(Ui.displaySemibold);
             heading.setTextSize(80);
-            body.setTypeface(Ui.displayRegular);
+            body.setTypeface(Ui.displayMedium);
             body.setTextSize(38);
             rim.setStyle(Paint.Style.STROKE);
             rim.setStrokeWidth(4);
@@ -335,7 +335,7 @@ public final class ProfileActivity extends Activity {
             int center = selected / 9 == index / 9 ? selected % 9 : 0;
             int slot = local == center ? 0 : local < center ? local + 1 : local;
             float t = Ui.clamp(chooser.value);
-            float x = xs[slot] + (1180 + local % 3 * 230 - xs[slot]) * t;
+            float x = xs[slot] + (1248 + local % 3 * 230 - xs[slot]) * t;
             float y = ys[slot] + (320 + local / 3 * 230 - ys[slot]) * t;
             float radius = radii[slot] + (82 - radii[slot]) * t;
             radius *= 1 + 0.1f * Ui.clamp(avatarFocus[index].value);
@@ -362,7 +362,7 @@ public final class ProfileActivity extends Activity {
         private void drawAvatar(Canvas c, int index) {
             avatarRect(index, scratch);
             float x = scratch.centerX(), y = scratch.centerY(), radius = scratch.width() / 2;
-            avatars.draw(c, index, x, y, radius);
+            avatars.draw(c, index, x, y, radius, 0.8f);
             float focus = Ui.clamp(avatarFocus[index].value);
             if (focus > 0.01f) {
                 rim.setColor(Ui.alpha(night ? 0xFFFFFFFF : 0xFF304D5A, focus));
