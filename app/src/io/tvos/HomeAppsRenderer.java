@@ -26,7 +26,7 @@ final class HomeAppsRenderer {
         float k, night, dockLift, scroll;
         boolean sheetOpen, weatherBottom;
     }
-    private static final float TILE_RADIUS = 30, PLATTER_RADIUS = 62, FOCUS_GROW = .2f, SHADOW_BLUR = 26, DEEP_BLUR = 30, ROW_TITLE = 518;
+    private static final float TILE_RADIUS = 30, PLATTER_RADIUS = 62, FOCUS_GROW = .2f, SHADOW_BLUR = 26, DEEP_BLUR = 30;
     private static final long DOCK_WIGGLE_MS = 300;
     private static final int SMOKE = 0xFF111113, INK = 0xFF1C1C1E, WHITE = 0xFFF5F5F7, L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73, L_FAINT = 0xFF8E8E93;
     private static final int COLUMNS = HomeAccessibility.COLUMNS;
@@ -262,7 +262,7 @@ final class HomeAppsRenderer {
         this.frame = frame;
         if (frame.drawerItems.isEmpty()) return;
         rowTitle.setColor(tone(L_DIM, 0xB3FFFFFF));
-        float titleBase = ROW_TITLE * frame.k;
+        float titleBase = frame.drawerRects[0].top - 22 * frame.k;
         if (frame.drawerInputs > 0) c.drawText(AppStrings.get(R.string.home_inputs), frame.drawerRects[0].left + 4 * frame.k, titleBase, rowTitle);
         if (frame.drawerInputs < frame.drawerItems.size()) c.drawText(AppStrings.get(R.string.home_shortcuts), frame.drawerRects[frame.drawerInputs].left + 4 * frame.k, titleBase, rowTitle);
         int top = -1;

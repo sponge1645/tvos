@@ -22,7 +22,7 @@ public class DreamReturnHarness {
  final Context context=new Context();final HomeReveal reveal=new HomeReveal();
  static class Spring {float value;}final Spring drawer=new Spring(),sheet=new Spring();
  final View revealBackdrop=new View(),sky=new View(),heroLayer=new View(),status=new View(),platter=new View(),tiles=new View(),drawerLayer=new View(),sheetLayer=new View();
- final View[] revealContent={sky,heroLayer};float h=1080,k=1;boolean running=true,drawerOpen,sheetOpen,searchMode;int wakes;
+ final View[] revealContent={sky,heroLayer};float h=1080,k=1,drawerExtraHeight;boolean running=true,drawerOpen,sheetOpen,searchMode;int wakes;
  static class Rect {float top=788;}final Rect platterRect=new Rect();static class Editor {boolean editing(){return false;}}final Editor dockEditor=new Editor();
  static class Ui {static float clamp(float n){return Math.max(0,Math.min(1,n));}}
  Context getContext(){return context;}void wake(){wakes++;}
@@ -58,7 +58,7 @@ public class DreamReturnHarness {
   v.context.reduced=false;android.animation.ValueAnimator.enabled=false;v.prepareDreamReturn();check(!v.reveal.prepared(),"system animations disabled skips preparation");v.revealFromDream();check(!v.reveal.active(),"system animation disable respected");android.animation.ValueAnimator.enabled=true;
   v.revealFromDream();v.reveal.cancel();v.updateMotion();near(v.sky.sx,1,"pause cancellation resets scale");near(v.tiles.y,0,"pause cancellation resets translation");
   for(int guard=0;guard<4;guard++){v.running=guard!=0;v.drawerOpen=guard==1;v.sheetOpen=guard==2;v.searchMode=guard==3;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
-  v.running=true;v.drawerOpen=v.sheetOpen=v.searchMode=false;v.drawer.value=1;v.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
+  v.running=true;v.drawerOpen=v.sheetOpen=v.searchMode=false;v.drawer.value=1;v.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.drawerExtraHeight=30;v.updateMotion();near(v.tiles.y,-590,"expanded drawer lifts Dock by added button height");near(v.platter.y,v.tiles.y,"Dock background and icons stay together");v.drawerExtraHeight=0;v.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
   System.out.println("PASS: actual dream receiver/lifecycle, SDK 28/30/33/34, staged first frame, delayed STOP/focus/resume ordering, duplicate/stale/foreign-app guards, real HomeView transforms, cubic ease-out, Reduce Motion and cleanup");
  }
 }'''}

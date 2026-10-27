@@ -134,6 +134,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // Bottom drawer
     private List<HomeApps.Item> drawerItems = new ArrayList<>();
+    private float drawerExtraHeight;
     private int drawerInputs;          // how many leading items are inputs (the rest are shortcuts)
     private Spring[] drawerFocus = new Spring[0];
     private RectF[] drawerRects = new RectF[0];
@@ -569,7 +570,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // cheaper for the GPU to composite on every frame of the drawer animation.
         measure(platter, width, Math.round((HomeLayout.HEIGHT - HomeLayout.DOCK_LAYER_TOP) * kk));
         measure(tiles, width, Math.round((HomeLayout.HEIGHT - HomeLayout.DOCK_LAYER_TOP) * kk));
-        measure(drawerLayer, width, Math.round((HomeLayout.HEIGHT - 470) * kk));
+        measure(drawerLayer, width, Math.round((HomeLayout.HEIGHT - 420) * kk));
         measure(sheetLayer, width, height);
         measure(toastLayer, Math.round(1000 * kk), Math.round(220 * kk));
         measure(searchGlassLayer, width, height);
@@ -589,7 +590,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         place(status, width - status.getMeasuredWidth(), 0);
         place(platter, 0, Math.round(HomeLayout.DOCK_LAYER_TOP * kk));
         place(tiles, 0, Math.round(HomeLayout.DOCK_LAYER_TOP * kk));
-        place(drawerLayer, 0, Math.round(470 * kk));
+        place(drawerLayer, 0, Math.round(420 * kk));
         sheetLayer.layout(0, 0, width, height);
         sheetLayer.setPivotX(width / 2f);
         sheetLayer.setPivotY(height / 2f);
@@ -738,8 +739,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         show(heroLayer, top, lift);
         show(status, top, lift);
         float dockOffset = (h - platterRect.top + 20 * k) * reveal.remaining();
-        show(platter, home, lift + dockOffset);
-        show(tiles, home, lift + dockOffset);
+        show(platter, home, lift - d * drawerExtraHeight + dockOffset);
+        show(tiles, home, lift - d * drawerExtraHeight + dockOffset);
         revealBackdrop.setVisibility(reveal.remaining() > 0 ? VISIBLE : INVISIBLE);
         float contentScale = reveal.scale();
         for (View layer : revealContent) {
@@ -913,16 +914,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float left = MARGIN * k, right = CONTENT_R * k;
         float gap = 18 * k, groupGap = 56 * k;
         int groups = drawerInputs > 0 && drawerInputs < n ? 2 : 1;
-        float tw = Math.min(230 * k, (right - left - Math.max(0, n - groups) * gap - (groups - 1) * groupGap) / Math.max(1, n));
-        float x = left, top = ROW_TOP * k;
+        float tw = Math.max(1, (right - left - Math.max(0, n - groups) * gap
+                - (groups - 1) * groupGap) / Math.max(1, n));
+        float rowHeight = Math.max(ROW_H * k, Math.min(168 * k, tw * ROW_H / 230f));
+        drawerExtraHeight = n == 0 ? 0 : rowHeight - ROW_H * k;
+        float x = left, top = ROW_TOP * k - drawerExtraHeight;
         for (int i = 0; i < n; i++) {
             if (i == drawerInputs && i > 0) x += groupGap - gap;
-            drawerRects[i].set(x, top, x + tw, top + ROW_H * k);
+            drawerRects[i].set(x, top, x + tw, top + rowHeight);
             x += tw + gap;
         }
         float cardsTop = HomeLayout.weatherTop(h, k);
         weatherCard.set(left, cardsTop, right, cardsTop + CARDS_H * k);
-        drawerDirty = true;
+        drawerDirty = motionDirty = true;
     }
 
     private void openDrawer() {
