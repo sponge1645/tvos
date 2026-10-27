@@ -168,7 +168,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         dockLift.target = 1;
         dockAnimating = true;
         click.open();
-        showToast(AppStrings.get(R.string.home_dock_edit_hint));
+        notices.hint(AppStrings.get(R.string.home_dock_edit_hint));
         tilesDirty = true;
         wake();
     }
@@ -746,12 +746,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float home = 1 - s, top = home * (1 - smoothstep(0, 0.32f, dc));
         float shift = SHIFT * k;
         float lift = -d * shift;
-        show(heroLayer, top, lift);
+        show(heroLayer, top * reveal.opacity(), lift);
         show(status, top, lift);
         float dockOffset = (h - platterRect.top + 20 * k) * reveal.remaining();
         show(platter, home, lift - d * drawerExtraHeight + dockOffset);
         show(tiles, home, lift - d * drawerExtraHeight + dockOffset);
         revealBackdrop.setVisibility(reveal.remaining() > 0 ? VISIBLE : INVISIBLE);
+        sky.setAlpha(reveal.opacity());
         float contentScale = reveal.scale();
         for (View layer : revealContent) {
             layer.setScaleX(contentScale);

@@ -21,6 +21,7 @@ final class HomeReveal {
     void cancel() { prepared = false; remaining = 0; }
     boolean active() { return !prepared && remaining > 0; }
     float remaining() { return remaining; }
+    float opacity() { return 1 - remaining; }
     float scale() { return 1 - 0.10f * remaining; }
     long delay(long now) { return active() && now < started ? started - now : Long.MAX_VALUE; }
     boolean tick(long now) {

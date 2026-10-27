@@ -20,7 +20,7 @@ import org.json.JSONObject;
 
 /** Notice polling, persisted read cursor, queue, layout and fading presentation. */
 final class HomeNotices {
-    private static final long TOAST_MS = 6000;
+    private static final long TOAST_MS = 2500;
     private static final int SMOKE = 0xFF111113;
     private final Context context;
     private final Scene scene;
@@ -30,6 +30,9 @@ final class HomeNotices {
     private final Runnable invalidate, wake;
     private final Consumer<String> announce;
     private final ArrayDeque<String> toasts = new ArrayDeque<>();
+    private final java.util.LinkedHashMap<String, Long> recent = new java.util.LinkedHashMap<>();
+    private final java.util.Set<String> hints = new java.util.HashSet<>();
+    private String currentText;
     private StaticLayout toast;
     private long toastAt;
     private TextPaint toastPaint;
@@ -52,7 +55,18 @@ final class HomeNotices {
     boolean visible() { return toast != null; }
     boolean busy() { return toast != null || !toasts.isEmpty(); }
 
+    void hint(String text) {
+        if (hints.add(text)) add(text); // Dock help is shown once per home instance/language.
+    }
     void add(String text) {
+        if (text == null || text.isEmpty() || text.equals(currentText) || toasts.contains(text)) return;
+        long now = SystemClock.uptimeMillis();
+        Long previous = recent.get(text);
+        if (previous != null && now >= previous && now - previous < 10_000) return;
+        recent.remove(text);
+        recent.put(text, now);
+        while (recent.size() > 16) recent.remove(recent.keySet().iterator().next());
+        while (toasts.size() >= 3) toasts.poll();
         toasts.add(text);
         announce.accept(text);
         wake.run();
@@ -61,11 +75,13 @@ final class HomeNotices {
     boolean tick(long up) {
         if (toast != null && up - toastAt > TOAST_MS) {
             toast = null;
+            currentText = null;
             invalidate.run();
         }
         if (toast == null && toastPaint != null) {
             String next = toasts.poll();
             if (next != null) {
+                currentText = next;
                 toast = layout(next);
                 toastAt = up;
             }

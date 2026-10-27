@@ -360,7 +360,6 @@ final class HomeGenres {
             host.changed();
             return;
         }
-        host.message(AppStrings.get(R.string.home_genre_loading));
         movieRequest = catalog.titles(host.kind(), genre, AppLanguage.current(), result -> {
             movieRequest = null;
             if (result == null || result.isEmpty()) {
