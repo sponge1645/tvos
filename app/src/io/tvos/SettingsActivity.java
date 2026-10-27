@@ -141,7 +141,7 @@ public class SettingsActivity extends Activity {
                 new float[]{0f, 0.54f, 1f}, Shader.TileMode.CLAMP);
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
-        private final SettingsBackground background = new SettingsBackground();
+        private final SettingsBackground background;
         private final SettingsUpdateDialog updateDialog;
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private JSONObject state = new JSONObject();
@@ -224,6 +224,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            background = new SettingsBackground(a);
             deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this, updateProgress);

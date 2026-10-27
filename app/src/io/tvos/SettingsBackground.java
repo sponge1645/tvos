@@ -1,90 +1,82 @@
 package io.tvos;
 
+import android.content.Context;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.RadialGradient;
 import android.graphics.Rect;
-import android.graphics.Shader;
+import java.io.IOException;
+import java.io.InputStream;
 
-/** Static settings atmosphere and its size/theme cache; no Activity or menu state. */
+/** Theme wallpaper, decoded once per size/theme with a bounded, single-image cache. */
 final class SettingsBackground {
+    private final AssetManager assets;
     private Bitmap bitmap;
     private boolean cachedLight;
     private int cachedWidth, cachedHeight;
-    private final Paint atmosphere = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
-    private final Rect destination = new Rect();
+    private final Rect source = new Rect(), destination = new Rect();
+
+    SettingsBackground(Context context) { assets = context.getApplicationContext().getAssets(); }
 
     void clear() {
-        if (bitmap != null) {
-            bitmap.recycle();
-            bitmap = null;
-        }
+        // A submitted hardware frame may still reference the old image. Let Android release it.
+        bitmap = null;
+        cachedWidth = cachedHeight = 0;
     }
 
     void draw(Canvas canvas, int width, int height, boolean light) {
         if (width <= 0 || height <= 0) return;
-        if (bitmap == null || cachedLight != light || cachedWidth != width || cachedHeight != height) {
+        if (cachedLight != light || cachedWidth != width || cachedHeight != height) {
             clear();
-            // Only the smooth gradient is downsampled; text, symbols and controls remain native size.
-            int bw = Math.max(1, (width + 1) / 2);
-            int bh = Math.max(1, (height + 1) / 2);
+            cachedLight = light;
+            cachedWidth = width;
+            cachedHeight = height;
             try {
-                bitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
-                Canvas cached = new Canvas(bitmap);
-                cached.scale((float) bw / width, (float) bh / height);
-                render(cached, width, height, light);
-                cachedLight = light;
-                cachedWidth = width;
-                cachedHeight = height;
-            } catch (OutOfMemoryError oom) {
-                clear();
-                render(canvas, width, height, light);
-                return;
+                bitmap = load(width, height, light);
+            } catch (IOException | OutOfMemoryError error) {
+                // Remember the failed size/theme too: no decode/log loop on every frame.
+                android.util.Log.w("tvOS-Settings", "Settings wallpaper unavailable", error);
             }
         }
-        destination.set(0, 0, width, height);
-        canvas.drawBitmap(bitmap, null, destination, bitmapPaint);
-    }
-
-    /** Deep blue / petrol / charcoal atmosphere from the tvOS-style reference. */
-    private void render(Canvas c, int w, int h, boolean light) {
-        if (light) {
-            // Airy cyan/blue with a faint lavender and coral bloom, like tvOS light mode.
-            atmosphere.setShader(new LinearGradient(0, 0, w, h,
-                    0xFFB6EAF9, 0xFFE4F8FA, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(new RadialGradient(w * 0.12f, h * 0.40f, w * 0.68f,
-                    new int[]{0xC5D8FFFF, 0x70C3F3FB, 0x00FFFFFF},
-                    new float[]{0f, .52f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(new RadialGradient(w * 0.57f, h * 1.03f, w * 0.55f,
-                    new int[]{0xA9F6BFC7, 0x55E7C8E6, 0x00FFFFFF},
-                    new float[]{0f, .50f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(new RadialGradient(w * 0.91f, h * 0.22f, w * 0.50f,
-                    new int[]{0xA6B2E9FF, 0x4CB5E9F7, 0x00FFFFFF},
-                    new float[]{0f, .55f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, atmosphere);
-            atmosphere.setShader(null);
+        if (bitmap == null) {
+            canvas.drawColor(light ? 0xFFB2F0F4 : 0xFF092632);
             return;
         }
-        atmosphere.setShader(new LinearGradient(0, 0, w, h,
-                0xFF16323F, 0xFF131A1F, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, atmosphere);
-        atmosphere.setShader(new RadialGradient(w * 0.62f, h * 0.05f, w * 0.73f,
-                new int[]{0xA6266774, 0x4C1E4451, 0x00151C21},
-                new float[]{0f, .44f, 1f}, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, atmosphere);
-        atmosphere.setShader(new RadialGradient(w * 0.06f, h * 0.66f, w * 0.7f,
-                new int[]{0x70304C5C, 0x2B28434D, 0x00131B20},
-                new float[]{0f, .5f, 1f}, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, atmosphere);
-        atmosphere.setShader(new LinearGradient(0, h * .28f, 0, h,
-                0x0010161B, 0xA80A0F13, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, atmosphere);
-        atmosphere.setShader(null);
+        // Fill the viewport without stretching. Only the soft wallpaper is sampled down;
+        // labels, icons, glass and focus remain at the screen's native resolution.
+        int bw = bitmap.getWidth(), bh = bitmap.getHeight();
+        if ((long) bw * height > (long) bh * width) {
+            int cropWidth = Math.max(1, Math.round(bh * (float) width / height));
+            int left = (bw - cropWidth) / 2;
+            source.set(left, 0, left + cropWidth, bh);
+        } else {
+            int cropHeight = Math.max(1, Math.round(bw * (float) height / width));
+            int top = (bh - cropHeight) / 2;
+            source.set(0, top, bw, top + cropHeight);
+        }
+        destination.set(0, 0, width, height);
+        canvas.drawBitmap(bitmap, source, destination, bitmapPaint);
+    }
+
+    private Bitmap load(int width, int height, boolean light) throws IOException {
+        String path = light ? "settings/light.webp" : "settings/dark.webp";
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        try (InputStream input = assets.open(path)) { BitmapFactory.decodeStream(input, null, options); }
+        if (options.outWidth <= 0 || options.outHeight <= 0) throw new IOException("Invalid wallpaper dimensions");
+        int targetWidth = Math.max(1, Math.min(960, width / 2));
+        int targetHeight = Math.max(1, Math.min(540, height / 2));
+        options.inSampleSize = 1;
+        while ((options.outWidth + (long) options.inSampleSize - 1) / options.inSampleSize > targetWidth
+                || (options.outHeight + (long) options.inSampleSize - 1) / options.inSampleSize > targetHeight) options.inSampleSize *= 2;
+        options.inJustDecodeBounds = false;
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        Bitmap result;
+        try (InputStream input = assets.open(path)) { result = BitmapFactory.decodeStream(input, null, options); }
+        if (result == null) throw new IOException("Invalid wallpaper image");
+        return result;
     }
 }
