@@ -116,10 +116,11 @@ final class HomeSearchInput {
         // Use the real capital height at the current font scale, rather than a nominal icon size.
         android.graphics.Rect capital = new android.graphics.Rect();
         input.getPaint().getTextBounds("П", 0, 1, capital);
-        int searchInset = pad + input.getPaddingLeft(); // The former text-to-capsule inset.
+        int searchInset = pad + input.getPaddingLeft();
+        int searchGap = Math.max(1, Math.round(searchInset * .5f));
         float iconSize = Math.max(1, capital.height())
                 / Math.max(.001f, Symbols.height(activity, "search", 1f));
-        input.setCompoundDrawablePadding(searchInset);
+        input.setCompoundDrawablePadding(searchGap);
         input.setCompoundDrawablesRelative(new SearchIcon(activity,
                 iconSize, dark ? 0xAABBBBBB : 0xFF777777), null, null, null);
         input.setHint(AppStrings.get(R.string.home_search_movies_and_series));
@@ -136,7 +137,7 @@ final class HomeSearchInput {
         int searchHeight = Math.max(Math.round(panel.getMeasuredHeight() * 0.60f),
                 searchMetrics.bottom - searchMetrics.top
                         + Math.round(2 * activity.getResources().getDisplayMetrics().density));
-        panel.setPadding(searchInset, 0, searchInset, 0);
+        panel.setPadding(searchGap, 0, searchInset, 0);
         input.setMinimumHeight(0);
         input.setMinHeight(0);
         input.setIncludeFontPadding(false);
