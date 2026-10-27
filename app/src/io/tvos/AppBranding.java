@@ -27,7 +27,7 @@ final class AppBranding {
         add("watch.kino", 0xFFFFFFFF, 0xFFFFFFFF, "kinopub", 1f, 1.32f, 1.32f);
         add("com.seena.app", 0xFF007AFF, 0xFF007AFF, "seena", 1f, 1f, 1f);
         add("top.rootu.lampa", 0xFF313130, 0xFF161613, "lampa", 1f, 1f, 1f);
-        add("tv-settings", 0xFFA5A6AB, 0xFF656368, "settings", 2f, 1.512f, 1f);
+        add("tv-settings", 0xFFA5A6AB, 0xFF656368, "settings", 2f, 1.6632f, 1f);
         add("com.applemusicktv", 0xFFEB576D, 0xFFEA333C, "music", 1f, 1f, 1.25f);
         add("com.android.tv.settings", 0xFFA5A6AB, 0xFF656368, "settings", 2.4f, 1f, 1f);
         add("io.github.jqssun.airplay", 0xFFF79E1F, 0xFFFF6933, "airplay", 1f, 1f, 1f);
@@ -64,7 +64,7 @@ final class AppBranding {
 
     static float dockBoost(String pkg, String key) {
         if ("com.android.vending".equals(pkg) || "com.yandex.devices.appstore".equals(pkg)) return 1.2f;
-        if ("com.android.tv.settings".equals(pkg)) return 1.323f;
+        if ("com.android.tv.settings".equals(pkg)) return 1.4553f;
         if ("com.applemusicktv".equals(pkg)) return 1.25f;
         Style style = get(key);
         return style == null ? 1f : style.dockBoost;

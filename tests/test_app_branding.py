@@ -50,9 +50,9 @@ public class BrandingHarness {
   check(AppBranding.get("watch.kino.mod.other")==null&&AppBranding.get("unknown.app")==null,"exact visual alias only");
   close(AppBranding.dockBoost("watch.kino.mod","watch.kino.mod"),1.32f);
   close(AppBranding.dockBoost("com.android.vending","arbitrary"),1.2f);
-  close(AppBranding.dockBoost("com.android.tv.settings","arbitrary"),1.323f);
+  close(AppBranding.dockBoost("com.android.tv.settings","arbitrary"),1.4553f);
   close(AppBranding.dockBoost("com.applemusicktv","arbitrary"),1.25f);
-  close(AppBranding.dockBoost(null,"tv-settings"),1.512f);
+  close(AppBranding.dockBoost(null,"tv-settings"),1.6632f);
   close(AppBranding.dockBoost(null,"com.applemusicktv"),1f);
   check(AppBranding.forAllApps("com.android.tv.settings")==null,"system settings action card preserved");
   HomeApps.Context c=new HomeApps.Context();c.packages=Arrays.asList("watch.kino","watch.kino.mod","com.android.tv.settings","io.gh.reisxd.tizentube.cobalt");
