@@ -1,28 +1,49 @@
 package io.tvos;
 
-import android.content.Context;
-import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
-import java.io.IOException;
-import java.io.InputStream;
+import android.graphics.Shader;
 
-/** Theme wallpaper, decoded once per size/theme with a bounded, single-image cache. */
+/** Approved SVG gradients rendered natively, with a bounded single-theme raster cache. */
 final class SettingsBackground {
-    private final AssetManager assets;
+    private static final float[] STOPS = new float[25];
+    static { for (int i = 0; i < STOPS.length; i++) STOPS[i] = i / 24f; }
+
+    private static final class Glow {
+        final float cx, cy, rx, ry;
+        final int[] colors = new int[STOPS.length];
+        Glow(float cx, float cy, float rx, float ry, int color, float opacity) {
+            this.cx = cx; this.cy = cy; this.rx = rx; this.ry = ry;
+            double edge = Math.exp(-4.5);
+            for (int i = 0; i < colors.length; i++) {
+                double value = (Math.exp(-4.5 * STOPS[i] * STOPS[i]) - edge) / (1 - edge);
+                int alpha = Math.max(0, Math.min(255, (int) Math.round(255 * opacity * value)));
+                colors[i] = color & 0x00FFFFFF | alpha << 24;
+            }
+        }
+    }
+    // Reference coordinates and colors match docs/design/settings-{light,dark}.svg.
+    private static final Glow[] LIGHT = {
+        new Glow(957.662f, 831.439f, 471.844f, 662.348f, 0xFFFFE8BF, 1f),
+        new Glow(947.177f, 720.356f, 504.540f, 386.796f, 0xFFFFEEC9, 0.874650f)
+    };
+    private static final Glow[] DARK = {
+        new Glow(1176.515f, 12.345f, 961.493f, 1136.069f, 0xFF006176, 1f),
+        new Glow(201.015f, 306.489f, 1361.093f, 1287.957f, 0xFF0B7EA4, 0.327686f)
+    };
     private Bitmap bitmap;
     private boolean cachedLight;
     private int cachedWidth, cachedHeight;
+    private final Paint gradient = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private final Paint bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
-    private final Rect source = new Rect(), destination = new Rect();
-
-    SettingsBackground(Context context) { assets = context.getApplicationContext().getAssets(); }
+    private final Rect destination = new Rect();
 
     void clear() {
-        // A submitted hardware frame may still reference the old image. Let Android release it.
+        // Submitted GPU frames may still reference the old image.
         bitmap = null;
         cachedWidth = cachedHeight = 0;
     }
@@ -31,52 +52,39 @@ final class SettingsBackground {
         if (width <= 0 || height <= 0) return;
         if (cachedLight != light || cachedWidth != width || cachedHeight != height) {
             clear();
-            cachedLight = light;
-            cachedWidth = width;
-            cachedHeight = height;
+            cachedLight = light; cachedWidth = width; cachedHeight = height;
+            int bw = Math.max(1, Math.min(960, (width + 1) / 2));
+            int bh = Math.max(1, Math.min(540, (height + 1) / 2));
             try {
-                bitmap = load(width, height, light);
-            } catch (IOException | OutOfMemoryError error) {
-                // Remember the failed size/theme too: no decode/log loop on every frame.
-                android.util.Log.w("tvOS-Settings", "Settings wallpaper unavailable", error);
+                bitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+                render(new Canvas(bitmap), bw, bh, light);
+            } catch (OutOfMemoryError error) {
+                bitmap = null;
+                gradient.setShader(null);
+                android.util.Log.w("tvOS-Settings", "Settings gradient cache unavailable", error);
             }
         }
         if (bitmap == null) {
-            canvas.drawColor(light ? 0xFFB2F0F4 : 0xFF092632);
+            canvas.drawColor(light ? 0xFFB9F6FB : 0xFF09283A);
             return;
         }
-        // Fill the viewport without stretching. Only the soft wallpaper is sampled down;
-        // labels, icons, glass and focus remain at the screen's native resolution.
-        int bw = bitmap.getWidth(), bh = bitmap.getHeight();
-        if ((long) bw * height > (long) bh * width) {
-            int cropWidth = Math.max(1, Math.round(bh * (float) width / height));
-            int left = (bw - cropWidth) / 2;
-            source.set(left, 0, left + cropWidth, bh);
-        } else {
-            int cropHeight = Math.max(1, Math.round(bw * (float) height / width));
-            int top = (bh - cropHeight) / 2;
-            source.set(0, top, bw, top + cropHeight);
-        }
         destination.set(0, 0, width, height);
-        canvas.drawBitmap(bitmap, source, destination, bitmapPaint);
+        canvas.drawBitmap(bitmap, null, destination, bitmapPaint);
     }
 
-    private Bitmap load(int width, int height, boolean light) throws IOException {
-        String path = light ? "settings/light.webp" : "settings/dark.webp";
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        try (InputStream input = assets.open(path)) { BitmapFactory.decodeStream(input, null, options); }
-        if (options.outWidth <= 0 || options.outHeight <= 0) throw new IOException("Invalid wallpaper dimensions");
-        int targetWidth = Math.max(1, Math.min(960, width / 2));
-        int targetHeight = Math.max(1, Math.min(540, height / 2));
-        options.inSampleSize = 1;
-        while ((options.outWidth + (long) options.inSampleSize - 1) / options.inSampleSize > targetWidth
-                || (options.outHeight + (long) options.inSampleSize - 1) / options.inSampleSize > targetHeight) options.inSampleSize *= 2;
-        options.inJustDecodeBounds = false;
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        Bitmap result;
-        try (InputStream input = assets.open(path)) { result = BitmapFactory.decodeStream(input, null, options); }
-        if (result == null) throw new IOException("Invalid wallpaper image");
-        return result;
+    private void render(Canvas canvas, int width, int height, boolean light) {
+        gradient.setShader(new LinearGradient(0, 0, 0, height,
+                light ? 0xFFB9F6FB : 0xFF09283A,
+                light ? 0xFFB6F1F9 : 0xFF0B1824, Shader.TileMode.CLAMP));
+        canvas.drawRect(0, 0, width, height, gradient);
+        for (Glow glow : light ? LIGHT : DARK) {
+            int saved = canvas.save();
+            canvas.translate(glow.cx * width / 1920, glow.cy * height / 1080);
+            canvas.scale(glow.rx * width / 1920, glow.ry * height / 1080);
+            gradient.setShader(new RadialGradient(0, 0, 1, glow.colors, STOPS, Shader.TileMode.CLAMP));
+            canvas.drawRect(-1, -1, 1, 1, gradient);
+            canvas.restoreToCount(saved);
+        }
+        gradient.setShader(null);
     }
 }

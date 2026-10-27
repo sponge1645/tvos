@@ -1,55 +1,50 @@
-"""Execute the production theme wallpaper cache, bounded decode, crop, lifecycle and failure path."""
+"""Production native gradient/cache behavior and agreement with the approved SVG recipes."""
 from pathlib import Path
-import subprocess,tempfile,struct
-# Validate actual packaged lossless assets without requiring a host image library.
-for name,height in [('light',940),('dark',941)]:
- data=Path('app/assets/settings/'+name+'.webp').read_bytes()
- assert data[:4]==b'RIFF' and data[8:12]==b'WEBP'
- offset=12;found=False
- while offset+8<=len(data):
-  tag=data[offset:offset+4];size=struct.unpack_from('<I',data,offset+4)[0]
-  if tag==b'VP8L':
-   assert data[offset+8]==0x2f
-   bits=struct.unpack_from('<I',data,offset+9)[0]
-   assert (bits&0x3fff)+1==1672 and ((bits>>14)&0x3fff)+1==height
-   found=True;break
-  offset+=8+size+(size&1)
- assert found,'Wallpaper must retain lossless WebP encoding'
+import subprocess,tempfile,xml.etree.ElementTree as ET
+# Build independent expected coordinates/colors/alpha from the accepted vector files.
+checks=[]
+for theme in ['light','dark']:
+ root=ET.parse('docs/design/settings-'+theme+'.svg').getroot();ns={'s':'http://www.w3.org/2000/svg'}
+ defs=list(root.find('s:defs',ns));base=list(defs[0]);glows=root.findall('s:ellipse',ns)
+ color=lambda value:'0xFF'+value[1:].upper()
+ code='check(((LinearGradient)Canvas.raster.shaders.get(0)).first=='+color(base[0].get('stop-color'))+'&&((LinearGradient)Canvas.raster.shaders.get(0)).last=='+color(base[-1].get('stop-color'))+',"approved '+theme+' base colors");'
+ for i,(gradient,ellipse) in enumerate(zip(defs[1:],glows)):
+  stops=list(gradient)
+  alphas=','.join(str(round(float(stop.get('stop-opacity'))*255)) for stop in stops)
+  offsets=','.join(stop.get('offset')+'f' for stop in stops)
+  rgb='0x'+stops[0].get('stop-color')[1:].upper()
+  code+='verifyGlow('+str(i)+','+rgb+',new int[]{'+alphas+'},new float[]{'+offsets+'},new float[]{'+','.join(ellipse.get(key)+'f' for key in ['cx','cy','rx','ry'])+'});'
+ checks.append(code)
+assert not Path('app/assets/settings/light.webp').exists() and not Path('app/assets/settings/dark.webp').exists()
 sources={
-'android/content/Context.java':'package android.content;public class Context {public final android.content.res.AssetManager assets=new android.content.res.AssetManager();public Context getApplicationContext(){return this;}public android.content.res.AssetManager getAssets(){return assets;}}',
-'android/content/res/AssetManager.java':'''package android.content.res;import java.io.*;public class AssetManager {public int opens,closes;public boolean fail;public String last;public InputStream open(String name)throws IOException {opens++;last=name;if(fail)throw new IOException("missing");return new Image(name,this);}public static class Image extends ByteArrayInputStream {public final String name;final AssetManager owner;public Image(String name,AssetManager owner){super(new byte[0]);this.name=name;this.owner=owner;}@Override public void close(){owner.closes++;}}}''',
 'android/util/Log.java':'package android.util;public class Log {public static int warnings;public static int w(String tag,String text,Throwable error){warnings++;return 0;}}',
-'android/graphics/Paint.java':'package android.graphics;public class Paint {public static final int FILTER_BITMAP_FLAG=2,DITHER_FLAG=4;public final int flags;public Paint(int f){flags=f;}}',
-'android/graphics/Rect.java':'package android.graphics;public class Rect {public int left,top,right,bottom;public void set(int l,int t,int r,int b){left=l;top=t;right=r;bottom=b;}public int width(){return right-left;}public int height(){return bottom-top;}}',
-'android/graphics/Bitmap.java':'''package android.graphics;public class Bitmap {public enum Config{ARGB_8888}public final int w,h;public boolean recycled;public String asset;public Bitmap(int w,int h,String asset){this.w=w;this.h=h;this.asset=asset;}public int getWidth(){return w;}public int getHeight(){return h;}public void recycle(){recycled=true;}}''',
-'android/graphics/BitmapFactory.java':'''package android.graphics;import java.io.*;import android.content.res.AssetManager;public class BitmapFactory {public static int allocations,bounds,lastSample;public static boolean fail,invalid,missingDecode;public static class Options {public boolean inJustDecodeBounds;public int outWidth,outHeight,inSampleSize;public Bitmap.Config inPreferredConfig;}public static Bitmap decodeStream(InputStream input,Object rect,Options options){String asset=((AssetManager.Image)input).name;if(options.inJustDecodeBounds){bounds++;options.outWidth=invalid?0:1672;options.outHeight=asset.contains("light")?940:941;return null;}if(fail)throw new OutOfMemoryError("test");if(missingDecode)return null;lastSample=options.inSampleSize;if(options.inPreferredConfig!=Bitmap.Config.ARGB_8888)throw new AssertionError("config");allocations++;return new Bitmap((1672+lastSample-1)/lastSample,(options.outHeight+lastSample-1)/lastSample,asset);}}''',
-'android/graphics/Canvas.java':'''package android.graphics;public class Canvas {public Bitmap shown;public Rect source,destination;public Paint paint;public int color;public void drawColor(int color){this.color=color;}public void drawBitmap(Bitmap bitmap,Rect src,Rect dst,Paint paint){if(bitmap.recycled)throw new AssertionError("recycled bitmap");shown=bitmap;source=src;destination=dst;this.paint=paint;}}''',
-'io/tvos/SettingsBackgroundHarness.java':'''package io.tvos;import android.graphics.*;import android.content.Context;
+'android/graphics/Shader.java':'package android.graphics;public class Shader {public enum TileMode{CLAMP}}',
+'android/graphics/LinearGradient.java':'package android.graphics;public class LinearGradient extends Shader {public final int first,last;public LinearGradient(float a,float b,float c,float d,int first,int last,TileMode m){this.first=first;this.last=last;}}',
+'android/graphics/RadialGradient.java':'package android.graphics;public class RadialGradient extends Shader {public static boolean fail;public final int[] colors;public final float[] stops;public RadialGradient(float a,float b,float r,int[] colors,float[] stops,TileMode m){if(fail)throw new OutOfMemoryError("test");if(r<=0)throw new AssertionError("radius");this.colors=colors;this.stops=stops;}}',
+'android/graphics/Paint.java':'package android.graphics;public class Paint {public static final int ANTI_ALIAS_FLAG=1,FILTER_BITMAP_FLAG=2,DITHER_FLAG=4;public final int flags;public Shader shader;public Paint(int f){flags=f;}public void setShader(Shader s){shader=s;}}',
+'android/graphics/Rect.java':'package android.graphics;public class Rect {public int right,bottom;public void set(int l,int t,int r,int b){right=r;bottom=b;}}',
+'android/graphics/Bitmap.java':'''package android.graphics;public class Bitmap {public enum Config{ARGB_8888}public static int allocations;public static boolean fail;public final int w,h;public boolean recycled;Bitmap(int w,int h){this.w=w;this.h=h;}public static Bitmap createBitmap(int w,int h,Config c){if(fail)throw new OutOfMemoryError("test");allocations++;return new Bitmap(w,h);}public void recycle(){recycled=true;}}''',
+'android/graphics/Canvas.java':'''package android.graphics;import java.util.*;public class Canvas {public static Canvas raster;public final List<Shader> shaders=new ArrayList<>();public final List<float[]> translations=new ArrayList<>(),scales=new ArrayList<>();public final Bitmap target;public Bitmap shown;public Rect destination;public Paint paint;public int depth,color;public Canvas(){target=null;}public Canvas(Bitmap b){target=b;raster=this;}public int save(){return ++depth;}public void restoreToCount(int n){depth=n-1;}public void translate(float x,float y){translations.add(new float[]{x,y});}public void scale(float x,float y){scales.add(new float[]{x,y});}public void drawRect(float l,float t,float r,float b,Paint p){shaders.add(p.shader);}public void drawColor(int c){color=c;}public void drawBitmap(Bitmap b,Rect src,Rect dst,Paint p){if(b.recycled)throw new AssertionError("recycled");shown=b;destination=dst;paint=p;}}''',
+'io/tvos/SettingsBackgroundHarness.java':'''package io.tvos;import android.graphics.*;
 public class SettingsBackgroundHarness {
- static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
- static void crop(Canvas c,int width,int height){check(c.source.left>=0&&c.source.top>=0&&c.source.right<=c.shown.w&&c.source.bottom<=c.shown.h,"crop stays in image");float a=(float)c.source.width()/c.source.height(),b=(float)width/height;check(Math.abs(a-b)<.015,"source crop matches viewport aspect");check(c.destination.right==width&&c.destination.bottom==height,"fills entire viewport");}
+ static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b,String why){check(Math.abs(a-b)<.02,why+" "+a+" != "+b);}
+ static void verifyGlow(int i,int rgb,int[] alphas,float[] stops,float[] shape){RadialGradient g=(RadialGradient)Canvas.raster.shaders.get(i+1);check(g.colors.length==25,"25 opacity stops");for(int j=0;j<25;j++){check((g.colors[j]&0xFFFFFF)==rgb,"approved glow color");check(Math.abs((g.colors[j]>>>24)-alphas[j])<=1,"approved SVG opacity profile");near(g.stops[j],stops[j],"approved SVG offsets");}float[] t=Canvas.raster.translations.get(i),s=Canvas.raster.scales.get(i);near(t[0],shape[0]/2,"glow center x");near(t[1],shape[1]/2,"glow center y");near(s[0],shape[2]/2,"ellipse radius x");near(s[1],shape[3]/2,"ellipse radius y");}
  public static void main(String[] args){
-  Context context=new Context();SettingsBackground bg=new SettingsBackground(context);Canvas out=new Canvas();bg.draw(out,1920,1080,true);Bitmap first=out.shown;Rect destination=out.destination,source=out.source;
-  check(first.asset.equals("settings/light.webp")&&first.w==836&&first.h==470,"provided light wallpaper is sampled at decode time");
-  check(out.paint.flags==6,"filtered and dithered composition");crop(out,1920,1080);
-  for(int i=0;i<100;i++)bg.draw(out,1920,1080,true);check(BitmapFactory.allocations==1&&context.assets.opens==2&&context.assets.closes==2&&out.shown==first&&out.destination==destination&&out.source==source,"steady frames reuse bitmap/rects without reopening assets");
-  bg.draw(out,1920,1080,false);check(out.shown.asset.equals("settings/dark.webp")&&out.shown!=first&&!first.recycled,"theme switches image without recycling submitted frame");crop(out,1920,1080);
-  bg.draw(out,3840,2160,false);check(out.shown.w<=960&&out.shown.h<=540,"4K decode stays bounded");crop(out,3840,2160);
-  bg.draw(out,1281,721,false);check(out.shown.w<=641&&out.shown.h<=361,"small/odd viewport uses smaller decode");crop(out,1281,721);
-  bg.draw(out,2560,1080,true);crop(out,2560,1080);check(out.source.height()<out.shown.h,"ultrawide crops top/bottom without stretching");
-  bg.draw(out,1080,1920,true);crop(out,1080,1920);check(out.source.width()<out.shown.w,"tall view crops sides without stretching");
-  Bitmap old=out.shown;bg.clear();bg.clear();int count=BitmapFactory.allocations;bg.draw(out,1080,1920,true);check(BitmapFactory.allocations==count+1&&out.shown!=old&&!old.recycled,"pause clears reference; resume reloads one bitmap");
-  BitmapFactory.fail=true;Canvas fallback=new Canvas();bg.draw(fallback,800,600,true);check(fallback.shown==null&&fallback.color==0xFFB2F0F4,"OOM uses light theme fallback");int attempts=context.assets.opens,warnings=android.util.Log.warnings;for(int i=0;i<100;i++)bg.draw(fallback,800,600,true);check(context.assets.opens==attempts&&android.util.Log.warnings==warnings,"failed decode does not repeat every frame");
-  BitmapFactory.fail=false;bg.clear();bg.draw(out,800,600,true);check(out.shown.w<=400&&out.shown.h<=300,"clear permits recovery");
-  context.assets.fail=true;bg.clear();Canvas missing=new Canvas();bg.draw(missing,1920,1080,false);check(missing.color==0xFF092632,"missing dark asset uses dark fallback");context.assets.fail=false;
-  BitmapFactory.invalid=true;bg.clear();bg.draw(new Canvas(),1920,1080,true);BitmapFactory.invalid=false;BitmapFactory.missingDecode=true;bg.clear();bg.draw(new Canvas(),1920,1080,true);BitmapFactory.missingDecode=false;
-  attempts=context.assets.opens;bg.draw(new Canvas(),0,1080,true);check(context.assets.opens==attempts,"zero size does no work");
-  bg.clear();bg.draw(out,1,1,true);check(out.shown.w==1&&out.shown.h==1,"tiny viewport terminates with minimum decode");
-  check(context.assets.closes==context.assets.opens-1,"all successfully opened streams close, including failure paths");
-  System.out.println("PASS: actual light/dark asset selection, bounded decode, cached frame reuse, center crop, 720p/1080p/4K/tall/ultrawide, lifecycle and throttled OOM/missing/corrupt fallback");
+  SettingsBackground bg=new SettingsBackground();Canvas out=new Canvas();bg.draw(out,1920,1080,true);Bitmap first=out.shown;Rect destination=out.destination;
+  check(first.w==960&&first.h==540&&Canvas.raster.shaders.size()==3&&Canvas.raster.depth==0,"one linear + two elliptical gradients, half-size cache, balanced canvas");
+  '''+checks[0]+'''
+  for(int i=0;i<100;i++)bg.draw(out,1920,1080,true);check(Bitmap.allocations==1&&out.shown==first&&destination==out.destination,"steady frames reuse cache/rect");
+  check(out.paint.flags==6&&out.destination.right==1920&&out.destination.bottom==1080,"filtered/dithered full-screen image");
+  bg.draw(out,1920,1080,false);check(out.shown!=first&&!first.recycled,"theme replaces reference without recycling in-flight frame");
+  '''+checks[1]+'''
+  bg.draw(out,3840,2160,false);check(out.shown.w==960&&out.shown.h==540,"4K memory capped");bg.draw(out,1281,721,false);check(out.shown.w==641&&out.shown.h==361,"odd viewport rounds up");
+  Bitmap old=out.shown;bg.clear();bg.clear();int count=Bitmap.allocations;bg.draw(out,1281,721,false);check(Bitmap.allocations==count+1&&out.shown!=old&&!old.recycled,"pause drops only reference and resume rebuilds once");
+  Bitmap.fail=true;Canvas fallback=new Canvas();bg.draw(fallback,800,600,true);check(fallback.shown==null&&fallback.color==0xFFB9F6FB,"light OOM fallback");count=Bitmap.allocations;int warnings=android.util.Log.warnings;for(int i=0;i<100;i++)bg.draw(fallback,800,600,true);check(count==Bitmap.allocations&&warnings==android.util.Log.warnings,"no per-frame retry/log loop");
+  Bitmap.fail=false;bg.clear();bg.draw(out,800,600,true);check(out.shown.w==400&&out.shown.h==300,"clear permits recovery");RadialGradient.fail=true;bg.clear();fallback=new Canvas();bg.draw(fallback,1920,1080,false);check(fallback.shown==null&&fallback.color==0xFF09283A,"partial raster failure discarded");RadialGradient.fail=false;
+  count=Bitmap.allocations;bg.draw(new Canvas(),0,600,true);check(count==Bitmap.allocations,"zero size no work");bg.clear();bg.draw(out,1,1,true);check(out.shown.w==1&&out.shown.h==1,"tiny viewport remains valid");
+  System.out.println("PASS: native gradient recipes match approved SVGs, opacity/ellipses/colors, single-cache reuse, 4K cap, resize/lifecycle and bounded OOM recovery");
  }
-}'''
-}
+}'''}
 sources['io/tvos/SettingsBackground.java']=Path('app/src/io/tvos/SettingsBackground.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-settings-background-') as tmp:
  root=Path(tmp)
