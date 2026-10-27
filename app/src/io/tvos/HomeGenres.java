@@ -1,12 +1,15 @@
 package io.tvos;
 
 import android.animation.ValueAnimator;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
@@ -14,7 +17,9 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.animation.OvershootInterpolator;
+import android.view.ViewTreeObserver;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
@@ -81,7 +86,21 @@ final class HomeGenres {
     private final Host host;
     private final Runnable hold = this::show;
     private final int[] location = new int[2];
-    private PopupWindow popup;
+    private final class MenuPopup extends PopupWindow {
+        final View root;
+        final Rect clip = new Rect();
+        final boolean reduced;
+        float originX, originY, progress;
+        boolean closing, opening;
+        Runnable afterOpen;
+        MenuPopup(View root, int width, boolean reduced) {
+            super(root, width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
+            this.root = root; this.reduced = reduced;
+        }
+        @Override public void dismiss() { closeMenu(this); }
+        void dismissNow() { super.dismiss(); }
+    }
+    private MenuPopup popup;
     private UiRequest genreRequest, movieRequest;
     private ValueAnimator animation;
     private GenreCatalog.Genre selected;
@@ -103,7 +122,7 @@ final class HomeGenres {
     boolean pause() {
         boolean changed = selected != null;
         cancelHold();
-        if (popup != null) popup.dismiss();
+        if (popup != null) popup.dismissNow();
         if (genreRequest != null) genreRequest.cancel();
         if (movieRequest != null) movieRequest.cancel();
         genreRequest = movieRequest = null;
@@ -111,6 +130,7 @@ final class HomeGenres {
         return changed;
     }
     private boolean initialRelease(View view, int code, KeyEvent event) {
+        if (popup != null && popup.closing) return true;
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
         if (!openingRelease || !ok) return false;
         if (event.getAction() == KeyEvent.ACTION_UP) openingRelease = false;
@@ -148,16 +168,20 @@ final class HomeGenres {
             placeholder.setTextColor(0xFF999999);
             list.addView(placeholder, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
         }
-        PopupWindow window = new PopupWindow(root, Math.round(420 * k), android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        boolean reduced = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
+                || !ValueAnimator.areAnimatorsEnabled();
+        MenuPopup window = new MenuPopup(root, Math.round(420 * k), reduced);
         popup = window;
         window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         window.setOutsideTouchable(true);
         window.setElevation(16 * k);
-        window.setAnimationStyle(0); // Only the content stretch below animates the entrance.
+        window.setEnterTransition(null);
+        window.setExitTransition(null);
+        window.setAnimationStyle(0); // Opening and closing are handled by the anchored content reveal.
         window.setOnDismissListener(() -> {
             if (popup != window) return;
-            if (animation != null) animation.cancel();
-            animation = null;
+            cancelAnimation();
+            window.afterOpen = null;
             if (genreRequest != null) genreRequest.cancel();
             genreRequest = null;
             if (popup == window) popup = null;
@@ -166,41 +190,99 @@ final class HomeGenres {
         home.getLocationOnScreen(location);
         int x = location[0] + Math.round(Math.max(40 * k, Math.min(home.getWidth() - 460 * k, anchor.left)) - 5 * k);
         int y = location[1] + Math.round(Math.max(40 * k, anchor.top - 44 * k));
+        // Anchor the reveal at the leftmost point of the original Movies capsule.
+        window.originX = anchor.left + location[0] - x;
+        window.originY = anchor.centerY() + location[1] - y;
+        root.setPivotX(window.originX); root.setPivotY(window.originY);
+        applyReveal(window, reduced ? 1 : 0); // Never expose a full-size first window frame.
         window.showAtLocation(home, Gravity.TOP | Gravity.LEFT, x, y);
         root.requestFocus();
-        boolean reduced = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
-                || !ValueAnimator.areAnimatorsEnabled();
-        if (!reduced) {
-            root.setPivotX(42 * k); root.setPivotY(36 * k);
-            root.setScaleX(.86f); root.setScaleY(.12f);
-            animation = ValueAnimator.ofFloat(0, 1);
-            animation.setDuration(320);
-            animation.setInterpolator(new OvershootInterpolator(.65f));
-            animation.addUpdateListener(a -> {
-                float progress = (float) a.getAnimatedValue();
-                root.setScaleX(.86f + .14f * progress);
-                root.setScaleY(.12f + .88f * progress);
-            });
-            animation.start();
-        }
+        if (!reduced) root.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                root.getViewTreeObserver().removeOnPreDrawListener(this);
+                // Begin on the next vsync after measurement/layout; cold popup setup consumes no animation time.
+                root.postOnAnimation(() -> { if (popup == window && !window.closing) animateMenu(window, true); });
+                return true;
+            }
+        });
         genreRequest = catalog.genres(AppLanguage.current(), choices -> {
             if (popup != window) return;
-            list.removeAllViews();
-            if (choices == null) {
-                heading(list, AppStrings.get(R.string.home_genre_failed), k);
-                root.getChildAt(0).requestFocus();
-            } else {
-                int focus = 0;
-                for (GenreCatalog.Genre genre : choices) {
-                    row(list, genre, k);
-                    if (selected != null && selected.id == genre.id) focus = list.getChildCount() - 1;
+            Runnable content = () -> {
+                list.removeAllViews();
+                if (choices == null) {
+                    heading(list, AppStrings.get(R.string.home_genre_failed), k);
+                    root.getChildAt(0).requestFocus();
+                } else {
+                    int focus = 0;
+                    for (GenreCatalog.Genre genre : choices) {
+                        row(list, genre, k);
+                        if (selected != null && selected.id == genre.id) focus = list.getChildCount() - 1;
+                    }
+                    if (list.getChildCount() > 0) list.getChildAt(focus).requestFocus();
+                    else root.getChildAt(0).requestFocus();
                 }
-                if (list.getChildCount() > 0) list.getChildAt(focus).requestFocus();
-                else root.getChildAt(0).requestFocus();
-            }
-            window.update();
+                window.update();
+            };
+            // Cold network delivery must not inflate/re-layout all rows in the middle of the entrance.
+            if (window.opening) window.afterOpen = content;
+            else if (!window.closing) content.run();
         });
     }
+    private void cancelAnimation() {
+        ValueAnimator previous = animation;
+        animation = null;
+        if (previous != null) previous.cancel();
+    }
+    private void applyReveal(MenuPopup window, float fraction) {
+        float p = Math.max(0, Math.min(1, fraction));
+        window.progress = p;
+        View root = window.root;
+        root.setAlpha(p);
+        float scale = .96f + .04f * p;
+        root.setScaleX(scale); root.setScaleY(scale);
+        if (p == 1) root.setClipBounds(null);
+        else {
+            window.clip.set(Math.round(window.originX * (1 - p)), Math.round(window.originY * (1 - p)),
+                    Math.round(window.originX + (root.getWidth() - window.originX) * p),
+                    Math.round(window.originY + (root.getHeight() - window.originY) * p));
+            root.setClipBounds(window.clip);
+        }
+    }
+    private void closeMenu(MenuPopup window) {
+        if (popup != window || window.closing) return;
+        window.closing = true;
+        window.afterOpen = null;
+        if (genreRequest != null) genreRequest.cancel();
+        genreRequest = null;
+        cancelAnimation();
+        if (window.reduced || window.progress == 0) window.dismissNow();
+        else animateMenu(window, false);
+    }
+    private void animateMenu(MenuPopup window, boolean opening) {
+        cancelAnimation();
+        window.opening = opening;
+        ValueAnimator animator = ValueAnimator.ofFloat(window.progress, opening ? 1 : 0);
+        animation = animator;
+        animator.setDuration(opening ? 320 : Math.max(80, Math.round(320 * window.progress)));
+        animator.setInterpolator(opening ? new DecelerateInterpolator(1.5f) : new AccelerateInterpolator(1.5f));
+        animator.addUpdateListener(a -> { if (animation == a && popup == window) applyReveal(window, (float) a.getAnimatedValue()); });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(Animator ended) {
+                if (animation != animator || popup != window) return;
+                animation = null;
+                window.opening = false;
+                if (!opening) { window.dismissNow(); return; }
+                applyReveal(window, 1);
+                Runnable content = window.afterOpen;
+                window.afterOpen = null;
+                if (content != null) window.root.postOnAnimation(() -> {
+                    if (popup == window && !window.closing) content.run();
+                });
+            }
+        });
+        animator.start();
+    }
+
     private TextView text(String label, float size, float k) {
         TextView text = new TextView(context);
         styleText(text, label, size, k);
@@ -238,6 +320,7 @@ final class HomeGenres {
         root.addView(row, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
     }
     private void choose(GenreCatalog.Genre genre) {
+        if (popup == null || popup.closing) return;
         if (movieRequest != null) movieRequest.cancel();
         movieRequest = null;
         if (popup != null) popup.dismiss();
