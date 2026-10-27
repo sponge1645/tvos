@@ -227,10 +227,10 @@ final class RouletteRenderer {
             RectF hintTwo = rouletteHintTwoScratch;
             hintTwo.set(hintOne.right + hintGap, hintY,
                     hintOne.right + hintGap + hintW2, hintY + hintH);
-            scene.liquid(c, hintOne, 20 * k, tone(0xFFFFFFFF, SMOKE),
+            scene.liquid(c, hintOne, hintH / 2f, tone(0xFFFFFFFF, SMOKE),
                     tone(0.52f, 0.48f), tone(0.02f, 0.02f), 8 * k, 5 * k,
                     tone(0.62f, 0.48f), 1f);
-            scene.liquid(c, hintTwo, 20 * k, tone(0xFFFFFFFF, SMOKE),
+            scene.liquid(c, hintTwo, hintH / 2f, tone(0xFFFFFFFF, SMOKE),
                     tone(0.52f, 0.48f), tone(0.02f, 0.02f), 8 * k, 5 * k,
                     tone(0.62f, 0.48f), 1f);
             float hintBase = hintY + hintH / 2f + Ui.halfCap(hintText);
