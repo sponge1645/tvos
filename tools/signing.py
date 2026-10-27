@@ -98,7 +98,7 @@ def sign(root, bt, source, output, mode=None):
     root, bt = root.resolve(), bt.resolve()
     version = ET.parse(root / 'app/AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName']
     mode = mode or os.environ.get('TVOS_SIGNING_MODE') or ('legacy' if version == '1.0.4' else 'release')
-    args = [bt / 'apksigner', 'sign', '--min-sdk-version', '28', '--v1-signing-enabled', 'false', '--v2-signing-enabled', 'true', '--v3-signing-enabled', 'true']
+    args = [bt / 'apksigner', 'sign', '--min-sdk-version', '28', '--v1-signing-enabled', 'false', '--v2-signing-enabled', 'false' if mode == 'release' else 'true', '--v3-signing-enabled', 'true']
     if mode == 'ci':
         if os.environ.get('CI') != 'true':
             raise ValueError('CI signing is restricted to CI=true; it is not a release key.')
