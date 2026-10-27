@@ -18,7 +18,7 @@ header = r'''package io.tvos;
 import java.util.*;import java.io.*;
 public class UpdatePolicyHarness {
  static class Signature {String value;Signature(String v){value=v;}public boolean equals(Object o){return o instanceof Signature && value.equals(((Signature)o).value);}public int hashCode(){return value.hashCode();}}
- static class SigningInfo {Signature[] signers;boolean fail;Signature[] getApkContentsSigners(){if(fail)throw new UnsupportedOperationException();return signers;}}
+ static class SigningInfo {Signature[] signers,history;boolean fail;boolean hasMultipleSigners(){return signers!=null&&signers.length>1;}Signature[] getSigningCertificateHistory(){return history!=null?history:signers;}Signature[] getApkContentsSigners(){if(fail)throw new UnsupportedOperationException();return signers;}}
  static class PackageInfo {String packageName="io.tvos",versionName="1.2";long code=3;Signature[] signatures;SigningInfo signingInfo=new SigningInfo();long getLongVersionCode(){return code;}}
  static class PackageManager {
   static final int GET_SIGNING_CERTIFICATES=1,GET_SIGNATURES=2;
@@ -39,6 +39,7 @@ tests = r'''
  public static void main(String[] args)throws Exception {
   UpdateRelease r=release(manifest());check(r.apkUrl().equals("https://github.com/sponge1645/tvos/releases/download/v1.2/tvOS.apk"),"pinned tag URL");
   Object[][] invalid={{"packageName","other.app"},{"asset","evil.apk"},{"tag","../bad"},{"tag","v1/evil"},{"tag",".."},{"sha256","abc"},{"versionCode",0L},{"versionCode",2100000001L},{"size",9999L},{"size",268435457L},{"versionName","x/y"}};
+  check(UpdateRelease.LATEST.endsWith("/releases/download/ota-v1/update.json"),"bridge uses separate channel");
   for(Object[] bad:invalid){Map<String,Object> m=manifest();m.put((String)bad[0],bad[1]);boolean failed=false;try{release(m);}catch(Exception expected){failed=true;}check(failed,"unsafe manifest accepted: "+bad[0]);}
   UpdatePolicyHarness h=new UpdatePolicyHarness();PackageInfo installed=new PackageInfo(),archive=new PackageInfo();installed.code=2;
   installed.signingInfo.signers=new Signature[]{new Signature("owner")};archive.signingInfo.signers=new Signature[]{new Signature("owner")};h.context.pm.installed=installed;h.context.pm.archive=archive;
@@ -65,6 +66,18 @@ tests = r'''
   archive.code=4;h.rejects(r);archive.code=3;
   h.context.pm.failSigning=false;
   archive.signingInfo.fail=true;h.verifyApk(new File("test.apk"),r);archive.signingInfo.fail=false;
+  installed.signingInfo=new SigningInfo();installed.signingInfo.signers=new Signature[]{new Signature("owner")};installed.signatures=null;
+  archive.signingInfo=new SigningInfo();archive.signingInfo.signers=new Signature[]{new Signature("new")};archive.signatures=null;
+  archive.signingInfo.history=new Signature[]{new Signature("owner"),new Signature("new")};h.verifyApk(new File("test.apk"),r);
+  installed.signatures=installed.signingInfo.signers;SigningInfo keep=installed.signingInfo;installed.signingInfo=null;h.verifyApk(new File("test.apk"),r);installed.signingInfo=keep;installed.signatures=null;
+  archive.signingInfo.history=new Signature[]{new Signature("stranger"),new Signature("new")};h.rejects(r);
+  archive.signingInfo.history=new Signature[]{new Signature("owner"),new Signature("wrong")};h.rejects(r);
+  archive.signingInfo.history=new Signature[]{new Signature("owner"),new Signature("owner"),new Signature("new")};h.rejects(r);
+  installed.signingInfo.signers=new Signature[]{new Signature("new")};installed.signingInfo.history=new Signature[]{new Signature("owner"),new Signature("new")};
+  archive.signingInfo.signers=new Signature[]{new Signature("owner")};archive.signingInfo.history=new Signature[]{new Signature("owner")};h.rejects(r);
+  archive.signingInfo.signers=new Signature[]{new Signature("third")};archive.signingInfo.history=new Signature[]{new Signature("owner"),new Signature("new"),new Signature("third")};h.verifyApk(new File("test.apk"),r);
+  archive.signingInfo.history=new Signature[]{new Signature("new"),new Signature("third")};h.rejects(r);
+  archive.signingInfo.history=null;h.rejects(r);
   h.context.pm.archive=null;
   try{h.verifyApk(new File("test.apk"),r);throw new AssertionError("missing metadata accepted");}
   catch(IOException expected){check(expected.getMessage().contains("metadata"),"parse error is distinct from signer mismatch");}
@@ -83,7 +96,7 @@ json_stub = '''package org.json;import java.util.Map;public class JSONObject {pr
 with tempfile.TemporaryDirectory(prefix='tvos-update-policy-') as directory:
     root = Path(directory)
     (root / 'JSONObject.java').write_text(json_stub)
-    (root / 'UpdatePolicyHarness.java').write_text(header + ' private static final int SIGNER_FLAGS=PackageManager.GET_SIGNING_CERTIFICATES|PackageManager.GET_SIGNATURES;\n' + method('    private void verifyApk(') + method('    private static Signature[] currentSigners(') + method('    private static boolean sameSigners(') + method('    private static boolean sameRelease(') + method('    private static String hex(') + tests)
+    (root / 'UpdatePolicyHarness.java').write_text(header + ' private static final int SIGNER_FLAGS=PackageManager.GET_SIGNING_CERTIFICATES|PackageManager.GET_SIGNATURES;\n' + method('    private void verifyApk(') + method('    private static Signature[] currentSigners(') + method('    private static boolean compatibleSigners(') + method('    private static Signature[] signingHistory(') + method('    private static boolean sameRelease(') + method('    private static String hex(') + tests)
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/UpdateRelease.java', str(root / 'JSONObject.java'), str(root / 'UpdatePolicyHarness.java')], check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.UpdatePolicyHarness'], check=True)

@@ -170,7 +170,7 @@ final class SelfUpdate {
         }
         if (signedArchive != null && signedInstalled != null
                 && currentSigners(signedArchive) != null && currentSigners(signedInstalled) != null
-                && !sameSigners(signedInstalled, signedArchive))
+                && !compatibleSigners(signedInstalled, signedArchive))
             throw new IOException(text("Подпись APK отличается от установленного tvOS", "Update signer differs from installed tvOS"));
         // Missing signer metadata is not proof of a bad signature. The mandatory Android installer
         // verifies the real APK and rejects incompatible certificates; this app never installs silently.
@@ -181,7 +181,7 @@ final class SelfUpdate {
                 && a.versionName.equals(b.versionName) && a.tag.equals(b.tag) && a.sha256.equals(b.sha256);
     }
 
-    /** Prefer current signers; firmware may populate only the legacy representation. Never accept signing history. */
+    /** Prefer current signers; firmware may populate only the legacy representation. Rotation is handled separately using platform-verified history. */
     private static Signature[] currentSigners(PackageInfo info) {
         try {
             Signature[] signatures = info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners();
@@ -194,10 +194,34 @@ final class SelfUpdate {
         }
     }
 
-    private static boolean sameSigners(PackageInfo installed, PackageInfo archive) {
+    private static boolean compatibleSigners(PackageInfo installed, PackageInfo archive) {
         Signature[] a = currentSigners(installed), b = currentSigners(archive);
-        return a != null && b != null && a.length == b.length
-                && new HashSet<>(Arrays.asList(a)).equals(new HashSet<>(Arrays.asList(b)));
+        if (a == null || b == null) return false;
+        if (a.length == b.length && new HashSet<>(Arrays.asList(a)).equals(new HashSet<>(Arrays.asList(b)))) return true;
+        // Only a forward extension of a single signer's verified lineage is compatible.
+        // Multiple-signer sets never rotate; Android's installer remains the final verifier.
+        if (a.length != 1 || b.length != 1) return false;
+        Signature[] oldHistory = signingHistory(installed, a[0]), newHistory = signingHistory(archive, b[0]);
+        if (newHistory == null) return false;
+        if (oldHistory == null) {
+            // Some TV firmware exposes the installed current certificate only through GET_SIGNATURES.
+            for (int i = 0; i < newHistory.length - 1; i++) if (a[0].equals(newHistory[i])) return true;
+            return false;
+        }
+        if (newHistory.length <= oldHistory.length) return false;
+        for (int i = 0; i < oldHistory.length; i++) if (!oldHistory[i].equals(newHistory[i])) return false;
+        return true;
+    }
+
+    private static Signature[] signingHistory(PackageInfo info, Signature current) {
+        try {
+            if (info.signingInfo == null || info.signingInfo.hasMultipleSigners()) return null;
+            Signature[] history = info.signingInfo.getSigningCertificateHistory();
+            if (history == null || history.length == 0 || !current.equals(history[history.length - 1])) return null;
+            HashSet<Signature> unique = new HashSet<>();
+            for (Signature signature : history) if (signature == null || !unique.add(signature)) return null;
+            return history;
+        } catch (RuntimeException unavailable) { return null; }
     }
 
     void install(Activity activity) {

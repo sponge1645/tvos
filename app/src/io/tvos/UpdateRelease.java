@@ -6,7 +6,7 @@ import org.json.JSONObject;
 /** A release manifest never supplies an arbitrary download URL. Assets are pinned to a release tag. */
 final class UpdateRelease {
     static final String REPOSITORY = "https://github.com/sponge1645/tvos";
-    static final String LATEST = REPOSITORY + "/releases/latest/download/update.json";
+    static final String LATEST = REPOSITORY + "/releases/download/ota-v1/update.json";
     final String versionName, tag, sha256;
     final long versionCode, size;
 

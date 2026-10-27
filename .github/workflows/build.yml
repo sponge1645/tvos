@@ -31,5 +31,8 @@ jobs:
         env:
           ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
           ANDROID_SDK_ROOT: ${{ runner.temp }}/tvos-android-sdk
-        run: bash build.sh
+          TVOS_SIGNING_MODE: ci
+        run: |
+          bash build.sh
+          python3 tests/integration_signing_rotation.py
       # No production signing key or TMDB key is used; this APK is deliberately not published.

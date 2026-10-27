@@ -16,6 +16,33 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
     else cp "$SOURCE/$ITEM" "$TARGET/$ITEM"; fi
   fi
 done
+for RETIRED_FILE in \
+  app/assets/avatars/cat_face.webp \
+  app/assets/avatars/clapper_board.webp \
+  app/assets/avatars/dog_face.webp \
+  app/assets/avatars/fox.webp \
+  app/assets/avatars/frog.webp \
+  app/assets/avatars/hot_dog.webp \
+  app/assets/avatars/lion.webp \
+  app/assets/avatars/man.webp \
+  app/assets/avatars/monkey_face.webp \
+  app/assets/avatars/panda.webp \
+  app/assets/avatars/pig_face.webp \
+  app/assets/avatars/pile_of_poo.webp \
+  app/assets/avatars/popcorn.webp \
+  app/assets/avatars/rabbit_face.webp \
+  app/assets/avatars/robot.webp \
+  app/assets/avatars/statue_of_liberty.webp \
+  app/assets/avatars/videocassette.webp \
+  app/assets/avatars/woman.webp \
+  app/assets/fonts/sf_display_bold.otf \
+  app/assets/fonts/sf_display_light.otf \
+  app/assets/fonts/sf_display_medium.otf \
+  app/assets/fonts/sf_display_regular.otf \
+  app/assets/fonts/sf_display_semibold.otf \
+  tools/test-ota-from-1.0.1.sh tests/test_ota_test_script.py; do
+  rm -f -- "$TARGET/$RETIRED_FILE"
+done
 # These fonts were replaced by SF Pro Display. The complete previous app is already in BACKUP.
 for FONT_FILE in InterVariable.ttf sf_text_regular.otf sf_text_medium.otf sf_text_semibold.otf OFL.txt; do
   rm -f -- "$TARGET/app/assets/fonts/$FONT_FILE"
