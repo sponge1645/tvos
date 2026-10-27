@@ -62,7 +62,7 @@
   <string name="runtime_back_to_home" formatted="false">"Back to Home"</string>
   <string name="runtime_choose_nyour_avatar" formatted="false">"Choose\nyour avatar"</string>
   <string name="runtime_your_profile_non_tvos" formatted="false">"Set Up Your\ntvOS Profile"</string>
-  <string name="runtime_use_the_arrows_to_choose_then_press_ok" formatted="false">"Use the arrows to choose, then press OK."</string>
+  <string name="runtime_use_the_arrows_to_choose_then_press_ok" formatted="false">"Use the arrows to choose,\nthen press OK."</string>
   <string name="runtime_make_yourself_at_home_nyour_avatar_will_appear_beside_the_clock_n" formatted="false">"Make yourself at home.\nYour avatar will appear beside the clock\non the Home screen."</string>
   <string name="runtime_series" formatted="false">"Series"</string>
   <string name="runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru" formatted="false">"No verified APK for first installation. Install the app from a trusted source; tvOS can then verify updates against its signature."</string>

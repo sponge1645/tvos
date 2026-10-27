@@ -197,7 +197,8 @@ public final class ProfileActivity extends Activity {
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build();
             bodyLayout = StaticLayout.Builder.obtain(description, 0, description.length(), body, 800)
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).setLineSpacing(5, 1).build();
-            float buttonTop = 510 + bodyLayout.getHeight() + 40;
+            float textGap = Math.max(0, 510 - (280 + headingLayout.getHeight()));
+            float buttonTop = 510 + bodyLayout.getHeight() + textGap;
             buttonRects[0].set(303.6f, buttonTop, 796.4f, buttonTop + 72);
             buttonRects[1].set(303.6f, buttonTop + 73, 796.4f, buttonTop + 145);
         }
