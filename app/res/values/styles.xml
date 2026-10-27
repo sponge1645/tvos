@@ -10,6 +10,12 @@
         <item name="android:colorBackgroundCacheHint">@null</item>
     </style>
     <style name="GenreScroll">
+        <!-- Initialize the native scrollbar drawable during View construction, also on API28. -->
+        <item name="android:scrollbars">vertical</item>
+        <item name="android:scrollbarStyle">insideOverlay</item>
+        <item name="android:fadeScrollbars">true</item>
+        <item name="android:scrollbarDefaultDelayBeforeFade">800</item>
+        <item name="android:scrollbarFadeDuration">250</item>
         <item name="android:scrollbarThumbVertical">@drawable/genre_scrollbar_thumb</item>
         <item name="android:scrollbarTrackVertical">@android:color/transparent</item>
         <item name="android:scrollbarSize">3dp</item>

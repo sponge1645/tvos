@@ -52,6 +52,18 @@ final class HomeGenres {
             setVerticalFadingEdgeEnabled(true);
             setFadingEdgeLength(fadeLength);
         }
+        void showPosition() { awakenScrollBars(); }
+        @Override protected int computeScrollDeltaToGetChildRectOnScreen(Rect rect) {
+            if (getChildCount() == 0) return 0;
+            // Native ScrollView reserves both fading edges, even though our bottom strength is zero.
+            // Reveal only the actual row: seven whole rows must still fit after keyboard scrolling.
+            int top = getScrollY(), height = getHeight();
+            int target = top;
+            if (rect.bottom > top + height) target = rect.bottom - height;
+            else if (rect.top < top) target = rect.top;
+            int max = Math.max(0, getChildAt(0).getHeight() - height);
+            return Math.max(0, Math.min(max, target)) - top;
+        }
         @Override protected float getTopFadingEdgeStrength() {
             return Math.min(1f, Math.max(0, getScrollY()) / (float) fadeLength);
         }
@@ -166,7 +178,7 @@ final class HomeGenres {
         root.setOnKeyListener(this::initialRelease);
         row(root, null, k); // Pinned reset, outside the scrolling genre list.
         heading(root, AppStrings.get(R.string.home_genre), k);
-        ScrollView scroll = new GenreScroll(context, k);
+        GenreScroll scroll = new GenreScroll(context, k);
         scroll.setFillViewport(true);
         scroll.setSmoothScrollingEnabled(true);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -233,6 +245,7 @@ final class HomeGenres {
                     else root.getChildAt(0).requestFocus();
                 }
                 window.update();
+                scroll.postOnAnimation(scroll::showPosition);
             };
             // Cold network delivery must not inflate/re-layout all rows in the middle of the entrance.
             if (window.opening) window.afterOpen = content;

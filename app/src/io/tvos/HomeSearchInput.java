@@ -113,9 +113,15 @@ final class HomeSearchInput {
         input.setTextColor(dark ? 0xFFFFFFFF : 0xFF20242B);
         input.setHintTextColor(dark ? 0xAABBBBBB : 0xFF777777);
         input.setTextSize(21);
-        input.setCompoundDrawablePadding(pad / 2);
+        // Use the real capital height at the current font scale, rather than a nominal icon size.
+        android.graphics.Rect capital = new android.graphics.Rect();
+        input.getPaint().getTextBounds("П", 0, 1, capital);
+        int searchInset = pad + input.getPaddingLeft(); // The former text-to-capsule inset.
+        float iconSize = Math.max(1, capital.height())
+                / Math.max(.001f, Symbols.height(activity, "search", 1f));
+        input.setCompoundDrawablePadding(searchInset);
         input.setCompoundDrawablesRelative(new SearchIcon(activity,
-                24 * activity.getResources().getDisplayMetrics().density, dark ? 0xAABBBBBB : 0xFF777777), null, null, null);
+                iconSize, dark ? 0xAABBBBBB : 0xFF777777), null, null, null);
         input.setHint(AppStrings.get(R.string.home_search_movies_and_series));
         input.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         panel.addView(input, new android.widget.LinearLayout.LayoutParams(
@@ -130,11 +136,11 @@ final class HomeSearchInput {
         int searchHeight = Math.max(Math.round(panel.getMeasuredHeight() * 0.60f),
                 searchMetrics.bottom - searchMetrics.top
                         + Math.round(2 * activity.getResources().getDisplayMetrics().density));
-        panel.setPadding(pad, 0, pad, 0);
+        panel.setPadding(searchInset, 0, searchInset, 0);
         input.setMinimumHeight(0);
         input.setMinHeight(0);
         input.setIncludeFontPadding(false);
-        input.setPadding(input.getPaddingLeft(), 0, input.getPaddingRight(), 0);
+        input.setPadding(0, 0, 0, 0);
         input.setGravity(android.view.Gravity.CENTER_VERTICAL);
         input.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, searchHeight));
