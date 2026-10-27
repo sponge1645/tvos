@@ -17,7 +17,6 @@ BT="$SDK/build-tools/$(ls "$SDK/build-tools" | sort -V | tail -1)"
 AJ="$(ls -d "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1 || true)"
 [ -f "${AJ:-}" ] || { echo "Android platform not found. Run: sdkmanager \"platforms;android-34\""; exit 1; }
 JAVAC="${JAVA_HOME:+$JAVA_HOME/bin/}javac"
-KEYTOOL="${JAVA_HOME:+$JAVA_HOME/bin/}keytool"
 command -v "$JAVAC" >/dev/null 2>&1 || { echo "JDK not found. Install JDK 17 and set JAVA_HOME."; exit 1; }
 
 # --- Settings: config.properties -> Config.java
@@ -42,6 +41,7 @@ ASSIST=false; [ "$(prop disable_assistant false)" = "true" ] && ASSIST=true
 CRYPTO=false; [ "$(prop show_crypto true)" = "true" ] && CRYPTO=true
 
 rm -rf out && mkdir -p out/gen/io/tvos out/classes
+python3 tools/prepare-assets.py
 cat > out/gen/io/tvos/Config.java <<EOF
 package io.tvos;
 
@@ -66,19 +66,16 @@ EOF
 "$BT/aapt2" compile --dir app/res -o out/res.zip
 # Fonts uncompressed: Android reads them straight from the APK.
 "$BT/aapt2" link -o out/base.apk -I "$AJ" --manifest app/AndroidManifest.xml --java out/gen out/res.zip \
-  --min-sdk-version 28 --target-sdk-version 33 -A app/assets -0 ttf -0 otf
+  --min-sdk-version 28 --target-sdk-version 33 -A out/assets -0 ttf -0 otf
 "$JAVAC" -nowarn -Xlint:-options -source 8 -target 8 -bootclasspath "$AJ:$BT/core-lambda-stubs.jar" -classpath "$AJ" \
   -d out/classes $(find app/src out/gen -name '*.java')
 "$BT/d8" --release --min-api 28 --lib "$AJ" --output out $(find out/classes -name '*.class')
 (cd out && zip -qj base.apk classes.dex)
 "$BT/zipalign" -f -p 4 out/base.apk out/aligned.apk
 
-# --- Sign with your own key (created once; updates need the same key, so keep freemytv.keystore)
-if [ ! -f freemytv.keystore ]; then
-  "$KEYTOOL" -genkeypair -keystore freemytv.keystore -alias freemytv -keyalg RSA -keysize 2048 -validity 20000 \
-    -storepass freemytv -keypass freemytv -dname "CN=tvOS" >/dev/null 2>&1
-fi
-"$BT/apksigner" sign --ks freemytv.keystore --ks-pass pass:freemytv --key-pass pass:freemytv --out tvOS.apk out/aligned.apk
+# --- Sign the bridge with the owner legacy key; CI uses a disposable key.
+python3 tools/signing.py sign "$BT" out/aligned.apk tvOS.apk
+python3 tools/prepare-assets.py --verify-apk tvOS.apk
 echo "Built tvOS.apk ($(du -h tvOS.apk | cut -f1)). Install: adb install -r tvOS.apk"
 
 # Matching metadata is generated immediately after signing this exact APK.

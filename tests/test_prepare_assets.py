@@ -7,6 +7,8 @@ from pathlib import Path
 import tempfile
 import zipfile
 
+build = Path('build.sh').read_text()
+assert 'python3 tools/prepare-assets.py' in build and '-A out/assets' in build and '--verify-apk tvOS.apk' in build
 spec = importlib.util.spec_from_file_location('prepare_assets', 'tools/prepare-assets.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

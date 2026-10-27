@@ -37,3 +37,14 @@ __MACOSX/
 # Release staging and optional local Android SDK
 release/
 .android-sdk/
+
+# External build-only font/avatar pack cache
+.tvos-assets/
+
+# Font/avatar bytes are supplied by the external asset pack at build time.
+app/assets/fonts/
+app/assets/avatars/
+
+# Local signing configuration and rotation proofs
+signing.local.json
+*.lineage
