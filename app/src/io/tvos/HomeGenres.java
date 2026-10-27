@@ -141,6 +141,7 @@ final class HomeGenres {
         this.home = home; this.context = home.getContext(); this.handler = handler;
         this.catalog = catalog; this.host = host;
     }
+    int selectedId() { return selected == null ? 0 : selected.id; }
     String label() { return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
     List<Recs.Pick> movies() { return movies; } // null means the ordinary Movies catalog.
     void arm() {

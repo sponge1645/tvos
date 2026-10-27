@@ -783,7 +783,7 @@ public class SettingsActivity extends Activity {
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 float right = rowRect.right - 30 * k;
                 if (screen != ABOUT || i == 0) {
-                    if (screen == UPDATES && i == 0 && updateProgress.active()) {
+                    if (screen == UPDATES && i == 0 && updateProgress.busy()) {
                         boolean reduced = localFlag("reduce_motion");
                         updateProgress.drawSpinner(c, rowRect.right - 43 * k, rowRect.centerY(), k,
                                 f > 0.5f ? 0xFF777777 : secondaryInk(), reduced);

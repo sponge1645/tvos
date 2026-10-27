@@ -5,7 +5,7 @@ from settings_strings_fixture import write
 from home_renderers_fixture import files
 sources=files()
 sources['android/graphics/Canvas.java']=sources['android/graphics/Canvas.java'].replace('public void translate(float x,float y)', 'public void drawLine(float a,float b,float c,float d,Paint p){add("line","",a,b,c,d,p);}public void rotate(float a){rotate(a,0,0);}public void translate(float x,float y)')
-sources['io/tvos/SelfUpdate.java']='package io.tvos;class SelfUpdate {static final int DOWNLOADING=4;}'
+sources['io/tvos/SelfUpdate.java']='package io.tvos;class SelfUpdate {static final int CHECKING=1,DOWNLOADING=4;}'
 sources['io/tvos/SettingsUpdateProgress.java']=Path('app/src/io/tvos/SettingsUpdateProgress.java').read_text()
 sources['io/tvos/UpdateProgressHarness.java']='''package io.tvos;
 import android.graphics.*;import android.os.SystemClock;import java.util.*;
@@ -15,6 +15,7 @@ public class UpdateProgressHarness {
  public static void main(String[] args){
   for(String lang:new String[]{"ru","en"}){
    AppLanguage.select(lang);boolean ru=lang.equals("ru");SettingsUpdateProgress p=new SettingsUpdateProgress();check(!p.active(),"idle progress hidden");
+   p.observe(1,-1,0);Canvas checking=new Canvas();p.draw(checking,1,false);check(checking.entries.isEmpty()&&p.busy()&&!p.active(),"checking shows no download bar");p.drawSpinner(checking,0,0,1,0,false);check(entries(checking,"line").size()==12,"spinner starts during check");
    p.observe(4,-1,0);check(p.active()&&p.label(0).equals(ru?"Загрузка обновления…":"Downloading update…"),"unknown size state");
    p.observe(4,10,1000);check(p.label(1000).equals(ru?"Загрузка: 10%":"Downloading: 10%"),"early actual percentage without fabricated estimate");
    p.observe(4,50,100_000);check(p.label(100_000).equals(ru?"Загрузка: примерно 2 минуты до завершения":"Downloading: About 2 minutes remaining"),"estimate from actual percent and elapsed time");
@@ -32,7 +33,7 @@ public class UpdateProgressHarness {
 }'''
 view=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 assert 'descriptionPaint.setTypeface(Ui.displaySemibold)' in view and 'descriptionPaint.setTextSize(30 * k)' in view
-assert 'screen == UPDATES && updateProgress.active()' in view and 'screen == UPDATES && i == 0 && updateProgress.active()' in view
+assert 'screen == UPDATES && updateProgress.active()' in view and 'screen == UPDATES && i == 0 && updateProgress.busy()' in view
 with tempfile.TemporaryDirectory(prefix='tvos-update-progress-') as tmp:
  root=Path(tmp);write(root)
  for name,text in sources.items():

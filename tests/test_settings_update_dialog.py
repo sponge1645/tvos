@@ -39,9 +39,8 @@ public class UpdateDialogHarness {
   AppLanguage.select("en");SettingsUpdateDialog d=create();SelfUpdate u=SelfUpdate.instance;
   check(!d.visible()&&u.listeners.size()==1&&u.automatic==1,"resume registers once without opening unsolicited modal");
   u.emit(SelfUpdate.DOWNLOADING,12,"");check(!d.visible()&&progress.percent==12,"background download reaches progress without unsolicited modal");
-  d.check();check(d.visible()&&u.checks==1,"check opens modal with synchronous status callback");
-  Canvas c=draw(d,true);check(c.text.contains("Checking for updates…")&&c.layerAlpha==0&&c.dimAlpha==0,"checking starts transparent");
-  SystemClock.now+=260;c=draw(d,true);check(c.layerAlpha==-1&&c.scale==1f&&c.dimAlpha==105,"fade ends opaque in light theme");
+  d.check();check(!d.visible()&&u.checks==1&&progress.kind==SelfUpdate.CHECKING,"checking stays inline with immediate status");
+  Canvas c;
   u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,false);
   check(c.text.size()==8&&c.text.get(1).equals("Update 1.2.3 is available.")&&c.text.get(6).equals("Download and Install"),"available copy and two buttons");
   check(c.panelLeft==470f&&c.panelTop==205f&&c.dimAlpha==175,"panel geometry and dark dimming retained");
@@ -50,7 +49,7 @@ public class UpdateDialogHarness {
   u.emit(SelfUpdate.DOWNLOADING,47,"");SystemClock.now+=260;c=draw(d,true);check(!d.visible()&&progress.kind==SelfUpdate.DOWNLOADING&&progress.percent==47,"download fades to inline page progress");
   u.emit(SelfUpdate.READY,100,"");check(u.installs==1,"download and install intent continues when ready");
   u.emit(SelfUpdate.READY,100,"");check(u.installs==1,"duplicate ready callback does not reinstall");
-  key(d,DOWN);key(d,OK);check(u.installs==1&&d.visible(),"later closes through fade");
+  check(!d.visible(),"ready goes directly to native installer without another tvOS popup");
   int notices=u.installs;u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;draw(d,true);check(!d.visible()&&u.installs==notices,"late status cannot reopen dismissed dialog");
   d=create();u=SelfUpdate.instance;d.check();u.emit(SelfUpdate.AVAILABLE,-1,"");key(d,OK);key(d,BACK);u.emit(SelfUpdate.READY,100,"");check(u.installs==0,"Back cancels automatic install intent");
   SystemClock.now+=260;draw(d,true);check(!d.visible(),"Back finishes closing");

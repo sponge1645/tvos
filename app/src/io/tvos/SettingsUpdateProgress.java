@@ -7,7 +7,7 @@ import android.os.SystemClock;
 
 /** Inline download progress; samples updater events, without changing transport or installation. */
 final class SettingsUpdateProgress {
-    private boolean active;
+    private boolean active, checking;
     private int percent = -1, initialPercent;
     private long started, labelSecond = -1;
     private AppLanguage labelLanguage;
@@ -17,9 +17,11 @@ final class SettingsUpdateProgress {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF bar = new RectF();
 
+    boolean busy() { return active || checking; }
     boolean active() { return active; }
 
     void observe(int kind, int value, long now) {
+        checking = kind == SelfUpdate.CHECKING;
         if (kind != SelfUpdate.DOWNLOADING) {
             active = false;
             percent = -1;
@@ -80,7 +82,7 @@ final class SettingsUpdateProgress {
     }
 
     void drawSpinner(Canvas canvas, float x, float y, float k, int color, boolean reduced) {
-        if (!active) return;
+        if (!busy()) return;
         int phase = reduced ? 0 : (int) (SystemClock.uptimeMillis() / 80 % 12);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeCap(Paint.Cap.ROUND);

@@ -41,6 +41,7 @@ final class PosterRenderer {
     private final Paint ratingRimScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF ratingBadgeScratch = new RectF();
     private final RectF ratingInsetScratch = new RectF();
+    private final Paint questionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint marqueeMaskScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PorterDuffXfermode textEdgeMode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
 
@@ -120,6 +121,13 @@ final class PosterRenderer {
         if (p == null) return;
         String title = p.title == null ? "" : p.title;
         drawCardMarquee(c, title, lCardTitle, base.left, base.bottom + HomeLayout.POSTER_TITLE_BASELINE * k, bw, i);
+        if (p.id == -1) {
+            questionPaint.set(lCardTitle);
+            questionPaint.setTextSize(100 * k);
+            questionPaint.setTextAlign(Paint.Align.CENTER);
+            c.drawText("?", cell.centerX(), cell.centerY() - (questionPaint.ascent() + questionPaint.descent()) / 2, questionPaint);
+            return;
+        }
         PosterText.Entry text = posterText.get(p);
         String detail = text.detail(tab == 0 && !searchMode);
         float metaLeft = base.left;

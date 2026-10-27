@@ -72,6 +72,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeData data;
     private final HomeWidgets widgets;
     private final HomeGenres genres, tvGenres;
+    private final RandomPoster randomPoster = new RandomPoster();
     private final HomeHeaderRenderer header;
     private final HomeHeaderRenderer.Frame headingFrame = new HomeHeaderRenderer.Frame();
     private final HomeAppsRenderer appSurfaces;
@@ -424,6 +425,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
+        randomPoster.clear();
         boolean resetMovies = genres.pause(), resetShows = tvGenres.pause();
         if (!searchMode && (tab == 1 && resetMovies || tab == 3 && resetShows)) cardPage = cardIndex = 0;
         if (!reveal.prepared()) reveal.cancel();
@@ -1309,7 +1311,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
             Recs.Pick p = cardIndex < cards.size() ? cards.get(cardIndex) : null;
             if (p == null) return;
-            movieApps.choose(p);
+            if (randomPoster.placeholder(p)) {
+                randomPoster.load(recs.genres(), tab == 3 ? "tv" : "movie", randomGenre(),
+                        tab == 0 ? baseCatalog() : null,
+                        () -> { updateCards(); wake(); },
+                        () -> { showToast(AppStrings.get(R.string.home_genre_failed)); updateCards(); wake(); });
+            } else movieApps.choose(p);
             return;
         } else {
             if (shelf.isEmpty()) return;
@@ -1376,6 +1383,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void beginSearch() {
+        randomPoster.clear();
         cancelRouletteWork();
         setSearchInputOpen(true);
         if (!searchMode) {
@@ -1605,11 +1613,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
     }
 
-    private List<Recs.Pick> currentCatalog() {
-        if (searchMode) return searchResults;
+    private List<Recs.Pick> baseCatalog() {
         if (tab == 1 && genres.movies() != null) return genres.movies();
         if (tab == 3 && tvGenres.movies() != null) return tvGenres.movies();
         return recs.catalog(TAB_KIND[tab]);
+    }
+    private int randomGenre() { return tab == 1 ? genres.selectedId() : tab == 3 ? tvGenres.selectedId() : 0; }
+    private List<Recs.Pick> currentCatalog() {
+        if (searchMode) return searchResults;
+        if (tab == 4) return java.util.Collections.emptyList();
+        List<Recs.Pick> all = new ArrayList<>(baseCatalog());
+        if (tab != 4 && !all.isEmpty())
+            all.add(randomPoster.tail(tab + ":" + randomGenre() + ":" + Ui.language, tab == 3 ? "tv" : "movie"));
+        return all;
     }
 
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
@@ -1652,8 +1668,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.setPosterWindow(running ? posterWindow : java.util.Collections.emptyList());
         if (running) for (Recs.Pick pick : posterWindow) recs.poster(pick);
         if (running) {
-            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) recs.requestDuration(pick);
-            Backdrop b = cards.isEmpty() ? null : recs.backdrop(cards.get(0));
+            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0) recs.requestDuration(pick);
+            Backdrop b = cards.isEmpty() || cards.get(0).id <= 0 ? null : recs.backdrop(cards.get(0));
             if (cards.isEmpty() || b != null) background.show(b);
         }
         heroDirty = true;
@@ -1666,6 +1682,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (tab == 4 || index == 4) {
             rouletteWork.reset();
         }
+        randomPoster.clear();
         tab = index;
         layoutLight();
         cardPage = 0;
@@ -1789,6 +1806,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         updateCards();
                         // updateCards() clamps focus for the last (possibly incomplete) page.
                     } else cardIndex = next;
+                    if (!searchMode && randomPoster.resetAway(cardPage * 5 + cardIndex, currentCatalog().size() - 1))
+                        updateCards();
                 } else if (dy < 0) {
                     zone = Z_TOP;
                     // Route by visible position, not fixed action IDs. The last poster

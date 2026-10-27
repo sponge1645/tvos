@@ -102,6 +102,34 @@ final class GenreCatalog {
             return ready;
         }, callback);
     }
+    UiRequest random(String kind, int genre, AppLanguage language, Consumer<Recs.Pick> callback) {
+        return submit(language, request -> {
+            String query = "/discover/" + kind + "?language=" + language.apiTag
+                    + "&sort_by=popularity.desc&vote_average.gte=6.5&vote_count.gte=200&include_adult=false"
+                    + ("movie".equals(kind) ? "&include_video=false" : "")
+                    + (genre > 0 ? "&with_genres=" + genre : "");
+            JSONObject first = source.get(query + "&page=1");
+            if (!request.active()) return null;
+            int pages = Math.max(1, Math.min(500, first.optInt("total_pages", 1)));
+            int page = java.util.concurrent.ThreadLocalRandom.current().nextInt(pages) + 1;
+            JSONObject response = page == 1 ? first : source.get(query + "&page=" + page);
+            if (!request.active()) return null;
+            List<Recs.Pick> eligible = new ArrayList<>();
+            for (JSONObject candidate : new JSONObject[]{response, first}) {
+                JSONArray items = candidate.getJSONArray("results");
+                for (int i = 0; i < items.length(); i++) {
+                    JSONObject item = items.getJSONObject(i);
+                    if (item.optDouble("vote_average", 0) <= 6.5 || item.optBoolean("adult", false)) continue;
+                    boolean matches = genre <= 0;
+                    JSONArray ids = item.optJSONArray("genre_ids");
+                    if (ids != null) for (int j = 0; j < ids.length(); j++) matches |= ids.optInt(j) == genre;
+                    if (matches) TmdbMetadata.add(eligible, item, kind);
+                }
+                if (!eligible.isEmpty()) break;
+            }
+            return eligible.isEmpty() ? null : eligible.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(eligible.size()));
+        }, callback);
+    }
     private interface RequestWork<T> { T fetch(UiRequest request) throws IOException, JSONException; }
     private <T> UiRequest submit(AppLanguage language, RequestWork<T> work, Consumer<T> callback) {
         UiRequest request = new UiRequest(executor);

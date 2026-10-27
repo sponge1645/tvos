@@ -52,4 +52,5 @@
     <string name="home_genre" formatted="false">"Genres"</string>
     <string name="home_genre_loading" formatted="false">"Loading…"</string>
     <string name="home_genre_failed" formatted="false">"Could not load this selection. Try again."</string>
+    <string name="home_random_series" formatted="false">Random Series</string>
 </resources>

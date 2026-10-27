@@ -66,7 +66,7 @@ class Recs {
 '''
 harness = r'''package io.tvos;
 import java.util.*;
-public class HomeWorkHarness {
+public class HomeWorkHarness {static class RandomPoster {void clear(){}}final RandomPoster randomPoster=new RandomPoster();
  boolean running=true,searchMode,heroDirty,statusDirty;
  String searchQuery="";int cardPage,cardIndex,rouletteCancels,updates;
  List<Recs.Pick> searchResults=new ArrayList<>();

@@ -52,4 +52,5 @@
     <string name="home_genre" formatted="false">"Жанры"</string>
     <string name="home_genre_loading" formatted="false">"Загрузка…"</string>
     <string name="home_genre_failed" formatted="false">"Не удалось загрузить подборку. Попробуйте ещё раз."</string>
+    <string name="home_random_series" formatted="false">Случайный сериал</string>
 </resources>

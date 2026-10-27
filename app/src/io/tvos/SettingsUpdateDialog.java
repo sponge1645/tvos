@@ -85,16 +85,26 @@ final class SettingsUpdateDialog {
             }
             return;
         }
+        if (update.kind == SelfUpdate.CHECKING) return;
+        if (update.kind == SelfUpdate.READY && installWhenReady) {
+            installWhenReady = false;
+            updateRequested = false;
+            updatePopup = 0;
+            updatePopupClosing = false;
+            updater.install(activity);
+            if (updater.status().kind == SelfUpdate.ERROR) {
+                updateRequested = true;
+                onSelfUpdate();
+            }
+            return;
+        }
         int mode = update.kind == SelfUpdate.CHECKING ? 4
                 : update.kind == SelfUpdate.AVAILABLE ? 2
                 : update.kind == SelfUpdate.READY ? 6
                 : update.kind == SelfUpdate.ERROR ? 3 : 1;
         if (updatePopup != mode || updatePopupClosing) showUpdatePopup(mode);
         else owner.invalidate();
-        if (update.kind == SelfUpdate.READY && installWhenReady) {
-            installWhenReady = false;
-            updater.install(activity);
-        }
+
     }
 
     private void showUpdatePopup(int mode) {
