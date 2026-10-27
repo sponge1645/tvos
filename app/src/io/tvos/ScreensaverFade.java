@@ -19,7 +19,7 @@ final class ScreensaverFade {
         viewTarget = true;
     }
 
-    /** Window alpha also covers the separate SurfaceView video layer on pre-DreamActivity Android. */
+    /** Window alpha also covers the separate SurfaceView video layer on legacy and translucent DreamActivity windows. */
     ScreensaverFade(View host, Alpha alpha, float initial) {
         this(host, alpha, initial, true);
     }
