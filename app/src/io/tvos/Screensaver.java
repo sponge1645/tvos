@@ -9,6 +9,8 @@ import android.service.dreams.DreamService;
  */
 public class Screensaver extends DreamService {
     private VideoDream view;
+    private android.view.View entrance;
+    private final Runnable startContentTask = this::startContent;
     private boolean dreaming;
     private ScreensaverFade windowFade;
     private boolean finishing, waking;
@@ -50,6 +52,9 @@ public class Screensaver extends DreamService {
 
     @Override public void onAttachedToWindow() {
         super.onAttachedToWindow();
+        if (view != null) view.stop();
+        view = null;
+        if (entrance != null) entrance.removeCallbacks(startContentTask);
         if (windowFade != null) windowFade.cancel();
         windowFade = null;
         Watchdog.install(this);
@@ -86,9 +91,12 @@ public class Screensaver extends DreamService {
                     + " windowFade=" + controlled
                     + " animatorsEnabled=" + android.animation.ValueAnimator.areAnimatorsEnabled());
         }
-        view = new VideoDream(this);
-        view.setOnOpaqueListener(() -> HomeDreamReturn.opaque(this));
-        setContentView(view);
+        // Match the in-place preview: do not attach a SurfaceView until the
+        // previous screen has completely faded to black. Its separate surface
+        // can otherwise punch a black hole through the entering dream window.
+        entrance = new android.view.View(this);
+        entrance.setBackgroundColor(android.graphics.Color.BLACK);
+        setContentView(entrance);
     }
 
     // Run our window fade after the system has dispatched the visible dream start.
@@ -98,26 +106,39 @@ public class Screensaver extends DreamService {
         dreaming = true;
         finishing = false;
         waking = false;
-        if (view != null) view.post(() -> {
+        if (entrance != null) entrance.post(() -> {
             if (!dreaming || waking) return;
             android.app.Activity activity = dreamActivity();
             if (activity != null) activity.overridePendingTransition(
                     windowFade == null ? R.anim.screensaver_window_enter : 0, 0);
+            android.util.Log.i("tvOS-Dream", "Black entrance started");
             if (windowFade != null)
-                windowFade.start(1f, VideoDream.TRANSITION_MS, null);
-            view.startAfterWindowFade();
+                windowFade.start(1f, VideoDream.TRANSITION_MS, startContentTask);
+            else entrance.postDelayed(startContentTask, VideoDream.TRANSITION_MS);
 
         });
     }
 
+    /** Only create the decoder surface once the window's black entrance is complete. */
+    private void startContent() {
+        if (!dreaming || waking || finishing || view != null) return;
+        view = new VideoDream(this);
+        view.setOnOpaqueListener(() -> HomeDreamReturn.opaque(this));
+        setContentView(view);
+        view.start(); // The window is already black; do not add another entrance delay.
+        android.util.Log.i("tvOS-Dream", "Content attached after black entrance");
+    }
+
     @Override public void onWakeUp() {
         waking = true;
+        if (entrance != null) entrance.removeCallbacks(startContentTask);
         if (view != null) view.fadeExit(this::finishWithFade);
         else finishWithFade();
     }
 
     @Override public void onDreamingStopped() {
         dreaming = false;
+        if (entrance != null) entrance.removeCallbacks(startContentTask);
         if (windowFade != null) windowFade.cancel();
         if (view != null) view.stop();
         super.onDreamingStopped();
@@ -125,6 +146,7 @@ public class Screensaver extends DreamService {
 
     @Override public void onDetachedFromWindow() {
         dreaming = false;
+        if (entrance != null) entrance.removeCallbacks(startContentTask);
         if (windowFade != null) windowFade.cancel();
         if (view != null) view.stop();
         super.onDetachedFromWindow();
