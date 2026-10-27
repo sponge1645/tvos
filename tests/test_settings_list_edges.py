@@ -16,6 +16,7 @@ def method(signature):
     return source[start:end]
 
 body = ''.join(method(s) for s in [
+    '        private void stepMainScroll(',
     '        private int scrollingFirstRow(',
     '        private int scrollingEndRow(',
     '        private void setScrollingRowRect(',
@@ -23,7 +24,9 @@ body = ''.join(method(s) for s in [
 ])
 harness = '''package io.tvos;
 public class ListEdgesHarness {
- static final int PICK_VISIBLE=10;
+ static final int PICK_VISIBLE=10, MAIN=0;
+ int screen,focus,invalidations;boolean reduced;final Spring mainScroll=new Spring(.30f,1f,0);
+ boolean localFlag(String key){return reduced;}void postInvalidateOnAnimation(){invalidations++;}
  static final float LIST_TOP=186, ROW_H=62, ABOUT_ROW_GAP=22,
   ABOUT_NAME_Y_OFFSET=3, LIST_X=1000, LIST_R=1824, ABOUT_NAME_RIGHT_EXTENSION=6;
  static class Box {
@@ -38,6 +41,9 @@ public class ListEdgesHarness {
 ''' + body + '''
  public static void main(String[] args){
   ListEdgesHarness h=new ListEdgesHarness();
+  h.focus=10;h.stepMainScroll(1f/60);check(h.mainScroll.value>0&&h.mainScroll.value<1&&h.invalidations>0,"root final row scrolls smoothly");
+  h.reduced=true;h.stepMainScroll(1f/60);check(h.mainScroll.value==1,"reduced motion exposes last root row immediately");
+  h.focus=0;h.stepMainScroll(1f/60);check(h.mainScroll.value==0,"first root row returns to top");
   check(h.scrollingEndRow()>PICK_VISIBLE,"draw past the old ten-row cutoff");
   h.setScrollingRowRect(10);
   check(h.rowRect.top<1080 && h.rowRect.bottom>1016,"next row intersects bottom fade");

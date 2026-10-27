@@ -220,14 +220,14 @@ final class SettingsUpdateDialog {
         p.setAlpha(255);
         p.setStyle(Paint.Style.FILL);
         p.setShader(null);
-        if (!reduceTransparency) backdrop.draw(c, panel, 72*k);
+        if (!reduceTransparency) backdrop.draw(c, panel, 60*k);
         p.setColor(reduceTransparency ? 0xFF1E2425 : 0xB31E2425);
-        c.drawRoundRect(panel, 72*k, 72*k, p);
+        c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(1.2f*k);
         p.setColor(light ? 0x55FFFFFF : 0x24FFFFFF);
-        c.drawRoundRect(panel, 72*k, 72*k, p);
+        c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setStyle(Paint.Style.FILL);
         Paint heading = popupHeading;
         heading.setColor(0xFFFFFFFF);

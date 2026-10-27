@@ -119,6 +119,7 @@ public class SettingsActivity extends Activity {
         private final SettingsDockEditor dockEditor = new SettingsDockEditor();
         private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
+        private final Spring mainScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
         private final RectF tmp = new RectF(), rowRect = new RectF(), focusBox = new RectF();
         private final RectF logoBounds = new RectF();
@@ -338,6 +339,7 @@ public class SettingsActivity extends Activity {
                 top = LIST_TOP + ABOUT_NAME_Y_OFFSET + row * (ROW_H + ABOUT_ROW_GAP);
                 height = ROW_H;
             }
+            if (screen == MAIN) top -= mainScroll.value * (ROW_H + MAIN_ROW_GAP);
             focusBox.set(LIST_X * k, top * k, (LIST_R + ABOUT_NAME_RIGHT_EXTENSION) * k, (top + height) * k);
             if (scrolling()) focusBox.offset(0, (pickScroll - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
             return focusBox;
@@ -495,6 +497,7 @@ public class SettingsActivity extends Activity {
                     listScroll.snap(pickScroll);
                 else if (listScroll.step(dt)) postInvalidateOnAnimation();
             }
+            stepMainScroll(dt);
             stepRowFocus(dt, up);
             float seconds = (up - startedAt) / 1000f;
             if (!updateDialog.visible() && up - lastSky >= 100) {
@@ -550,6 +553,13 @@ public class SettingsActivity extends Activity {
             focusReadyAt = now + (previous && !reduceMotion ? MENU_TRANSITION_MS : 0);
             drawnScreen = screen;
             for (Spring spring : pop) spring.snap(0);
+        }
+
+        private void stepMainScroll(float dt) {
+            if (screen != MAIN) return;
+            mainScroll.target = Math.max(0, focus - (PICK_VISIBLE - 1));
+            if (localFlag("reduce_motion")) mainScroll.snap(mainScroll.target);
+            else if (mainScroll.step(dt)) postInvalidateOnAnimation();
         }
 
         private void stepRowFocus(float dt, long now) {
@@ -655,7 +665,7 @@ public class SettingsActivity extends Activity {
         // Legacy display/Wi-Fi information remains available on older TV firmware.
         @SuppressWarnings("deprecation")
         // Approved About-screen geometry (all dimensions are scaled by k).
-        private static final float ABOUT_ROW_GAP = 22f, MAIN_ROW_GAP = 14f;
+        private static final float ABOUT_ROW_GAP = 22f, MAIN_ROW_GAP = 22f;
         private static final float ABOUT_NAME_Y_OFFSET = 3f;
         private static final float ABOUT_DETAILS_Y_OFFSET = 13f;
         private static final float ABOUT_NAME_RIGHT_EXTENSION = 6f;
@@ -778,6 +788,7 @@ public class SettingsActivity extends Activity {
                 int i = paintRow(pass, 0, labels.length, focus);
                 float y = (LIST_TOP + i * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
                         + (screen == ABOUT ? (i == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET)) * k;
+                if (screen == MAIN) y -= mainScroll.value * (ROW_H + MAIN_ROW_GAP) * k;
                 rowRect.set(LIST_X * k, y, LIST_R * k, y + ROW_H * k);
                 if (screen != ABOUT || i == 0) rowRect.right += ABOUT_NAME_RIGHT_EXTENSION * k;
                 // Only the first About row (device name) is an actionable capsule.
