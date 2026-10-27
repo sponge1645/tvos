@@ -72,7 +72,7 @@ public final class ProfileActivity extends Activity {
         private final Spring[] avatarFocus = new Spring[ProfileAvatar.COUNT];
         private final Spring chooser = new Spring(0.38f, 1f, 0);
         private final Spring entrance = new Spring(0.55f, 1f, 0);
-        private final RectF[] buttonRects = {new RectF(326, 0, 774, 72), new RectF(326, 73, 774, 145)};
+        private final RectF[] buttonRects = {new RectF(303.6f, 0, 796.4f, 72), new RectF(303.6f, 73, 796.4f, 145)};
         private final RectF scratch = new RectF();
         private final Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -197,9 +197,9 @@ public final class ProfileActivity extends Activity {
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build();
             bodyLayout = StaticLayout.Builder.obtain(description, 0, description.length(), body, 800)
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).setLineSpacing(5, 1).build();
-            float buttonTop = 490 + bodyLayout.getHeight() + 20;
-            buttonRects[0].set(326, buttonTop, 774, buttonTop + 72);
-            buttonRects[1].set(326, buttonTop + 73, 774, buttonTop + 145);
+            float buttonTop = 510 + bodyLayout.getHeight() + 40;
+            buttonRects[0].set(303.6f, buttonTop, 796.4f, buttonTop + 72);
+            buttonRects[1].set(303.6f, buttonTop + 73, 796.4f, buttonTop + 145);
         }
 
         void save(Bundle state) {
@@ -279,11 +279,11 @@ public final class ProfileActivity extends Activity {
             heading.setColor(ink);
             body.setColor(Ui.alpha(ink, 0.72f));
             int textSave = c.save();
-            c.translate(170, 260);
+            c.translate(170, 280);
             headingLayout.draw(c);
             c.restoreToCount(textSave);
             textSave = c.save();
-            c.translate(150, 490);
+            c.translate(150, 510);
             bodyLayout.draw(c);
             c.restoreToCount(textSave);
             if (!choosing) for (int i = 0; i < buttons.length; i++) drawButton(c, i);

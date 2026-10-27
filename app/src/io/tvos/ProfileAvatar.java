@@ -74,7 +74,7 @@ final class ProfileAvatar {
     void clear() { for (int i = 0; i < COUNT; i++) images[i] = null; }
 
     void draw(Canvas c, int id, float x, float y, float radius) {
-        draw(c, id, x, y, radius, 1);
+        draw(c, id, x, y, radius, 0.8f);
     }
 
     void draw(Canvas c, int id, float x, float y, float radius, float emojiScale) {
