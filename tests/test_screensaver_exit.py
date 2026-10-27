@@ -18,7 +18,7 @@ public class ExitHarness {
   Animation withEndAction(Runnable r){end=r;return this;}void start(){}void cancel(){cancels++;end=null;}
  }
  static class ScreensaverFade {
-  View view;ScreensaverFade(View v){view=v;}void cancel(){view.animate().cancel();}void reset(float value){cancel();view.setAlpha(value);}
+  View view;ScreensaverFade(View v){view=v;}void cancel(){view.animate().cancel();}
   void start(float a,long d,Runnable r){view.animate().alpha(a).setDuration(d).withEndAction(r).start();}
  }
  static class View {
@@ -28,10 +28,10 @@ public class ExitHarness {
  }
  static class MediaPlayer {boolean released;void reset(){}void release(){released=true;}}
  static class Fallback extends View {boolean stopped;void stop(){stopped=true;}}
- Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();final View scene=new View();static final long TRANSITION_MS=600;
- ScreensaverFade sceneFade=new ScreensaverFade(scene);
+ Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();final View transitionCover=new View();static final long TRANSITION_MS=600;
+ ScreensaverFade coverFade=new ScreensaverFade(transitionCover);
  Fallback fallback;MediaPlayer player=new MediaPlayer();boolean running=true,exiting,loadingCatalog,preparing,entered;
- Runnable opaqueListener;int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
+ long entranceNotBefore;int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
  List<View> children=new ArrayList<>();Object getContext(){return this;}
  void addView(View v,LayoutParams p){children.add(v);}void removeView(View v){children.remove(v);}
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
@@ -45,24 +45,27 @@ header+='static class PhotoReady {boolean running=true;Runnable contentReady;Lis
 tests='''
  public static void main(String[] args){
   ExitHarness h=new ExitHarness();MediaPlayer original=h.player;int[] calls={0};
-  h.scene.setAlpha(0f);h.fadeEntrance();
-  check(h.entered && h.scene.animation.target==1 && h.scene.animation.duration==600,"ready content fades over preceding screen with shared duration");
-  h.scene.setAlpha(.4f);h.fadeExit(()->{calls[0]++;h.stop();});
+  h.transitionCover.setAlpha(1f);h.fadeEntrance();
+  check(h.entered && h.transitionCover.animation.target==0 && h.transitionCover.animation.duration==600,"entry fades from black with shared duration");
+  h.transitionCover.setAlpha(.4f);h.fadeExit(()->{calls[0]++;h.stop();});
   check(h.exiting && h.generation==1 && h.catalogGeneration==1,"stale asynchronous work invalidated");
-  check(!original.released && h.scene.alpha==.4f,"interrupted entry preserves cover opacity and live decoder");
-  check(h.scene.animation.target==0 && h.scene.animation.duration==600 && h.handler.tasks.size()==1,"matching exit fade and deadline");
-  h.fadeEntrance();check(h.scene.animation.target==0,"late content ready cannot reverse exit");
+  check(!original.released && h.transitionCover.alpha==.4f,"interrupted entry preserves cover opacity and live decoder");
+  check(h.transitionCover.animation.target==1 && h.transitionCover.animation.duration==600 && h.handler.tasks.size()==1,"matching exit fade and deadline");
+  h.fadeEntrance();check(h.transitionCover.animation.target==1,"late content ready cannot reverse exit");
   h.fadeExit(()->{throw new AssertionError("duplicate exit");});
-  h.scene.animation.end.run();
-  check(calls[0]==1 && original.released && h.handler.tasks.isEmpty() && h.scene.alpha==0,"normal completion releases after fade");
+  h.transitionCover.animation.end.run();
+  check(calls[0]==1 && original.released && h.handler.tasks.isEmpty() && h.transitionCover.alpha==1,"normal completion releases after fade");
   ExitHarness deadline=new ExitHarness();deadline.fadeExit(()->{calls[0]++;deadline.stop();});
   deadline.handler.tasks.get(0).run();
   check(calls[0]==2 && deadline.player==null,"deadline handles missing animation callback");
   ExitHarness forced=new ExitHarness();forced.fadeExit(()->{throw new AssertionError("callback after forced stop");});
-  forced.stop();check(forced.handler.tasks.isEmpty() && forced.scene.animation.end==null,"forced stop cancels transition");
+  forced.stop();check(forced.handler.tasks.isEmpty() && forced.transitionCover.animation.end==null,"forced stop cancels transition");
   ExitHarness photos=new ExitHarness();photos.fallback=new Fallback();Fallback f=photos.fallback;
   photos.fadeExit(()->photos.stop());check(!f.stopped,"photo remains visible during fade");
-  photos.scene.animation.end.run();check(f.stopped,"photo stops after fade");
+  photos.transitionCover.animation.end.run();check(f.stopped,"photo stops after fade");
+  ExitHarness delayed=new ExitHarness();delayed.entranceNotBefore=1500;delayed.fadeEntrance();
+  check(!delayed.entered && delayed.handler.tasks.size()==1,"ready content waits for previous screen to fade to black");
+  delayed.entranceNotBefore=0;delayed.handler.tasks.remove(0).run();check(delayed.entered,"entrance follows window fade");
   PhotoReady ready=new PhotoReady();int[] readyCalls={0};ready.contentReady=()->readyCalls[0]++;
   ready.notifyContentReady();ready.notifyContentReady();
   check(ready.posted.size()==1 && readyCalls[0]==0,"photo readiness waits for drawing and notifies once");

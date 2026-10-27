@@ -45,6 +45,12 @@ final class HomeGenres {
         GenreScroll(Context context, float k) {
             super(context, null, 0, R.style.GenreScroll);
             fadeLength = Math.max(1, Math.round(24 * k));
+            setClipToOutline(true);
+            setOutlineProvider(new ViewOutlineProvider() {
+                @Override public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 34 * k);
+                }
+            });
             setVerticalScrollBarEnabled(true);
             setScrollbarFadingEnabled(true);
             setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);

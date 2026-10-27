@@ -705,7 +705,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         else {
             // Short text needs only the normal clock tick. Long text wakes at its dwell deadline,
             // then keeps the existing 50 ms marquee cadence without polling during the wait.
-            long delay = posters.nextDelay(up);
+            long delay = Math.min(posters.nextDelay(up), reveal.delay(up));
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
     }

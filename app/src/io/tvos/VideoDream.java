@@ -40,9 +40,10 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final ArrayList<String> urls = new ArrayList<>();
     private final android.os.Bundle settings;
     private final SurfaceView surface;
-    private ScreensaverFade sceneFade;
-    private Runnable opaqueListener;
+    private final View transitionCover;
+    private final ScreensaverFade coverFade;
     static final long TRANSITION_MS = 600;
+    private long entranceNotBefore;
     private boolean exiting, entered;
     // TVOS_AERIAL_POLISH_V1: fade only video, keep weather and clock steady.
     private final View videoFade;
@@ -138,8 +139,12 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         wp.setMargins(0, 0, dp(38), dp(32));
         addView(aerialWeather, wp);
         aerialWeather.setVisibility(View.GONE);
-        setAlpha(0f);
-        sceneFade = new ScreensaverFade(this);
+        // One topmost black cover fades the video/photo and every overlay together.
+        transitionCover = new View(context);
+        transitionCover.setBackgroundColor(Color.BLACK);
+        transitionCover.setAlpha(1f);
+        addView(transitionCover, new LayoutParams(-1, -1));
+        coverFade = new ScreensaverFade(transitionCover);
         loadPlaylist();
     }
 
@@ -191,7 +196,8 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         running = true;
         exiting = false;
         entered = false;
-        sceneFade.reset(0f);
+        coverFade.cancel();
+        transitionCover.setAlpha(1f);
         weatherData.refreshIfStale();
         // Keep weather hidden until the first video and location fade in.
         aerialWeather.animate().cancel();
@@ -202,22 +208,23 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         else if (surfaceReady) playNext();
     }
 
-    void useWindowAlpha(ScreensaverFade.Alpha target) {
-        sceneFade.cancel();
-        setAlpha(1f);
-        target.set(0f);
-        sceneFade = new ScreensaverFade(this, target, 0f);
+    /** Let the dream window first fade the previous screen to black. */
+    void startAfterWindowFade() {
+        entranceNotBefore = android.os.SystemClock.uptimeMillis() + TRANSITION_MS;
+        start();
     }
-
-    void setOnOpaqueListener(Runnable listener) { opaqueListener = listener; }
 
     /** Called only after a first video frame or a photo/fallback frame is ready. */
     private void fadeEntrance() {
         if (!running || exiting || entered) return;
+        long delay = entranceNotBefore - android.os.SystemClock.uptimeMillis();
+        if (delay > 0) {
+            handler.postDelayed(this::fadeEntrance, delay);
+            return;
+        }
         entered = true;
-        sceneFade.start(1f, TRANSITION_MS, () -> {
-            if (running && !exiting && opaqueListener != null) opaqueListener.run();
-        });
+        coverFade.cancel();
+        coverFade.start(0f, TRANSITION_MS, null);
     }
 
     /** Use the same cover, duration and easing in both directions, including interrupted entry. */
@@ -231,10 +238,10 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         videoFade.animate().cancel();
         aerialLocation.animate().cancel();
         aerialWeather.animate().cancel();
-        sceneFade.cancel();
-        // Reverse from the current whole-window opacity; never insert an opaque black frame.
+        coverFade.cancel();
+        // Keep the current cover opacity when entry is interrupted; never flash the full image.
         handler.postDelayed(finished, TRANSITION_MS + 150);
-        sceneFade.start(0f, TRANSITION_MS, () -> {
+        coverFade.start(1f, TRANSITION_MS, () -> {
             handler.removeCallbacks(finished);
             finished.run();
         });
@@ -242,7 +249,8 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
 
     void stop() {
         running = false;
-        sceneFade.reset(0f);
+        coverFade.cancel();
+        transitionCover.setAlpha(1f);
         generation++;
         catalogGeneration++;
         loadingCatalog = false;

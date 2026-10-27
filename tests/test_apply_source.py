@@ -8,7 +8,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
   (base/'build.sh').write_text('#!/bin/sh\n');(base/'release.sh').write_text('#!/bin/sh\n')
  (source/'tools/apply-source.sh').write_text(Path('tools/apply-source.sh').read_text())
  (source/'app/src/io/tvos/HomeView.java').write_text('new source')
- retired=['app/src/io/tvos/Russian.java','app/src/io/tvos/Glyphs.java','app/res/drawable/coin_btc.xml','app/res/drawable/coin_eth.xml','app/res/drawable/coin_sol.xml','app/res/drawable/coin_usdt.xml','app/assets/symbols/bitcoin.svg','app/assets/symbols/bitcoin.png','app/assets/settings/light.webp','app/assets/settings/dark.webp','app/res/anim/screensaver_window_enter.xml','app/res/anim/screensaver_window_exit.xml']
+ retired=['app/src/io/tvos/Russian.java','app/src/io/tvos/Glyphs.java','app/res/drawable/coin_btc.xml','app/res/drawable/coin_eth.xml','app/res/drawable/coin_sol.xml','app/res/drawable/coin_usdt.xml','app/assets/symbols/bitcoin.svg','app/assets/symbols/bitcoin.png','app/assets/settings/light.webp','app/assets/settings/dark.webp','app/src/io/tvos/ScreensaverWindow.java']
  for name in retired:
   p=target/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('retired')
  (target/'config.properties').write_text('personal config')
