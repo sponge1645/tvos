@@ -71,7 +71,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeBackground background = new HomeBackground(scene, this::backgroundChanged);
     private final HomeData data;
     private final HomeWidgets widgets;
-    private final HomeGenres genres;
+    private final HomeGenres genres, tvGenres;
     private final HomeHeaderRenderer header;
     private final HomeHeaderRenderer.Frame headingFrame = new HomeHeaderRenderer.Frame();
     private final HomeAppsRenderer appSurfaces;
@@ -300,24 +300,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void paused(){closeSearch();}
             @Override public void syncGlass(View panel){syncSearchGlass(panel);}
         });
-        genres = new HomeGenres(this, handler, recs.genres(), new HomeGenres.Host() {
-            @Override public boolean eligible() {
-                return running && okDown && tab == 1 && !searchMode && !sheetOpen && !drawerOpen
-                        && !dockEditor.editing() && (zone == Z_CARDS || (zone == Z_TOP && topIndex == 1));
-            }
-            @Override public RectF anchor() { return topRects[1]; }
-            @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
-            @Override public void changed() {
-                layoutLight();
-                if (tab == 1 && !searchMode) {
-                    cardPage = cardIndex = 0;
-                    updateCards(); retarget(false);
-                }
-                heroDirty = statusDirty = true;
-                wake();
-            }
-            @Override public void message(String text) { showToast(text); }
-        });
+        genres = createGenres(1);
+        tvGenres = createGenres(3);
         // Hardware layers on the GPU: only the one that changed is redrawn; moving, fading and scaling stay cheap.
         // Not on Android 9 to 11: on older GPUs (a Mi Box 3's Mali-450) redrawing and compositing a big layer on every
         // frame cost more than drawing straight to the screen (measured: focus on the picks 33 → 12 ms a frame, the
@@ -392,6 +376,28 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchWork.resume(searchQuery);
     }
 
+    private HomeGenres createGenres(int category) {
+        return new HomeGenres(this, handler, recs.genres(), new HomeGenres.Host() {
+            @Override public String kind() { return category == 3 ? "tv" : "movie"; }
+            @Override public boolean eligible() {
+                return running && okDown && tab == category && !searchMode && !sheetOpen && !drawerOpen
+                        && !dockEditor.editing() && (zone == Z_CARDS || (zone == Z_TOP && topIndex == category));
+            }
+            @Override public RectF anchor() { return topRects[category]; }
+            @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void changed() {
+                layoutLight();
+                if (tab == category && !searchMode) {
+                    cardPage = cardIndex = 0;
+                    updateCards(); retarget(false);
+                }
+                heroDirty = statusDirty = true;
+                wake();
+            }
+            @Override public void message(String text) { showToast(text); }
+        });
+    }
+
     void prepareDreamReturn() {
         if (drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
         reveal.prepare(reducedDreamMotion());
@@ -418,7 +424,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
-        if (genres.pause() && tab == 1 && !searchMode) cardPage = cardIndex = 0;
+        boolean resetMovies = genres.pause(), resetShows = tvGenres.pause();
+        if (!searchMode && (tab == 1 && resetMovies || tab == 3 && resetShows)) cardPage = cardIndex = 0;
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
@@ -537,6 +544,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             tabLabels.put(language, labels);
         }
         labels[1] = genres.label();
+        labels[3] = tvGenres.label();
         return labels;
     }
 
@@ -1063,7 +1071,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         int genreKey = e.getKeyCode();
         if (genreKey != KeyEvent.KEYCODE_DPAD_CENTER && genreKey != KeyEvent.KEYCODE_ENTER
-                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) genres.cancelHold();
+                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); }
         if (dockEditor.editing()) {
             boolean handled = dockEditor.onKey(e);
             if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER
@@ -1092,11 +1100,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     if (e.getRepeatCount() == 0) {
                         okDown = true;
                         dockEditor.arm();
-                        genres.arm();
+                        genres.arm(); tvGenres.arm();
                     }
                 } else {
                     dockEditor.cancelHold();
-                    genres.released();
+                    genres.released(); tvGenres.released();
                     if (okDown && !e.isCanceled() && spoken.keyClick()) activate();
                     okDown = false;
                 }
@@ -1600,6 +1608,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private List<Recs.Pick> currentCatalog() {
         if (searchMode) return searchResults;
         if (tab == 1 && genres.movies() != null) return genres.movies();
+        if (tab == 3 && tvGenres.movies() != null) return tvGenres.movies();
         return recs.catalog(TAB_KIND[tab]);
     }
 

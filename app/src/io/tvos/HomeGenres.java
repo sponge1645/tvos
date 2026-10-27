@@ -32,6 +32,7 @@ import java.util.List;
 final class HomeGenres {
     interface Host {
         boolean eligible();
+        default String kind() { return "movie"; }
         RectF anchor();
         void opened();
         void changed();
@@ -140,7 +141,7 @@ final class HomeGenres {
         this.home = home; this.context = home.getContext(); this.handler = handler;
         this.catalog = catalog; this.host = host;
     }
-    String label() { return selected == null ? AppStrings.get(R.string.home_tab_movies) : selected.name; }
+    String label() { return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
     List<Recs.Pick> movies() { return movies; } // null means the ordinary Movies catalog.
     void arm() {
         cancelHold();
@@ -234,7 +235,7 @@ final class HomeGenres {
                 return true;
             }
         });
-        genreRequest = catalog.genres(AppLanguage.current(), choices -> {
+        genreRequest = catalog.genres(host.kind(), AppLanguage.current(), choices -> {
             if (popup != window) return;
             Runnable content = () -> {
                 list.removeAllViews();
@@ -332,7 +333,7 @@ final class HomeGenres {
     }
     private void row(LinearLayout root, GenreCatalog.Genre genre, float k) {
         boolean checked = genre == null ? selected == null : selected != null && genre.id == selected.id;
-        String label = genre == null ? AppStrings.get(R.string.home_tab_movies) : genre.name;
+        String label = genre == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : genre.name;
         TextView row = new MenuRow(context, checked, k);
         styleText(row, label, 34, k);
         row.setTextColor(Color.WHITE);
@@ -359,7 +360,7 @@ final class HomeGenres {
             return;
         }
         host.message(AppStrings.get(R.string.home_genre_loading));
-        movieRequest = catalog.movies(genre, AppLanguage.current(), result -> {
+        movieRequest = catalog.titles(host.kind(), genre, AppLanguage.current(), result -> {
             movieRequest = null;
             if (result == null || result.isEmpty()) {
                 host.message(AppStrings.get(R.string.home_genre_failed));

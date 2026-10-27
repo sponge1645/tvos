@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,17 +31,21 @@ final class GenreCatalog {
     private final TmdbSource source;
     private final ThreadPoolExecutor executor;
     private final Handler main;
-    private final EnumMap<AppLanguage, Cached<List<Genre>>> genres = new EnumMap<>(AppLanguage.class);
+    private final LinkedHashMap<String, Cached<List<Genre>>> genres = new LinkedHashMap<>();
     private final LinkedHashMap<String, Cached<List<Recs.Pick>>> movies = new LinkedHashMap<>(8, .75f, true);
 
     GenreCatalog(TmdbSource source, ThreadPoolExecutor executor, Handler main) {
         this.source = source; this.executor = executor; this.main = main;
     }
     UiRequest genres(AppLanguage language, Consumer<List<Genre>> callback) {
+        return genres("movie", language, callback);
+    }
+    UiRequest genres(String kind, AppLanguage language, Consumer<List<Genre>> callback) {
         return submit(language, request -> {
-            Cached<List<Genre>> old = genres.get(language);
+            String cacheKey = kind + ":" + language.code;
+            Cached<List<Genre>> old = genres.get(cacheKey);
             if (old != null && old.fresh()) return old.value;
-            JSONArray items = source.get("/genre/movie/list?language=" + language.apiTag).getJSONArray("genres");
+            JSONArray items = source.get("/genre/" + kind + "/list?language=" + language.apiTag).getJSONArray("genres");
             if (!request.active()) return null;
             List<Genre> result = new ArrayList<>();
             HashSet<Integer> seen = new HashSet<>();
@@ -59,23 +62,26 @@ final class GenreCatalog {
             result.sort((a, b) -> collator.compare(a.name, b.name));
             if (result.isEmpty()) throw new IOException("No TMDB genres");
             result = Collections.unmodifiableList(new ArrayList<>(result));
-            genres.put(language, new Cached<>(result));
+            genres.put(cacheKey, new Cached<>(result));
             return result;
         }, callback);
     }
     UiRequest movies(Genre genre, AppLanguage language, Consumer<List<Recs.Pick>> callback) {
+        return titles("movie", genre, language, callback);
+    }
+    UiRequest titles(String kind, Genre genre, AppLanguage language, Consumer<List<Recs.Pick>> callback) {
         return submit(language, request -> {
             if (genre.id <= 0) throw new IOException("Invalid genre");
-            String key = language.code + ":" + genre.id;
+            String key = kind + ":" + language.code + ":" + genre.id;
             Cached<List<Recs.Pick>> old = movies.get(key);
             if (old != null && old.fresh()) return old.value;
             List<Recs.Pick> result = new ArrayList<>();
             HashSet<Integer> seen = new HashSet<>();
             for (int page = 1; page <= 2; page++) {
                 if (!request.active()) return null;
-                JSONObject response = source.get("/discover/movie?language=" + language.apiTag
+                JSONObject response = source.get("/discover/" + kind + "?language=" + language.apiTag
                         + "&with_genres=" + genre.id + "&sort_by=vote_average.desc&vote_count.gte=200"
-                        + "&include_adult=false&include_video=false&page=" + page);
+                        + "&include_adult=false" + ("movie".equals(kind) ? "&include_video=false" : "") + "&page=" + page);
                 if (!request.active()) return null;
                 JSONArray items = response.getJSONArray("results");
                 for (int i = 0; i < items.length(); i++) {
@@ -85,7 +91,7 @@ final class GenreCatalog {
                     if (ids != null) for (int j = 0; j < ids.length(); j++) matches |= ids.optInt(j) == genre.id;
                     if (!matches || item.optBoolean("adult", false) || item.optInt("vote_count") < 200
                             || !seen.add(item.optInt("id"))) continue;
-                    TmdbMetadata.add(result, item, "movie");
+                    TmdbMetadata.add(result, item, kind);
                 }
                 if (page >= response.optInt("total_pages", 1)) break;
             }

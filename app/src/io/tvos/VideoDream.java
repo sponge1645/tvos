@@ -42,6 +42,8 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private final SurfaceView surface;
     private final View transitionCover;
     private final ScreensaverFade coverFade;
+    private Runnable opaqueListener;
+    void setOnOpaqueListener(Runnable listener) { opaqueListener = listener; }
     static final long TRANSITION_MS = 600;
     private long entranceNotBefore;
     private boolean exiting, entered;
@@ -224,7 +226,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         }
         entered = true;
         coverFade.cancel();
-        coverFade.start(0f, TRANSITION_MS, null);
+        coverFade.start(0f, TRANSITION_MS, () -> {
+            if (running && !exiting && opaqueListener != null) opaqueListener.run();
+        });
     }
 
     /** Use the same cover, duration and easing in both directions, including interrupted entry. */

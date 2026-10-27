@@ -51,6 +51,7 @@ public class Screensaver extends DreamService {
                 + " frameFade=" + (android.os.Build.VERSION.SDK_INT <= 29)
                 + " animatorsEnabled=" + android.animation.ValueAnimator.areAnimatorsEnabled());
         view = new VideoDream(this);
+        view.setOnOpaqueListener(() -> HomeDreamReturn.opaque(this));
         setContentView(view);
         // Older Android versions use a dream window without DreamActivity.
         if (getWindow() != null) {
@@ -84,9 +85,7 @@ public class Screensaver extends DreamService {
             if (legacyWindowFade != null)
                 legacyWindowFade.start(1f, VideoDream.TRANSITION_MS, null);
             view.startAfterWindowFade();
-            view.postDelayed(() -> {
-                if (dreaming && !waking) HomeDreamReturn.opaque(this);
-            }, VideoDream.TRANSITION_MS);
+
         });
     }
 

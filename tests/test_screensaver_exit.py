@@ -30,7 +30,7 @@ public class ExitHarness {
  static class Fallback extends View {boolean stopped;void stop(){stopped=true;}}
  Handler handler=new Handler(); View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();final View transitionCover=new View();static final long TRANSITION_MS=600;
  ScreensaverFade coverFade=new ScreensaverFade(transitionCover);
- Fallback fallback;MediaPlayer player=new MediaPlayer();boolean running=true,exiting,loadingCatalog,preparing,entered;
+ Fallback fallback;MediaPlayer player=new MediaPlayer();Runnable opaqueListener;boolean running=true,exiting,loadingCatalog,preparing,entered;
  long entranceNotBefore;int generation,catalogGeneration;Runnable prepareTimeout,fadeOut,retryPlayback=()->{};
  List<View> children=new ArrayList<>();Object getContext(){return this;}
  void addView(View v,LayoutParams p){children.add(v);}void removeView(View v){children.remove(v);}
@@ -44,6 +44,8 @@ photo_method=photo_source[a:i]
 header+='static class PhotoReady {boolean running=true;Runnable contentReady;List<Runnable> posted=new ArrayList<>();void post(Runnable r){posted.add(r);}' + photo_method + '}\n'
 tests='''
  public static void main(String[] args){
+  ExitHarness readyVideo=new ExitHarness();int[] opaque={0};readyVideo.opaqueListener=()->opaque[0]++;readyVideo.fadeEntrance();check(opaque[0]==0,"home remains unchanged during entry");readyVideo.transitionCover.animation.end.run();check(opaque[0]==1,"home preparation notified only after ready-content fade completes");
+
   ExitHarness h=new ExitHarness();MediaPlayer original=h.player;int[] calls={0};
   h.transitionCover.setAlpha(1f);h.fadeEntrance();
   check(h.entered && h.transitionCover.animation.target==0 && h.transitionCover.animation.duration==600,"entry fades from black with shared duration");

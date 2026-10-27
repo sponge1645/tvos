@@ -29,7 +29,7 @@ public class HomeStringsHarness {
   static String degrees(double n){return (int)n+"°";}static String hour(long h){return String.format(Locale.US,"%02d:00",h);}
   static String condition(int code,boolean day){return Ui.ru?"Ясно":"Clear";}
  }
- static class Genres {String selected;String label(){return selected==null?AppStrings.get(R.string.home_tab_movies):selected;}}final Genres genres=new Genres();
+ static class Genres {int resource;Genres(int r){resource=r;}String selected;String label(){return selected==null?AppStrings.get(resource):selected;}}final Genres genres=new Genres(R.string.home_tab_movies),tvGenres=new Genres(R.string.home_tab_shows);
  final HomeData data=new HomeData();final NetworkStatus networkStatus=new NetworkStatus();
  int textPrefs=-1;String textLanguage="";HomeData.Weather textWeather;long unusedTime=-1;
  String weatherTitle,nowTemp,highLow,sunriseText,sunsetText;
