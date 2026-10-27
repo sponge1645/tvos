@@ -54,7 +54,7 @@ final class SettingsUpdateDialog {
         k = scale;
         popupHeading = Ui.text(Ui.displaySemibold, 38*k, 0xFFFFFFFF);
         popupHeading.setTextAlign(Paint.Align.LEFT);
-        popupBody = Ui.text(Ui.regular, 25*k, 0xFF999999);
+        popupBody = Ui.text(Ui.regular, 25*k, 0xFF899295);
         popupBody.setTextAlign(Paint.Align.LEFT);
         popupButtonText = Ui.text(Ui.displaySemibold, 30*k, 0xFFFFFFFF);
         popupButtonText.setTextAlign(Paint.Align.CENTER);
@@ -214,15 +214,16 @@ final class SettingsUpdateDialog {
         Paint heading = popupHeading;
         heading.setColor(0xFFFFFFFF);
         Paint body = popupBody;
-        body.setColor(0xFF999999);
+        body.setColor(0xFF899295);
         c.drawText(AppStrings.get(R.string.settings_tvos_update), left+50*k, top+86*k, heading);
         float lineY = top+142*k;
         for (String line : lines) lineY = drawParagraph(c, line, left+50*k, lineY, right-left-100*k, body);
         float buttonTop = bottom - (buttons.length*72+(buttons.length-1)*12+32)*k;
         Paint buttonText = popupButtonText;
+        float buttonHalfWidth = (right-left-48*k)*0.55f;
         for (int i=0; i<buttons.length; i++) {
             RectF b = popupButton;
-            b.set(left+24*k, buttonTop+i*84*k, right-24*k, buttonTop+(i*84+72)*k);
+            b.set(cx-buttonHalfWidth, buttonTop+i*84*k, cx+buttonHalfWidth, buttonTop+(i*84+72)*k);
             boolean selected = i == updatePopupFocus || buttons.length == 1;
             // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
             p.clearShadowLayer();
