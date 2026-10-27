@@ -127,6 +127,8 @@ public class SettingsActivity extends Activity {
         private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path arrowPath = new Path();
         private final TextPaint shelfMeasurePaint = new TextPaint();
+        private String serviceValueSource, serviceValueShown;
+        private float serviceValueWidth = -1, serviceValueSize = -1;
         private final SettingsOrderEditor categoryEditor = new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);
         private final SettingsOrderEditor buttonEditor = new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);
         private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
@@ -808,13 +810,35 @@ public class SettingsActivity extends Activity {
                         if (localFlag("fake_update")) Symbols.draw(getContext(), c, "check", cx, cy, 20 * k, valueInk(f));
                     } else {
                         rowValue.setColor(valueInk(f));
-                        drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
+                        drawTrackedText(c, screen == MEDIA ? fitServiceValue(labels[i], values[i]) : values[i],
+                                rowRect.right - 61 * k, base, rowValue, 0.02f);
                     }
                 } else {
                     rowValue.setColor(valueInk(f));
                     drawTrackedText(c, values[i], right + 20 * k, base, rowValue, 0.02f);
                 }
             }
+        }
+
+        /** Keep the service in its right-aligned column, with a visible gap after the label. */
+        private String fitServiceValue(String label, String value) {
+            float labelX = rowRect.left + rowRect.width() * 0.10f + 10 * k;
+            float labelWidth = rowLabel.measureText(label) + rowLabel.getTextSize() * .02f
+                    * Math.max(0, label.codePointCount(0, label.length()) - 1);
+            float available = Math.max(0, rowRect.right - 61 * k - labelX - labelWidth - 32 * k);
+            float size = rowValue.getTextSize();
+            if (value.equals(serviceValueSource) && available == serviceValueWidth && size == serviceValueSize)
+                return serviceValueShown;
+            serviceValueSource = value; serviceValueWidth = available; serviceValueSize = size;
+            String shown = value;
+            int end = value.length();
+            while (rowValue.measureText(shown) + size * .02f
+                    * Math.max(0, shown.codePointCount(0, shown.length()) - 1) > available) {
+                if (end == 0) { shown = ""; break; }
+                end = value.offsetByCodePoints(end, -1);
+                shown = value.substring(0, end) + "…";
+            }
+            return serviceValueShown = shown;
         }
 
         /** Stable row order with the focused row last, without extra layers or allocations. */
