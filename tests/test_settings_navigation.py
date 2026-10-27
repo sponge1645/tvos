@@ -24,7 +24,7 @@ public class SettingsHarness {
  Store store=new Store();int screen,focus,adjusted,moved;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Object getContext(){return this;}void invalidate(){}
- String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleFakeUpdate(){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleVpnTop(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
+ String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleVpnTop(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
  void arrow(int direction){if(canAdjustMenu())adjustMenu(direction);}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
@@ -45,7 +45,7 @@ tests=r'''
   h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Language","Region","Date & Time","Temperature","Time Format","Navigation Clicks"}),"General naming contract");
   h.screen=ABOUT;check(Arrays.equals(h.menuLabels(),new String[]{"Name","Model","Serial Number","tvOS","OS","Resolution","Wi-Fi Network Name","IP Address"}),"About naming contract");
   h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
-  h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatically Update","Fake Update"}),"update actions naming contract");
+  h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatically Update"}),"update actions naming contract");
   h.screen=SYSTEM;check(Arrays.equals(h.menuLabels(),new String[]{"Software Updates","Reset","Default Launcher","Restart tvOS"}),"System launcher appears directly below Reset");
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","TV Settings"}),"accessibility naming contract");
   for(int page:new int[]{WEATHER,DATE_TIME,VPN_SETTINGS}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}

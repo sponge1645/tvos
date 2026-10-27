@@ -52,7 +52,7 @@ final class SettingsContent {
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language), AppStrings.get(R.string.settings_show_in_bottom_menu, language)};
-            case UPDATES: return new String[] {AppStrings.get(R.string.settings_update_software, language), AppStrings.get(R.string.settings_automatically_update, language), AppStrings.get(R.string.settings_fake_update, language)};
+            case UPDATES: return new String[] {AppStrings.get(R.string.settings_update_software, language), AppStrings.get(R.string.settings_automatically_update, language)};
             case SYSTEM: return new String[] {AppStrings.get(R.string.settings_software_updates, language), AppStrings.get(R.string.settings_reset, language), AppStrings.get(R.string.settings_default_launcher, language), AppStrings.get(R.string.settings_restart_tvos, language)};
             case RESET: return new String[] {AppStrings.get(R.string.settings_clear_cache, language), AppStrings.get(R.string.settings_reset_tvos, language)};
             case TOP_PANEL: return new String[] {AppStrings.get(R.string.settings_categories, language), AppStrings.get(R.string.settings_buttons, language)};

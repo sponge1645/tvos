@@ -18,11 +18,6 @@ final class UpdateRelease {
         this.size = size;
     }
 
-    static UpdateRelease rehearsal() {
-        return new UpdateRelease("1.1.0-test", 2100000000L, "test",
-                "0000000000000000000000000000000000000000000000000000000000000000", 10000);
-    }
-
     static UpdateRelease parse(JSONObject json) throws Exception {
         String name = json.getString("versionName");
         String tag = json.getString("tag");

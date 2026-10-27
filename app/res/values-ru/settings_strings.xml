@@ -191,8 +191,6 @@
         <item quantity="many">%1$d минут</item>
         <item quantity="other">%1$d минуты</item>
     </plurals>
-    <string name="settings_fake_update" formatted="false">Фейковое обновление</string>
-    <string name="settings_fake_update_complete" formatted="false">Тестовая загрузка завершена. Обновление не устанавливалось.</string>
     <string name="settings_video_audio" formatted="false">Видео и аудио</string>
     <string name="settings_default_service" formatted="false">Сервис по умолчанию</string>
     <string name="settings_ask_every_time" formatted="false">Спрашивать каждый раз</string>

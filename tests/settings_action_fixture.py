@@ -58,7 +58,6 @@ public class CLASSNAME {
  void openShelfEditor(){screen=SHELF_EDIT;focus=0;note("shelf-editor");}
  void setLocalFlag(String key,boolean value){store.flags.put(key,value);note("flag:"+key+":"+value);invalidate();}
  boolean localFlag(String key){return store.getBoolean(key,false);}void cycleDreamSource(int d){note("dream-source:"+d);}void moveMenuButton(int d){note("move-button:"+d);}void onSelfUpdate(){note("on-update");}
- void toggleFakeUpdate(){note("fake-update");}
  void toggleAutomaticUpdates(){note("auto-update");}void toggleMenuButton(){note("menu-toggle");}
  void toggleVpnTop(){note("vpn-toggle");}void toggleDateTime(){note("date-toggle");}void toggleWeather(boolean top){note("weather:"+top);}
  void pause(){note("pause");}void openCategoryEditor(){screen=CATEGORY_EDIT;focus=0;note("category-editor");}

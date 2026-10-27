@@ -42,7 +42,7 @@ public class ActionsTest {
   check(SettingsActions.activation(ACCESSIBILITY,2,0,false,6,false)==SettingsActions.Action.TV_SETTINGS,"TV settings remains third accessibility row");
   v=create(RESET,0);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-cache")),"cache clear requires existing confirmation");
   v=create(RESET,1);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-reset")),"reset requires existing confirmation");
-  v=create(UPDATES,2);v.activate();check(ActionView.events.contains("fake-update"),"fake checkbox routes OK");
+  check(SettingsActions.activation(UPDATES,2,0,false,6,false)==SettingsActions.Action.NONE,"retired test row has no action");
   v=create(UPDATES,0);v.activate();check(v.updateRequested&&ActionView.events.indexOf("update:false")<ActionView.events.indexOf("on-update"),"update check order preserved");
   v=create(SYSTEM,3);v.activate();check(ActionView.events.contains("start:HomeActivity:3")&&ActionView.events.get(ActionView.events.size()-1).equals("finish"),"restart targets HomeActivity then closes Settings");
   v=create(VPN_SETTINGS,1);v.vpnFlag=false;v.activate();check(!ActionView.events.contains("load-apps"),"hidden VPN app cannot open picker");

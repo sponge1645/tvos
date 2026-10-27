@@ -170,8 +170,6 @@ public class SettingsActivity extends Activity {
         private long startedAt, lastNanos, pendingAt, lastSky;
         private int w, h;
         private float k = 1;
-        private final Paint fakeCheckPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final RectF fakeCheckRect = new RectF();
         private Paint title, subtitle, rowLabel, rowValue, rowSub, warn, spinner, white, shadow;
 
         // Пробная отрисовка с дополнительным межбуквенным интервалом.
@@ -473,7 +471,7 @@ public class SettingsActivity extends Activity {
                 case ACCESSIBILITY: return 3;
                 case VPN_SETTINGS: return 2;
                 case MENU_BUTTONS: return buttonEditor.size() + 1;
-                case UPDATES: return 3;
+                case UPDATES: return 2;
                 case ABOUT: return 8;
                 case HOME_CHOICE: return 2;
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
@@ -813,14 +811,6 @@ public class SettingsActivity extends Activity {
                         if (i == MovieService.index(localPrefs().getString(MovieService.KEY, "")))
                             Symbols.draw(getContext(), c, "check", rowRect.right - 43 * k, rowRect.centerY(), 24 * k,
                                     blend(normalInk(), INK, f));
-                    } else if (screen == UPDATES && i == 2) {
-                        fakeCheckPaint.setStyle(Paint.Style.STROKE);
-                        fakeCheckPaint.setStrokeWidth(2 * k);
-                        fakeCheckPaint.setColor(valueInk(f));
-                        float cx = rowRect.right - 43 * k, cy = rowRect.centerY();
-                        fakeCheckRect.set(cx - 13 * k, cy - 13 * k, cx + 13 * k, cy + 13 * k);
-                        c.drawRoundRect(fakeCheckRect, 5 * k, 5 * k, fakeCheckPaint);
-                        if (localFlag("fake_update")) Symbols.draw(getContext(), c, "check", cx, cy, 20 * k, valueInk(f));
                     } else {
                         rowValue.setColor(valueInk(f));
                         drawTrackedText(c, screen == MEDIA ? fitServiceValue(labels[i], values[i]) : values[i],
@@ -960,11 +950,6 @@ public class SettingsActivity extends Activity {
             int ba = b >>> 24, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
             return (Math.round(aa + (ba - aa) * f) << 24) | (Math.round(ar + (br - ar) * f) << 16)
                     | (Math.round(ag + (bg - ag) * f) << 8) | Math.round(ab + (bb - ab) * f);
-        }
-
-        private void toggleFakeUpdate() {
-            SelfUpdate.get(getContext()).setFake(!localFlag("fake_update"));
-            invalidate();
         }
 
         private void toggleAutomaticUpdates() {
@@ -1178,7 +1163,6 @@ public class SettingsActivity extends Activity {
                 case DREAM_LOCATION: setLocalFlag("aerial_show_location", !localPrefs().getBoolean("aerial_show_location", false)); return;
                 case DREAM_WEATHER: setLocalFlag("screensaver_show_weather", !localPrefs().getBoolean("screensaver_show_weather", false)); return;
                 case AUTO_UPDATE: toggleAutomaticUpdates(); return;
-                case FAKE_UPDATE: toggleFakeUpdate(); return;
                 case TRANSPARENCY: setLocalFlag("reduce_transparency", !localFlag("reduce_transparency")); return;
                 case MOTION: setLocalFlag("reduce_motion", !localFlag("reduce_motion")); return;
                 case VPN: toggleVpnTop(); return;
@@ -1512,7 +1496,6 @@ public class SettingsActivity extends Activity {
                     updateDialog.check();
                     break;
                 case AUTO_UPDATE: toggleAutomaticUpdates(); break;
-                case FAKE_UPDATE: toggleFakeUpdate(); break;
                 case MENU_BUTTON: toggleMenuButton(); break;
                 case VPN_TOGGLE: toggleVpnTop(); break;
                 case VPN_PICKER: loadApps(); openPicker(PICK_VPN); break;
