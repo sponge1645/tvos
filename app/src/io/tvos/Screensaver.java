@@ -93,6 +93,7 @@ public class Screensaver extends DreamService {
                     if (getWindow() == null) return;
                     android.view.WindowManager.LayoutParams current = getWindow().getAttributes();
                     current.alpha = value;
+                    current.windowAnimations = 0; // Content inflation can restore the theme default.
                     applyWindowAttributes(current);
                 }, 0f);
             }

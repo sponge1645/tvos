@@ -25,7 +25,7 @@ stubs.update({
 'android/service/dreams/DreamService.java':'''package android.service.dreams;public class DreamService extends android.content.Context {
  public android.view.Window window;public android.view.View content;public int finishes;public float firstContentAlpha=-1;public android.view.Window getWindow(){return window;}
  public void finish(){if(window!=null&&window.manager.serverAlpha!=0&&window.manager.serverAnimations==0)throw new AssertionError("finish before full transparent frame");finishes++;}
- public void setContentView(android.view.View v){content=v;firstContentAlpha=window.attrs.alpha;}
+ public void setContentView(android.view.View v){if(content==null&&window.attrs.windowAnimations==0)window.attrs.windowAnimations=0x1030001;content=v;firstContentAlpha=window.attrs.alpha;}
  public void setInteractive(boolean b){}public void setFullscreen(boolean b){}public void setScreenBright(boolean b){}
  public void onAttachedToWindow(){}public void onDreamingStarted(){}public void onDreamingStopped(){}public void onDetachedFromWindow(){}public void onWakeUp(){}
 }''',
@@ -47,7 +47,7 @@ public class WindowHarness {
  static void fades(int sdk){
   Activity a=sdk<30?null:new Activity();Screensaver s=create(sdk,a);
   check(VideoDream.last==null,"no video surface during initial window attachment");
-  check(s.firstContentAlpha==0&&s.window.manager.serverAlpha==0&&s.window.attrs.windowAnimations==0,"first content is hidden, no native transition: "+sdk);
+  check(s.firstContentAlpha==0&&s.window.manager.serverAlpha==0&&s.window.manager.serverAnimations==0,"first content is hidden, no native transition: "+sdk);
   if(a!=null)check(a.conversions==1,"modern dream activity made translucent");
   s.onDreamingStarted();check(VideoDream.last==null,"entry waits for posted start");s.content.tick(0);
   s.window.decor.tick(300);near(s.window.attrs.alpha,.5f,"local opacity halfway");near(s.window.manager.serverAlpha,.5f,"WindowManager receives actual intermediate opacity");check(s.window.manager.serverAnimations==0,"native animation override reaches WindowManager");check(s.finishes==0&&VideoDream.last==null,"no decoder surface can punch through the half-transparent window");
