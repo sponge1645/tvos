@@ -18,7 +18,7 @@ final class HomeDockEditor {
         void canceled();
     }
 
-    private static final long HOLD_MS = 500L;
+    static final long HOLD_MS = 500L;
     private final Handler handler;
     private final Host host;
     private boolean editing, armed, dropArmed, backDown;

@@ -22,6 +22,8 @@ public class RemoteNavigationHarness {
  static class Roulette {boolean spin,done;boolean spinning(){return spin;}boolean finished(){return done;}void cancel(){spin=false;}}final Roulette rouletteWork=new Roulette();
  class Click {void move(){moves++;}}final Click click=new Click();static class Spoken {boolean keyClick(){return true;}}final Spoken spoken=new Spoken();
  static class Accessibility {boolean talkBack(){return false;}}final Accessibility accessibility=new Accessibility();
+ static class Genres {void cancelHold(){}void arm(){}void released(){}}final Genres genres=new Genres();
+ List<Object> currentCatalog(){return searchMode?searchResults:recs.catalog(TAB_KIND[tab]);}
  final Handler handler=new Handler();final HomeDockEditor dockEditor=new HomeDockEditor(handler,new HomeDockEditor.Host(){
   public boolean eligible(){return okDown&&!sheetOpen&&zone==Z_SHELF&&!shelf.isEmpty();}public List<HomeApps.Item> items(){return shelf;}public int index(){return shelfIndex;}public void begin(){}
   public void move(int a,int b){Collections.swap(shelf,a,b);shelfIndex=b;}

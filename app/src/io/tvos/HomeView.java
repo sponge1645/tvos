@@ -61,7 +61,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float L_BUTTON = HomeLayout.BUTTON, L_BUTTON_GAP = 20, L_BUTTON_CY = HomeLayout.HEADER_CY;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73;
     // Prepared once per supported language; the drawing path never builds a label array.
-    private static final EnumMap<AppLanguage, String[]> tabLabels = new EnumMap<>(AppLanguage.class);
+    private final EnumMap<AppLanguage, String[]> tabLabels = new EnumMap<>(AppLanguage.class);
     private static final String[] TAB_KIND = {null, "movie", "detective", "tv"};
     private static final int Z_TOP = 4, Z_CARDS = 5;
 
@@ -71,6 +71,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeBackground background = new HomeBackground(scene, this::backgroundChanged);
     private final HomeData data;
     private final HomeWidgets widgets;
+    private final HomeGenres genres;
     private final HomeHeaderRenderer header;
     private final HomeHeaderRenderer.Frame headingFrame = new HomeHeaderRenderer.Frame();
     private final HomeAppsRenderer appSurfaces;
@@ -296,6 +297,21 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void paused(){closeSearch();}
             @Override public void syncGlass(View panel){syncSearchGlass(panel);}
         });
+        genres = new HomeGenres(this, handler, recs.genres(), new HomeGenres.Host() {
+            @Override public boolean eligible() {
+                return running && okDown && tab == 1 && !searchMode && !sheetOpen && !drawerOpen
+                        && !dockEditor.editing() && (zone == Z_CARDS || (zone == Z_TOP && topIndex == 1));
+            }
+            @Override public RectF anchor() { return topRects[1]; }
+            @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void changed() {
+                cardPage = cardIndex = 0;
+                layoutLight(); updateCards(); retarget(false);
+                heroDirty = statusDirty = true;
+                wake();
+            }
+            @Override public void message(String text) { showToast(text); }
+        });
         // Hardware layers on the GPU: only the one that changed is redrawn; moving, fading and scaling stay cheap.
         // Not on Android 9 to 11: on older GPUs (a Mi Box 3's Mali-450) redrawing and compositing a big layer on every
         // frame cost more than drawing straight to the screen (measured: focus on the picks 33 → 12 ms a frame, the
@@ -396,6 +412,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void pause() {
         if (!running) return;
         running = false;
+        genres.pause();
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
@@ -506,13 +523,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
     }
 
-    private static String[] tabs() {
+    private String[] tabs() {
         AppLanguage language = AppLanguage.current();
         String[] labels = tabLabels.get(language);
         if (labels == null) {
             labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), AppStrings.get(R.string.home_tab_detectives, language), AppStrings.get(R.string.home_tab_shows, language), "🎲"};
             tabLabels.put(language, labels);
         }
+        labels[1] = genres.label();
         return labels;
     }
 
@@ -1026,6 +1044,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     boolean onKey(KeyEvent e) {
         wake();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
+        int genreKey = e.getKeyCode();
+        if (genreKey != KeyEvent.KEYCODE_DPAD_CENTER && genreKey != KeyEvent.KEYCODE_ENTER
+                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) genres.cancelHold();
         if (dockEditor.editing()) {
             boolean handled = dockEditor.onKey(e);
             if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER
@@ -1054,9 +1075,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     if (e.getRepeatCount() == 0) {
                         okDown = true;
                         dockEditor.arm();
+                        genres.arm();
                     }
                 } else {
                     dockEditor.cancelHold();
+                    genres.released();
                     if (okDown && !e.isCanceled() && spoken.keyClick()) activate();
                     okDown = false;
                 }
@@ -1557,6 +1580,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
     }
 
+    private List<Recs.Pick> currentCatalog() {
+        if (searchMode) return searchResults;
+        if (tab == 1 && genres.movies() != null) return genres.movies();
+        return recs.catalog(TAB_KIND[tab]);
+    }
+
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
         if (labelPaint == null) return;
@@ -1576,7 +1605,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             heroDirty = true;
             return;
         }
-        List<Recs.Pick> all = searchMode ? searchResults : recs.catalog(TAB_KIND[tab]);
+        List<Recs.Pick> all = currentCatalog();
         int perPage = 5;
         int pages = Math.max(1, (all.size() + perPage - 1) / perPage);
         cardPage = Math.min(cardPage, pages - 1);
@@ -1722,7 +1751,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (dx != 0) {
                     int next = Math.max(0, Math.min(cards.size() - 1, cardIndex + dx));
                     if (next == cardIndex) {
-                        int total = (searchMode ? searchResults : recs.catalog(TAB_KIND[tab])).size();
+                        int total = currentCatalog().size();
                         int perPage = 5;
                         if (dx > 0 && (cardPage + 1) * perPage < total) {
                             cardPage++;

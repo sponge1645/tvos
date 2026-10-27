@@ -7,9 +7,9 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/HomeView.java').read_text()
 assert 'Ui.tr(' not in source
 assert 'TABS_RU' not in source
-fields=next(line for line in source.splitlines() if 'private static final EnumMap<AppLanguage, String[]> tabLabels' in line)
+fields=next(line for line in source.splitlines() if 'private final EnumMap<AppLanguage, String[]> tabLabels' in line)
 methods=''.join(block(source,s) for s in [
- '    private static String[] tabs()'
+ '    private String[] tabs()'
 ])
 access=Path('app/src/io/tvos/HomeAccessibility.java').read_text()
 methods+=block(access,'    private String weatherText()')
@@ -29,6 +29,7 @@ public class HomeStringsHarness {
   static String degrees(double n){return (int)n+"°";}static String hour(long h){return String.format(Locale.US,"%02d:00",h);}
   static String condition(int code,boolean day){return Ui.ru?"Ясно":"Clear";}
  }
+ static class Genres {String selected;String label(){return selected==null?AppStrings.get(R.string.home_tab_movies):selected;}}final Genres genres=new Genres();
  final HomeData data=new HomeData();final NetworkStatus networkStatus=new NetworkStatus();
  int textPrefs=-1;String textLanguage="";HomeData.Weather textWeather;long unusedTime=-1;
  String weatherTitle,nowTemp,highLow,sunriseText,sunsetText;
@@ -41,10 +42,11 @@ public class HomeStringsHarness {
   for(boolean ru:new boolean[]{false,true,false,true}){
    Ui.ru=ru;AppLanguage.select(Ui.ru?"ru":"en");Ui.language=ru?"ru":"en";Prefs.city="";Prefs.version++;
    h.data.weather=new HomeData.Weather();
-   String[] labels=tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Детективы","Сериалы","🎲"}:new String[]{"New","Movies","Detectives","Shows","🎲"}),"tab order/copy");
+   String[] labels=h.tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Детективы","Сериалы","🎲"}:new String[]{"New","Movies","Detectives","Shows","🎲"}),"tab order/copy");
    if(ru){if(russian==null)russian=labels;else check(labels==russian,"Russian array reused after language switch");}
    else{if(english==null)english=labels;else check(labels==english,"English array reused after language switch");}
-   for(int i=0;i<10000;i++)check(tabs()==labels,"tabs create no per-frame array");
+   for(int i=0;i<10000;i++)check(h.tabs()==labels,"tabs create no per-frame array");
+   h.genres.selected=ru?"Боевик":"Action";check(h.tabs()==labels&&labels[1].equals(h.genres.selected),"genre replaces cached Movies label without a per-frame array");check(new HomeStringsHarness().tabs()[1].equals(ru?"Фильмы":"Movies"),"genre label is scoped to its HomeView");h.genres.selected=null;h.tabs();
    h.networkStatus.current=1;check(h.networkLabel().equals(ru?"Wi-Fi, интернет доступен. Открыть настройки сети":"Wi-Fi, internet available. Open network settings"),"Wi-Fi spoken state");
    h.networkStatus.current=2;check(h.networkLabel().equals(ru?"Ethernet, интернет доступен. Открыть настройки сети":"Ethernet, internet available. Open network settings"),"Ethernet spoken state");
    h.networkStatus.current=0;check(h.networkLabel().equals(ru?"Нет интернета. Открыть настройки сети":"No internet. Open network settings"),"offline spoken state");

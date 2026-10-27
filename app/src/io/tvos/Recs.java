@@ -66,6 +66,7 @@ final class Recs {
     private final List<Listener> listeners = new ArrayList<>();
     private final BackdropCache backdropCache;
     private final CatalogBuilder catalogBuilder;
+    private final GenreCatalog genreCatalog;
     private volatile List<Pick> picks = new ArrayList<>();
     private volatile List<Pick> newPicks = new ArrayList<>();
     private volatile List<Pick> detectivePicks = new ArrayList<>();
@@ -98,6 +99,7 @@ final class Recs {
         posterCache = new PosterCache(c, this::notifyListeners);
         backdropCache = new BackdropCache(c, io, this::notifyListeners, () -> newPicks);
         catalogBuilder = new CatalogBuilder(this::get);
+        genreCatalog = new GenreCatalog(this::get, requestIo, main);
         movieEnrichment = new MovieEnrichment(Executors.newSingleThreadExecutor(), main::post,
                 this::get, () -> { save(); notifyListeners(); });
         store = new RecsStore(c.getSharedPreferences("recs", Context.MODE_PRIVATE));
@@ -185,6 +187,8 @@ final class Recs {
 
     private final PosterCache posterCache;
     private final MovieEnrichment movieEnrichment;
+
+    GenreCatalog genres() { return genreCatalog; }
 
     void requestDuration(Pick p) { movieEnrichment.request(p); }
 

@@ -50,4 +50,7 @@
     <string name="home_tab_movies" formatted="false">"Фильмы"</string>
     <string name="home_tab_detectives" formatted="false">"Детективы"</string>
     <string name="home_tab_shows" formatted="false">"Сериалы"</string>
+    <string name="home_genre" formatted="false">"Жанр"</string>
+    <string name="home_genre_loading" formatted="false">"Загрузка…"</string>
+    <string name="home_genre_failed" formatted="false">"Не удалось загрузить подборку. Попробуйте ещё раз."</string>
 </resources>
