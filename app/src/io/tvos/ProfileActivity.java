@@ -89,9 +89,9 @@ public final class ProfileActivity extends Activity {
         private long lastFrame;
         private float k = 1, ox, oy;
         // Slot zero is the current avatar; satellites match the reference composition.
-        private final float[] xs = {1410, 1179, 1618, 1410, 1632, 1460, 1196, 1129, 1684};
-        private final float[] ys = {515, 296, 302, 230, 681, 815, 764, 527, 500};
-        private final float[] radii = {170, 98, 78, 65, 57, 84, 108, 61, 54};
+        private final float[] xs = {1390, 1160, 1584, 1400, 1670, 1558, 1217, 1417, 1261};
+        private final float[] ys = {544, 444, 420, 276, 579, 715, 754, 828, 286};
+        private final float[] radii = {176, 100, 76, 68, 51, 86, 120, 45, 38};
 
         ProfileView(int[] frost, Bundle state) {
             super(ProfileActivity.this);
@@ -111,9 +111,9 @@ public final class ProfileActivity extends Activity {
             makeBackground(frost);
             scene.applyPalette();
             heading.setTypeface(Ui.displaySemibold);
-            heading.setTextSize(64);
+            heading.setTextSize(80);
             body.setTypeface(Ui.displayRegular);
-            body.setTextSize(31);
+            body.setTextSize(38);
             rim.setStyle(Paint.Style.STROKE);
             rim.setStrokeWidth(4);
             setFocusable(true);
@@ -276,17 +276,17 @@ public final class ProfileActivity extends Activity {
             heading.setColor(ink);
             body.setColor(Ui.alpha(ink, 0.72f));
             int textSave = c.save();
-            c.translate(170, 290);
+            c.translate(170, 240);
             headingLayout.draw(c);
             c.restoreToCount(textSave);
             textSave = c.save();
-            c.translate(150, 475);
+            c.translate(150, 470);
             bodyLayout.draw(c);
             c.restoreToCount(textSave);
             if (!choosing) for (int i = 0; i < buttons.length; i++) drawButton(c, i);
             float intro = Ui.clamp(entrance.value);
             int bubbles = c.save();
-            c.scale(0.9f + 0.1f * intro, 0.9f + 0.1f * intro, 1410, 530);
+            c.scale(0.9f + 0.1f * intro, 0.9f + 0.1f * intro, xs[0], ys[0]);
             if (previousPage != page && pageTransition.value < 0.999f) {
                 int layer = c.saveLayerAlpha(1000, 100, 1880, 920, Math.round(255 * (1 - Ui.clamp(pageTransition.value))));
                 drawPage(c, previousPage);
@@ -312,7 +312,15 @@ public final class ProfileActivity extends Activity {
         private void drawButton(Canvas c, int index) {
             RectF rect = buttonRects[index];
             float f = Ui.clamp(buttons[index].value);
-            float scale = surface.draw(c, rect, f, night ? 1 : 0, 1);
+            float scale = 1;
+            if (f > 0.001f) {
+                // Only the focused surface exists at rest; fade it during the existing spring.
+                // The focused shape/shadow/scale still come from the shared ActionSurface.
+                int backing = f < 0.999f ? c.saveLayerAlpha(rect.left - 70, rect.top - 70,
+                        rect.right + 70, rect.bottom + 90, Math.round(255 * f)) : -1;
+                scale = surface.draw(c, rect, f, night ? 1 : 0, 1);
+                if (backing != -1) c.restoreToCount(backing);
+            }
             buttonText.setColor(ActionSurface.ink(night ? 1 : 0, f));
             String text = buttonLabel(index);
             int saved = c.save();
