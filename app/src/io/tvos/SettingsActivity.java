@@ -392,7 +392,7 @@ public class SettingsActivity extends Activity {
             rowShadows.clear();
             descriptionLayout = null;
             descriptionText = null;
-            arrowPaint.setColor(ABOUT_SECONDARY_COLOR);
+            arrowPaint.setColor(0xFFA1A3A1);
             arrowPaint.setStyle(Paint.Style.STROKE);
             arrowPaint.setStrokeWidth(ABOUT_ARROW_STROKE * k);
             arrowPaint.setStrokeCap(Paint.Cap.ROUND);
