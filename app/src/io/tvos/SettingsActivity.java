@@ -136,7 +136,7 @@ public class SettingsActivity extends Activity {
         private final Matrix logoMatrix = new Matrix();
         private final Path logoCutout = new Path();
         private final Shader darkLogoGradient = new LinearGradient(0, 1, 1, 0,
-                0xFF52595B, 0xFF54646A, Shader.TileMode.CLAMP);
+                0xFF51595B, 0xFF55646B, Shader.TileMode.CLAMP);
         private float logoScale = -1;
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
@@ -432,7 +432,7 @@ public class SettingsActivity extends Activity {
             logoInk = Ui.text(Ui.displaySemibold, 58 * k, 0xFF173344);
             logoInk.setTextAlign(Paint.Align.CENTER);
             logoTile = new Paint(Paint.ANTI_ALIAS_FLAG);
-            logoTile.setColor(0xFF8DA8AC);
+            logoTile.setColor(0xFF8897AC);
         }
 
         private boolean busy() {
@@ -497,7 +497,7 @@ public class SettingsActivity extends Activity {
             }
             background.draw(c, w, h, lightSettings());
 
-            pageTitle.setColor(lightSettings() ? 0xFF789092 : 0xFF57666C);
+            pageTitle.setColor(lightSettings() ? 0xFF738190 : 0xFF5A676D);
             drawPageTitle(c, up);
             drawSettingsLogo(c);
 
@@ -522,7 +522,7 @@ public class SettingsActivity extends Activity {
                 logoMatrix.postTranslate(logoBounds.left, logoBounds.top);
                 darkLogoGradient.setLocalMatrix(logoMatrix);
             }
-            logoTile.setColor(0xFF8DA8AC);
+            logoTile.setColor(0xFF8897AC);
             logoTile.setShader(lightSettings() ? null : darkLogoGradient);
             c.save();
             c.clipOutPath(logoCutout);
@@ -600,7 +600,7 @@ public class SettingsActivity extends Activity {
         private boolean lightSettings() { return lightAppearance; }
 
         private int normalInk() { return lightSettings() ? 0xE5162730 : 0xF2FFFFFF; }
-        private int secondaryInk() { return lightSettings() ? 0xFF7C9295 : 0xFF69777E; }
+        private int secondaryInk() { return lightSettings() ? 0xFF758390 : 0xFF69777E; }
         private int valueInk(float focusAmount) { return blend(secondaryInk(), 0xFF999999, focusAmount); }
         private int arrowInk() { return lightSettings() ? 0x8A34444C : 0x66FFFFFF; }
 
@@ -765,7 +765,8 @@ public class SettingsActivity extends Activity {
 
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
-            for (int i = 0; i < labels.length; i++) {
+            for (int pass = 0; pass < labels.length; pass++) {
+                int i = paintRow(pass, 0, labels.length, focus);
                 float y = (LIST_TOP + i * (ROW_H + ABOUT_ROW_GAP)
                         + (screen == ABOUT ? (i == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET)) * k;
                 rowRect.set(LIST_X * k, y, LIST_R * k, y + ROW_H * k);
@@ -797,11 +798,19 @@ public class SettingsActivity extends Activity {
             }
         }
 
-            /** Theme-colored capsules; focused row lifts into an opaque white pill. */
+        /** Stable row order with the focused row last, without extra layers or allocations. */
+        private static int paintRow(int pass, int first, int end, int active) {
+            if (active < first || active >= end) return first + pass;
+            if (pass == end - first - 1) return active;
+            int row = first + pass;
+            return row >= active ? row + 1 : row;
+        }
+
+        /** Theme-colored capsules; focused row lifts into an opaque white pill. */
         private float drawRowBackground(Canvas c, int i) {
             float f = i >= 0 && i < pop.length ? Ui.clamp(pop[i].value) : 0f;
             float radius = rowRect.height() / 2f;
-            capsule.setColor(lightSettings() ? 0xFFD3F3F5 : 0xFF2F3D43);
+            capsule.setColor(lightSettings() ? 0xFFD1E3FB : 0xFF31444B);
             c.drawRoundRect(rowRect, radius, radius, capsule);
             if (f > 0.01f) {
                 float scale = 1f + 0.012f * f;
@@ -827,7 +836,8 @@ public class SettingsActivity extends Activity {
         private void drawChoice(Canvas c) {
             String[] options = {"tvOS", AppStrings.get(R.string.settings_built_in)};
             int current = freeActive() ? 0 : 1;
-            for (int i = 0; i < options.length; i++) {
+            for (int pass = 0; pass < options.length; pass++) {
+                int i = paintRow(pass, 0, options.length, focus);
                 setApprovedRowRect(i);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
@@ -852,7 +862,7 @@ public class SettingsActivity extends Activity {
                 return;
             }
             if (info == null) return;
-            descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xFF878A8D);
+            descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xFF888D90);
             int width = Math.round(740 * k);
             if (descriptionLayout == null || !info.equals(descriptionText) || width != descriptionWidth) {
                 descriptionPaint.setTypeface(Ui.displaySemibold);
@@ -1069,7 +1079,9 @@ public class SettingsActivity extends Activity {
             focus = buttonEditor.move(focus, direction);
         }
         private void drawMenuButtonEditor(Canvas c) {
-            for (int row = 0; row <= buttonEditor.size(); row++) {
+            int count = buttonEditor.size() + 1;
+            for (int pass = 0; pass < count; pass++) {
+                int row = paintRow(pass, 0, count, focus);
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
                 rowLabel.setColor(blend(normalInk(), INK, f));
@@ -1220,7 +1232,9 @@ public class SettingsActivity extends Activity {
         }
 
         private void drawCategoryEditor(Canvas c) {
-            for (int row = 0; row < categoryEditor.size(); row++) {
+            int count = categoryEditor.size();
+            for (int pass = 0; pass < count; pass++) {
+                int row = paintRow(pass, 0, count, focus);
                 int id = categoryEditor.get(row);
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
@@ -1265,7 +1279,9 @@ public class SettingsActivity extends Activity {
         private void drawShelfEditor(Canvas c) {
             // The centered screenTitle() is the only heading.
             shelfMeasurePaint.set(rowLabel);
-            for (int at = scrollingFirstRow(); at < scrollingEndRow(); at++) {
+            int first = scrollingFirstRow(), last = scrollingEndRow();
+            for (int pass = 0; pass < last - first; pass++) {
+                int at = paintRow(pass, first, last, pickScroll + focus);
                 int i = at - pickScroll;
                 String[] app = dockEditor.get(at);
                 int place = dockEditor.position(app[0]);
@@ -1316,7 +1332,9 @@ public class SettingsActivity extends Activity {
         /** A long list with buffered edge rows and a continuous vertical scroll. */
         private void drawPicker(Canvas c) {
             // The centered screenTitle() is the only heading.
-            for (int at = scrollingFirstRow(); at < scrollingEndRow(); at++) {
+            int first = scrollingFirstRow(), last = scrollingEndRow();
+            for (int pass = 0; pass < last - first; pass++) {
+                int at = paintRow(pass, first, last, pickScroll + focus);
                 int i = at - pickScroll;
                 setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
@@ -1356,7 +1374,8 @@ public class SettingsActivity extends Activity {
             String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingLabels();
             String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : valueSource.settings();
             // The screen title is already drawn centrally; no legacy subtitle.
-            for (int i = 0; i < labels.length; i++) {
+            for (int pass = 0; pass < labels.length; pass++) {
+                int i = paintRow(pass, 0, labels.length, focus);
                 setApprovedRowRect(i);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));

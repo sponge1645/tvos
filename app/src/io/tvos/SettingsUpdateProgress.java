@@ -66,7 +66,7 @@ final class SettingsUpdateProgress {
             text = Ui.text(Ui.displaySemibold, 30 * k, 0);
             text.setTextAlign(Paint.Align.CENTER);
         }
-        text.setColor(light ? 0xB33A5761 : 0xB3C9D5D9);
+        text.setColor(light ? 0xB33A5761 : 0xFF888D90);
         canvas.drawText(label(SystemClock.uptimeMillis()), 522 * k, 865 * k, text);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(light ? 0x33000000 : 0x99000000);

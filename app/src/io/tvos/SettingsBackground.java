@@ -10,8 +10,8 @@ import android.graphics.Shader;
 
 /** Approved SVG gradients rendered natively, with a bounded single-theme raster cache. */
 final class SettingsBackground {
-    private static final float[] STOPS = new float[25];
-    static { for (int i = 0; i < STOPS.length; i++) STOPS[i] = i / 24f; }
+    private static final float[] STOPS = new float[49];
+    static { for (int i = 0; i < STOPS.length; i++) STOPS[i] = i / 48f; }
 
     private static final class Glow {
         final float cx, cy, rx, ry;
@@ -28,12 +28,12 @@ final class SettingsBackground {
     }
     // Reference coordinates and colors match docs/design/settings-{light,dark}.svg.
     private static final Glow[] LIGHT = {
-        new Glow(957.662f, 831.439f, 471.844f, 662.348f, 0xFFFFE8BF, 1f),
-        new Glow(947.177f, 720.356f, 504.540f, 386.796f, 0xFFFFEEC9, 0.874650f)
+        new Glow(971.974f, 669.021f, 756.238f, 1066.378f, 0xFFF1FBF1, 0.471408f),
+        new Glow(923.778f, 826.562f, 799.977f, 817.499f, 0xFF00B5F1, 0.176345f)
     };
     private static final Glow[] DARK = {
-        new Glow(1176.515f, 12.345f, 961.493f, 1136.069f, 0xFF006176, 1f),
-        new Glow(201.015f, 306.489f, 1361.093f, 1287.957f, 0xFF0B7EA4, 0.327686f)
+        new Glow(1021.398f, 123.860f, 1555.396f, 887.556f, 0xFF355044, 1.000000f),
+        new Glow(1037.092f, 226.521f, 1987.793f, 938.544f, 0xFF001435, 0.393656f)
     };
     private Bitmap bitmap;
     private boolean cachedLight;
@@ -65,7 +65,7 @@ final class SettingsBackground {
             }
         }
         if (bitmap == null) {
-            canvas.drawColor(light ? 0xFFB9F6FB : 0xFF09283A);
+            canvas.drawColor(light ? 0xFFB7D3F1 : 0xFF141923);
             return;
         }
         destination.set(0, 0, width, height);
@@ -74,8 +74,8 @@ final class SettingsBackground {
 
     private void render(Canvas canvas, int width, int height, boolean light) {
         gradient.setShader(new LinearGradient(0, 0, 0, height,
-                light ? 0xFFB9F6FB : 0xFF09283A,
-                light ? 0xFFB6F1F9 : 0xFF0B1824, Shader.TileMode.CLAMP));
+                light ? 0xFFB7D3F1 : 0xFF141923,
+                light ? 0xFFB9D4F1 : 0xFF191715, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, width, height, gradient);
         for (Glow glow : light ? LIGHT : DARK) {
             int saved = canvas.save();
