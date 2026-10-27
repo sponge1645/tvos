@@ -48,7 +48,6 @@
     <string name="home_weather_high_low" formatted="true">"Макс. %1$s   Мин. %2$s"</string>
     <string name="home_tab_new" formatted="false">"Новинки"</string>
     <string name="home_tab_movies" formatted="false">"Фильмы"</string>
-    <string name="home_tab_detectives" formatted="false">"Детективы"</string>
     <string name="home_tab_shows" formatted="false">"Сериалы"</string>
     <string name="home_genre" formatted="false">"Жанры"</string>
     <string name="home_genre_loading" formatted="false">"Загрузка…"</string>

@@ -148,7 +148,6 @@
     <string name="settings_network" formatted="false">Network</string>
     <string name="settings_new" formatted="false">New</string>
     <string name="settings_movies" formatted="false">Movies</string>
-    <string name="settings_detectives" formatted="false">Detectives</string>
     <string name="settings_shows" formatted="false">Shows</string>
     <string name="settings_random_movie" formatted="false">Random Movie</string>
     <string name="settings_save" formatted="false">Save</string>

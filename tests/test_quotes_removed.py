@@ -24,9 +24,9 @@ files={
 '''+method+'''
  static void check(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
-  for(String key:new String[]{"quotes","coin0","coin1","coin2","coin3"})sp().values.put(key,true);
+  for(String key:new String[]{"quotes","coin0","coin1","coin2","coin3","showDetectives","category_2"})sp().values.put(key,true);
   sp().values.put("city","Test City");sp().values.put("weather",true);sp().values.put("device_name","TV");app.data.values.put("prices","old");app.data.values.put("pricesAt",1L);app.data.values.put("weather","forecast");app.data.values.put("weatherPlace","1,2");
-  removeRetiredWidgetData();check(sp().values.size()==3&&!sp().contains("quotes")&&sp().contains("weather"),"only quote preferences removed");check(app.data.values.size()==2&&app.data.contains("weather")&&app.data.contains("weatherPlace"),"weather cache survives");
+  removeRetiredWidgetData();check(sp().values.size()==3&&!sp().contains("quotes")&&sp().contains("weather"),"only retired widget and category preferences removed");check(app.data.values.size()==2&&app.data.contains("weather")&&app.data.contains("weatherPlace"),"weather cache survives");
   int writes=sp().writes+app.data.writes;removeRetiredWidgetData();check(sp().writes+app.data.writes==writes,"migration idempotent without repeated disk writes");
   System.out.println("PASS: quote code/config/assets absent; targeted migration preserves weather/region/name and is idempotent");
  }
@@ -37,7 +37,7 @@ a=view.index('        private int rowCount()');b=view.index('{',a);depth=1;i=b+1
 while depth:depth+=(view[i]=='{')-(view[i]=='}');i+=1
 files['io/tvos/SettingsContent.java']=Path('app/src/io/tvos/SettingsContent.java').read_text()
 files['io/tvos/SettingsActions.java']=Path('app/src/io/tvos/SettingsActions.java').read_text()
-files['io/tvos/RowHarness.java']='''package io.tvos;import java.util.*;import static io.tvos.SettingsContent.*;public class RowHarness {int screen=WIDGETS,settingsGroup;static final int PICK_VISIBLE=10;final List<String> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),pickLabels=new ArrayList<>(),dockEditor=new ArrayList<>();static class Prefs {static final int[] KEYS={1,2,3,4};}String[] settingLabels(){return new String[7];}'''+view[a:i]+'''public static void main(String[] args){AppLanguage.select("en");RowHarness h=new RowHarness();if(h.rowCount()!=2||SettingsContent.menuLabels(WIDGETS).length!=2)throw new AssertionError("no ghost widget row");if(SettingsActions.activation(WIDGETS,1,0,false,6,false)!=SettingsActions.Action.DATE_SCREEN)throw new AssertionError("date index");if(SettingsActions.back(DATE_TIME,0,GENERAL,6).row!=1)throw new AssertionError("date return focus");System.out.println("PASS: actual widget row count, labels, date activation and return focus agree");}}'''
+files['io/tvos/RowHarness.java']='''package io.tvos;import java.util.*;import static io.tvos.SettingsContent.*;public class RowHarness {int screen=WIDGETS,settingsGroup;static final int PICK_VISIBLE=10;final List<String> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),pickLabels=new ArrayList<>(),dockEditor=new ArrayList<>();static class Prefs {static final int[] KEYS={1,2,3,4};}String[] settingLabels(){return new String[6];}'''+view[a:i]+'''public static void main(String[] args){AppLanguage.select("en");RowHarness h=new RowHarness();if(h.rowCount()!=2||SettingsContent.menuLabels(WIDGETS).length!=2)throw new AssertionError("no ghost widget row");if(SettingsActions.activation(WIDGETS,1,0,false,6,false)!=SettingsActions.Action.DATE_SCREEN)throw new AssertionError("date index");if(SettingsActions.back(DATE_TIME,0,GENERAL,6).row!=1)throw new AssertionError("date return focus");h.screen=HOME_SETTINGS;h.settingsGroup=SYSTEM;if(h.rowCount()!=1)throw new AssertionError("only random category switch remains");System.out.println("PASS: actual widget row count, labels, date activation and return focus agree");}}'''
 with tempfile.TemporaryDirectory(prefix='tvos-no-quotes-') as tmp:
  root=Path(tmp);write(root)
  for name,content in files.items():

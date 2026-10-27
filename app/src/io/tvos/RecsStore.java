@@ -11,7 +11,7 @@ import android.content.SharedPreferences;
 final class RecsStore {
     private static final int CACHE_VERSION = 16;
     static final class Snapshot {
-        List<Pick> picks = new ArrayList<>(), newPicks = new ArrayList<>(), detectivePicks = new ArrayList<>();
+        List<Pick> picks = new ArrayList<>(), newPicks = new ArrayList<>();
         int period = -1;
         long listAt, keyStamp;
         String listLanguage = "";
@@ -26,8 +26,7 @@ final class RecsStore {
             if (saved != null) snapshot.picks = parse(new JSONArray(saved));
             String savedNew = cache.getString("newPicks", null);
             if (savedNew != null) snapshot.newPicks = parse(new JSONArray(savedNew));
-            String savedDetectives = cache.getString("detectivePicks", null);
-            if (savedDetectives != null) snapshot.detectivePicks = parse(new JSONArray(savedDetectives));
+            if (cache.contains("detectivePicks")) cache.edit().remove("detectivePicks").apply();
             snapshot.period = cache.getInt("period", -1);
             snapshot.listAt = cache.getLong("listAt", 0);
             snapshot.listLanguage = cache.getString("language", cache.getBoolean("english", false) ? "en" : "pt");
@@ -39,21 +38,12 @@ final class RecsStore {
         }
         return snapshot;
     }
-    void save(List<Pick> picks, List<Pick> newPicks, List<Pick> detectivePicks, int period, long listAt, String listLanguage, long keyStamp) {
+    void save(List<Pick> picks, List<Pick> newPicks, int period, long listAt, String listLanguage, long keyStamp) {
         try {
             JSONArray a = new JSONArray();
             for (Pick p : picks) {
                 a.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("title", p.title).put("backdrop", p.backdrop)
                         .put("poster", p.poster == null ? "" : p.poster).put("rating", p.rating).put("meta", p.meta).put("duration", p.duration).put("tvOrigin", p.tvOrigin).put("movieOrigin", p.movieOrigin).put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
-                        .put("detailed", p.detailed));
-            }
-            JSONArray d = new JSONArray();
-            for (Pick p : detectivePicks) {
-                d.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("title", p.title)
-                        .put("backdrop", p.backdrop).put("poster", p.poster == null ? "" : p.poster)
-                        .put("rating", p.rating).put("meta", p.meta).put("duration", p.duration)
-                        .put("tvOrigin", p.tvOrigin).put("movieOrigin", p.movieOrigin)
-                        .put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
                         .put("detailed", p.detailed));
             }
             JSONArray n = new JSONArray();
@@ -64,7 +54,7 @@ final class RecsStore {
                         .put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
                         .put("detailed", p.detailed));
             }
-            cache.edit().putString("newPicks", n.toString()).putString("detectivePicks", d.toString()).putString("picks", a.toString()).putInt("period", period).putLong("listAt", listAt)
+            cache.edit().putString("newPicks", n.toString()).putString("picks", a.toString()).putInt("period", period).putLong("listAt", listAt)
                     .putString("language", listLanguage)
                     .putLong("keyStamp", keyStamp).putInt("version", CACHE_VERSION).apply();
         } catch (org.json.JSONException e) {

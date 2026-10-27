@@ -69,7 +69,6 @@ final class Recs {
     private final GenreCatalog genreCatalog;
     private volatile List<Pick> picks = new ArrayList<>();
     private volatile List<Pick> newPicks = new ArrayList<>();
-    private volatile List<Pick> detectivePicks = new ArrayList<>();
     private volatile int period = -1;
     private volatile long listAt;
     private volatile boolean fetching;
@@ -85,7 +84,6 @@ final class Recs {
     private synchronized void resetLanguage() {
         picks = new ArrayList<>();
         newPicks = new ArrayList<>();
-        detectivePicks = new ArrayList<>();
         listLanguage = "";
         listAt = failedAt = keyStamp = 0;
         error = "";
@@ -106,7 +104,6 @@ final class Recs {
         RecsStore.Snapshot saved = store.load();
         picks = saved.picks;
         newPicks = saved.newPicks;
-        detectivePicks = saved.detectivePicks;
         period = saved.period;
         listAt = saved.listAt;
         listLanguage = saved.listLanguage;
@@ -214,7 +211,7 @@ final class Recs {
         if (!newKey && failedAt != 0 && sinceFail >= 0 && sinceFail < 10 * 60_000L) return;
         int p = period(now);
         boolean stale = newKey || p != period || now - listAt > LIST_EVERY || now < listAt || picks.isEmpty()
-                || !listLanguage.equals(Ui.language) || newPicks.isEmpty() || detectivePicks.isEmpty();
+                || !listLanguage.equals(Ui.language) || newPicks.isEmpty();
         boolean missing = false;
         for (Pick pick : wanted()) missing |= !pick.detailed || !backdropCache.hasImage(pick);
         if (!stale && !missing) return;
@@ -357,13 +354,12 @@ final class Recs {
     // MARK: - TMDB
 
     private boolean fetchList(int p, String language) throws IOException, org.json.JSONException {
-        CatalogBuilder.Result result = catalogBuilder.fetch(language, listLanguage, detectivePicks);
+        CatalogBuilder.Result result = catalogBuilder.fetch(language);
         if (result == null) return false;
         synchronized (this) {
             if (!language.equals(Ui.language)) return false;
             picks = result.popular;
             newPicks = result.fresh;
-            detectivePicks = result.detectives;
             period = p;
             listAt = System.currentTimeMillis();
             listLanguage = language;
@@ -462,8 +458,8 @@ final class Recs {
     List<Pick> catalog(String kind) {
         List<Pick> out = new ArrayList<>();
         if (!hasKey(context)) return out;
-        for (Pick p : "detective".equals(kind) ? detectivePicks : kind == null ? newPicks : picks) {
-            if ("detective".equals(kind) || kind == null || kind.equals(p.kind)) {
+        for (Pick p : kind == null ? newPicks : picks) {
+            if (kind == null || kind.equals(p.kind)) {
                 out.add(p);
                 if (out.size() >= 25) break;
             }
@@ -513,7 +509,7 @@ final class Recs {
     // MARK: - List cache
 
     private void save() {
-        store.save(picks, newPicks, detectivePicks, period, listAt, listLanguage, keyStamp);
+        store.save(picks, newPicks, period, listAt, listLanguage, keyStamp);
     }
 
     private static String read(InputStream in) throws IOException {

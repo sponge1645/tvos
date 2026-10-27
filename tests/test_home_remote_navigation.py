@@ -9,7 +9,7 @@ keys='''package android.view;public class KeyEvent {public static final int ACTI
 harness='''package io.tvos;
 import java.util.*;import android.os.Handler;import android.view.KeyEvent;
 class HomeApps {static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
-class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,2,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
+class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
 public class RemoteNavigationHarness {
  static final int Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
  int zone=Z_SHELF,shelfIndex,drawerIndex,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;
@@ -17,7 +17,7 @@ public class RemoteNavigationHarness {
  List<HomeApps.Item> shelf=new ArrayList<>(),drawerItems=new ArrayList<>();List<Object> cards=new ArrayList<>(),searchResults=new ArrayList<>();
  static class RectF {final float x;RectF(float x){this.x=x;}float centerX(){return x;}}
  RectF[] tileRects=new RectF[0],cardRects={new RectF(150),new RectF(550),new RectF(950),new RectF(1350),new RectF(1750)},topRects=new RectF[11];
- static final String[] TAB_KIND={null,"movie","detective","tv",null};
+ static final String[] TAB_KIND={null,"movie",null,"tv",null};
  static class Recs {List<Object> catalog(String kind){return Arrays.asList(new Object(),new Object(),new Object());}}final Recs recs=new Recs();
  static class Roulette {boolean spin,done;boolean spinning(){return spin;}boolean finished(){return done;}void cancel(){spin=false;}}final Roulette rouletteWork=new Roulette();
  class Click {void move(){moves++;}}final Click click=new Click();static class Spoken {boolean keyClick(){return true;}}final Spoken spoken=new Spoken();

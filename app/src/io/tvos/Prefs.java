@@ -37,10 +37,10 @@ final class Prefs {
         Ui.applyLanguage();   // the language picked on the TV, now that it can be read
     }
 
-    /** Delete only obsolete widget keys; keep weather, region and all other settings. */
+    /** Delete retired widget/category keys; keep weather, region and other settings. */
     private static void removeRetiredWidgetData() {
         SharedPreferences settings = sp();
-        String[] retired = {"quotes", "coin0", "coin1", "coin2", "coin3"};
+        String[] retired = {"quotes", "coin0", "coin1", "coin2", "coin3", "showDetectives", "category_2"};
         SharedPreferences.Editor edit = null;
         for (String key : retired) if (settings.contains(key)) {
             if (edit == null) edit = settings.edit();
@@ -154,31 +154,29 @@ final class Prefs {
     static void setWeather(boolean on) { put("weather", on); }
 
     // Home screen recommendation sections (enabled by default).
-    static boolean detectives() { return sp().getBoolean("showDetectives", false); }
-    static void setDetectives(boolean on) { put("showDetectives", on); }
     static boolean randomMovie() { return sp().getBoolean("showRandomMovie", true); }
     static void setRandomMovie(boolean on) { put("showRandomMovie", on); }
 
-    // Category IDs remain stable: New, Movies, Detectives, Shows, Random Movie.
+    // Keep persisted IDs stable: New=0, Movies=1, Shows=3, Random Movie=4; ID 2 is retired.
     private static int categoryVersion = -1, categoryMask;
     private static int[] categoryOrderCache;
 
     private static void readCategories() {
         if (categoryOrderCache != null && categoryVersion == version) return;
-        int[] order = new int[5];
+        int[] order = new int[4];
         boolean[] seen = new boolean[5];
         int count = 0;
-        for (String value : sp().getString("category_order", "0,1,2,3,4").split(",")) {
+        for (String value : sp().getString("category_order", "0,1,3,4").split(",")) {
             try {
                 int id = Integer.parseInt(value);
-                if (id >= 0 && id < 5 && !seen[id]) { order[count++] = id; seen[id] = true; }
+                if (id >= 0 && id < 5 && id != 2 && !seen[id]) { order[count++] = id; seen[id] = true; }
             } catch (NumberFormatException ignored) { }
         }
-        for (int id = 0; id < 5; id++) if (!seen[id]) order[count++] = id;
+        for (int id = 0; id < 5; id++) if (id != 2 && !seen[id]) order[count++] = id;
         categoryMask = 0;
         for (int id = 0; id < 5; id++) {
-            boolean enabled = id == 2 ? detectives() : id == 4 ? randomMovie()
-                    : sp().getBoolean("category_" + id, true);
+            boolean enabled = id != 2 && (id == 4 ? randomMovie()
+                    : sp().getBoolean("category_" + id, true));
             if (enabled) categoryMask |= 1 << id;
         }
         categoryOrderCache = order;
@@ -205,18 +203,17 @@ final class Prefs {
     }
 
     static void setCategoryEnabled(int id, boolean enabled) {
-        if (id < 0 || id >= 5) throw new IllegalArgumentException("Invalid category");
-        if (id == 2) setDetectives(enabled);
-        else if (id == 4) setRandomMovie(enabled);
+        if (id < 0 || id >= 5 || id == 2) throw new IllegalArgumentException("Invalid category");
+        if (id == 4) setRandomMovie(enabled);
         else put("category_" + id, enabled);
     }
 
     static void setCategoryOrder(List<Integer> order) {
-        if (order.size() != 5) throw new IllegalArgumentException("Incomplete categories");
+        if (order.size() != 4) throw new IllegalArgumentException("Incomplete categories");
         boolean[] seen = new boolean[5];
         StringBuilder value = new StringBuilder();
         for (Integer id : order) {
-            if (id == null || id < 0 || id >= 5 || seen[id]) throw new IllegalArgumentException("Invalid category order");
+            if (id == null || id < 0 || id >= 5 || id == 2 || seen[id]) throw new IllegalArgumentException("Invalid category order");
             seen[id] = true;
             if (value.length() > 0) value.append(',');
             value.append(id);

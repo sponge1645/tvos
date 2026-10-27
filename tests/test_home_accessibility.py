@@ -15,7 +15,7 @@ files={
  'io/tvos/HomeApps.java':'package io.tvos;class HomeApps {static class Item {String label;Item(String label){this.label=label;}}}',
  'io/tvos/Recs.java':'package io.tvos;class Recs {static class Pick {String title,meta,app;Pick(String t,String m,String a){title=t;meta=m;app=a;}}static String serviceName(Pick p){return p.app;}}',
  'io/tvos/NetworkStatus.java':'package io.tvos;class NetworkStatus {static final int WIFI=1,ETHERNET=2;int value;int state(){return value;}}',
- 'io/tvos/Prefs.java':'''package io.tvos;class Prefs {static String city="";static String city(){return city;}static int[] categories={2,0,4},buttons={5,4,3};static int[] categoryOrder(){return categories;}static int[] topButtonOrder(){return buttons;}static int categoryPosition(int id){for(int i=0;i<categories.length;i++)if(categories[i]==id)return i+1;return 0;}static int categoryCount(){return categories.length;}}''',
+ 'io/tvos/Prefs.java':'''package io.tvos;class Prefs {static String city="";static String city(){return city;}static int[] categories={3,0,4},buttons={5,4,3};static int[] categoryOrder(){return categories;}static int[] topButtonOrder(){return buttons;}static int categoryPosition(int id){for(int i=0;i<categories.length;i++)if(categories[i]==id)return i+1;return 0;}static int categoryCount(){return categories.length;}}''',
  'io/tvos/HomeData.java':'''package io.tvos;import java.util.*;class HomeData {Weather weather=new Weather();static class Weather {double temp=10,max=20,min=5;int code;boolean isDay=true;long sunrise=1,sunset=2;List<Long> hours=Arrays.asList(9L);List<Double> hourTemp=Arrays.asList(11.0);}static String degrees(double n){return (int)n+"°";}static String hour(long n){return "09:00";}static String condition(int c,boolean d){return "Clear";}}''',
  'io/tvos/Ui.java':'package io.tvos;class Ui {static String time(long n){return n==1?"06:00":"18:00";}}',
  'io/tvos/RouletteRenderer.java':'package io.tvos;import android.graphics.RectF;class RouletteRenderer {'+block(Path('app/src/io/tvos/RouletteRenderer.java').read_text(),'    static void buttonBounds(').replace('(MARGIN + CONTENT_R)','(80 + 1840)')+'}',
@@ -37,7 +37,7 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
  AccessibilityHarness(){for(int i=0;i<11;i++){topRects[i]=new RectF(i*100,46,i*100+68,114);lightButtons.add(new HomeApps.Item("Action"+i));visible[i]=true;}}
  public void read(HomeAccessibility.State s){readAccessibilityState(s);}public void focus(int group,int i){moves++;focusAccessibleItem(group,i);}public void wake(){wakes++;}public void activate(){activations++;}
  boolean picksOn(){return picks;}boolean weatherBottom(){return weather;}boolean topControlVisible(int i){return visible[i]&&(i>=5||!searchMode&&picks);}
- String[] tabs(){return new String[]{"New","Movies","Detectives","Shows","Dice"};}
+ String[] tabs(){return new String[]{"New","Movies","","Shows","Dice"};}
  void retarget(boolean snap){retargets++;}void retargetGrid(boolean snap){gridRetargets++;}void openDrawer(){drawerOpen=true;}void closeDrawer(){drawerOpen=false;}void selectTab(int i){selected=tab=i;}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static int node(int group,int index){return HomeAccessibility.id(group,index);}
@@ -45,8 +45,8 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
 '''+block(home,'    private void readAccessibilityState(')+block(home,'    private void focusAccessibleItem(')+'''
  public static void main(String[] args){
   AppLanguage.select("en");AccessibilityHarness h=new AccessibilityHarness();
-  check(h.ids().equals(Arrays.asList(4003,4001,4005,4011,4010,4009,5001,2001,3001)),"stable IDs and configured reading order");
-  h.visible[2]=false;check(!h.ids().contains(4003),"disabled category removed");h.visible[2]=true;
+  check(h.ids().equals(Arrays.asList(4004,4001,4005,4011,4010,4009,5001,2001,3001)),"stable IDs and configured reading order");
+  h.visible[3]=false;check(!h.ids().contains(4004),"disabled category removed");h.visible[3]=true;
   check(h.source.text(2001).equals("Lampa")&&h.source.text(5001).equals("Title, 2024, 120 min. App: Seena"),"app and recommendation text");
   h.networkStatus.value=1;check(h.source.text(4011).startsWith("Wi-Fi"),"Wi-Fi label");h.networkStatus.value=2;check(h.source.text(4011).startsWith("Ethernet"),"live Ethernet label");
   AppLanguage.select("ru");check(h.source.text(4011).contains("интернет"),"live resource language");AppLanguage.select("en");
@@ -59,7 +59,7 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   check(h.source.text(8001).contains("10°, Clear")&&h.source.text(8001).contains("09:00 11°"),"weather spoken data");
   Prefs.city="Tokyo";check(h.source.text(8001).startsWith("Tokyo."),"live city");h.data.weather.temp=Double.NaN;check(h.source.text(8001).contains("No weather data"),"missing weather");
   h.source.focus(2001);check(!h.drawerOpen&&h.zone==Z_SHELF,"focus closes drawer");
-  h.source.focus(4003);check(h.topIndex==2&&h.selected==2&&h.zone==Z_TOP,"category changes through host");
+  h.source.focus(4004);check(h.topIndex==3&&h.selected==3&&h.zone==Z_TOP,"category changes through host");
   h.sheetOpen=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==151,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
   h.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
   h.source.focus(9002);check(h.gridIndex==1&&h.gridDirty&&h.gridRetargets==1&&h.source.focused()==9002,"grid focus/scroll host");

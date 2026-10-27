@@ -62,7 +62,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73;
     // Prepared once per supported language; the drawing path never builds a label array.
     private final EnumMap<AppLanguage, String[]> tabLabels = new EnumMap<>(AppLanguage.class);
-    private static final String[] TAB_KIND = {null, "movie", "detective", "tv"};
+    private static final String[] TAB_KIND = {null, "movie", null, "tv"};
     private static final int Z_TOP = 4, Z_CARDS = 5;
 
     private final Activity activity;
@@ -530,7 +530,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         AppLanguage language = AppLanguage.current();
         String[] labels = tabLabels.get(language);
         if (labels == null) {
-            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), AppStrings.get(R.string.home_tab_detectives, language), AppStrings.get(R.string.home_tab_shows, language), "🎲"};
+            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), "", AppStrings.get(R.string.home_tab_shows, language), "🎲"};
             tabLabels.put(language, labels);
         }
         labels[1] = genres.label();
@@ -650,8 +650,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
 
         // Restart the title marquee whenever focus moves to a different poster.
-        int focusedPoster = !sheetOpen && picksOn() && tab != 4 && zone == Z_CARDS
-                && cardIndex < cards.size() ? cardIndex : -1;
+        int focusedPoster = focusedPoster();
         if (posters.focus(focusedPoster, cardPage, tab, up)) heroDirty = true;
         boolean marqueeActive = posters.marqueeActive(up);
         if (marqueeActive || rouletteWork.spinning()) heroDirty = true;
@@ -705,6 +704,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             long delay = posters.nextDelay(up);
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
+    }
+
+    private int focusedPoster() {
+        return !sheetOpen && picksOn() && (searchMode || tab != 4) && zone == Z_CARDS
+                && cardIndex >= 0 && cardIndex < cards.size() ? cardIndex : -1;
     }
 
     private void wake() {

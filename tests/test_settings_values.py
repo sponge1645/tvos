@@ -12,7 +12,7 @@ sources={
 'android/net/wifi/WifiInfo.java':'package android.net.wifi;public class WifiInfo {public String ssid="\\\"Home\\\"";public String getSSID(){return ssid;}}',
 'android/net/wifi/WifiManager.java':'package android.net.wifi;public class WifiManager {public WifiInfo info=new WifiInfo();public WifiInfo getConnectionInfo(){return info;}}',
 'io/tvos/Config.java':'package io.tvos;final class Config {static String CURRENCY="USD";}',
-'io/tvos/Prefs.java':'''package io.tvos;final class Prefs {static String theme="auto",unit="auto",city="City";static boolean weather=true,detectives,random=true,h24;static String language(){return AppLanguage.current().code;}static String temperature(){return unit;}static String theme(){return theme;}static String city(){return city;}static boolean weather(){return weather;}static boolean detectives(){return detectives;}static boolean randomMovie(){return random;}static boolean hour24(){return h24;}static boolean topButtonEnabled(int id){return id!=2;}static int topButtonPosition(int id){return id+1;}static final String[] KEYS={"netflix","youtube","prime","tcl"};static String keyApp(String k){return k.equals("tcl")?"":k;}}''',
+'io/tvos/Prefs.java':'''package io.tvos;final class Prefs {static String theme="auto",unit="auto",city="City";static boolean weather=true,random=true,h24;static String language(){return AppLanguage.current().code;}static String temperature(){return unit;}static String theme(){return theme;}static String city(){return city;}static boolean weather(){return weather;}static boolean randomMovie(){return random;}static boolean hour24(){return h24;}static boolean topButtonEnabled(int id){return id!=2;}static int topButtonPosition(int id){return id+1;}static final String[] KEYS={"netflix","youtube","prime","tcl"};static String keyApp(String k){return k.equals("tcl")?"":k;}}''',
 'io/tvos/SettingsOrderEditor.java':'package io.tvos;final class SettingsOrderEditor {int size(){return 2;}int get(int i){return i==0?3:2;}}',
 'io/tvos/LocalNetwork.java':'''package io.tvos;final class LocalNetwork {static Info info;static class Info {boolean ethernet;String address="192.168.0.111";}static Info read(android.content.Context c){return info;}}''',
 'io/tvos/ValuesHarness.java':'''package io.tvos;import java.util.*;import android.app.Activity;import static io.tvos.SettingsContent.*;
@@ -34,7 +34,7 @@ public class ValuesHarness {
    check(v.menu(WEATHER,2)[0].equals(SettingsValues.onOff(true))&&v.menu(WEATHER,2)[1].equals(SettingsValues.onOff(false)),"independent weather callback");
    check(v.menu(MENU_BUTTONS,3)[0].equals("#4")&&v.menu(MENU_BUTTONS,3)[1].equals(SettingsValues.onOff(false))&&v.menu(MENU_BUTTONS,3)[2].isEmpty(),"button order and VPN footer");
    status[0]="Searching";check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
-   check(v.settings().length==7&&SettingsValues.detectivesRow()==5&&SettingsValues.randomRow()==6,"stable category rows without quote/coin controls");
+   check(v.settings().length==6&&SettingsValues.randomRow()==5,"stable category rows without quote/coin controls");
    String[] mappings=SettingsValues.keyValues(Arrays.asList("", "youtube"),Arrays.asList("old empty label", "YT"));
    check(mappings[1].equals("YT"),"configured remote retains app label");
    for(int index:new int[]{0,2,3})check(mappings[index].equals(ru?"Не настроено":"Not configured"),"missing and empty remote mappings use one live localized status");

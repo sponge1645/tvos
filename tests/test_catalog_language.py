@@ -17,21 +17,19 @@ import java.util.*;import java.io.*;import org.json.*;import io.tvos.Recs.Pick;i
 public class CatalogHarness {
  static class Config {static String TMDB_KEY="test";}static final String REGION="RU";
  static class AppLog {static void w(String s){}static void unexpected(String stage,RuntimeException e){}}
- List<Pick> picks=new ArrayList<>(),newPicks=new ArrayList<>(),detectivePicks=new ArrayList<>();String listLanguage="";long listAt,failedAt,keyStamp;int period,notices,refreshes;String error="";
+ List<Pick> picks=new ArrayList<>(),newPicks=new ArrayList<>();String listLanguage="";long listAt,failedAt,keyStamp;int period,notices,refreshes;String error="";
  static class Enrichment {void resetAttempts(){}}final Enrichment movieEnrichment=new Enrichment();
  final CatalogBuilder catalogBuilder=new CatalogBuilder(this::get,CatalogHarness::day);
- List<String> requests=new ArrayList<>();Runnable onGet;boolean failDetectives,emptyFresh;double detectiveRating=8.5;int detectiveVotes=2000;
+ List<String> requests=new ArrayList<>();Runnable onGet;boolean emptyFresh;
  void notifyListeners(){notices++;}void refreshIfStale(){refreshes++;}
  static String day(int offset){return offset<0?"2026-04-27":"2026-10-24";}
  JSONObject get(String path)throws IOException, org.json.JSONException {
   requests.add(path);if(onGet!=null)onGet.run();
-  if(failDetectives && path.contains("with_genres"))throw new IOException("detectives unavailable");
   if(emptyFresh&&(path.contains("primary_release_date.gte")||path.contains("first_air_date.gte")))return new JSONObject().put("results",new JSONArray());
   boolean movie=path.contains("/movie?");boolean en=path.contains("language=en-US");
   JSONObject item=new JSONObject().put("id",movie?1:2).put("title",en?"English movie":"Русский фильм").put("name",en?"English series":"Русский сериал")
    .put("backdrop_path","/image.jpg").put("poster_path",en?"/english.jpg":"/russian.jpg").put("vote_average",8.5).put("vote_count",2000)
    .put("release_date","2026-09-01").put("first_air_date","2026-09-01").put("origin_country",new JSONArray().put("US")).put("genre_ids",new JSONArray().put(9648));
-  if(path.contains("with_genres"))item.put("vote_average",detectiveRating).put("vote_count",detectiveVotes);
   return new JSONObject().put("results",new JSONArray().put(item));
  }
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
@@ -50,16 +48,13 @@ tests = r'''
   check(!samePicks(Arrays.asList(old),Arrays.asList(fresh)),"same ID with new localized object replaces old card");
   check(samePicks(Arrays.asList(old),Arrays.asList(old)),"unchanged card object stays stable");
   long englishStamp=h.sourceStamp();Ui.language("ru");check(h.sourceStamp()!=englishStamp,"language changes source identity/backoff");
-  h.resetLanguage();check(h.picks.isEmpty()&&h.newPicks.isEmpty()&&h.detectivePicks.isEmpty()&&h.listLanguage.isEmpty()&&h.refreshes==1,"old localized lists cleared and refetch requested");
+  h.resetLanguage();check(h.picks.isEmpty()&&h.newPicks.isEmpty()&&h.listLanguage.isEmpty()&&h.refreshes==1,"old localized lists cleared and refetch requested");
   h.requests.clear();check(h.fetchList(1,"ru"),"Russian fetch succeeds");
   check(h.picks.get(0).title.equals("Русский фильм")&&countryName("US").equals("США")&&countryName("FR").equals("Франция"),"Russian strings retained");
   h.onGet=()->Ui.language("en");h.requests.clear();check(!h.fetchList(1,"ru"),"stale in-flight catalog rejected");
   check(h.requests.size()==1&&h.listLanguage.equals("ru"),"no further old-language requests or false language stamp");
-  h.onGet=null;h.fetchList(1,"en");List<Pick> detectiveCache=h.detectivePicks;h.failDetectives=true;h.fetchList(1,"en");check(h.detectivePicks.size()==detectiveCache.size(),"same-language detective cache survives temporary endpoint failure");
-  h.failDetectives=false;h.emptyFresh=true;h.fetchList(1,"en");check(h.picks.size()==2&&h.newPicks.size()==2,"repeated discover pages deduplicated; empty fresh falls back to popular");
-  h.detectiveRating=7.5;h.fetchList(1,"en");check(h.detectivePicks.isEmpty(),"detective threshold is strictly greater than 7.5");
-  h.detectiveRating=8;h.detectiveVotes=199;h.fetchList(1,"en");check(h.detectivePicks.isEmpty(),"detectives below 200 votes rejected");
-  h.detectiveVotes=200;h.fetchList(1,"en");check(h.detectivePicks.size()==1,"200-vote threshold accepted and duplicate detective IDs removed");
+  h.onGet=null;h.emptyFresh=true;h.requests.clear();h.fetchList(1,"en");check(h.picks.size()==2&&h.newPicks.size()==2,"repeated discover pages deduplicated; empty fresh falls back to popular");
+  check(h.requests.size()==12&&h.requests.stream().noneMatch(p->p.contains("with_genres")),"no retired category network requests");
   System.out.println("PASS: catalog language, RU ranking, country locale, cache reset, stale response rejection, localized card replacement");
  }
 }

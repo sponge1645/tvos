@@ -10,6 +10,8 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Rect;
+import android.graphics.Outline;
+import android.view.ViewOutlineProvider;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
@@ -44,8 +46,8 @@ final class HomeGenres {
             super(context, null, 0, R.style.GenreScroll);
             fadeLength = Math.max(1, Math.round(24 * k));
             setVerticalScrollBarEnabled(true);
-            setScrollBarStyle(View.SCROLLBARS_INSIDE_INSET);
-            setPadding(0, 0, Math.round(10 * k), 0);
+            setScrollbarFadingEnabled(true);
+            setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
             setClipToPadding(true);
             setVerticalFadingEdgeEnabled(true);
             setFadingEdgeLength(fadeLength);
@@ -93,9 +95,18 @@ final class HomeGenres {
         float originX, originY, progress;
         boolean closing, opening;
         Runnable afterOpen;
-        MenuPopup(View root, int width, boolean reduced) {
+        MenuPopup(View root, int width, boolean reduced, float radius) {
             super(root, width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
             this.root = root; this.reduced = reduced;
+            root.setClipToOutline(true);
+            root.setOutlineProvider(new ViewOutlineProvider() {
+                @Override public void getOutline(View view, Outline outline) {
+                    if (progress == 1) outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                    else if (clip.right <= clip.left || clip.bottom <= clip.top) outline.setEmpty();
+                    else outline.setRoundRect(clip, Math.min(radius,
+                            Math.min(clip.right - clip.left, clip.bottom - clip.top) / 2f));
+                }
+            });
         }
         @Override public void dismiss() { closeMenu(this); }
         void dismissNow() { super.dismiss(); }
@@ -170,7 +181,7 @@ final class HomeGenres {
         }
         boolean reduced = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                 || !ValueAnimator.areAnimatorsEnabled();
-        MenuPopup window = new MenuPopup(root, Math.round(420 * k), reduced);
+        MenuPopup window = new MenuPopup(root, Math.round(420 * k), reduced, 44 * k);
         popup = window;
         window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         window.setOutsideTouchable(true);
@@ -240,13 +251,12 @@ final class HomeGenres {
         root.setAlpha(p);
         float scale = .96f + .04f * p;
         root.setScaleX(scale); root.setScaleY(scale);
-        if (p == 1) root.setClipBounds(null);
-        else {
+        if (p < 1) {
             window.clip.set(Math.round(window.originX * (1 - p)), Math.round(window.originY * (1 - p)),
                     Math.round(window.originX + (root.getWidth() - window.originX) * p),
                     Math.round(window.originY + (root.getHeight() - window.originY) * p));
-            root.setClipBounds(window.clip);
         }
+        root.invalidateOutline();
     }
     private void closeMenu(MenuPopup window) {
         if (popup != window || window.closing) return;

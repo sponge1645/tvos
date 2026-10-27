@@ -22,7 +22,7 @@ class Prefs {
   Store edit(){return this;}Store putString(String k,String v){values.put(k,v);return this;}Store putBoolean(String k,boolean v){values.put(k,v);return this;}void apply(){}
  }
  static Store store=new Store();static Store sp(){return store;}static void fresh(){store.values.clear();version++;topButtonOrderCache=null;}
- static int[] categoryOrder(){return new int[]{0,1,2,3,4};}
+ static int[] categoryOrder(){return new int[]{0,1,3,4};}
  static boolean categoryEnabled(int id){throw new AssertionError("wrong preference domain");}static int categoryCount(){throw new AssertionError("wrong preference domain");}static void setCategoryEnabled(int id,boolean on){throw new AssertionError("wrong preference domain");}static void setCategoryOrder(List<Integer> ids){throw new AssertionError("wrong preference domain");}
 '''+prefs_body+'''
 }

@@ -42,7 +42,7 @@ public class HomeStringsHarness {
   for(boolean ru:new boolean[]{false,true,false,true}){
    Ui.ru=ru;AppLanguage.select(Ui.ru?"ru":"en");Ui.language=ru?"ru":"en";Prefs.city="";Prefs.version++;
    h.data.weather=new HomeData.Weather();
-   String[] labels=h.tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Детективы","Сериалы","🎲"}:new String[]{"New","Movies","Detectives","Shows","🎲"}),"tab order/copy");
+   String[] labels=h.tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","","Сериалы","🎲"}:new String[]{"New","Movies","","Shows","🎲"}),"tab order/copy");
    if(ru){if(russian==null)russian=labels;else check(labels==russian,"Russian array reused after language switch");}
    else{if(english==null)english=labels;else check(labels==english,"English array reused after language switch");}
    for(int i=0;i<10000;i++)check(h.tabs()==labels,"tabs create no per-frame array");

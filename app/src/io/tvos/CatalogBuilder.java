@@ -13,9 +13,9 @@ import java.util.function.IntFunction;
 /** Build category lists without owning the published catalog or refresh lifecycle. */
 final class CatalogBuilder {
     static final class Result {
-        final List<Pick> popular, fresh, detectives;
-        Result(List<Pick> popular, List<Pick> fresh, List<Pick> detectives) {
-            this.popular = popular; this.fresh = fresh; this.detectives = detectives;
+        final List<Pick> popular, fresh;
+        Result(List<Pick> popular, List<Pick> fresh) {
+            this.popular = popular; this.fresh = fresh;
         }
     }
     private final TmdbSource source;
@@ -24,7 +24,7 @@ final class CatalogBuilder {
     CatalogBuilder(TmdbSource source, IntFunction<String> date) { this.source = source; this.date = date; }
     private static String key(Pick p) { return Recs.key(p); }
     private static void add(List<Pick> list, JSONObject o, String kind) { TmdbMetadata.add(list, o, kind); }
-    Result fetch(String language, String listLanguage, List<Pick> detectivePicks) throws IOException, org.json.JSONException {
+    Result fetch(String language) throws IOException, org.json.JSONException {
         String apiLanguage = AppLanguage.from(language).apiTag;
         // Popularity is TMDB's global popularity score, filtered by Russian release context.
         // It is NOT a measurement of viewing figures in Russia.
@@ -85,38 +85,8 @@ final class CatalogBuilder {
         if (fresh.isEmpty()) {
             for (Pick pick : popular) if (fresh.size() < 12) fresh.add(pick);
         }
-        // Mystery (TMDB genre 9648), movies only, rating strictly above 7.5.
-        // An unavailable discover endpoint must not prevent the regular catalog refreshing.
-        List<Pick> detectives = new ArrayList<>();
-        try {
-            java.util.Set<Integer> detectiveIds = new java.util.HashSet<>();
-            for (int page = 1; page <= 5; page++) {
-                if (!language.equals(Ui.language)) return null;
-                JSONArray results = source.get("/discover/movie?language=" + apiLanguage
-                        + "&with_genres=9648&vote_average.gte=7.5&vote_count.gte=200"
-                        + "&sort_by=vote_average.desc&include_adult=false&page=" + page)
-                        .getJSONArray("results");
-                for (int i = 0; i < results.length(); i++) {
-                    JSONObject item = results.getJSONObject(i);
-                    if (item.optDouble("vote_average", 0) <= 7.5
-                            || item.optInt("vote_count", 0) < 200) continue;
-                    JSONArray genres = item.optJSONArray("genre_ids");
-                    boolean mystery = false;
-                    if (genres != null) for (int j = 0; j < genres.length(); j++)
-                        if (genres.optInt(j) == 9648) mystery = true;
-                    if (!mystery || !detectiveIds.add(item.optInt("id"))) continue;
-                    add(detectives, item, "movie");
-                }
-            }
-        } catch (IOException | org.json.JSONException e) {
-            if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
-            AppLog.w("detective recommendations: " + e.getMessage());
-        } catch (RuntimeException e) {
-            AppLog.unexpected("detective recommendations", e);
-            if (language.equals(listLanguage)) detectives = new ArrayList<>(detectivePicks);
-        }
         if (!language.equals(Ui.language)) return null;
-        return new Result(popular, fresh, detectives);
+        return new Result(popular, fresh);
     }
     private static void alternate(List<Pick> out, java.util.Set<String> seen, List<Pick> a, List<Pick> b, int max) {
         for (int i = 0; i < Math.max(a.size(), b.size()) && out.size() < max; i++) {

@@ -48,7 +48,6 @@
     <string name="home_weather_high_low" formatted="true">"H:%1$s   L:%2$s"</string>
     <string name="home_tab_new" formatted="false">"New"</string>
     <string name="home_tab_movies" formatted="false">"Movies"</string>
-    <string name="home_tab_detectives" formatted="false">"Detectives"</string>
     <string name="home_tab_shows" formatted="false">"Shows"</string>
     <string name="home_genre" formatted="false">"Genres"</string>
     <string name="home_genre_loading" formatted="false">"Loading…"</string>

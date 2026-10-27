@@ -282,8 +282,8 @@ public class SettingsActivity extends Activity {
                 case HOME_SETTINGS:
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
-                    String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingLabels();
-                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : valueSource.settings();
+                    String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[randomRow()]} : settingLabels();
+                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[randomRow()]} : valueSource.settings();
                     return row < labels.length ? labels[row] + ", " + values[row] : "";
                 }
                 case PICKER: {
@@ -468,7 +468,7 @@ public class SettingsActivity extends Activity {
                 case UPDATES: return 2;
                 case ABOUT: return 8;
                 case HOME_CHOICE: return 2;
-                case HOME_SETTINGS: return settingsGroup == SYSTEM ? 2 : settingLabels().length;
+                case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
                 case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
                 case SHELF_EDIT: return Math.min(PICK_VISIBLE, dockEditor.size());
                 default: return Prefs.KEYS.length;
@@ -1003,7 +1003,7 @@ public class SettingsActivity extends Activity {
         private static final int CITY_ROW = 4;
 
         private int settingIndex() {
-            if (settingsGroup == SYSTEM) return focus == 0 ? detectivesRow() : randomRow();
+            if (settingsGroup == SYSTEM) return randomRow();
             return focus;
         }
 
@@ -1143,7 +1143,6 @@ public class SettingsActivity extends Activity {
                 return;
             }
             int selected = settingIndex();
-            if (selected == detectivesRow()) { Prefs.setDetectives(!Prefs.detectives()); HomeData.get(getContext()).settingsChanged(); return; }
             if (selected == randomRow()) { Prefs.setRandomMovie(!Prefs.randomMovie()); HomeData.get(getContext()).settingsChanged(); return; }
             switch (selected) {
                 case 0: {
@@ -1207,7 +1206,6 @@ public class SettingsActivity extends Activity {
             switch (id) {
                 case 0: return AppStrings.get(R.string.settings_new);
                 case 1: return AppStrings.get(R.string.settings_movies);
-                case 2: return AppStrings.get(R.string.settings_detectives);
                 case 3: return AppStrings.get(R.string.settings_shows);
                 default: return AppStrings.get(R.string.settings_random_movie);
             }
@@ -1371,8 +1369,8 @@ public class SettingsActivity extends Activity {
 
         private void drawList(Canvas c) {
             boolean keys = screen == REMOTE_KEYS;
-            String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[detectivesRow()], settingLabels()[randomRow()]} : settingLabels();
-            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[detectivesRow()], valueSource.settings()[randomRow()]} : valueSource.settings();
+            String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[randomRow()]} : settingLabels();
+            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[randomRow()]} : valueSource.settings();
             // The screen title is already drawn centrally; no legacy subtitle.
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = paintRow(pass, 0, labels.length, focus);

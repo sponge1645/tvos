@@ -118,9 +118,7 @@ final class SettingsValues {
         return v;
     }
 
-    static int detectivesRow() { return 5; }
-
-    static int randomRow() { return detectivesRow() + 1; }
+    static int randomRow() { return 5; }
 
     static String[] settingLabels() {
         List<String> l = new ArrayList<>();
@@ -129,7 +127,6 @@ final class SettingsValues {
         l.add(AppStrings.get(R.string.settings_theme));
         l.add(AppStrings.get(R.string.settings_weather_widget));
         l.add(AppStrings.get(R.string.settings_city));
-        l.add(AppStrings.get(R.string.settings_detectives));
         l.add(AppStrings.get(R.string.settings_random_movie));
         return l.toArray(new String[0]);
     }
@@ -144,7 +141,6 @@ final class SettingsValues {
         v[2] = theme.equals("light") ? AppStrings.get(R.string.settings_theme_light) : theme.equals("dark") ? AppStrings.get(R.string.settings_theme_dark) : AppStrings.get(R.string.settings_automatic_value);
         v[3] = onOff(Prefs.weather());
         v[CITY_ROW] = !cityStatus.get().isEmpty() ? cityStatus.get() : Prefs.city().isEmpty() ? "—" : Prefs.city();
-        v[detectivesRow()] = onOff(Prefs.detectives());
         v[randomRow()] = onOff(Prefs.randomMovie());
         return v;
     }
