@@ -305,8 +305,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public RectF anchor() { return topRects[1]; }
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
             @Override public void changed() {
-                cardPage = cardIndex = 0;
-                layoutLight(); updateCards(); retarget(false);
+                layoutLight();
+                if (tab == 1 && !searchMode) {
+                    cardPage = cardIndex = 0;
+                    updateCards(); retarget(false);
+                }
                 heroDirty = statusDirty = true;
                 wake();
             }
