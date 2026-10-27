@@ -8,6 +8,7 @@ def load(name, path):
     spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
 
 
+build=Path('build.sh').read_text();assert 'python3 tools/signing.py sign' in build
 signing=load('signing','tools/signing.py');publishing=load('publishing','tools/publish-release.py')
 with tempfile.TemporaryDirectory(prefix='tvos-signing-policy-') as tmp:
     root=Path(tmp);(root/'app').mkdir();(root/'release').mkdir()
@@ -31,6 +32,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-signing-policy-') as tmp:
         directory=root/'keys';directory.mkdir();(root/'signing.local.json').write_text(json.dumps({'directory':str(directory)}))
         signing.sign(root,root/'bt',root/'in.apk',root/'out.apk',mode='release')
         command=commands[0];assert '--lineage' in command and '--rotation-min-sdk-version' in command and command[command.index('--rotation-min-sdk-version')+1]=='28'
+        assert command[command.index('--v1-signing-enabled')+1]=='false' and command[command.index('--v2-signing-enabled')+1]=='true'
         assert all(not arg.startswith('pass:') for arg in command)
         assert len(commands)==5 and all('verify' in c for c in commands[1:])
     finally:signing.run=original
