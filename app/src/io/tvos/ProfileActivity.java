@@ -136,7 +136,7 @@ public final class ProfileActivity extends Activity {
                 @Override public boolean bounds(int id, Rect out) {
                     if (id < 1 || id > (choosing ? 20 : 2)) return false;
                     if (choosing && id <= 18 && (id - 1) / 9 != page) return false;
-                    if (choosing && id > 18) scratch.set(1340 + (id - 19) * 80, 905, 1420 + (id - 19) * 80, 985);
+                    if (choosing && id > 18) pageButtonRect(id - 19, scratch);
                     else
                     if (choosing) avatarRect(id - 1, scratch); else scratch.set(buttonRects[id - 1]);
                     out.set(Math.round(ox + scratch.left * k), Math.round(oy + scratch.top * k),
@@ -347,6 +347,11 @@ public final class ProfileActivity extends Activity {
             out.set(x - radius, y - radius, x + radius, y + radius);
         }
 
+        private void pageButtonRect(int index, RectF out) {
+            float center = 1400 + index * 40;
+            out.set(center - 20, 905, center + 20, 985);
+        }
+
         private void drawPage(Canvas c, int pageIndex) {
             int center = selected / 9 == pageIndex ? selected : pageIndex * 9;
             int panda = pageIndex == 0 ? 6 : -1;
@@ -450,8 +455,9 @@ public final class ProfileActivity extends Activity {
             if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
             if (event.getAction() != MotionEvent.ACTION_UP) return super.onTouchEvent(event);
             float x = (event.getX() - ox) / k, y = (event.getY() - oy) / k;
-            if (choosing && y >= 905 && y <= 985 && x >= 1340 && x <= 1500) {
-                changePage(x < 1420 ? 0 : 1); performClick(); return true;
+            if (choosing) for (int i = 0; i < 2; i++) {
+                pageButtonRect(i, scratch);
+                if (scratch.contains(x, y)) { changePage(i); performClick(); return true; }
             }
             for (int i = choosing ? page * 9 : 0; i < (choosing ? page * 9 + 9 : 2); i++) {
                 if (choosing) avatarRect(i, scratch); else scratch.set(buttonRects[i]);

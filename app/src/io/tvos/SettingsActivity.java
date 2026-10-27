@@ -503,7 +503,7 @@ public class SettingsActivity extends Activity {
                 scene.advance(seconds);
             }
             drawSettingsContent(c);
-            if (updateDialog.visible()) updateDialog.draw(c, w, h, lightSettings(), localFlag("reduce_transparency"));
+            if (updateDialog.visible()) updateDialog.draw(c, w, h, lightSettings(), localFlag("reduce_transparency"), localFlag("reduce_motion"));
         }
 
         private void drawSettingsContent(Canvas c) {

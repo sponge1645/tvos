@@ -6,7 +6,7 @@ from tmdb_metadata_fixture import block
 from home_renderers_fixture import files
 source=Path('app/src/io/tvos/ProfileActivity.java').read_text()
 positions='\n'.join(re.search(r'        private final float\[\] '+name+r' = \{[^;]+;',source).group(0) for name in ['xs','ys','radii'])
-methods='\n'.join(block(source,sig) for sig in ['        private void avatarRect(', '        private void drawButton(', '        private String buttonLabel('])
+methods='\n'.join(block(source,sig) for sig in ['        private void pageButtonRect(', '        private void avatarRect(', '        private void drawButton(', '        private String buttonLabel('])
 harness='''package io.tvos;
 import android.graphics.*;import java.util.*;
 public class ProfileCompositionHarness {
@@ -27,6 +27,7 @@ public class ProfileCompositionHarness {
    for(int i=0;i<9;i++)for(int j=i+1;j<9;j++)if(i!=center&&j!=center){RectF a=bubbles.get(i),b=bubbles.get(j);float gap=(float)Math.hypot(a.centerX()-b.centerX(),a.centerY()-b.centerY())-(a.width()+b.width())/2;check(gap>18,"satellites keep clear spacing");}
    h.chooser.snap(1);for(int i=0;i<9;i++){h.avatarRect(page*9+i,r);near(r.centerX(),1248+(i%3)*230,"chooser retains 3 columns");near(r.centerY(),320+(i/3)*230,"chooser retains 3 rows");near(r.width(),164,"chooser radius unchanged");}h.chooser.snap(0);
   }
+  h.pageButtonRect(0,r);near(r.centerX(),1400,"first page hit target follows visible dot");near(r.width(),40,"page hit areas stay disjoint");h.pageButtonRect(1,r);near(r.centerX(),1440,"second page hit target follows visible dot");near(r.left,1420,"page hit boundary matches midpoint");
   // In the reference selection, robot, woman, panda and clapper occupy their visual roles.
   h.selected=3;h.avatarRect(0,r);near(r.centerX(),1229,"robot upper left");near(r.width(),200,"robot size");h.avatarRect(2,r);near(r.centerY(),276,"woman above center");h.avatarRect(6,r);near(r.width(),240,"large lower-left panda");h.avatarRect(8,r);near(r.width(),76,"small upper clapper");
   for(boolean night:new boolean[]{false,true})for(String lang:new String[]{"ru","en"}){

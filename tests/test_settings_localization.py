@@ -27,7 +27,7 @@ public class LocalizedSettingsHarness {
  static class Ui {static boolean ru;static Locale locale(){return ru?new Locale("ru","RU"):Locale.US;}}
  static class JSONObject {Map<String,Long> v=new HashMap<>();boolean has(String k){return v.containsKey(k);}long optLong(String k){return v.get(k);}}
  static class SelfUpdate {static final Status status=new Status();static SelfUpdate get(Object c){return new SelfUpdate();}Status status(){return status;}static class Status{Release release=new Release();String message="";int percent;}static class Release{String versionName="1.2.3";}}
- int updatePopup;Object activity=this;Object getContext(){return this;}String versionName(Object c){return "tvOS 1.1";}
+ int updatePopup;Object activity=this;Object getContext(){return this;}String installedVersion="tvOS 1.1";
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
 methods=''.join(method(s) for s in ['        private String[] keyLabels()', '        private String menuButtonLabel(', '        private String categoryLabel(', '        private static String onOff('])
@@ -48,7 +48,7 @@ tests='''
    check(copy[1][0].equals(russian?"Установить":"Install"),"downloaded button");
    // Download copy now belongs to SettingsUpdateProgress, covered by its whole-class regression.
    h.updatePopup=3;SelfUpdate.status.message="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-   copy=h.popup();check(copy[0][1].length()==44&&copy[0][2].equals("STUVWXYZ"),"error wrapping unchanged");
+   copy=h.popup();check(copy[0].length==2&&copy[0][1].equals(SelfUpdate.status.message),"complete error reaches bounded wrapper");
    h.updatePopup=1;copy=h.popup();check(copy[0][0].equals("1.1")&&copy[0][1].endsWith("tvOS 1.1")&&copy[1][0].equals("OK"),"installed version and OK");
   }
   System.out.println("PASS: RU/EN update dialogs, version/error states, menu labels and resource argument parity");

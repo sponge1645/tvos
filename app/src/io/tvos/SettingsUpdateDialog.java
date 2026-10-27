@@ -12,6 +12,10 @@ import android.view.View;
 /** Settings update modal: listener lifecycle, input, transition and drawing. No menu ownership. */
 final class SettingsUpdateDialog {
     private final Activity activity;
+    private final String installedVersion;
+    private String[] textSource, textLines;
+    private float textWidth;
+    private int textLimit;
     private final View owner;
     private final SettingsUpdateProgress progress;
     private final SettingsPopupBackdrop backdrop = new SettingsPopupBackdrop();
@@ -23,13 +27,14 @@ final class SettingsUpdateDialog {
     private final RectF popupPanel = new RectF(), popupButton = new RectF();
     private long updatePopupStarted;
     private boolean updatePopupClosing;
-    private int updatePopup, updatePopupFocus; // 0 hidden, 1 current, 2 available, 3 error, 4 checking, 6 ready
+    private int updatePopup, updatePopupFocus; // 0 hidden, 1 current, 2 available, 3 error, 6 ready
     private boolean running, updateRequested, installWhenReady;
     private final SelfUpdate.Listener updateListener = this::onSelfUpdate;
     private float k = 1;
 
     SettingsUpdateDialog(Activity activity, View owner, SettingsUpdateProgress progress, SettingsPopupBackdrop.Source backdropSource) {
         this.activity = activity;
+        installedVersion = versionName(activity);
         this.owner = owner;
         this.progress = progress;
         this.backdropSource = backdropSource;
@@ -58,6 +63,7 @@ final class SettingsUpdateDialog {
 
     void resize(float scale) {
         k = scale;
+        textSource = textLines = null;
         backdrop.clear();
         popupHeading = Ui.text(Ui.displayBold, 33*k, 0xFFFFFFFF);
         popupHeading.setTextAlign(Paint.Align.LEFT);
@@ -106,8 +112,7 @@ final class SettingsUpdateDialog {
             }
             return;
         }
-        int mode = update.kind == SelfUpdate.CHECKING ? 4
-                : update.kind == SelfUpdate.AVAILABLE ? 2
+        int mode = update.kind == SelfUpdate.AVAILABLE ? 2
                 : update.kind == SelfUpdate.READY ? 6
                 : update.kind == SelfUpdate.ERROR ? 3 : 1;
         if (updatePopup != mode || updatePopupClosing) showUpdatePopup(mode);
@@ -136,7 +141,10 @@ final class SettingsUpdateDialog {
         if (e.getAction() != KeyEvent.ACTION_UP) return true;
         int code = e.getKeyCode();
         if (updatePopupClosing) {
-            if (code == KeyEvent.KEYCODE_BACK) closeUpdatePopup();
+            if (code == KeyEvent.KEYCODE_BACK) {
+                updateRequested = false;
+                installWhenReady = false;
+            }
             return true;
         }
         if (code == KeyEvent.KEYCODE_BACK) { closeUpdatePopup(); return true; }
@@ -156,9 +164,9 @@ final class SettingsUpdateDialog {
         return true;
     }
 
-    void draw(Canvas c, int w, int h, boolean light, boolean reduceTransparency) {
+    void draw(Canvas c, int w, int h, boolean light, boolean reduceTransparency, boolean reduceMotion) {
         long elapsed = SystemClock.uptimeMillis() - updatePopupStarted;
-        float t = Math.min(1f, elapsed / 260f);
+        float t = reduceMotion ? 1f : Math.min(1f, elapsed / 260f);
         float ease = 1f - (1f-t)*(1f-t)*(1f-t);
         float alpha = updatePopupClosing ? 1f-ease : ease;
         if (updatePopupClosing && t >= 1f) {
@@ -188,23 +196,28 @@ final class SettingsUpdateDialog {
             "",
             AppStrings.get(R.string.settings_confirm_installation_on_your_tv)
         };
-        else if (updatePopup == 3) lines = new String[] {AppStrings.get(R.string.settings_could_not_update_tvos),
-                update.message.length() <= 44 ? update.message : update.message.substring(0, 44),
-                update.message.length() <= 44 ? "" : update.message.substring(44)};
-        else if (updatePopup == 4) lines = new String[] {AppStrings.get(R.string.settings_checking_for_updates)};
+        else if (updatePopup == 3) lines = new String[] {AppStrings.get(R.string.settings_could_not_update_tvos), update.message};
         else if (updatePopup == 6) lines = new String[] {AppStrings.get(R.string.settings_update_downloaded),
                 AppStrings.get(R.string.settings_version) + availableVersion};
-        else lines = new String[] {versionName(activity).replace("tvOS ", ""), String.format(AppLanguage.current().locale,
-                AppStrings.get(R.string.settings_tvos_is_up_to_date), versionName(activity))};
+        else lines = new String[] {installedVersion.replace("tvOS ", ""), String.format(AppLanguage.current().locale,
+                AppStrings.get(R.string.settings_tvos_is_up_to_date), installedVersion)};
         String[] buttons = updatePopup == 2 ? new String[] {AppStrings.get(R.string.settings_download_and_install), AppStrings.get(R.string.settings_update_later)}
                 : updatePopup == 6 ? new String[] {AppStrings.get(R.string.settings_install), AppStrings.get(R.string.settings_later)} : new String[] {"OK"};
         float left = 710*k, right = 1210*k;
-        float textHeight = 0;
-        for (String line : lines) textHeight = drawParagraph(null, line, 0, textHeight, right-left-90*k, popupBody);
         float headingHeight = headingMetrics.descent-headingMetrics.ascent;
-        float bodyHeight = textHeight-33*k + bodyMetrics.descent-bodyMetrics.ascent;
         float bodyTop = 50*k + headingHeight + 30*k;
-        float panelHeight = bodyTop + bodyHeight + (40 + buttons.length*72 + (buttons.length-1)*12 + 25)*k;
+        float controlsHeight = (40 + buttons.length*72 + (buttons.length-1)*12 + 25)*k;
+        int limit = Math.max(1, (int) ((h-80*k-bodyTop-controlsHeight)/(33*k)));
+        float width = right-left-90*k;
+        if (textLines == null || textWidth != width || textLimit != limit || !java.util.Arrays.equals(textSource, lines)) {
+            textSource = lines;
+            textWidth = width; textLimit = limit;
+            textLines = UpdateDialogText.wrap(lines, width, limit, popupBody::measureText);
+        }
+        float textHeight = 0;
+        for (String line : textLines) textHeight += (line.isEmpty() ? 22 : 33)*k;
+        float bodyHeight = textHeight-33*k + bodyMetrics.descent-bodyMetrics.ascent;
+        float panelHeight = bodyTop + bodyHeight + controlsHeight;
         float top = (h-panelHeight)/2f, bottom = top+panelHeight;
         float cx = (left+right)/2f, cy = (top+bottom)/2f;
         float scale = 0.94f + 0.06f*ease;
@@ -222,7 +235,7 @@ final class SettingsUpdateDialog {
         p.setShader(null);
         if (!reduceTransparency) backdrop.draw(c, panel, 60*k);
         int panelTint = light ? 0xFFC4D5EB : 0xFF1E2425;
-        p.setColor(reduceTransparency ? panelTint : (panelTint & 0x00FFFFFF) | 0xB3000000);
+        p.setColor(reduceTransparency || !backdrop.ready() ? panelTint : (panelTint & 0x00FFFFFF) | 0xB3000000);
         c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
@@ -236,7 +249,10 @@ final class SettingsUpdateDialog {
         body.setColor(light ? 0xFF1C1C1E : 0xFF899295);
         c.drawText(AppStrings.get(R.string.settings_tvos_update), left+45*k, top+50*k-headingMetrics.ascent, heading);
         float lineY = top+bodyTop-bodyMetrics.ascent;
-        for (String line : lines) lineY = drawParagraph(c, line, left+45*k, lineY, right-left-90*k, body);
+        for (String line : textLines) {
+            if (!line.isEmpty()) c.drawText(line, left+45*k, lineY, body);
+            lineY += (line.isEmpty() ? 22 : 33)*k;
+        }
         float buttonTop = bottom - (buttons.length*72+(buttons.length-1)*12+25)*k;
         Paint buttonText = popupButtonText;
         for (int i=0; i<buttons.length; i++) {
@@ -256,23 +272,6 @@ final class SettingsUpdateDialog {
         if (fading) c.restore();
         c.restore();
         c.restore();
-    }
-
-    private float drawParagraph(Canvas c, String text, float x, float y, float width, Paint paint) {
-        if (text.isEmpty()) return y + 22*k;
-        StringBuilder line = new StringBuilder();
-        for (String word : text.split(" ")) {
-            String candidate = line.length() == 0 ? word : line + " " + word;
-            if (line.length() > 0 && paint.measureText(candidate) > width) {
-                if (c != null) c.drawText(line.toString(), x, y, paint);
-                y += 33*k;
-                line.setLength(0);
-            }
-            if (line.length() > 0) line.append(' ');
-            line.append(word);
-        }
-        if (c != null) c.drawText(line.toString(), x, y, paint);
-        return y + 33*k;
     }
 
 }

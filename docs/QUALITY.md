@@ -108,3 +108,12 @@ Russian.java/legacyText удалены после замены потребит�
 JVM-регрессии теперь проверяют промежуточные кадры смены темы, а не только окончание перехода; реальное сокращение дискового кеша галереи по количеству/объёму, а не наличие функции prune; доставку уведомления после переключения языка; и Up из пустого Dock. Галерея проверяется реальными временными файлами и полными GalleryCache/GalleryPhotos. Все 71 скрипт проходят локально; строгая сборка APK и compiled-resource проверка выполняются CI. Файлы ресурсов не удаляются по одному лишь отсутствию прямой ссылки: NoticeText использует reflection для миграции истории.
 
 Отдельная регрессия recommendation selection выполняет реальные now(String), wanted, showcase и trim: внутренние вызовы и дедупликация франшиз должны сохраняться при удалении неиспользуемого UI.
+
+
+## Review of dev.77–94 (dev.95)
+
+Reviewed update-modal layout/lifecycle, bounded backdrop snapshot/blur, retired fake OTA routing, profile composition/page targets, Dock logo scaling and root settings scrolling. This is a focused code review, not an exhaustive proof that the project is defect-free.
+
+Confirmed and fixed: 44-character error splitting and unbounded words; repeated Back restarting the close clock; modal animations ignoring Reduce Motion; stale avatar page hit/accessibility bounds; missing opaque fallback when backdrop allocation fails. Removed the unreachable checking-modal branch/resources and cached installed-version lookup and text wrapping.
+
+Regression coverage executes production classes for Unicode wrapping and height limits, modal state/input, no repeated package lookup/wrapping on stable frames, reduced-motion entry/exit, backdrop cache bounds/cleanup and profile page coordinates. Real-device visual smoothness, font rendering and GPU/RAM measurements remain separate checks. No FPS or memory-use improvement is claimed from these tests.

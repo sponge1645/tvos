@@ -16,6 +16,8 @@ final class SettingsPopupBackdrop {
     private int width, height;
     private boolean attempted, light;
 
+    boolean ready() { return bitmap != null; }
+
     void clear() { bitmap = null; attempted = false; width = height = 0; }
 
     void prepare(int w, int h, boolean theme, Source source) {

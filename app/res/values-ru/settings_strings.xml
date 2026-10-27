@@ -115,7 +115,6 @@
     <string name="settings_now" formatted="false">сейчас</string>
     <string name="settings_tvos_update" formatted="false">Обновление tvOS</string>
     <string name="settings_could_not_update_tvos" formatted="false">Не удалось обновить tvOS</string>
-    <string name="settings_checking_for_updates" formatted="false">Проверка обновлений…</string>
     <string name="settings_downloading_update" formatted="false">Загрузка обновления…</string>
     <string name="settings_update_downloaded" formatted="false">Обновление загружено</string>
     <string name="settings_version" formatted="false">"Версия "</string>
