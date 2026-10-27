@@ -22,6 +22,7 @@ public class SearchFocusHarness {
  Recs recs=new Recs();Object[] TAB_KIND=new Object[5];
  class Click {void move(){clicks++;}}Click click=new Click();
  boolean topControlVisible(int id){return id<5?!searchMode&&enabled:topButtonEnabled(id-5);}
+ java.util.List<Object> currentCatalog(){return searchMode?searchResults:recs.catalog(TAB_KIND[tab]);}
  boolean picksOn(){return enabled;}boolean topButtonEnabled(int i){return (actions&(1<<i))!=0;}boolean clockButtonEnabled(){return topButtonEnabled(4);}
  int posterCornerTarget(boolean right){return right?9:5;}int nextTopControl(int current,int dx){return current+dx;}
  void selectTab(int t){tab=t;}void spinRoulette(){}void updateCards(){}void retarget(boolean snap){retargets++;}
