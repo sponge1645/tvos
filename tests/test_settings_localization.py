@@ -41,7 +41,7 @@ tests='''
    check(h.menuButtonLabel(5).equals(russian?"Сеть":"Network"),"network reorder label");
    check(h.categoryLabel(4).equals(russian?"Случайный фильм":"Random Movie"),"category label");
    h.updatePopup=2;String[][] copy=h.popup();
-   check(copy[0].length==5&&copy[1].length==2,"update dialog keeps line/button geometry");
+   check(copy[0].length==4&&copy[1].length==2,"update dialog keeps line/button geometry");
    check(copy[0][0].equals(russian?"Доступно обновление до версии 1.2.3.":"Update 1.2.3 is available."),"version slot");
    check(copy[1][0].equals(russian?"Загрузить и установить":"Download and Install"),"install choice");
    h.updatePopup=6;copy=h.popup();check(copy[0][1].equals(russian?"Версия 1.2.3":"Version 1.2.3"),"downloaded version keeps space");
@@ -49,7 +49,7 @@ tests='''
    // Download copy now belongs to SettingsUpdateProgress, covered by its whole-class regression.
    h.updatePopup=3;SelfUpdate.status.message="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
    copy=h.popup();check(copy[0][1].length()==44&&copy[0][2].equals("STUVWXYZ"),"error wrapping unchanged");
-   h.updatePopup=1;copy=h.popup();check(copy[0][1].equals("1.1")&&copy[1][0].equals("OK"),"installed version and OK");
+   h.updatePopup=1;copy=h.popup();check(copy[0][0].endsWith("tvOS 1.1")&&copy[1][0].equals("OK"),"installed version and OK");
   }
   System.out.println("PASS: RU/EN update dialogs, version/error states, menu labels and resource argument parity");
  }

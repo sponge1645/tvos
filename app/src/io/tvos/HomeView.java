@@ -346,6 +346,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.resume();
         if (running) return;
         running = true;
+        genres.resume(); tvGenres.resume();
         if (topButtonEnabled(5)) networkStatus.start();
         background.checkNight(data.isNight(System.currentTimeMillis()), false);
         syncVisibleTabs();
@@ -382,7 +383,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public String kind() { return category == 3 ? "tv" : "movie"; }
             @Override public boolean eligible() {
                 return running && okDown && tab == category && !searchMode && !sheetOpen && !drawerOpen
-                        && !dockEditor.editing() && (zone == Z_CARDS || (zone == Z_TOP && topIndex == category));
+                        && !dockEditor.editing() && (zone == Z_TOP && topIndex == category);
             }
             @Override public RectF anchor() { return topRects[category]; }
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
@@ -426,8 +427,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!running) return;
         running = false;
         randomPoster.clear();
-        boolean resetMovies = genres.pause(), resetShows = tvGenres.pause();
-        if (!searchMode && (tab == 1 && resetMovies || tab == 3 && resetShows)) cardPage = cardIndex = 0;
+        genres.pause(); tvGenres.pause();
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();

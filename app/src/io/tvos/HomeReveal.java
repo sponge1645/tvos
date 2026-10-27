@@ -3,7 +3,7 @@ package io.tvos;
 /** One-shot ease-out progress. No animator, bitmap, worker, or independent frame loop. */
 final class HomeReveal {
     static final long DURATION_MS = 845;
-    static final long DELAY_MS = 1000;
+    static final long DELAY_MS = 600;
     private long started;
     private float remaining;
     private boolean prepared;

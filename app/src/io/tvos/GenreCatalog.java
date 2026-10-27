@@ -80,7 +80,7 @@ final class GenreCatalog {
             for (int page = 1; page <= 2; page++) {
                 if (!request.active()) return null;
                 JSONObject response = source.get("/discover/" + kind + "?language=" + language.apiTag
-                        + "&with_genres=" + genre.id + "&sort_by=vote_average.desc&vote_count.gte=200"
+                        + "&with_genres=" + genre.id + "&sort_by=vote_average.desc&vote_count.gte=1000"
                         + "&include_adult=false" + ("movie".equals(kind) ? "&include_video=false" : "") + "&page=" + page);
                 if (!request.active()) return null;
                 JSONArray items = response.getJSONArray("results");
@@ -89,7 +89,7 @@ final class GenreCatalog {
                     JSONArray ids = item.optJSONArray("genre_ids");
                     boolean matches = false;
                     if (ids != null) for (int j = 0; j < ids.length(); j++) matches |= ids.optInt(j) == genre.id;
-                    if (!matches || item.optBoolean("adult", false) || item.optInt("vote_count") < 200
+                    if (!matches || item.optBoolean("adult", false) || item.optInt("vote_count") < 1000
                             || !seen.add(item.optInt("id"))) continue;
                     TmdbMetadata.add(result, item, kind);
                 }
@@ -105,7 +105,7 @@ final class GenreCatalog {
     UiRequest random(String kind, int genre, AppLanguage language, Consumer<Recs.Pick> callback) {
         return submit(language, request -> {
             String query = "/discover/" + kind + "?language=" + language.apiTag
-                    + "&sort_by=popularity.desc&vote_average.gte=6.5&vote_count.gte=200&include_adult=false"
+                    + "&sort_by=popularity.desc&vote_average.gte=6.5&vote_count.gte=1000&include_adult=false"
                     + ("movie".equals(kind) ? "&include_video=false" : "")
                     + (genre > 0 ? "&with_genres=" + genre : "");
             JSONObject first = source.get(query + "&page=1");
@@ -119,7 +119,7 @@ final class GenreCatalog {
                 JSONArray items = candidate.getJSONArray("results");
                 for (int i = 0; i < items.length(); i++) {
                     JSONObject item = items.getJSONObject(i);
-                    if (item.optDouble("vote_average", 0) <= 6.5 || item.optBoolean("adult", false)) continue;
+                    if (item.optInt("vote_count") < 1000 || item.optDouble("vote_average", 0) <= 6.5 || item.optBoolean("adult", false)) continue;
                     boolean matches = genre <= 0;
                     JSONArray ids = item.optJSONArray("genre_ids");
                     if (ids != null) for (int j = 0; j < ids.length(); j++) matches |= ids.optInt(j) == genre;

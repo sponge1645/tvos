@@ -12,7 +12,7 @@ stubs={
 'android/view/KeyEvent.java':'''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_NUMPAD_ENTER=160,KEYCODE_BACK=4;final int action,code;public KeyEvent(int a,int c){action=a;code=c;}public int getAction(){return action;}public int getKeyCode(){return code;}}''',
 'android/graphics/Shader.java':'''package android.graphics;public class Shader {public enum TileMode{CLAMP}}''',
 'android/graphics/LinearGradient.java':'''package android.graphics;public class LinearGradient extends Shader {public LinearGradient(float a,float b,float c,float d,int e,int f,TileMode mode){}}''',
-'android/graphics/Paint.java':'''package android.graphics;public class Paint {public static final int ANTI_ALIAS_FLAG=1;public enum Align{CENTER}public enum Style{FILL,STROKE}public int color,alpha=255;public float size;public Paint(int flags){}public void setTextAlign(Align a){}public void reset(){alpha=255;}public void setAntiAlias(boolean b){}public void setColor(int c){color=c;}public void setAlpha(int a){alpha=a;}public void setStyle(Style s){}public void setStrokeWidth(float w){}public void setShader(Shader s){}public void clearShadowLayer(){}}''',
+'android/graphics/Paint.java':'''package android.graphics;public class Paint {public static final int ANTI_ALIAS_FLAG=1;public enum Align{CENTER,LEFT}public enum Style{FILL,STROKE}public int color,alpha=255;public float size;public Paint(int flags){}public void setTextAlign(Align a){}public float measureText(String s){return s.length()*size*.48f;}public void reset(){alpha=255;}public void setAntiAlias(boolean b){}public void setColor(int c){color=c;}public void setAlpha(int a){alpha=a;}public void setStyle(Style s){}public void setStrokeWidth(float w){}public void setShader(Shader s){}public void clearShadowLayer(){}}''',
 'android/graphics/RectF.java':'''package android.graphics;public class RectF {public float left,top,right,bottom;public void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}public float centerX(){return (left+right)/2;}public float centerY(){return (top+bottom)/2;}}''',
 'android/graphics/Canvas.java':'''package android.graphics;import java.util.*;public class Canvas {public final List<String> text=new ArrayList<>();public final List<Integer> colors=new ArrayList<>();public final List<Float> sizes=new ArrayList<>();public int depth,layerAlpha=-1,dimAlpha;public float scale,panelLeft,panelTop;public void save(){depth++;}public void restore(){if(--depth<0)throw new AssertionError("unbalanced canvas");}public void scale(float a,float b,float x,float y){scale=a;}public void saveLayerAlpha(float l,float t,float r,float b,int a){depth++;layerAlpha=a;}public void drawRect(float l,float t,float r,float b,Paint p){dimAlpha=p.alpha;colors.add(p.color);}public void drawRoundRect(RectF r,float x,float y,Paint p){if(text.isEmpty()){panelLeft=r.left;panelTop=r.top;}}public void drawText(String s,float x,float y,Paint p){text.add(s);colors.add(p.color);sizes.add(p.size);}}''',
 'io/tvos/Ui.java':'''package io.tvos;import android.graphics.Paint;final class Ui {static final Object displaySemibold=new Object(),regular=new Object();static Paint text(Object face,float size,int color){Paint p=new Paint(1);p.size=size;p.setColor(color);return p;}static float halfCap(Paint p){return p.size/3;}}''',
@@ -42,8 +42,8 @@ public class UpdateDialogHarness {
   d.check();check(!d.visible()&&u.checks==1&&progress.kind==SelfUpdate.CHECKING,"checking stays inline with immediate status");
   Canvas c;
   u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,false);
-  check(c.text.size()==8&&c.text.get(1).equals("Update 1.2.3 is available.")&&c.text.get(6).equals("Download and Install"),"available copy and two buttons");
-  check(c.panelLeft==470f&&c.panelTop==205f&&c.dimAlpha==175,"panel geometry and dark dimming retained");
+  check(String.join(" ",c.text).contains("Update 1.2.3 is available.")&&c.text.contains("Download and Install")&&c.text.contains("Update Later"),"available copy and two buttons");
+  check(c.panelLeft==666f&&c.panelTop==90f&&c.dimAlpha==175,"panel geometry and dark dimming retained");
   d.onKey(new KeyEvent(KeyEvent.ACTION_DOWN,OK));check(u.downloads==0,"download only on key release");
   key(d,DOWN);key(d,UP);key(d,OK);check(u.downloads==1,"focused primary downloads once");
   u.emit(SelfUpdate.DOWNLOADING,47,"");SystemClock.now+=260;c=draw(d,true);check(!d.visible()&&progress.kind==SelfUpdate.DOWNLOADING&&progress.percent==47,"download fades to inline page progress");
@@ -59,12 +59,12 @@ public class UpdateDialogHarness {
   d=create();u=SelfUpdate.instance;d.check();u.emit(SelfUpdate.READY,100,"");key(d,OK);check(u.installs==1,"ready primary installs immediately");
   for(String language:new String[]{"en","ru"}){
    AppLanguage.select(language);boolean ru=language.equals("ru");
-   u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"tvOS актуальна":"tvOS is up to date")&&c.text.contains("1.1"),"current version localized");
+   u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;c=draw(d,true);check(String.join(" ",c.text).contains(ru?"На ТВ установлена актуальная версия ПО: tvOS 1.1":"Your TV has the latest software: tvOS 1.1")&&c.text.contains("1.1"),"current version localized");
    u.emit(SelfUpdate.ERROR,-1,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");SystemClock.now+=260;c=draw(d,false);check(c.text.contains("STUVWXYZ"),"error split retains remainder");
    u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Загрузить и установить":"Download and Install"),"language read at drawing time");
    u.emit(SelfUpdate.READY,100,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Версия 1.2.3":"Version 1.2.3"),"ready version spacing");
   }
-  d.resize(.5f);c=draw(d,true);check(c.panelLeft==235f&&c.panelTop==102.5f&&c.sizes.get(0)==23.5f,"resize updates geometry and fonts");
+  d.resize(.5f);c=draw(d,true);check(c.panelLeft==333f&&c.panelTop==45f&&c.sizes.get(0)==23.5f,"resize updates geometry and fonts");
   Activity a=new Activity();check(SettingsUpdateDialog.versionName(a).equals("tvOS 1.1"),"installed version lookup");a.pm.missing=true;check(SettingsUpdateDialog.versionName(a).equals("tvOS"),"missing version safe fallback");
   System.out.println("PASS: actual update modal lifecycle, input, status transitions, deferred install, cancellation, fades, geometry and live localization");
  }

@@ -83,17 +83,17 @@ final class SettingsUpdateProgress {
 
     void drawSpinner(Canvas canvas, float x, float y, float k, int color, boolean reduced) {
         if (!busy()) return;
-        int phase = reduced ? 0 : (int) (SystemClock.uptimeMillis() / 80 % 12);
+        int phase = reduced ? 0 : (int) (SystemClock.uptimeMillis() / 100 % 8);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeCap(Paint.Cap.ROUND);
-        paint.setStrokeWidth(3.5f * k);
+        paint.setStrokeWidth(5f * k);
         int saved = canvas.save();
         canvas.translate(x, y);
-        for (int i = 0; i < 12; i++) {
-            int age = (i - phase + 12) % 12;
-            paint.setColor((color & 0x00FFFFFF) | ((255 - age * 18) << 24));
-            canvas.drawLine(0, -9 * k, 0, -16 * k, paint);
-            canvas.rotate(30);
+        for (int i = 0; i < 8; i++) {
+            int age = (phase - i + 8) % 8;
+            paint.setColor((color & 0x00FFFFFF) | ((255 - age * 27) << 24));
+            canvas.drawLine(0, -8 * k, 0, -15 * k, paint);
+            canvas.rotate(45);
         }
         canvas.restoreToCount(saved);
     }

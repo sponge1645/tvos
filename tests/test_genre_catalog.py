@@ -20,9 +20,9 @@ public class GenreHarness {
     boolean ru=path.contains("ru-RU");String[] names=ru?new String[]{"драма","детектив","вестерн","боевик","военный","комедия","музыка","приключения","семейный",""}:new String[]{"Drama","Crime","Comedy","Action","Adventure","Animation","Documentary","Family","Fantasy",""};
     JSONArray a=new JSONArray();for(int i=0;i<names.length;i++)a.put(new JSONObject().put("id",i+1).put("name",names[i]));a.put(new JSONObject().put("id",1).put("name",names[0]));return new JSONObject().put("genres",a);
    }
-   check((path.contains("sort_by=vote_average.desc")||path.contains("vote_average.gte=6.5"))&&path.contains("vote_count.gte=200")&&path.contains("include_adult=false")&&(!path.startsWith("/discover/movie")||path.contains("include_video=false")),"server filters and ranking");
+   check((path.contains("sort_by=vote_average.desc")||path.contains("vote_average.gte=6.5"))&&path.contains("vote_count.gte=1000")&&path.contains("include_adult=false")&&(!path.startsWith("/discover/movie")||path.contains("include_video=false")),"server filters and ranking");
    int genre=path.contains("with_genres=")?Integer.parseInt(path.split("with_genres=")[1].split("&")[0]):0;int page=Integer.parseInt(path.split("page=")[1]);JSONArray a=new JSONArray();
-   for(int i=0;i<20;i++){int id=(page-1)*20+i+1;a.put(new JSONObject().put("id",id).put("title","Movie "+id).put("name","Show "+id).put("backdrop_path","/bg.jpg").put("poster_path","/p.jpg").put("vote_average",6+id/10.0).put("vote_count",id==2?1:200).put("adult",id==3).put("genre_ids",new JSONArray().put(id==4?999:genre)));}
+   for(int i=0;i<20;i++){int id=(page-1)*20+i+1;a.put(new JSONObject().put("id",id).put("title","Movie "+id).put("name","Show "+id).put("backdrop_path","/bg.jpg").put("poster_path","/p.jpg").put("vote_average",6+id/10.0).put("vote_count",id==2?1:1000).put("adult",id==3).put("genre_ids",new JSONArray().put(id==4?999:genre)));}
    // Duplicate across pages must not duplicate a poster.
    a.put(new JSONObject().put("id",1).put("title","Duplicate").put("backdrop_path","/bg.jpg").put("vote_average",6.1).put("vote_count",500).put("genre_ids",new JSONArray().put(genre)));
    return new JSONObject().put("results",a).put("total_pages",2);

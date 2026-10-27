@@ -100,6 +100,16 @@ final class HomeGenres {
             }
         }
     }
+    // At most one movie and one TV selection; contains no Activity or View references.
+    // Process memory deliberately resets on a full application restart.
+    private static final java.util.Map<String, Selection> selections = new java.util.HashMap<>();
+    private static final class Selection {
+        final GenreCatalog.Genre genre;
+        final List<Recs.Pick> movies;
+        final AppLanguage language = AppLanguage.current();
+        Selection(GenreCatalog.Genre genre, List<Recs.Pick> movies) { this.genre = genre; this.movies = movies; }
+    }
+    private UiRequest restoreRequest, restoreMoviesRequest;
     private final View home;
     private final Context context;
     private final Handler handler;
@@ -141,6 +151,35 @@ final class HomeGenres {
         this.home = home; this.context = home.getContext(); this.handler = handler;
         this.catalog = catalog; this.host = host;
     }
+    void resume() {
+        cancelRestore();
+        Selection saved = selections.get(host.kind());
+        if (saved == null) return;
+        selected = saved.genre;
+        movies = saved.language == AppLanguage.current() ? saved.movies : null;
+        if (movies != null) return;
+        // Settings can recreate HomeActivity after a language change. Keep the genre ID,
+        // but request localized names and posters rather than retaining the old language.
+        restoreRequest = catalog.genres(host.kind(), AppLanguage.current(), choices -> {
+            restoreRequest = null;
+            if (choices == null) return;
+            for (GenreCatalog.Genre genre : choices) if (genre.id == saved.genre.id) {
+                restoreMoviesRequest = catalog.titles(host.kind(), genre, AppLanguage.current(), result -> {
+                    restoreMoviesRequest = null;
+                    if (result == null || result.isEmpty()) return;
+                    selected = genre; movies = result;
+                    selections.put(host.kind(), new Selection(genre, result));
+                    host.changed();
+                });
+                break;
+            }
+        });
+    }
+    private void cancelRestore() {
+        if (restoreRequest != null) restoreRequest.cancel();
+        if (restoreMoviesRequest != null) restoreMoviesRequest.cancel();
+        restoreRequest = restoreMoviesRequest = null;
+    }
     int selectedId() { return selected == null ? 0 : selected.id; }
     String label() { return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
     List<Recs.Pick> movies() { return movies; } // null means the ordinary Movies catalog.
@@ -150,15 +189,15 @@ final class HomeGenres {
     }
     void cancelHold() { handler.removeCallbacks(hold); }
     void released() { cancelHold(); openingRelease = false; }
-    boolean pause() {
-        boolean changed = selected != null;
+    void pause() {
+        // Retain the last successful selection for this application process.
+        cancelRestore();
         cancelHold();
         if (popup != null) popup.dismissNow();
         if (genreRequest != null) genreRequest.cancel();
         if (movieRequest != null) movieRequest.cancel();
         genreRequest = movieRequest = null;
-        selected = null; movies = null; openingRelease = false;
-        return changed;
+        openingRelease = false;
     }
     private boolean initialRelease(View view, int code, KeyEvent event) {
         if (popup != null && popup.closing) return true;
@@ -352,11 +391,13 @@ final class HomeGenres {
     }
     private void choose(GenreCatalog.Genre genre) {
         if (popup == null || popup.closing) return;
+        cancelRestore();
         if (movieRequest != null) movieRequest.cancel();
         movieRequest = null;
         if (popup != null) popup.dismiss();
         if (genre == null) {
             selected = null; movies = null;
+            selections.remove(host.kind());
             host.changed();
             return;
         }
@@ -367,6 +408,7 @@ final class HomeGenres {
                 return; // Keep the last successful selection and posters.
             }
             selected = genre; movies = result;
+            selections.put(host.kind(), new Selection(genre, result));
             host.changed();
         });
     }

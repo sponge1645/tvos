@@ -119,7 +119,7 @@
     <string name="settings_downloading_update" formatted="false">Загрузка обновления…</string>
     <string name="settings_update_downloaded" formatted="false">Обновление загружено</string>
     <string name="settings_version" formatted="false">"Версия "</string>
-    <string name="settings_tvos_is_up_to_date" formatted="false">tvOS актуальна</string>
+    <string name="settings_tvos_is_up_to_date" formatted="true">На ТВ установлена актуальная версия ПО: %1$s</string>
     <string name="settings_clear_cache_confirmation" formatted="false">Очистить кеш?</string>
     <string name="settings_temporary_posters_images_and_screensaver_cache_will_be_deleted_se" formatted="false">Удалятся временные постеры, изображения и кеш заставок. Настройки сохранятся.</string>
     <string name="settings_cancel" formatted="false">Отмена</string>
@@ -162,7 +162,7 @@
     <string name="settings_city_search_error_prefix" formatted="false">"Ошибка поиска города: "</string>
     <string name="settings_update_available" formatted="true">Доступно обновление до версии %1$s.</string>
     <string name="settings_download_and_install_it_now" formatted="false">Загрузить и установить его сейчас?</string>
-    <string name="settings_confirm_installation_on_your_tv" formatted="false">Установку потребуется подтвердить на ТВ.</string>
+    <string name="settings_confirm_installation_on_your_tv" formatted="true">Это обновление может занять некоторое время. Не отключайте ТВ во время загрузки обновления, перезагрузки и установки обновления.</string>
     <string name="settings_do_not_turn_off_your_tv_during_download" formatted="false">Не отключайте ТВ во время загрузки</string>
     <string name="settings_or_installation" formatted="false">и установки обновления.</string>
     <string name="settings_download_and_install" formatted="false">Загрузить и установить</string>
@@ -182,7 +182,7 @@
         <item quantity="other">%1$d дня назад</item>
     </plurals>
     <string name="settings_update_download_percent" formatted="true">Загрузка: %1$d%%</string>
-    <string name="settings_update_download_remaining" formatted="true">Загрузка: примерно %1$s до завершения</string>
+    <string name="settings_update_download_remaining" formatted="true">Загрузка: осталось %1$s</string>
     <string name="settings_update_less_than_minute" formatted="true">меньше минуты</string>
     <string name="settings_update_verifying" formatted="true">Проверка обновления…</string>
     <plurals name="settings_update_minutes">
