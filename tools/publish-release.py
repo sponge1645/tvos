@@ -21,7 +21,7 @@ def run(*args, capture=False):
 def manifest(path):
     data = json.loads(Path(path).read_text())
     version = data['versionName']
-    if not re.fullmatch(r'[0-9]+(?:\\.[0-9]+){1,2}', version) or data['tag'] != 'v' + version:
+    if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', version) or data['tag'] != 'v' + version:
         raise ValueError('Expected a stable version/tag.')
     if version != '1.0.4' and tuple(map(int, version.split('.'))) < (1, 1):
         raise ValueError('Only 1.0.4 and 1.1+ are supported.')
