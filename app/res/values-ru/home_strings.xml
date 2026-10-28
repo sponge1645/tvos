@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_live_tv" formatted="false">"Телеканалы"</string>
+    <string name="home_settings" formatted="false">"Настройки"</string>
+    <string name="home_inputs" formatted="false">"Источники"</string>
+    <string name="home_shortcuts" formatted="false">"Быстрый доступ"</string>
+    <string name="home_no_weather_data_right_now" formatted="false">"Сейчас нет данных о погоде."</string>
+    <string name="home_weather" formatted="false">"Погода"</string>
+    <string name="home_sunrise" formatted="false">"Восход "</string>
+    <string name="home_sunset" formatted="false">"Закат "</string>
+    <string name="home_all_apps" formatted="false">"Приложения"</string>
+    <string name="home_open_error_prefix" formatted="false">"Не удалось открыть "</string>
+    <string name="home_spoken_of" formatted="false">" из "</string>
+    <string name="home_spoken_tab" formatted="false">", вкладка "</string>
+    <string name="home_spoken_high" formatted="false">". Максимум "</string>
+    <string name="home_spoken_low" formatted="false">", минимум "</string>
+    <string name="home_spoken_next_hours" formatted="false">" Ближайшие часы: "</string>
+    <string name="home_spoken_sunrise" formatted="false">" Восход "</string>
+    <string name="home_spoken_sunset" formatted="false">" Закат "</string>
+    <string name="home_search" formatted="false">"Поиск"</string>
+    <string name="home_vpn_choose_app" formatted="false">"Выберите приложение VPN в Настройки → Основные → VPN"</string>
+    <string name="home_vpn_app_not_found" formatted="false">"Приложение VPN не найдено"</string>
+    <string name="home_could_not_open_vpn" formatted="false">"Не удалось открыть VPN"</string>
+    <string name="home_search_movies_and_series" formatted="false">"Поиск…"</string>
+    <string name="home_no_launchable_apps_found" formatted="false">"Не установлены Lampa, Seena, VK Видео или kino.watch"</string>
+    <string name="home_open_app" formatted="false">"Открыть приложение"</string>
+    <string name="home_couldn_t_open_seena_search" formatted="false">"Не удалось открыть поиск Seena"</string>
+    <string name="home_couldn_t_open_app" formatted="false">"Не удалось открыть приложение"</string>
+    <string name="home_cancel" formatted="false">"Отмена"</string>
+    <string name="home_couldn_t_open_vk_video_search" formatted="false">"Не удалось открыть поиск VK Видео"</string>
+    <string name="home_searching_kinopub" formatted="false">"Ищем в KinoPub…"</string>
+    <string name="home_no_exact_kinopub_match" formatted="false">"Точное совпадение в KinoPub не найдено"</string>
+    <string name="home_couldn_t_open_kinopub_card" formatted="false">"Не удалось открыть карточку KinoPub"</string>
+    <string name="home_clock_and_profile" formatted="false">"Часы и профиль"</string>
+    <string name="home_random_movie" formatted="false">"Случайный фильм"</string>
+    <string name="home_movies_loading_toast" formatted="false">"Загружаем фильмы…"</string>
+    <string name="home_search_heading_prefix" formatted="false">"Поиск: "</string>
+    <string name="home_roulette_loading" formatted="false">"Загрузка фильмов…"</string>
+    <string name="home_roulette_title" formatted="false">"🎲  Случайный фильм"</string>
+    <string name="home_ok_watch" formatted="false">"OK – смотреть"</string>
+    <string name="home_right_spin_again" formatted="false">"Вправо – крутить ещё"</string>
+    <string name="home_network_wifi" formatted="false">"Wi-Fi, интернет доступен"</string>
+    <string name="home_network_ethernet" formatted="false">"Ethernet, интернет доступен"</string>
+    <string name="home_network_offline" formatted="false">"Нет интернета"</string>
+    <string name="home_network_action" formatted="false">". Открыть настройки сети"</string>
+    <string name="home_could_not_open_network_settings" formatted="false">"Не удалось открыть настройки сети"</string>
+    <string name="home_dock_edit_hint" formatted="false">"← → – переместить. ОК – сохранить. Назад – отменить."</string>
+    <string name="home_weather_high_low" formatted="true">"Макс. %1$s   Мин. %2$s"</string>
+    <string name="home_tab_new" formatted="false">"Новинки"</string>
+    <string name="home_tab_movies" formatted="false">"Фильмы"</string>
+    <string name="home_tab_shows" formatted="false">"Сериалы"</string>
+    <string name="home_genre" formatted="false">"Жанры"</string>
+    <string name="home_genre_loading" formatted="false">"Загрузка…"</string>
+    <string name="home_genre_failed" formatted="false">"Не удалось загрузить подборку. Попробуйте ещё раз."</string>
+    <string name="home_random_series" formatted="false">Случайный сериал</string>
+    <string name="home_default_service_unavailable" formatted="false">Выбранный сервис недоступен. Выберите другое приложение.</string>
+</resources>

@@ -1,0 +1,50 @@
+# Local settings and signing material
+config.properties
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+.env
+.env.*
+
+# Generated sources, builds and release binaries
+out/
+*.apk
+*.idsig
+*.aab
+*.class
+*.ipk
+*.wgt
+*.zip
+__pycache__/
+*.pyc
+
+# Patch backups and local helpers
+patch-backups/
+.tvos*/
+*.before-*
+*.bak*
+apply.sh
+restore.sh
+
+# macOS
+.DS_Store
+._*
+__MACOSX/
+
+# Release staging and optional local Android SDK
+release/
+.android-sdk/
+
+# External build-only font/avatar pack cache
+.tvos-assets/
+
+# Font/avatar bytes are supplied by the external asset pack at build time.
+app/assets/fonts/
+app/assets/avatars/
+
+# Local signing configuration and rotation proofs
+signing.local.json
+*.lineage

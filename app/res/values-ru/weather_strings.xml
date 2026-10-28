@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="weather_clear">Ясно</string>
+  <string name="weather_mostly_sunny">Малооблачно</string>
+  <string name="weather_mostly_clear">Малооблачно</string>
+  <string name="weather_partly_cloudy">Переменная облачность</string>
+  <string name="weather_cloudy">Облачно</string>
+  <string name="weather_fog">Туман</string>
+  <string name="weather_drizzle">Морось</string>
+  <string name="weather_heavy_rain">Сильный дождь</string>
+  <string name="weather_snow">Снег</string>
+  <string name="weather_thunderstorms">Гроза</string>
+  <string name="weather_rain">Дождь</string>
+</resources>

@@ -1,0 +1,237 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="runtime_apk_size_mismatch" formatted="false">"Размер APK не совпадает"</string>
+  <string name="runtime_apk_exceeds_expected_size" formatted="false">"APK превышает ожидаемый размер"</string>
+  <string name="runtime_sha_256_verification_failed" formatted="false">"Проверка SHA-256 не пройдена"</string>
+  <string name="runtime_could_not_save_update" formatted="false">"Не удалось сохранить обновление"</string>
+  <string name="runtime_android_could_not_read_update_apk_metadata" formatted="false">"Android не смог прочитать сведения об APK обновления"</string>
+  <string name="runtime_unexpected_update_package" formatted="false">"Неверный пакет обновления: "</string>
+  <string name="runtime_apk_version_differs_from_release_metadata" formatted="false">"Версия APK не совпадает с описанием выпуска: "</string>
+  <string name="runtime_expected" formatted="false">"ожидалась "</string>
+  <string name="runtime_installed_version_is_equal_to_or_newer_than_the_update" formatted="false">"Эта версия уже установлена или новее обновления: "</string>
+  <string name="runtime_update_signer_differs_from_installed_tvos" formatted="false">"Подпись APK отличается от установленного tvOS"</string>
+  <string name="runtime_cached_update_was_removed_check_for_updates_again" formatted="false">"Файл обновления удалён из кеша. Проверьте обновления ещё раз."</string>
+  <string name="runtime_allow_installation_from_this_source_then_select_install_again" formatted="false">"Разрешите установку из этого источника и повторите установку"</string>
+  <string name="runtime_could_not_obtain_update" formatted="false">"Не удалось получить обновление"</string>
+  <string name="runtime_update_manifest_is_too_large" formatted="false">"Описание обновления слишком большое"</string>
+  <string name="runtime_release_or_update_asset_has_not_been_published_yet" formatted="false">"Выпуск или файл обновления ещё не опубликован"</string>
+  <string name="runtime_too_many_redirects" formatted="false">"Слишком много переадресаций"</string>
+  <string name="runtime_the_tv_s_first_setup_saved_the_wi_fi_and_turning_it_off_would_era" formatted="false">"the TV\'s first setup saved the Wi-Fi, and turning it off would erase those networks. In Settings → Network &amp; Internet, forget the network and connect again (networks out of range don\'t show there: Claude Code can remove them from your computer), then try once more."</string>
+  <string name="runtime_measuring_the_original_home_screen" formatted="false">"Замер заводского главного экрана…"</string>
+  <string name="runtime_switching_the_home_screen_and_screensaver" formatted="false">"Переключение главного экрана и заставки…"</string>
+  <string name="runtime_android_didn_t_accept_the_new_home_screen" formatted="false">"Android не принял новый главный экран"</string>
+  <string name="runtime_turning_off_apps" formatted="false">"Отключение приложений ("</string>
+  <string name="runtime_measuring_tvos" formatted="false">"Замер tvOS…"</string>
+  <string name="runtime_couldn_t_turn_on_tvos" formatted="false">"Не удалось включить tvOS: "</string>
+  <string name="runtime_turning_the_apps_back_on" formatted="false">"Включение приложений…"</string>
+  <string name="runtime_turning_apps_back_on" formatted="false">"Включение приложений ("</string>
+  <string name="runtime_restoring_the_original_home_screen" formatted="false">"Восстановление заводского главного экрана…"</string>
+  <string name="runtime_original_mode_the_factory_home_screen_screensaver_and_apps_are_ba" formatted="false">"Заводской режим: восстановлены главный экран, заставка и приложения."</string>
+  <string name="runtime_the_original_home_screen" formatted="false">"заводской главный экран"</string>
+  <string name="runtime_original_mode_but_i_couldn_t_turn_back_on" formatted="false">"Заводской режим, но не удалось включить: "</string>
+  <string name="runtime_couldn_t_go_back_to_the_original" formatted="false">"Не удалось восстановить заводской режим: "</string>
+  <string name="runtime_tvos_s_home_screen_crashed_3_times_in_a_row_i_switched_back_to_th" formatted="false">"Главный экран tvOS аварийно завершился 3 раза подряд; восстановлен заводской главный экран."</string>
+  <string name="runtime_the_home_screen" formatted="false">"главный экран"</string>
+  <string name="runtime_the_screensaver" formatted="false">"заставка"</string>
+  <string name="runtime_couldn_t_check_tvos" formatted="false">"Не удалось проверить tvOS: "</string>
+  <string name="runtime_the_tv_update_turned_back_on" formatted="false">"После обновления телевизора снова включены: "</string>
+  <string name="runtime_turned_off_what_was_missing" formatted="false">"Дополнительно отключены: "</string>
+  <string name="runtime_the_tv_was_updated_tvos_is_still_on" formatted="false">"Телевизор обновлён; tvOS по-прежнему включён."</string>
+  <string name="runtime_connecting" formatted="false">"Подключение…"</string>
+  <string name="runtime_accept_allow_usb_debugging_on_the_tv_tick_always_allow" formatted="false">"На телевизоре разрешите отладку по USB и отметьте «Всегда разрешать»."</string>
+  <string name="runtime_live_tv" formatted="false">"Телеканалы"</string>
+  <string name="runtime_all_apps" formatted="false">"Приложения"</string>
+  <string name="runtime_settings" formatted="false">"Настройки"</string>
+  <string name="runtime_tv_settings" formatted="false">"Настройки ТВ"</string>
+  <string name="runtime_apk_sha_256_mismatch" formatted="false">"Не совпадает SHA-256 APK"</string>
+  <string name="runtime_another_download_is_still_running" formatted="false">"Другая загрузка ещё выполняется"</string>
+  <string name="runtime_could_not_start_download" formatted="false">"Не удалось начать загрузку: "</string>
+  <string name="runtime_checking_app" formatted="false">"Проверка приложения…"</string>
+  <string name="runtime_cancel" formatted="false">"Отмена"</string>
+  <string name="runtime_downloading_apk" formatted="false">"Загрузка APK: "</string>
+  <string name="runtime_installed_version_is_not_older_than_the_reviewed_build" formatted="false">"Установленная версия не старее проверенной сборки"</string>
+  <string name="runtime_app_was_removed_during_download_retry_with_the_reviewed_installat" formatted="false">"Приложение удалено во время загрузки. Повторите установку проверенной сборки."</string>
+  <string name="runtime_app_is_already_installed" formatted="false">"Приложение уже установлено"</string>
+  <string name="runtime_error" formatted="false">"Ошибка: "</string>
+  <string name="runtime_could_not_open_installer" formatted="false">"Не удалось открыть установщик: "</string>
+  <string name="runtime_tvos_profile" formatted="false">"Профиль tvOS"</string>
+  <string name="runtime_page_1" formatted="false">"Страница 1"</string>
+  <string name="runtime_page_2" formatted="false">"Страница 2"</string>
+  <string name="runtime_selected" formatted="false">", выбран"</string>
+  <string name="runtime_choose_avatar" formatted="false">"Выбрать аватар"</string>
+  <string name="runtime_back_to_home" formatted="false">"На главный экран"</string>
+  <string name="runtime_choose_nyour_avatar" formatted="false">"Выберите\nсвой аватар"</string>
+  <string name="runtime_your_profile_non_tvos" formatted="false">"Настройте\nпрофиль tvOS"</string>
+  <string name="runtime_use_the_arrows_to_choose_then_press_ok" formatted="false">"Выберите значок стрелками\nи нажмите ОК."</string>
+  <string name="runtime_make_yourself_at_home_nyour_avatar_will_appear_beside_the_clock_n" formatted="false">"Добавьте немного индивидуальности.\nВаш аватар появится рядом с часами\nна главном экране."</string>
+  <string name="runtime_series" formatted="false">"Сериал"</string>
+  <string name="runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru" formatted="false">"Для первой установки нет проверенного APK. Установите приложение из доверенного источника; затем tvOS сможет проверять его обновления по подписи."</string>
+  <string name="runtime_no_compatible_apk_in_releases" formatted="false">"Нет подходящего APK в релизах"</string>
+  <string name="runtime_tvos_s_home_screen_ran_into_a_problem_ngoing_back_to_the_tv_s_ori" formatted="false">"Ошибка главного экрана tvOS.\nВозвращаемся к заводскому главному экрану…"</string>
+  <string name="runtime_tvos_update_downloaded_install_it_in_software_updates" formatted="false">"Обновление tvOS загружено. Установите его в настройках обновления ПО."</string>
+  <string name="runtime_unexpected_apk_package_or_version" formatted="false">"Неверное приложение или версия APK"</string>
+  <string name="runtime_apk_requires_a_newer_android_version" formatted="false">"APK несовместим с версией Android"</string>
+  <string name="runtime_android_returned_no_apk_signing_certificate" formatted="false">"Android не вернул сертификат подписи APK"</string>
+  <string name="runtime_apk_signer_pin_mismatch" formatted="false">"Подпись APK не совпадает с закреплённой"</string>
+  <string name="runtime_first_installation_is_not_trusted" formatted="false">"Первая установка не подтверждена"</string>
+  <string name="runtime_apk_signer_differs_from_the_installed_app" formatted="false">"Подпись отличается от установленного приложения"</string>
+  <string name="runtime_home_settings" formatted="false">"Главный экран"</string>
+  <string name="runtime_hdmi_inputs" formatted="false">"Входы HDMI"</string>
+  <string name="runtime_inputs" formatted="false">"Источники"</string>
+  <string name="runtime_shortcuts" formatted="false">"Быстрый доступ"</string>
+  <string name="runtime_weather" formatted="false">"Погода"</string>
+  <string name="runtime_no_weather_data_right_now" formatted="false">"Сейчас нет данных о погоде."</string>
+  <string name="runtime_sunrise" formatted="false">"Восход "</string>
+  <string name="runtime_sunset" formatted="false">"Закат "</string>
+  <string name="runtime_24h_change" formatted="false">"изменение за 24 ч"</string>
+  <string name="runtime_for_you" formatted="false">"Для вас"</string>
+  <string name="runtime_couldn_t_open" formatted="false">"Не удалось открыть "</string>
+  <string name="runtime_of" formatted="false">" из "</string>
+  <string name="runtime_tab" formatted="false">", вкладка "</string>
+  <string name="runtime_of_3" formatted="false">" из 3"</string>
+  <string name="runtime_starting" formatted="false">"Запуск…"</string>
+  <string name="runtime_original" formatted="false">"Заводской"</string>
+  <string name="runtime_home_screen" formatted="false">"Главный экран, "</string>
+  <string name="runtime_screensaver_preview" formatted="false">"Заставка, предпросмотр"</string>
+  <string name="runtime_no_ads_with_the_new_screensaver" formatted="false">"без рекламы, с новой заставкой"</string>
+  <string name="runtime_the_tv_s_factory_home_screen" formatted="false">"заводской главный экран телевизора"</string>
+  <string name="runtime_in_use" formatted="false">". Используется"</string>
+  <string name="runtime_of_2" formatted="false">" из 2"</string>
+  <string name="runtime_your_tv_s_home_screen_and_screensaver" formatted="false">"Главный экран и заставка телевизора"</string>
+  <string name="runtime_home_screen_2" formatted="false">"Главный экран"</string>
+  <string name="runtime_screensaver" formatted="false">"Заставка"</string>
+  <string name="runtime_preview" formatted="false">"Предпросмотр"</string>
+  <string name="runtime_on_the_tv_tick_always_allow_and_press_ok" formatted="false">"На телевизоре отметьте «Всегда разрешать» и нажмите OK."</string>
+  <string name="runtime_recommendations" formatted="false">"РЕКОМЕНДАЦИИ"</string>
+  <string name="runtime_no_tmdb_key_see_the_readme_config_properties" formatted="false">"Нет ключа TMDB: см. README (config.properties)."</string>
+  <string name="runtime_fetching_titles" formatted="false">"Загрузка рекомендаций…"</string>
+  <string name="runtime_this_product_uses_the_tmdb_api_but_is_not_endorsed_or_certified_b" formatted="false">"Продукт использует API TMDB, но не одобрен и не сертифицирован TMDB."</string>
+  <string name="runtime_comparison" formatted="false">"СРАВНЕНИЕ"</string>
+  <string name="runtime_home_button" formatted="false">"Кнопка «Домой»"</string>
+  <string name="runtime_free_memory" formatted="false">"Свободная память"</string>
+  <string name="runtime_home_screen_memory" formatted="false">"Память главного экрана"</string>
+  <string name="runtime_notices" formatted="false">"УВЕДОМЛЕНИЯ"</string>
+  <string name="runtime_none_yet" formatted="false">"Пока нет."</string>
+  <string name="runtime_no_ads_with_the_new_screensaver_2" formatted="false">"Без рекламы, с новой заставкой"</string>
+  <string name="runtime_the_tv_s_factory_home_screen_2" formatted="false">"Заводской главный экран телевизора"</string>
+  <string name="runtime_switching_takes_a_few_seconds_the_screen_blinks_while_it_measures" formatted="false">"Переключение занимает несколько секунд; во время замеров экран мигает."</string>
+  <string name="runtime_now" formatted="false">"сейчас"</string>
+  <string name="runtime_language" formatted="false">"Язык"</string>
+  <string name="runtime_temperature" formatted="false">"Температура"</string>
+  <string name="runtime_theme" formatted="false">"Тема"</string>
+  <string name="runtime_automatic" formatted="false">"Автоматически"</string>
+  <string name="runtime_light" formatted="false">"Светлая"</string>
+  <string name="runtime_dark" formatted="false">"Тёмная"</string>
+  <string name="runtime_weather_widget" formatted="false">"Виджет погоды"</string>
+  <string name="runtime_high" formatted="false">". Максимум "</string>
+  <string name="runtime_low" formatted="false">", минимум "</string>
+  <string name="runtime_next_hours" formatted="false">" Ближайшие часы: "</string>
+  <string name="runtime_sunrise_2" formatted="false">" Восход "</string>
+  <string name="runtime_sunset_2" formatted="false">" Закат "</string>
+  <string name="runtime_on" formatted="false">"Вкл."</string>
+  <string name="runtime_off" formatted="false">"Выкл."</string>
+  <string name="runtime_shelf" formatted="false">"Избранные приложения"</string>
+  <string name="runtime_on_the_shelf_place" formatted="false">"в избранном, позиция "</string>
+  <string name="runtime_not_on_the_shelf" formatted="false">"не в избранном"</string>
+  <string name="runtime_remote_buttons" formatted="false">"Кнопки пульта"</string>
+  <string name="runtime_netflix_button" formatted="false">"Кнопка Netflix"</string>
+  <string name="runtime_youtube_button" formatted="false">"Кнопка YouTube"</string>
+  <string name="runtime_prime_video_button" formatted="false">"Кнопка Prime Video"</string>
+  <string name="runtime_tcl_channel_button" formatted="false">"Кнопка TCL Channel"</string>
+  <string name="runtime_nothing" formatted="false">"Ничего"</string>
+  <string name="runtime_not_installed" formatted="false">"Не установлено"</string>
+  <string name="runtime_selected_2" formatted="false">", выбрано"</string>
+  <string name="runtime_ok_or_the_arrows_change_the_value" formatted="false">"Нажмите OK или стрелки, чтобы изменить значение."</string>
+  <string name="runtime_ok_picks_back_cancels" formatted="false">"OK — выбрать, «Назад» — отменить."</string>
+  <string name="runtime_disney_and_globoplay_the_tv_itself_controls_those_buttons" formatted="false">"Кнопками Disney и Globoplay управляет сам телевизор."</string>
+  <string name="runtime_these_are_the_tcl_remote_s_buttons_on_this_tv_the_buttons_work_as" formatted="false">"Это кнопки пульта TCL: на этом телевизоре они работают как прежде."</string>
+  <string name="runtime_explore" formatted="false">"Обзор"</string>
+  <string name="runtime_movies" formatted="false">"Фильмы"</string>
+  <string name="runtime_shows" formatted="false">"Сериалы"</string>
+  <string name="runtime_clear" formatted="false">"Ясно"</string>
+  <string name="runtime_mostly_sunny" formatted="false">"Малооблачно"</string>
+  <string name="runtime_mostly_clear" formatted="false">"Малооблачно"</string>
+  <string name="runtime_partly_cloudy" formatted="false">"Переменная облачность"</string>
+  <string name="runtime_cloudy" formatted="false">"Облачно"</string>
+  <string name="runtime_fog" formatted="false">"Туман"</string>
+  <string name="runtime_drizzle" formatted="false">"Морось"</string>
+  <string name="runtime_heavy_rain" formatted="false">"Сильный дождь"</string>
+  <string name="runtime_snow" formatted="false">"Снег"</string>
+  <string name="runtime_thunderstorms" formatted="false">"Гроза"</string>
+  <string name="runtime_rain" formatted="false">"Дождь"</string>
+  <string name="runtime_on_2" formatted="false">"В избранном · "</string>
+  <string name="runtime_ok_adds_or_removes_change_the_order" formatted="false">"OK — добавить или убрать · ← → — изменить порядок"</string>
+  <string name="runtime_couldn_t_open_tv_settings" formatted="false">"Не удалось открыть настройки телевизора"</string>
+  <string name="runtime_this_morning" formatted="false">"ЭТИМ УТРОМ"</string>
+  <string name="runtime_this_afternoon" formatted="false">"СЕГОДНЯ ДНЁМ"</string>
+  <string name="runtime_tonight" formatted="false">"СЕГОДНЯ ВЕЧЕРОМ"</string>
+  <string name="runtime_action_adventure" formatted="false">"Боевик и приключения"</string>
+  <string name="runtime_sci_fi_fantasy" formatted="false">"Фантастика и фэнтези"</string>
+  <string name="runtime_war_politics" formatted="false">"Война и политика"</string>
+  <string name="runtime_kids" formatted="false">"Для детей"</string>
+  <string name="runtime_news" formatted="false">"Новости"</string>
+  <string name="runtime_soap" formatted="false">"Мыльная опера"</string>
+  <string name="runtime_talk" formatted="false">"Ток-шоу"</string>
+  <string name="runtime_legacy_fragment" formatted="false">""</string>
+  <string name="runtime_debugging_is_off_on_the_tv_port_5555_closed" formatted="false">"отладка на телевизоре выключена (порт 5555 закрыт)"</string>
+  <string name="runtime_debugging_permission_wasn_t_accepted_on_the_tv" formatted="false">"на телевизоре не разрешена отладка"</string>
+  <string name="runtime_the_tv_s_adb_didn_t_respond" formatted="false">"ADB телевизора не ответил"</string>
+  <string name="runtime_the_tv_asked_for_tls_wireless_debugging_use_usb_debugging" formatted="false">"телевизор запросил TLS (беспроводная отладка); используйте отладку по USB"</string>
+  <string name="runtime_unexpected_reply_from_adb" formatted="false">"неожиданный ответ ADB"</string>
+  <string name="runtime_the_tv_rejected_the_app_s_key" formatted="false">"телевизор отклонил ключ приложения"</string>
+  <string name="runtime_adb_refused_the_command" formatted="false">"ADB отклонил команду"</string>
+  <string name="runtime_invalid_adb_message" formatted="false">"некорректное сообщение ADB"</string>
+  <string name="runtime_adb_message_too_large" formatted="false">"слишком большое сообщение ADB"</string>
+  <string name="runtime_wi_fi" formatted="false">"Сети Wi-Fi сохранены приложением первоначальной настройки телевизора. Его отключение удалит эти сети. "</string>
+  <string name="runtime_legacy_fragment_2" formatted="false">"В разделе «Настройки → Сеть и Интернет» забудьте сеть и подключитесь заново, затем повторите попытку. "</string>
+  <string name="runtime_claude_code" formatted="false">"Недоступные сети там не отображаются: Claude Code может удалить их с компьютера."</string>
+  <string name="runtime_ok" formatted="false">"OK — добавить или убрать (до "</string>
+  <string name="runtime_legacy_fragment_3" formatted="false">"). ← → — изменить порядок."</string>
+  <string name="runtime_tvos" formatted="false">"tvOS включён: новый главный экран и заставка; отключено приложений: "</string>
+  <string name="runtime_legacy_fragment_4" formatted="false">"Вкл. · Рекомендаций из приложений телевизора: "</string>
+  <string name="runtime_3" formatted="false">"; 3 новых каждый час."</string>
+  <string name="runtime_legacy_fragment_5" formatted="false">" мин назад"</string>
+  <string name="runtime_legacy_fragment_6" formatted="false">" ч назад"</string>
+  <string name="runtime_legacy_fragment_7" formatted="false">"день"</string>
+  <string name="runtime_legacy_fragment_8" formatted="false">"дня"</string>
+  <string name="runtime_legacy_fragment_9" formatted="false">"дней"</string>
+  <string name="runtime_legacy_fragment_10" formatted="false">" назад"</string>
+  <string name="runtime_robot" formatted="false">"Робот"</string>
+  <string name="runtime_fox" formatted="false">"Лиса"</string>
+  <string name="runtime_woman" formatted="false">"Женщина"</string>
+  <string name="runtime_frog" formatted="false">"Лягушка"</string>
+  <string name="runtime_popcorn" formatted="false">"Попкорн"</string>
+  <string name="runtime_pig" formatted="false">"Свинья"</string>
+  <string name="runtime_panda" formatted="false">"Панда"</string>
+  <string name="runtime_videocassette" formatted="false">"Видеокассета"</string>
+  <string name="runtime_clapper_board" formatted="false">"Кинохлопушка"</string>
+  <string name="runtime_monkey" formatted="false">"Обезьяна"</string>
+  <string name="runtime_dog" formatted="false">"Собака"</string>
+  <string name="runtime_cat" formatted="false">"Кошка"</string>
+  <string name="runtime_lion" formatted="false">"Лев"</string>
+  <string name="runtime_rabbit" formatted="false">"Заяц"</string>
+  <string name="runtime_hot_dog" formatted="false">"Хот-дог"</string>
+  <string name="runtime_man" formatted="false">"Мужчина"</string>
+  <string name="runtime_statue_of_liberty" formatted="false">"Статуя Свободы"</string>
+  <string name="runtime_poo" formatted="false">"Какашка"</string>
+  <string name="runtime_period_morning" formatted="false">"ЭТИМ УТРОМ"</string>
+  <string name="runtime_period_afternoon" formatted="false">"СЕГОДНЯ ДНЁМ"</string>
+  <string name="runtime_period_night" formatted="false">"СЕГОДНЯ ВЕЧЕРОМ"</string>
+  <string name="runtime_minutes" formatted="false">"%1$d мин"</string>
+  <string name="runtime_minutes_ago" formatted="false">"%1$d мин назад"</string>
+  <string name="runtime_hours_ago" formatted="false">"%1$d ч назад"</string>
+  <string name="runtime_duration_long" formatted="false">"%1$d ч. %2$d мин"</string>
+  <string name="runtime_duration_short" formatted="false">"%1$d мин"</string>
+  <plurals name="runtime_seasons">
+    <item quantity="one">%1$d сезон</item>
+    <item quantity="few">%1$d сезона</item>
+    <item quantity="many">%1$d сезонов</item>
+    <item quantity="other">%1$d сезона</item>
+  </plurals>
+  <string name="runtime_mode_enabled" formatted="false">"tvOS включён: новый главный экран и заставка; отключено приложений: %1$d."</string>
+  <string name="runtime_aerial_test_location" formatted="false">Корея и Япония · Ночь</string>
+  <string name="runtime_country_us" formatted="false">США</string>
+  <string name="runtime_country_gb" formatted="false">Великобритания</string>
+  <string name="runtime_country_za" formatted="false">ЮАР</string>
+  <string name="runtime_country_kr" formatted="false">Южная Корея</string>
+</resources>
