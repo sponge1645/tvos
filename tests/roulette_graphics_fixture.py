@@ -1,0 +1,35 @@
+"""Recording graphics adapters; all geometry and drawing decisions belong to the production renderer."""
+from pathlib import Path
+
+def files():
+ return {
+ 'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {public final int id;public Bitmap(int id){this.id=id;}}',
+ 'android/graphics/RectF.java':'''package android.graphics;public class RectF {public float left,top,right,bottom;public RectF(){}public RectF(float l,float t,float r,float b){set(l,t,r,b);}public void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}public void set(RectF r){set(r.left,r.top,r.right,r.bottom);}public void offset(float x,float y){left+=x;right+=x;top+=y;bottom+=y;}public float centerX(){return(left+right)/2;}public float centerY(){return(top+bottom)/2;}public float width(){return right-left;}public float height(){return bottom-top;}}''',
+ 'android/graphics/Shader.java':'package android.graphics;public class Shader {public enum TileMode {CLAMP}}',
+ 'android/graphics/LinearGradient.java':'''package android.graphics;public class LinearGradient extends Shader {public static int allocations;public float[] positions;public int[] colors;public LinearGradient(float a,float b,float c,float d,int first,int last,TileMode mode){allocations++;colors=new int[]{first,last};}public LinearGradient(float a,float b,float c,float d,int[] colors,float[] positions,TileMode mode){allocations++;this.colors=colors;this.positions=positions;}}''',
+ 'android/graphics/BlurMaskFilter.java':'package android.graphics;public class BlurMaskFilter {public enum Blur{NORMAL}public final float radius;public BlurMaskFilter(float radius,Blur blur){this.radius=radius;}}',
+ 'android/graphics/PorterDuff.java':'package android.graphics;public class PorterDuff {public enum Mode{DST_IN}}',
+ 'android/graphics/PorterDuffXfermode.java':'package android.graphics;public class PorterDuffXfermode {public PorterDuffXfermode(PorterDuff.Mode m){}}',
+ 'android/graphics/Paint.java':'''package android.graphics;public class Paint {
+ public static final int ANTI_ALIAS_FLAG=1;public enum Style {FILL,STROKE}public float size=20,stroke;public int color=0xFF000000,alpha=255;public Object typeface;public Style style=Style.FILL;public Shader shader;public BlurMaskFilter mask;public Object mode;
+ public Paint(){}public Paint(int flags){}public void set(Paint p){size=p.size;color=p.color;alpha=p.alpha;typeface=p.typeface;style=p.style;shader=p.shader;mask=p.mask;stroke=p.stroke;mode=p.mode;}
+ public void setTextSize(float n){size=n;}public float getTextSize(){return size;}public void setColor(int c){color=c;}public int getColor(){return color;}public float measureText(String s){return s.length()*size*.5f;}public void setShader(Shader s){shader=s;}public void setAlpha(int a){alpha=a;}public void setStyle(Style s){style=s;}public void setStrokeWidth(float n){stroke=n;}public void setXfermode(Object m){mode=m;}public void setMaskFilter(BlurMaskFilter f){mask=f;}
+}''',
+ 'android/graphics/Canvas.java':'''package android.graphics;import java.util.*;public class Canvas {
+ public static class Entry {public String kind,text;public float l,t,r,b,size,blur,stroke,radius;public int color,alpha;public Paint.Style style;public Object mode;public Shader shader;public Entry(String kind,String text,float l,float t,float r,float b,Paint p){this.kind=kind;this.text=text;this.l=l;this.t=t;this.r=r;this.b=b;size=p.size;color=p.color;alpha=p.alpha;style=p.style;blur=p.mask==null?0:p.mask.radius;stroke=p.stroke;mode=p.mode;shader=p.shader;}}
+ public final List<Entry> entries=new ArrayList<>();public int depth,maxDepth;public void add(String kind,String text,float l,float t,float r,float b,Paint p){for(float n:new float[]{l,t,r,b,p.size})if(!Float.isFinite(n))throw new AssertionError("nonfinite geometry");entries.add(new Entry(kind,text,l,t,r,b,p));}
+ public int save(){depth++;maxDepth=Math.max(maxDepth,depth);return depth;}public int saveLayer(float l,float t,float r,float b,Paint p){add("layer","",l,t,r,b,p==null?new Paint():p);return save();}public void restore(){if(--depth<0)throw new AssertionError("unbalanced restore");}public void restoreToCount(int saved){depth=saved-1;if(depth<0)throw new AssertionError("unbalanced saved restore");}
+ public void scale(float x,float y,float cx,float cy){add("scale","",x,y,cx,cy,new Paint());}public void drawText(String s,float x,float y,Paint p){add("text",s,x,y,0,0,p);}public void drawRoundRect(RectF r,float rx,float ry,Paint p){add("round","",r.left,r.top,r.right,r.bottom,p);entries.get(entries.size()-1).radius=rx;}public void drawRect(float l,float t,float r,float b,Paint p){add("rect","",l,t,r,b,p);}
+}''',
+ 'android/text/TextPaint.java':'package android.text;public class TextPaint extends android.graphics.Paint {}',
+ 'android/text/TextUtils.java':'package android.text;public class TextUtils {public enum TruncateAt{END}public static CharSequence ellipsize(CharSequence text,TextPaint p,float width,TruncateAt where){return text;}}',
+ 'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long now;public static long uptimeMillis(){return now;}}',
+ 'io/tvos/Ui.java':'''package io.tvos;import android.graphics.Paint;class Ui {static float clamp(float n){return Math.max(0,Math.min(1,n));}static float halfCap(Paint p){return p.getTextSize()*.35f;}static int alpha(int c,float n){return c&0xFFFFFF|Math.round((c>>>24)*n)<<24;}}''',
+ 'io/tvos/Scene.java':'''package io.tvos;import android.graphics.*;class Scene {void liquid(Canvas c,RectF r,float radius,int color,float a,float b,float d,float e,float f,float g){Paint p=new Paint();p.setColor(color);p.setAlpha(Math.round(255*a));c.add("glass","",r.left,r.top,r.right,r.bottom,p);}}''',
+ 'io/tvos/Shadows.java':'''package io.tvos;import android.graphics.*;class Shadows {void draw(Canvas c,RectF r,float radius,float blur,Paint paint){c.add("shadow","",r.left,r.top,r.right,r.bottom,paint);c.entries.get(c.entries.size()-1).radius=radius;if(paint.mask==null||paint.mask.radius!=blur)throw new AssertionError("shadow blur mismatch");}}''',
+ 'io/tvos/Recs.java':'''package io.tvos;import android.graphics.Bitmap;class Recs {static class Pick {String title;final int id;Pick(int id){this.id=id;title="Movie "+id;}}boolean missing;Bitmap poster(Pick p){return missing?null:new Bitmap(p.id);}}''',
+ 'io/tvos/RouletteController.java':'''package io.tvos;import java.util.*;class RouletteController {boolean spin,done,loading;long at;int winner;List<Recs.Pick> picks=new ArrayList<>();List<Integer> slots=new ArrayList<>();boolean spinning(){return spin;}boolean finished(){return done;}boolean loading(){return loading;}long started(){return at;}int winner(){return winner;}List<Recs.Pick> picks(){return picks;}void preparePosters(int slot){slots.add(slot);}}''',
+ 'io/tvos/ActionSurface.java':Path('app/src/io/tvos/ActionSurface.java').read_text(),
+ 'io/tvos/HomeLayout.java':Path('app/src/io/tvos/HomeLayout.java').read_text(),
+ 'io/tvos/RouletteRenderer.java':Path('app/src/io/tvos/RouletteRenderer.java').read_text(),
+ }

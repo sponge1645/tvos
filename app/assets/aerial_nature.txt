@@ -1,0 +1,2 @@
+# One direct HTTPS .mp4/.mov URL per line.
+# No streams configured: the original photo screensaver is used.
