@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Default trust unchanged for all other hosts. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+    <!-- Apple Aerial catalog and media endpoints only. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">apple.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/apple_root_ca" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
