@@ -83,7 +83,6 @@
     <string name="settings_of_2" formatted="false">" of 2"</string>
     <string name="settings_selected" formatted="false">, selected</string>
     <string name="settings_of" formatted="false">" of "</string>
-    <string name="settings_vpn_app" formatted="false">VPN App</string>
     <string name="settings_position" formatted="false">"Position "</string>
     <string name="settings_off" formatted="false">Off</string>
     <string name="settings_on_the_shelf_place" formatted="false">"on the shelf, place "</string>
@@ -190,4 +189,6 @@
     <string name="settings_ask_every_time" formatted="false">Ask Every Time</string>
     <string name="settings_service_selected" formatted="false">Selected</string>
     <string name="settings_help_default_service" formatted="false">Open movies and shows using the selected service.</string>
+    <string name="settings_manual" formatted="false">Manually</string>
+    <string name="settings_help_auto_region" formatted="false">Automatically determine the weather city using the connection outside VPN. If unavailable, keep the last saved location.</string>
 </resources>

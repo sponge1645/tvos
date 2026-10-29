@@ -24,7 +24,7 @@ public class SettingsHarness {
  Store store=new Store();int screen,focus,adjusted,moved;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Object getContext(){return this;}void invalidate(){}
- String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleVpnTop(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
+ String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleAutomaticRegion(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
  void arrow(int direction){if(canAdjustMenu())adjustMenu(direction);}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''
@@ -41,16 +41,16 @@ tests=r'''
   h.screen=APPS_DOWNLOADS;Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Download "),"English download action: "+label);
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Загрузить "),"Russian download action retained");
   Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");
-  h.screen=MAIN;check(Arrays.equals(h.menuLabels(),new String[]{"General","Video and Audio","Screen Saver","AirPlay","Remotes and Devices","Accessibility","Apps","Dock","Menu Bar","Widgets","System"}),"main menu naming contract");
+  h.screen=MAIN;check(Arrays.equals(h.menuLabels(),new String[]{"General","Video and Audio","Screen Saver","AirPlay","Remotes and Devices","Accessibility","Apps","Dock","Menu Bar","System"}),"main menu naming contract");
   h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Language","Region","Date & Time","Temperature","Time Format","Navigation Clicks"}),"General naming contract");
   h.screen=ABOUT;check(Arrays.equals(h.menuLabels(),new String[]{"Name","Model","Serial Number","tvOS","OS","Resolution","Wi-Fi Network Name","IP Address"}),"About naming contract");
   h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
   h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatically Update"}),"update actions naming contract");
   h.screen=SYSTEM;check(Arrays.equals(h.menuLabels(),new String[]{"Software Updates","Reset","Default Launcher","Restart tvOS"}),"System launcher appears directly below Reset");
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","TV Settings"}),"accessibility naming contract");
-  for(int page:new int[]{WEATHER,DATE_TIME,VPN_SETTINGS}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}
+  for(int page:new int[]{WEATHER,DATE_TIME}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}
   h.screen=WEATHER;check(h.menuLabels()[1].equals("Show in Bottom Menu"),"bottom menu naming contract");
-  h.screen=VPN_SETTINGS;check(h.menuLabels()[1].equals("VPN"),"VPN label stays concise");
+  h.screen=REGION;check(h.menuLabels()[0].equals("Automatic")&&h.menuLabels()[1].equals("Manually"),"region has auto and manual controls");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
   h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
@@ -63,7 +63,7 @@ tests=r'''
   }
   h.screen=MENU_BUTTONS;h.focus=3;h.arrow(1);check(h.moved==1,"Menu Bar arrows reorder instead of toggling");
   h.focus=6;check(!h.canAdjustMenu(),"VPN app configuration is an OK-only action");
-  Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Network")&&h.menuLabels()[6].equals("VPN App"),"Menu Bar labels follow saved rows");
+  Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Network")&&h.menuLabels()[6].equals("VPN"),"Menu Bar labels follow saved rows");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Сеть"),"network button has Russian label");
   h.screen=MAIN;Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[7].equals("Dock"),"Dock naming matches both languages");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");

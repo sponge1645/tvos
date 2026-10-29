@@ -12,26 +12,26 @@ public class ActionsTest {
   check(SettingsActions.activation(WIDGETS,0,0,false,6,false)==SettingsActions.Action.WEATHER_SCREEN,"first widget opens weather");
   check(SettingsActions.activation(WIDGETS,1,0,false,6,false)==SettingsActions.Action.DATE_SCREEN,"second widget opens date");
   check(SettingsActions.activation(WIDGETS,2,0,false,6,false)==SettingsActions.Action.NONE,"removed third widget is inactive");
-  int[] targets={GENERAL,MEDIA,SCREENSAVER,-1,REMOTE_KEYS,ACCESSIBILITY,APPS_DOWNLOADS,SHELF_EDIT,TOP_PANEL,WIDGETS,SYSTEM};
-  for(int row=0;row<11;row++){
+  int[] targets={GENERAL,MEDIA,SCREENSAVER,-1,REMOTE_KEYS,ACCESSIBILITY,APPS_DOWNLOADS,SHELF_EDIT,TOP_PANEL,SYSTEM};
+  for(int row=0;row<10;row++){
    ActionView v=create(MAIN,row);v.activate();
    if(targets[row]>=0)check(v.screen==targets[row],"main row destination "+row);
    if(row==3)check(ActionView.events.equals(Arrays.asList("airplay")),"AirPlay returns without focus reset");
    if(row==4)check(ActionView.events.indexOf("remote-service")<ActionView.events.indexOf("load-apps"),"remote permission setup precedes app load");
   }
-  int[][] back={{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,MAIN,9},{SYSTEM,MAIN,10},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,1},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
+  int[][] back={{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{REGION,GENERAL,3},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,1},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
   for(int[] route:back){ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
-   ActionView v=create(VPN_SETTINGS,1);v.buttonCount=count;v.backFromScreen();
-   check(v.screen==MENU_BUTTONS&&v.focus==count&&ActionView.events.get(0).equals("rebuild-buttons"),"Back rebuilds live buttons before selecting footer");
+   ActionView v=create(PICKER,0);v.pickFor=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
+   check(v.screen==MENU_BUTTONS&&v.focus==count,"VPN picker returns directly to Buttons footer");
    check(!SettingsActions.canAdjust(MENU_BUTTONS,count,count),"VPN footer is not arrow-adjustable");
   }
   ActionView service=create(MEDIA,0);service.activate();check(service.screen==MOVIE_SERVICE,"service row opens choices");
   service=create(MOVIE_SERVICE,3);service.activate();check(service.screen==MEDIA&&service.focus==0&&ActionView.events.contains("movie_service:seena"),"service selection saves stable identity and returns to parent");service.activate();check(service.screen==MOVIE_SERVICE&&service.focus==3,"reopening focuses the saved service");
   ActionView v=create(PICKER,2);v.pickFor=PICK_CITY;v.activate();
-  check(v.screen==GENERAL&&v.focus==3&&ActionView.events.get(0).startsWith("city:"),"city selected before returning to General");
+  check(v.screen==REGION&&v.focus==1&&ActionView.events.get(0).startsWith("city:"),"city selected before returning to General");
   v=create(PICKER,1);v.pickFor=PICK_VPN;v.activate();
-  check(v.screen==VPN_SETTINGS&&v.focus==1&&ActionView.Prefs.shelf.equals(Arrays.asList("watch.kino")),"VPN selection preserves removal of duplicate INCY Dock entry");
+  check(v.screen==MENU_BUTTONS&&v.focus==v.buttonEditor.size()&&ActionView.Prefs.shelf.equals(Arrays.asList("watch.kino")),"VPN selection preserves removal of duplicate INCY Dock entry");
   v=create(PICKER,1);v.pickFor=2;v.activate();check(v.screen==REMOTE_KEYS&&v.focus==1&&ActionView.events.contains("key:youtube:app1"),"remote picker updates correct key");
   v=create(HOME_CHOICE,0);v.busyFlag=true;v.activate();check(ActionView.events.equals(Arrays.asList("invalidate"))&&v.pendingAt==0,"busy home choice cannot restart request");
   v=create(HOME_CHOICE,1);v.activate();check(v.screen==HOME_CHOICE&&v.pendingAt==123&&ActionView.events.contains("home:2"),"launcher selection stays on same screen");
@@ -45,8 +45,10 @@ public class ActionsTest {
   check(SettingsActions.activation(UPDATES,2,0,false,6,false)==SettingsActions.Action.NONE,"retired test row has no action");
   v=create(UPDATES,0);v.activate();check(v.updateRequested&&ActionView.events.indexOf("update:false")<ActionView.events.indexOf("on-update"),"update check order preserved");
   v=create(SYSTEM,3);v.activate();check(ActionView.events.contains("start:HomeActivity:3")&&ActionView.events.get(ActionView.events.size()-1).equals("finish"),"restart targets HomeActivity then closes Settings");
-  v=create(VPN_SETTINGS,1);v.vpnFlag=false;v.activate();check(!ActionView.events.contains("load-apps"),"hidden VPN app cannot open picker");
-  v=create(VPN_SETTINGS,1);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.pickFor==PICK_VPN,"enabled VPN opens package picker");
+  v=create(MENU_BUTTONS,6);v.vpnFlag=false;v.activate();check(!ActionView.events.contains("load-apps"),"hidden VPN app cannot open picker");
+  v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.pickFor==PICK_VPN,"enabled VPN opens package picker");
+  v=create(REGION,0);v.activate();check(ActionView.Prefs.auto,"auto region toggles on");v.focus=1;v.activate();check(!ActionView.events.contains("ask-city"),"manual city disabled in auto mode");v.focus=0;v.activate();v.focus=1;v.activate();check(ActionView.events.contains("ask-city"),"manual city enabled when auto is off");
+  v=create(GENERAL,3);v.activate();check(v.screen==REGION,"General opens Region submenu");v=create(TOP_PANEL,2);v.activate();check(v.screen==WIDGETS,"widgets moved into Menu Bar");
   check(SettingsActions.back(MAIN,0,GENERAL,6)==null,"Back from root remains activity-owned");
   System.out.println("PASS: settings action policy, activation effects/order, Back targets, live VPN footer, focus reset, launcher/preview/update/reset behavior");
  }

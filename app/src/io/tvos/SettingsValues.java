@@ -28,6 +28,20 @@ final class SettingsValues {
         this.cityStatus = cityStatus;
     }
 
+    String vpnApp() {
+        String pkg = localPrefs().getString("vpn_app", "");
+        if (pkg.isEmpty()) return AppStrings.get(R.string.settings_not_configured);
+        String language = AppLanguage.current().code;
+        if (pkg.equals(vpnPackage) && language.equals(vpnLanguage)) return vpnLabel;
+        try { vpnLabel = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
+        catch (android.content.pm.PackageManager.NameNotFoundException | SecurityException e) { vpnLabel = AppStrings.get(R.string.settings_not_found); }
+        vpnPackage = pkg; vpnLanguage = language;
+        return vpnLabel;
+    }
+
+    private String vpnPackage, vpnLanguage, vpnLabel;
+    void clearAppCache() { vpnPackage = vpnLanguage = vpnLabel = null; }
+
     private SharedPreferences localPrefs() { return activity.getSharedPreferences("settings", Context.MODE_PRIVATE); }
     private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
 
@@ -57,11 +71,9 @@ final class SettingsValues {
             v[1] = onOff(localFlag("reduce_motion"));
         } else if (screen == SYSTEM) {
             v[2] = freeActive.getAsBoolean() ? "tvOS" : AppStrings.get(R.string.settings_built_in);
-        } else if (screen == VPN_SETTINGS) {
-            v[0] = onOff(Prefs.topButtonEnabled(2));
-            String vpn = localPrefs().getString("vpn_app", "");
-            if (vpn.isEmpty()) v[1] = AppStrings.get(R.string.settings_not_selected);
-            else { try { v[1] = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = AppStrings.get(R.string.settings_not_found); } }
+        } else if (screen == REGION) {
+            v[0] = onOff(Prefs.automaticRegion());
+            v[1] = Prefs.manualCity();
         } else if (screen == MENU_BUTTONS) {
             for (int i = 0; i < buttonEditor.size(); i++) {
                 int id = buttonEditor.get(i);

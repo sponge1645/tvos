@@ -17,7 +17,7 @@ public class CityLocalizationHarness {
  static class Store implements SharedPreferences.Editor {
   Map<String,Object> values=new HashMap<>();String getString(String k,String d){return (String)values.getOrDefault(k,d);}
   long getLong(String k,long d){return ((Number)values.getOrDefault(k,d)).longValue();}
-  Store edit(){return this;}public Store putString(String k,String v){values.put(k,v);return this;}
+  boolean getBoolean(String k,boolean d){return (Boolean)values.getOrDefault(k,d);}public Store putBoolean(String k,boolean v){values.put(k,v);return this;}Store edit(){return this;}public Store putString(String k,String v){values.put(k,v);return this;}
   public Store putLong(String k,long v){values.put(k,v);return this;}public Store remove(String k){values.remove(k);return this;}public void apply(){}
  }
  static class Queue {List<Runnable> tasks=new ArrayList<>();void execute(Runnable r){tasks.add(r);}void post(Runnable r){tasks.add(r);}void drain(){while(!tasks.isEmpty())tasks.remove(0).run();}}
@@ -26,13 +26,13 @@ public class CityLocalizationHarness {
   static Store sp(){return store;}static String language(){return store.getString("language","en");}
   static void put(String k,String v){store.putString(k,v);version++;}
 '''
-prefbody=''.join(method(prefs,s) for s in ['    static void setLanguage(', '    static String cityRaw(', '    private static String cityPlace(', '    static long cityId(', '    static boolean hasCityName(', '    static String city()', '    static String latitude()', '    static String longitude()', '    static void setCity(String name, String latitude, String longitude)', '    static void setCity(String name, String latitude, String longitude, long id, String nameLanguage)', '    static boolean cacheCityName('])
+prefbody=''.join(method(prefs,s) for s in ['    static void setLanguage(', '    static String cityRaw(', '    private static String cityPlace(', '    static long cityId(', '    static boolean hasCityName(', '    static String city()', '    static String latitude()', '    static String longitude()', '    static void setCity(String name, String latitude, String longitude)', '    static void setCity(String name, String latitude, String longitude, long id, String nameLanguage)', '    static boolean cacheCityName(', '    static boolean automaticRegion(', '    static long regionGeneration(', '    static String manualCity(', '    static void setAutomaticRegion(', '    static boolean applyAutomaticCity('])
 mid='''}
  static class HomeData {
   static HomeData current=new HomeData();static HomeData get(Object context){return current;}
   final Set<String> cityNameRequests=new HashSet<>();Queue io=new Queue(),main=new Queue();int notices;
   static List<String> urls=new ArrayList<>();static Runnable onGet;static boolean fail;
-  void notifyListeners(){notices++;}
+  void settingsChanged(){}void notifyListeners(){notices++;}
   static String get(String url)throws Exception {urls.add(url);if(onGet!=null){Runnable r=onGet;onGet=null;r.run();}if(fail)throw new IOException("offline");if(url.contains("/search?") && url.contains("language=en") && url.contains("%D0%91%D0%B5%D1%80%D0%BB%D0%B8%D0%BD"))return "empty";return (url.contains("/get?")?"id-":"search-")+(url.contains("language=ru")?"ru":"en");}
 '''
 databody=''.join(method(data,s) for s in ['    private static String weatherPlace()', '    synchronized void localizeCity(', '    private static String[] findCityName(', '    static List<String[]> findCity(String name)', '    private static List<String[]> findCity(String name, String lang)'])
@@ -64,12 +64,16 @@ tests='''}
   check(Prefs.city().equals("Berlin") && HomeData.urls.size()==3,"Cyrillic legacy name migrates via Russian search and English ID lookup on resume");
   check(HomeData.urls.get(0).contains("language=en") && HomeData.urls.get(1).contains("language=ru") && HomeData.urls.get(2).contains("/get?"),"fallback query order matches real geocoder failure");
   check(HomeData.findCityName("Berlin","1","2",0,"ru")==null,"same-named distant result rejected");
+  reset();h=HomeData.current;Prefs.store.putString("city","Berlin").putString("latitude","52.5244").putString("longitude","13.4105").putString("city_name_en","Berlin").putString("city_names_place","52.5244,13.4105").putLong("city_id",2950159L).apply();
+  check(!Prefs.automaticRegion(),"existing installs remain manual");Prefs.setAutomaticRegion(true);long generation=Prefs.regionGeneration();check(Prefs.automaticRegion()&&Prefs.manualCity().equals("Berlin"),"enabling auto snapshots manual city");
+  check(Prefs.applyAutomaticCity("Paris","48.85","2.35","en",generation)&&Prefs.cityRaw().equals("Paris"),"auto coordinates feed real weather preferences");check(Prefs.manualCity().equals("Berlin"),"automatic lookup never overwrites manual selection");
+  Prefs.setAutomaticRegion(false);check(Prefs.city().equals("Berlin")&&Prefs.latitude().equals("52.5244")&&Prefs.cityId()==2950159L,"disabling auto restores city, coordinates, ID and localized cache");check(!Prefs.applyAutomaticCity("Late","1","2","en",generation),"late reply after disabling rejected");Prefs.setAutomaticRegion(true);check(!Prefs.applyAutomaticCity("Late","1","2","en",generation),"old request rejected after off/on cycle");Prefs.setAutomaticRegion(false);
   System.out.println("PASS: RU/EN cache, legacy migration, stable ID, unchanged coordinates, offline switching, deduplication, stale responses, retry");
  }
 }'''
 json='''package org.json;import java.util.*;public class JSONObject {public static Map<String,JSONObject> all=new HashMap<>();Map<String,Object> values=new HashMap<>();public JSONObject(){}public JSONObject(String key){values.putAll(all.get(key).values);}public JSONObject put(String k,Object v){values.put(k,v);return this;}public boolean has(String k){return values.containsKey(k);}public String optString(String k,String d){Object v=values.get(k);return v==null?d:v.toString();}public String getString(String k){return (String)values.get(k);}public double getDouble(String k){return ((Number)values.get(k)).doubleValue();}public long optLong(String k,long d){Object v=values.get(k);return v==null?d:((Number)v).longValue();}public JSONArray optJSONArray(String k){return (JSONArray)values.get(k);}}'''
 array='''package org.json;import java.util.*;public class JSONArray {List<JSONObject> values=new ArrayList<>();public JSONArray put(JSONObject o){values.add(o);return this;}public int length(){return values.size();}public JSONObject getJSONObject(int n){return values.get(n);}}'''
-shared='''package android.content;public interface SharedPreferences {interface Editor {Editor putString(String k,String v);Editor putLong(String k,long v);Editor remove(String k);void apply();}}'''
+shared='''package android.content;public interface SharedPreferences {interface Editor {Editor putBoolean(String k,boolean v);Editor putString(String k,String v);Editor putLong(String k,long v);Editor remove(String k);void apply();}}'''
 with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp);sources={'CityLocalizationHarness.java':header+prefbody+mid+databody+tests,'JSONObject.java':json,'JSONArray.java':array,'SharedPreferences.java':shared}
 

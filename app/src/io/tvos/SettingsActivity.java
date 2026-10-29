@@ -208,6 +208,7 @@ public class SettingsActivity extends Activity {
         private final Runnable poll = new Runnable() {
             @Override public void run() {
                 if (!running) return;
+                if (screen == REGION) AutoRegion.ensure(getContext());
                 state = HomeMode.state(getContext());
                 boolean nowBusy = !busyText().isEmpty();
                 if (nowBusy) pendingAt = 0;
@@ -272,7 +273,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case VPN_SETTINGS: case ACCESSIBILITY: case TOP_PANEL: {
+                case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case REGION: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -296,7 +297,7 @@ public class SettingsActivity extends Activity {
                             + ", " + (at + 1) + AppStrings.get(R.string.settings_of) + pickLabels.size();
                 }
                 case MENU_BUTTONS: {
-                    if (row == buttonEditor.size()) return AppStrings.get(R.string.settings_vpn_app);
+                    if (row == buttonEditor.size()) return AppStrings.get(R.string.settings_vpn) + ", " + valueSource.vpnApp();
                     if (row < 0 || row >= buttonEditor.size()) return "";
                     int id = buttonEditor.get(row);
                     return menuButtonLabel(id) + ", " + (Prefs.topButtonEnabled(id)
@@ -323,7 +324,7 @@ public class SettingsActivity extends Activity {
 
         private RectF rowBox(int row) {
             float top, height;
-            if (screen == MAIN || screen == MEDIA || screen == MOVIE_SERVICE || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == VPN_SETTINGS || screen == ABOUT || screen == SCREENSAVER) {
+            if (screen == MAIN || screen == MEDIA || screen == MOVIE_SERVICE || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == REGION || screen == ABOUT || screen == SCREENSAVER) {
                 top = LIST_TOP + row * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
                         + (screen == ABOUT ? (row == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET);
                 height = ROW_H;
@@ -346,6 +347,7 @@ public class SettingsActivity extends Activity {
         void resume() {
             if (running) return;
             running = true;
+            valueSource.clearAppCache();
             HomeData.get(getContext()).localizeCity(Prefs.language());
             updateDialog.resume();
             startedAt = SystemClock.uptimeMillis();
@@ -455,7 +457,7 @@ public class SettingsActivity extends Activity {
 
         private int rowCount() {
             switch (screen) {
-                case MAIN: return 11;
+                case MAIN: return 10;
                 case MEDIA: return 1;
                 case MOVIE_SERVICE: return MovieService.count();
                 case APPS_DOWNLOADS: return 7;
@@ -466,10 +468,10 @@ public class SettingsActivity extends Activity {
                 case DATE_TIME: return 1;
                 case SYSTEM: return 4;
                 case RESET: return 2;
-                case TOP_PANEL: return 2;
+                case TOP_PANEL: return 3;
                 case CATEGORY_EDIT: return categoryEditor.size();
                 case ACCESSIBILITY: return 3;
-                case VPN_SETTINGS: return 2;
+                case REGION: return 2;
                 case MENU_BUTTONS: return buttonEditor.size() + 1;
                 case UPDATES: return 2;
                 case ABOUT: return 8;
@@ -659,7 +661,7 @@ public class SettingsActivity extends Activity {
             invalidate();
         }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
-        private void toggleVpnTop() { Prefs.setTopButtonEnabled(2, !vpnTopEnabled()); invalidate(); }
+        private void toggleAutomaticRegion() { Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.ensure(getContext()); invalidate(); }
         // Legacy display/Wi-Fi information remains available on older TV firmware.
         @SuppressWarnings("deprecation")
         // Approved About-screen geometry (all dimensions are scaled by k).
@@ -700,18 +702,19 @@ public class SettingsActivity extends Activity {
         private int parentScreen(int child) {
             switch (child) {
                 case MEDIA: case GENERAL: case SCREENSAVER: case REMOTE_KEYS: case ACCESSIBILITY: case APPS_DOWNLOADS:
-                case SHELF_EDIT: case TOP_PANEL: case WIDGETS: case SYSTEM:
+                case SHELF_EDIT: case TOP_PANEL: case SYSTEM:
                     return MAIN;
                 case MOVIE_SERVICE: return MEDIA;
                 case ABOUT: return GENERAL;
                 case HOME_CHOICE: return SYSTEM;
                 case MENU_BUTTONS: case CATEGORY_EDIT: return TOP_PANEL;
-                case VPN_SETTINGS: return MENU_BUTTONS;
+                case REGION: return GENERAL;
+                case WIDGETS: return TOP_PANEL;
                 case WEATHER: case DATE_TIME: return WIDGETS;
                 case UPDATES: case RESET: return SYSTEM;
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? TOP_PANEL : settingsGroup;
-                case PICKER: return pickFor == PICK_CITY ? GENERAL
-                        : pickFor == PICK_VPN ? VPN_SETTINGS : REMOTE_KEYS;
+                case PICKER: return pickFor == PICK_CITY ? REGION
+                        : pickFor == PICK_VPN ? MENU_BUTTONS : REMOTE_KEYS;
                 default: return -1;
             }
         }
@@ -720,7 +723,7 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case MAIN: case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
-                case ACCESSIBILITY: case APPS_DOWNLOADS: case VPN_SETTINGS: case ABOUT: case SCREENSAVER:
+                case ACCESSIBILITY: case APPS_DOWNLOADS: case REGION: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
                 case HOME_CHOICE: drawChoice(c); break;
                 case PICKER: drawPicker(c); break;
@@ -775,7 +778,7 @@ public class SettingsActivity extends Activity {
                 case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: return false;
                 case UPDATES: return row == 1;
                 case SYSTEM: return row != 3;
-                case VPN_SETTINGS: return row != 0 && (vpnTopEnabled() || row != 1);
+                case REGION: return row == 0 || !Prefs.automaticRegion();
                 default: return true;
             }
         }
@@ -796,7 +799,7 @@ public class SettingsActivity extends Activity {
                 } else {
                     f = screen == ABOUT ? 0f : drawRowBackground(c, i);
                 }
-                rowLabel.setColor(screen == VPN_SETTINGS && i == 1 && !vpnTopEnabled() ? 0x66808080 : blend(normalInk(), INK, f));
+                rowLabel.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : blend(normalInk(), INK, f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 float right = rowRect.right - 30 * k;
@@ -812,8 +815,8 @@ public class SettingsActivity extends Activity {
                             Symbols.draw(getContext(), c, "check", rowRect.right - 43 * k, rowRect.centerY(), 24 * k,
                                     blend(normalInk(), INK, f));
                     } else {
-                        rowValue.setColor(valueInk(f));
-                        drawTrackedText(c, screen == MEDIA ? fitServiceValue(labels[i], values[i]) : values[i],
+                        rowValue.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : valueInk(f));
+                        drawTrackedText(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
                                 rowRect.right - 61 * k, base, rowValue, 0.02f);
                     }
                 } else {
@@ -1034,7 +1037,6 @@ public class SettingsActivity extends Activity {
         }
 
         private void backFromScreen() {
-            if (screen == VPN_SETTINGS) rebuildMenuButtonRows(-1);
             SettingsActions.Target target = SettingsActions.back(screen, pickFor, settingsGroup, buttonEditor.size());
             if (target != null) {
                 focus = target.row;
@@ -1095,7 +1097,7 @@ public class SettingsActivity extends Activity {
         private String[] menuButtonLabels() {
             String[] labels = new String[buttonEditor.size() + 1];
             for (int i = 0; i < buttonEditor.size(); i++) labels[i] = menuButtonLabel(buttonEditor.get(i));
-            labels[buttonEditor.size()] = AppStrings.get(R.string.settings_vpn_app);
+            labels[buttonEditor.size()] = AppStrings.get(R.string.settings_vpn);
             return labels;
         }
 
@@ -1130,16 +1132,19 @@ public class SettingsActivity extends Activity {
                 int row = paintRow(pass, 0, count, focus);
                 setApprovedRowRect(row);
                 float f = drawApprovedCapsule(c, row);
-                rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(valueInk(f));
+                boolean disabled = row == buttonEditor.size() && !vpnTopEnabled();
+                rowLabel.setColor(disabled ? 0x66808080 : blend(normalInk(), INK, f));
+                rowValue.setColor(disabled ? 0x66808080 : valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 boolean vpnApp = row == buttonEditor.size();
                 int id = vpnApp ? -1 : buttonEditor.get(row);
-                drawTrackedText(c, vpnApp ? AppStrings.get(R.string.settings_vpn_app) : menuButtonLabel(id),
+                drawTrackedText(c, vpnApp ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
                         rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                if (vpnApp) drawTrackedText(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
+                        rowRect.right - 61 * k, base, rowValue, 0.02f);
                 if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
                         rowRect.right - 61 * k, base, rowValue, 0.02f);
-                drawApprovedChevron(c);
+                if (!disabled) drawApprovedChevron(c);
             }
         }
 
@@ -1165,7 +1170,7 @@ public class SettingsActivity extends Activity {
                 case AUTO_UPDATE: toggleAutomaticUpdates(); return;
                 case TRANSPARENCY: setLocalFlag("reduce_transparency", !localFlag("reduce_transparency")); return;
                 case MOTION: setLocalFlag("reduce_motion", !localFlag("reduce_motion")); return;
-                case VPN: toggleVpnTop(); return;
+                case REGION_MODE: toggleAutomaticRegion(); return;
                 case MENU_BUTTON: moveMenuButton(dir); return;
                 case GENERAL:
                     if (focus == 1) { int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme()); Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]); }
@@ -1348,7 +1353,7 @@ public class SettingsActivity extends Activity {
                 pickCurrent = -1;
             } else {
                 pickLabels.addAll(appLabels);
-                if (which != PICK_VPN && !pickLabels.isEmpty()) pickLabels.set(0, AppStrings.get(R.string.settings_not_configured));
+                if (!pickLabels.isEmpty()) pickLabels.set(0, AppStrings.get(R.string.settings_not_configured));
                 pickCurrent = appPkgs.indexOf(which == PICK_VPN ? localPrefs().getString("vpn_app", "") : Prefs.keyApp(Prefs.KEYS[which - 1]));
             }
             int visible = Math.min(PICK_VISIBLE, pickLabels.size());
@@ -1435,8 +1440,8 @@ public class SettingsActivity extends Activity {
         private void activate() {
             final int screenBeforeAction = screen;
             SettingsActions.Action action = SettingsActions.activation(screen, focus, pickFor,
-                    screen == HOME_SETTINGS && settingIndex() == CITY_ROW, buttonEditor.size(),
-                    screen == VPN_SETTINGS && focus != 0 && vpnTopEnabled());
+                    (screen == HOME_SETTINGS && settingIndex() == CITY_ROW) || (screen == REGION && Prefs.automaticRegion()), buttonEditor.size(),
+                    vpnTopEnabled());
             if (action == SettingsActions.Action.NAME) {
                 if (focus == 0) deviceDialogs.askDeviceName();
                 return;
@@ -1461,7 +1466,7 @@ public class SettingsActivity extends Activity {
                     String[] city = cities.get(pickScroll + focus);
                     Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);
                     HomeData.get(c).settingsChanged();
-                    focus = 3; screen = GENERAL;
+                    focus = 1; screen = REGION;
                     break;
                 }
                 case SELECT_VPN: {
@@ -1472,7 +1477,7 @@ public class SettingsActivity extends Activity {
                         if (shelf == null) shelf = new java.util.ArrayList<>(HomeApps.shelfPackages(c));
                         if (shelf.remove("llc.itdev.incy")) Prefs.setShelf(shelf);
                     }
-                    focus = 1; screen = VPN_SETTINGS;
+                    focus = buttonEditor.size(); screen = MENU_BUTTONS;
                     break;
                 }
                 case SELECT_KEY:
@@ -1497,7 +1502,7 @@ public class SettingsActivity extends Activity {
                     break;
                 case AUTO_UPDATE: toggleAutomaticUpdates(); break;
                 case MENU_BUTTON: toggleMenuButton(); break;
-                case VPN_TOGGLE: toggleVpnTop(); break;
+                case REGION_TOGGLE: toggleAutomaticRegion(); break;
                 case VPN_PICKER: loadApps(); openPicker(PICK_VPN); break;
                 case DATE_TOGGLE: toggleDateTime(); break;
                 case WEATHER_TOGGLE: toggleWeather(focus == 0); break;

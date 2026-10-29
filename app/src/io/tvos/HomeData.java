@@ -62,6 +62,7 @@ final class HomeData {
     private static HomeData instance;
 
     static synchronized HomeData get(Context c) {
+        AutoRegion.ensure(c);
         if (instance == null) instance = new HomeData(c.getApplicationContext());
         return instance;
     }

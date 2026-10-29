@@ -148,6 +148,41 @@ final class Prefs {
         return true;
     }
 
+    static boolean automaticRegion() { return sp().getBoolean("region_auto", false); }
+    static long regionGeneration() { return sp().getLong("region_generation", 0); }
+    static String manualCity() {
+        if (!automaticRegion()) return city();
+        String localized = sp().getString("region_manual_city_name_" + language(), "");
+        return localized.isEmpty() ? sp().getString("region_manual_city", Config.CITY) : localized;
+    }
+    static void setAutomaticRegion(boolean enabled) {
+        if (enabled == automaticRegion()) return;
+        SharedPreferences.Editor editor = sp().edit();
+        String[] keys = {"city", "latitude", "longitude", "city_names_place", "city_name_ru", "city_name_en"};
+        if (enabled) {
+            for (String key : keys) {
+                String fallback = key.equals("city") ? Config.CITY : key.equals("latitude") ? Config.LATITUDE
+                        : key.equals("longitude") ? Config.LONGITUDE : "";
+                editor.putString("region_manual_" + key, sp().getString(key, fallback));
+            }
+            editor.putLong("region_manual_city_id", cityId());
+        } else {
+            for (String key : keys) editor.putString(key, sp().getString("region_manual_" + key, ""));
+            editor.putLong("city_id", sp().getLong("region_manual_city_id", 0));
+        }
+        editor.putBoolean("region_auto", enabled).putLong("region_generation", regionGeneration() + 1).apply();
+        version++;
+        HomeData.get(app).settingsChanged();
+    }
+    static boolean applyAutomaticCity(String name, String lat, String lon, String language, long generation) {
+        if (!automaticRegion() || generation != regionGeneration()) return false;
+        if (!cityRaw().equals(name) || !latitude().equals(lat) || !longitude().equals(lon)) {
+            setCity(name, lat, lon, 0, language);
+            HomeData.get(app).settingsChanged();
+        }
+        return true;
+    }
+
     // MARK: - Weather
 
     static boolean weather() { return sp().getBoolean("weather", true); }

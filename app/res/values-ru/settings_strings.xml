@@ -83,7 +83,6 @@
     <string name="settings_of_2" formatted="false">" из 2"</string>
     <string name="settings_selected" formatted="false">, выбрано</string>
     <string name="settings_of" formatted="false">" из "</string>
-    <string name="settings_vpn_app" formatted="false">Приложение VPN</string>
     <string name="settings_position" formatted="false">"Позиция "</string>
     <string name="settings_off" formatted="false">Выкл.</string>
     <string name="settings_on_the_shelf_place" formatted="false">"в избранном, позиция "</string>
@@ -195,4 +194,6 @@
     <string name="settings_ask_every_time" formatted="false">Спрашивать каждый раз</string>
     <string name="settings_service_selected" formatted="false">Выбрано</string>
     <string name="settings_help_default_service" formatted="false">Открывать фильмы и сериалы через выбранный сервис.</string>
+    <string name="settings_manual" formatted="false">Вручную</string>
+    <string name="settings_help_auto_region" formatted="false">Автоматически определять город для погоды через подключение вне VPN. Если это невозможно, сохраняется последнее местоположение.</string>
 </resources>
