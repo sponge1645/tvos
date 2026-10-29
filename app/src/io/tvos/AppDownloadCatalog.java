@@ -66,8 +66,7 @@ final class AppDownloadCatalog {
                         "67c8253b3dc5fd2a0a0b27d5d4736834fa43e276a1a54d3282f5df0935092836"), null, true, 381),
         new Entry("Seena", "com.seena.app",
                 "731e85d4ed0224a0aea4d58058b5d73f82cb4d4e2dcf8dc9ab54b0c5ef20c59d",
-                source("https://seena.su/updates/Seena-1.9.0-armeabi-v7a.apk",
-                        "56e36b3a5de896407cc30f1ea3ce9cbdc2cb82da9caee8b17f28fc54c71ce0fa"), null, true, 1900),
+                source("https://seena.su/d.apk", null), null, false, 0),
         new Entry("Lampa", "top.rootu.lampa",
                 "8adaaa27bf99293ec260fe372e77d142ac9166fe339f348f1148a3bf987d9872",
                 source("https://github.com/lampa-app/LAMPA/releases/download/v1.13.5/app-lite-release.apk",
@@ -83,7 +82,25 @@ final class AppDownloadCatalog {
 
     static Entry get(int index) { return index >= 0 && index < ENTRIES.length ? ENTRIES[index] : null; }
 
+    private static Source seena(String[] abis, BooleanSupplier cancelled) throws IOException {
+        try {
+            JSONObject release = new JSONObject(ApkTransfer.json("https://seena.su/updates/release-info.json", cancelled));
+            String version = release.optString("version").trim();
+            if (!version.matches("[0-9]+(?:\\.[0-9]+){1,3}") || AppVersions.compare(version, "0") == null)
+                throw new IOException("Invalid Seena release version");
+            String suffix = supports(abis, "armeabi-v7a") ? "-armeabi-v7a"
+                    : supports(abis, "arm64-v8a") ? "-arm64-v8a"
+                    : supports(abis, "x86_64") ? "-x86_64" : "";
+            return source("https://seena.su/updates/Seena-" + version + suffix + ".apk", null);
+        } catch (Exception e) {
+            ApkTransfer.checkCancelled(cancelled);
+            // The official landing page exposes this stable universal download as well.
+            return source("https://seena.su/d.apk", null);
+        }
+    }
+
     static Source resolve(Entry app, boolean installed, String[] abis, BooleanSupplier cancelled) throws Exception {
+        if ("com.seena.app".equals(app.packageName)) return seena(abis, cancelled);
         if (!installed || app.fixedArtifact) {
             if (app.bootstrap == null) throw new IOException(AppStrings.get(R.string.runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru));
             if ("TizenTube".equals(app.name)) {

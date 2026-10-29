@@ -33,7 +33,7 @@ stubs = {
  public JSONArray(String s){items=next;}public JSONArray(List<JSONObject> v){items=v;}
  public int length(){return items.size();}public JSONObject getJSONObject(int n){return items.get(n);} }''',
  'org/json/JSONObject.java': '''package org.json; import java.util.*; public class JSONObject {
- public final Map<String,Object> data=new HashMap<>();public JSONObject put(String k,Object v){data.put(k,v);return this;}
+ public static String version="1.9.3";public JSONObject(){}public JSONObject(String text){data.put("version",version);}public final Map<String,Object> data=new HashMap<>();public JSONObject put(String k,Object v){data.put(k,v);return this;}
  public String optString(String k){return data.containsKey(k)?data.get(k).toString():"";}
  public boolean optBoolean(String k){return Boolean.TRUE.equals(data.get(k));}
  public JSONArray optJSONArray(String k){return (JSONArray)data.get(k);} }'''
@@ -104,6 +104,11 @@ public class DownloadHarness {
   byte[] bytes=new byte[12000];Arrays.fill(bytes,(byte)7);
   String hash=ApkTransfer.hex(ApkTransfer.digest().digest(bytes));
   AppDownloadCatalog.Source src=new AppDownloadCatalog.Source("https://test.invalid/app.apk",hash);
+  reply("metadata".getBytes(),8);
+  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(4),false,arm32,()->false).url.endsWith("Seena-1.9.3-armeabi-v7a.apk"),"Seena first install resolves current official release");
+  org.json.JSONObject.version="../../bad";reply("metadata".getBytes(),8);
+  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(4),true,arm32,()->false).url.equals("https://seena.su/d.apk"),"invalid release metadata uses official stable endpoint");
+  org.json.JSONObject.version="1.9.3";
   File tmp=Files.createTempDirectory("app-transfer-").resolve("part.apk").toFile();
   Response ok=reply(bytes,bytes.length);
   ApkTransfer.download(src,tmp,()->false,p->{});
