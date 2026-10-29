@@ -647,8 +647,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void updateDockBackdrop() {
         if (!running) return;
         if (Prefs.categoryCount() != 0 || searchMode) { dockBackdrop.pause(); return; }
-        String pkg = !sheetOpen && !drawerOpen && zone == Z_SHELF && !shelf.isEmpty()
-                && shelfIndex < shelf.size() && shelf.get(shelfIndex).kind == HomeApps.APP ? shelf.get(shelfIndex).pkg : null;
+        if (sheetOpen || drawerOpen || zone != Z_SHELF || shelfIndex < 0 || shelfIndex >= shelf.size()) return;
+        HomeApps.Item item = shelf.get(shelfIndex);
+        String pkg = item.kind == HomeApps.APP ? item.pkg
+                : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
         if (pkg != null) dockBackdrop.focus(pkg);
     }
 

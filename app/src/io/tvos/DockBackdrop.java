@@ -71,6 +71,13 @@ final class DockBackdrop {
         cached = null; cachedPackage = null;
     }
 
+    static String bundled(String pkg) {
+        if ("io.tvos".equals(pkg) || "com.android.tv.settings".equals(pkg)) return "settings.webp";
+        if ("com.google.android.youtube.tv".equals(pkg) || "com.google.android.youtube".equals(pkg)
+                || "io.gh.reisxd.tizentube.cobalt".equals(pkg)) return "youtube.webp";
+        return null;
+    }
+
     private void loadFocused() {
         final String pkg = focused;
         final int token = generation;
@@ -79,6 +86,16 @@ final class DockBackdrop {
             if (token != generation) return;
             Artwork result = null;
             try {
+                String bundled = bundled(pkg);
+                if (bundled != null) {
+                    try (InputStream input = context.getAssets().open("banners/" + bundled)) {
+                        Bitmap image = BitmapFactory.decodeStream(input);
+                        if (image == null) throw new IOException("Unreadable bundled backdrop");
+                        if (token != generation) { image.recycle(); return; }
+                        publish(pkg, token, new Artwork(Backdrop.hero(image), "", null));
+                    }
+                    return;
+                }
                 for (Candidate candidate : candidates(pkg)) {
                     if (token != generation) return;
                     Backdrop background = null;
@@ -106,7 +123,7 @@ final class DockBackdrop {
                     result = new Artwork(background, candidate.title, logo);
                     break;
                 }
-            } catch (RuntimeException | OutOfMemoryError e) {
+            } catch (IOException | RuntimeException | OutOfMemoryError e) {
                 AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
             }
             if (result != null) publish(pkg, token, result);
