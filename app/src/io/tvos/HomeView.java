@@ -240,7 +240,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             switch (kind) {
                 case SKY: background.draw(c, drawer.value); break;
                 case HERO: drawLightTop(c); break;
-                case STATUS: header.drawButtons(c, headerFrame()); break;
+                case STATUS: {
+                    HomeHeaderRenderer.Frame topFrame = headerFrame();
+                    header.drawDateWeather(c, topFrame);
+                    header.drawButtons(c, topFrame);
+                    break;
+                }
                 case PLATTER: appSurfaces.drawPlatter(c, appFrame()); break;
                 case TILES: appSurfaces.drawTiles(c, appFrame()); break;
                 case DRAWER: appSurfaces.drawDrawer(c, appFrame()); break;
@@ -695,7 +700,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         measure(revealBackdrop, width, height);
         measure(sky, width, height);
         measure(heroLayer, width, Math.round(HomeLayout.CARDS_LAYER_HEIGHT * kk));
-        measure(status, Math.round(1160 * kk), Math.round(240 * kk));
+        measure(status, width, Math.round(240 * kk));
         // Sized to what they draw (the glass and its shadow; the grown tiles and their shadows): smaller layers are
         // cheaper for the GPU to composite on every frame of the drawer animation.
         measure(platter, width, Math.round((HomeLayout.HEIGHT - HomeLayout.DOCK_LAYER_TOP) * kk));
@@ -1858,7 +1863,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         posters.begin(k, background.night(), tab, cardPage, searchMode, zone == Z_CARDS && !sheetOpen,
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
-        header.drawDateWeather(c, heading);
         if (!picksOn()) {
             if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;

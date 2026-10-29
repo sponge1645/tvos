@@ -33,7 +33,7 @@ final class HomeHeaderRenderer {
     private final Paint headerDateScratch = new Paint(), headerWeatherScratch = new Paint(), searchHeadingScratch = new Paint();
     private final Paint.FontMetrics clockMetricsScratch = new Paint.FontMetrics();
     private final Paint clockCapsuleScratch = new Paint(Paint.ANTI_ALIAS_FLAG), shadow = new Paint(Paint.ANTI_ALIAS_FLAG), fill = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final RectF avatarShouldersScratch = new RectF(), cell = new RectF(), tmp = new RectF();
+    private final RectF avatarShouldersScratch = new RectF(), cell = new RectF(), tmp = new RectF(), widgetsCapsule = new RectF();
 
     HomeHeaderRenderer(Context context, HomeData data, ActionSurface actionSurface, Shadows shadows) {
         this.context = context; this.data = data; this.actionSurface = actionSurface; this.shadows = shadows;
@@ -59,31 +59,38 @@ final class HomeHeaderRenderer {
 
     void drawDateWeather(Canvas c, Frame frame) {
         this.frame = frame;
-        final float x = MARGIN * frame.k;
-        final float top = HomeLayout.TOP * frame.k;
+        HomeData.Weather wx = data.weather;
+        boolean weather = frame.weatherTop && !Double.isNaN(wx.temp);
+        String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
+        if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
+        if (date.isEmpty() && !weather) return;
+        float k = frame.k, pad = 20 * k, gap = !date.isEmpty() && weather ? 16 * k : 0;
+        float cy = HomeLayout.HEADER_CY * k;
         Paint datePaint = headerDateScratch;
         datePaint.set(frame.lDate);
-        datePaint.setTextSize(29 * frame.k);
-        datePaint.setColor(tone(L_INK, WHITE));
-        float baseline = top + Ui.cap(datePaint);
-        float nextX = x;
-        if (frame.showDate) {
-            String date = frame.dateText;
-            if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
-            c.drawText(date, x - Ui.leftBearing(datePaint, date), baseline, datePaint);
-            nextX = x + datePaint.measureText(date) + 30 * frame.k;
-        }
-        HomeData.Weather wx = data.weather;
-        if (!frame.weatherTop || Double.isNaN(wx.temp)) return;
+        datePaint.setTextSize(29 * k);
+        datePaint.setColor(ActionSurface.ink(frame.night, 0));
         Paint weatherPaint = headerWeatherScratch;
-        weatherPaint.set(datePaint);
-        weatherPaint.setTextSize(27 * frame.k);
-        String symbol = Symbols.weather(wx.code, wx.isDay);
-        float iconSize = 28 * frame.k;
-        float sw = Symbols.width(context, symbol, iconSize);
-        Symbols.draw(context, c, symbol, nextX + sw / 2f - 3f,
-                top + Symbols.height(context, symbol, iconSize) / 2f, iconSize, weatherPaint.getColor());
-        c.drawText(HomeData.degrees(wx.temp), nextX + sw + 10 * frame.k, top + Ui.cap(weatherPaint), weatherPaint);
+        weatherPaint.set(datePaint); weatherPaint.setTextSize(27 * k);
+        String temperature = weather ? HomeData.degrees(wx.temp) : "";
+        String symbol = weather ? Symbols.weather(wx.code, wx.isDay) : "";
+        float iconSize = 28 * k, sw = weather ? Symbols.width(context, symbol, iconSize) : 0;
+        float dateWidth = datePaint.measureText(date);
+        float weatherWidth = weather ? sw + 8 * k + weatherPaint.measureText(temperature) : 0;
+        float left = MARGIN * k;
+        widgetsCapsule.set(left, HomeLayout.TOP * k, left + 2 * pad + dateWidth + gap + weatherWidth,
+                (HomeLayout.TOP + HomeLayout.BUTTON) * k);
+        // Canvas-only decoration: it adds no focus target, click handler or accessibility action.
+        actionSurface.draw(c, widgetsCapsule, 0, frame.night, k);
+        float x = left + pad;
+        if (!date.isEmpty()) {
+            c.drawText(date, x - Ui.leftBearing(datePaint, date), cy + Ui.halfCap(datePaint), datePaint);
+            x += dateWidth + gap;
+        }
+        if (weather) {
+            Symbols.draw(context, c, symbol, x + sw / 2, cy, iconSize, weatherPaint.getColor());
+            c.drawText(temperature, x + sw + 8 * k, cy + Ui.halfCap(weatherPaint), weatherPaint);
+        }
     }
 
     private float drawActionSurface(Canvas c, RectF bounds, float focus) {
