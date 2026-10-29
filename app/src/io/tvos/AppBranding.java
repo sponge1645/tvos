@@ -36,7 +36,6 @@ final class AppBranding {
         add("prime", 0xFF2AA8FF, 0xFF0A68D4, 1);
         add("disney", 0xFF173584, 0xFF08143F, 0);
         add("max", 0xFF5C30E8, 0xFF221684, 0);
-        add("appletv", 0xFF1C1C1E, 0xFF000000, 0);
     }
 
     private static void add(String key, int top, int bottom, int mode) {
