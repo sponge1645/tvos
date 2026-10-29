@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Read-only KinoPub Watch Next bridge. Queries run off the UI thread only while Home is visible. */
+/** Read-only Watch Next bridge for installed media services. Queries run off the UI thread only while Home is visible. */
 final class WatchingCatalog {
     static final int PERMISSION_REQUEST = 5042;
     private static final String PERMISSION = "android.permission.READ_TV_LISTINGS";
@@ -44,6 +44,7 @@ final class WatchingCatalog {
             main.postDelayed(reload, 350);
         }
     };
+    private List<Recs.Pick> allPicks = Collections.emptyList();
     private List<Recs.Pick> picks = Collections.emptyList();
     private boolean active, observing, busy, pending, failed;
     private int generation;
@@ -59,6 +60,33 @@ final class WatchingCatalog {
     }
 
     List<Recs.Pick> picks() { return picks; }
+
+    String source() { return Prefs.watchingSource(); }
+
+    void selectSource(String source) {
+        Prefs.setWatchingSource(source);
+        picks = WatchingItems.latest(allPicks, source);
+    }
+
+    List<String> sources() {
+        java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>();
+        Collections.addAll(ids, "kinopub", "seena", "lampa");
+        for (Recs.Pick pick : allPicks) ids.add(WatchingSources.id(pick.pkg));
+        String selected = source();
+        if (!"all".equals(selected)) ids.add(selected);
+        return new ArrayList<>(ids);
+    }
+
+    String sourceLabel(String source) {
+        String known = WatchingSources.knownLabel(source);
+        if (!known.isEmpty()) return known;
+        try {
+            android.content.pm.PackageManager pm = context.getPackageManager();
+            return pm.getApplicationLabel(pm.getApplicationInfo(source, 0)).toString();
+        } catch (android.content.pm.PackageManager.NameNotFoundException | SecurityException e) {
+            return source;
+        }
+    }
 
     String emptyText() {
         return AppStrings.get(!permitted() ? R.string.home_watching_permission
@@ -94,7 +122,7 @@ final class WatchingCatalog {
     void refresh() {
         if (!active) return;
         if (!permitted()) {
-            picks = Collections.emptyList();
+            allPicks = picks = Collections.emptyList();
             failed = false;
             changed.run();
             return;
@@ -118,7 +146,7 @@ final class WatchingCatalog {
                 if (cursor == null) throw new IllegalStateException("Null Watch Next cursor");
                 while (cursor.moveToNext()) {
                     String owner = cursor.getString(1);
-                    if (!"watch.kino".equals(owner) && !"watch.kino.mod".equals(owner)) continue;
+                    if (owner == null || owner.isEmpty() || "io.tvos".equals(owner)) continue;
                     Recs.Pick pick = read(cursor, owner);
                     if (pick != null) found.add(pick);
                 }
@@ -134,7 +162,8 @@ final class WatchingCatalog {
                     failed = failedRead;
                     if (!failedRead) {
                         for (Recs.Pick pick : result) pick.meta = WatchingText.caption(pick);
-                        picks = result;
+                        allPicks = result;
+                        picks = WatchingItems.latest(allPicks, source());
                     }
                     changed.run();
                 }
@@ -157,16 +186,22 @@ final class WatchingCatalog {
         Intent intent = intent(link, owner);
         if (intent == null) return null;
         Recs.Pick pick = new Recs.Pick();
-        pick.id = 0; // Never send a KinoPub item ID to TMDB enrichment or backdrop caches.
+        pick.id = 0; // Source item IDs never enter TMDB enrichment or backdrop caches.
         pick.pkg = owner;
         pick.title = title;
         pick.resumeUri = link;
-        pick.kind = cursor.getInt(11) == 3 ? "tv" : "movie";
+        String episode = text(cursor, 7);
+        pick.kind = cursor.getInt(11) == 3 || (!episode.isEmpty() && !"0".equals(episode)) ? "tv" : "movie";
         pick.watchingSeason = text(cursor, 6);
         pick.watchingEpisode = text(cursor, 7);
         pick.watchingRemaining = WatchingItems.remaining(cursor.getLong(8), cursor.getLong(9));
         pick.watchingUpdated = cursor.getLong(10);
         pick.poster = poster(text(cursor, 4));
+        String service = WatchingSources.id(owner);
+        if (!"kinopub".equals(service)) {
+            pick.watchingKey = service + ":" + pick.kind + ":" + title.trim().toLowerCase(java.util.Locale.ROOT);
+            return pick;
+        }
         String internalId = text(cursor, 2);
         Matcher identity = ITEM.matcher(internalId);
         if (identity.matches()) pick.watchingKey = "kinopub:" + identity.group(2);
@@ -195,11 +230,12 @@ final class WatchingCatalog {
     }
 
     private static String poster(String value) {
-        return value.startsWith("https://") ? value : "";
+        return value.startsWith("https://") || value.startsWith("content://")
+                || value.startsWith("android.resource://") ? value : "";
     }
 
     private static Intent intent(String link, String owner) {
-        if (!"watch.kino".equals(owner) && !"watch.kino.mod".equals(owner)) return null;
+        if (owner == null || owner.isEmpty() || "io.tvos".equals(owner)) return null;
         if (link == null || link.length() > 262144) return null;
         try {
             Intent intent = Intent.parseUri(link, Intent.URI_INTENT_SCHEME);
@@ -216,6 +252,6 @@ final class WatchingCatalog {
 
     boolean open(Recs.Pick pick) {
         Intent intent = intent(pick.resumeUri, pick.pkg);
-        return intent != null && AppLaunch.start(context, intent, "KinoPub resume");
+        return intent != null && AppLaunch.start(context, intent, "Watch Next resume");
     }
 }

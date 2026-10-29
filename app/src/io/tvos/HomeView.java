@@ -71,7 +71,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeBackground background = new HomeBackground(scene, this::backgroundChanged);
     private final HomeData data;
     private final HomeWidgets widgets;
-    private final HomeGenres genres, tvGenres;
+    private final HomeGenres genres, tvGenres, watchingMenu;
     private final RandomPoster randomPoster = new RandomPoster();
     private final HomeHeaderRenderer header;
     private final HomeHeaderRenderer.Frame headingFrame = new HomeHeaderRenderer.Frame();
@@ -345,6 +345,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         });
         genres = createGenres(1);
         tvGenres = createGenres(3);
+        watchingMenu = createWatchingMenu();
         // Hardware layers on the GPU: only the one that changed is redrawn; moving, fading and scaling stay cheap.
         // Not on Android 9 to 11: on older GPUs (a Mi Box 3's Mali-450) redrawing and compositing a big layer on every
         // frame cost more than drawing straight to the screen (measured: focus on the picks 33 → 12 ms a frame, the
@@ -388,7 +389,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.resume();
         if (running) return;
         running = true;
-        genres.resume(); tvGenres.resume();
+        genres.resume(); tvGenres.resume(); watchingMenu.resume();
         if (topButtonEnabled(5) || topButtonEnabled(2)) networkStatus.start();
         vpnColor.snap(networkStatus.vpn() ? 1 : 0);
         background.checkNight(data.isNight(System.currentTimeMillis()), false);
@@ -446,6 +447,34 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         });
     }
 
+    private HomeGenres createWatchingMenu() {
+        return new HomeGenres(this, handler, new HomeGenres.Host() {
+            @Override public boolean eligible() {
+                return running && okDown && tab == 2 && !searchMode && !sheetOpen && !drawerOpen
+                        && !dockEditor.editing() && zone == Z_TOP && topIndex == 2;
+            }
+            @Override public RectF anchor() { return topRects[2]; }
+            @Override public Paint anchorPaint() { return lTabOn; }
+            @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
+            @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void changed() {
+                cardPage = cardIndex = 0;
+                updateCards(); retarget(false); heroDirty = true; wake();
+            }
+            @Override public void message(String text) { showToast(text); }
+        }, new HomeGenres.Choices() {
+            @Override public String label() { return AppStrings.get(R.string.home_tab_watching); }
+            @Override public String heading() { return AppStrings.get(R.string.home_watching_services); }
+            @Override public List<HomeGenres.Choice> items() {
+                List<HomeGenres.Choice> items = new ArrayList<>();
+                for (String source : watching.sources()) items.add(new HomeGenres.Choice(source, watching.sourceLabel(source)));
+                return items;
+            }
+            @Override public String selected() { return watching.source(); }
+            @Override public void select(String source) { watching.selectSource(source); }
+        });
+    }
+
     void prepareDreamReturn() {
         if (drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
         reveal.prepare(reducedDreamMotion());
@@ -473,7 +502,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!running) return;
         running = false;
         randomPoster.clear();
-        genres.pause(); tvGenres.pause();
+        genres.pause(); tvGenres.pause(); watchingMenu.pause();
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
@@ -1127,7 +1156,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         int genreKey = e.getKeyCode();
         if (genreKey != KeyEvent.KEYCODE_DPAD_CENTER && genreKey != KeyEvent.KEYCODE_ENTER
-                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); handler.removeCallbacks(vpnHold); }
+                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); watchingMenu.cancelHold(); handler.removeCallbacks(vpnHold); }
         if (dockEditor.editing()) {
             boolean handled = dockEditor.onKey(e);
             if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER
@@ -1158,12 +1187,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         vpnPress = vpnFocused();
                         if (vpnPress) handler.postDelayed(vpnHold, HomeDockEditor.HOLD_MS);
                         dockEditor.arm();
-                        genres.arm(); tvGenres.arm();
+                        genres.arm(); tvGenres.arm(); watchingMenu.arm();
                     }
                 } else {
                     handler.removeCallbacks(vpnHold);
                     dockEditor.cancelHold();
-                    genres.released(); tvGenres.released();
+                    genres.released(); tvGenres.released(); watchingMenu.released();
                     if (okDown && !e.isCanceled() && (!vpnPress || vpnFocused()) && spoken.keyClick()) activate();
                     vpnPress = false;
                     okDown = false;
@@ -1811,7 +1840,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         applyTone();
         headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = searchHeadingOpacity.value;
         headingFrame.vpnTint = Ui.clamp(vpnColor.value);
-        headingFrame.hiddenTab = genres.visible() ? 1 : tvGenres.visible() ? 3 : -1;
+        headingFrame.hiddenTab = genres.visible() ? 1 : tvGenres.visible() ? 3 : watchingMenu.visible() ? 2 : -1;
         headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.tabs = tabs();
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = searchQuery;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;

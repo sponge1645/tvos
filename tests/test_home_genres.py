@@ -70,7 +70,28 @@ public class MenuHarness implements HomeGenres.Host {
   scroll().setScrollY(0);
   check(scroll().params.height==7*Math.round(68*home.getWidth()/1920f),"viewport fits exactly seven genre rows");check(scroll().smooth&&scroll().fill&&scroll().overscroll==View.OVER_SCROLL_NEVER,"native smooth focus scrolling with bounded viewport");check(list().getChildCount()==19,"complete genre list present inside scroll, pinned Movies and heading outside");
  }
- public static void main(String[] args){AppLanguage.select("en");MenuHarness h=new MenuHarness();
+ static void localServices(){
+  MenuHarness h=new MenuHarness();String[] selected={"all"};int[] selections={0};
+  h.menu=new HomeGenres(h.home,h.handler,h,new HomeGenres.Choices(){
+   public String label(){return "Watching";}public String heading(){return "Services";}
+   public java.util.List<HomeGenres.Choice> items(){return java.util.Arrays.asList(new HomeGenres.Choice("kinopub","KinoPub"),new HomeGenres.Choice("seena","Seena"),new HomeGenres.Choice("lampa","Lampa"));}
+   public String selected(){return selected[0];}public void select(String id){selected[0]=id;selections[0]++;}
+  });
+  h.menu.resume();h.menu.arm();h.handler.advance(500);h.root().frame();h.root().frame();h.finishMotion();
+  check(h.catalog.listRequest==null&&h.root().getChildCount()==3,"local services reuse popup without a TMDB request");
+  check(((TextView)h.root().getChildAt(0)).text.equals("Services"),"services heading");
+  LinearLayout list=(LinearLayout)((ScrollView)h.root().getChildAt(1)).getChildAt(0);
+  check(list.getChildCount()==3&&((TextView)list.getChildAt(0)).text.equals("KinoPub"),"service order");
+  TextView all=(TextView)h.root().getChildAt(2);check(all.text.equals("All"),"All pinned below service list");
+  android.graphics.Canvas tick=new android.graphics.Canvas();all.draw(tick);check(tick.paths==1,"All selection has a checkmark");
+  check(list.getChildAt(0).key.onKey(list.getChildAt(0),23,new KeyEvent(1))&&selections[0]==0,"opening release does not select a service");
+  h.choose(list.getChildAt(1));check(selected[0].equals("seena")&&selections[0]==1&&h.changed==1,"single service selected after close");
+  h.menu.arm();h.handler.advance(500);h.root().frame();h.root().frame();h.finishMotion();
+  list=(LinearLayout)((ScrollView)h.root().getChildAt(1)).getChildAt(0);tick=new android.graphics.Canvas();list.getChildAt(1).draw(tick);check(tick.paths==1,"selected service checked on reopen");
+  all=(TextView)h.root().getChildAt(2);tick=new android.graphics.Canvas();all.draw(tick);check(tick.paths==0,"All unchecked for individual service");
+  h.choose(all);check(selected[0].equals("all")&&selections[0]==2,"All restores aggregate mode");h.menu.pause();
+ }
+ public static void main(String[] args){AppLanguage.select("en");localServices();MenuHarness h=new MenuHarness();
   h.menu.arm();h.handler.advance(499);check(h.opened==0,"same 500ms threshold as Dock");h.menu.cancelHold();h.handler.advance(1);check(h.opened==0,"short press cannot open menu");
   h.open();h.checkAlignment();check(h.opened==1&&h.root().getChildCount()==3&&((TextView)h.root().getChildAt(0)).text.equals("Movies")&&((TextView)h.root().getChildAt(1)).text.equals("Genres"),"pinned Movies first, Genres divider next, then scroll list");check(ValueAnimator.last.duration==320&&((android.view.animation.DecelerateInterpolator)ValueAnimator.last.interpolator).factor==1.5f,"bounded eased entrance");check(h.root().sx==1&&h.root().sy==1&&h.root().alpha==1&&h.root().clip.right==h.root().width&&h.root().roundClip&&h.root().outlineRadius==44,"entrance ends at exact full opacity and geometry");View action=h.list().getChildAt(0);check(action.key.onKey(action,23,new KeyEvent(1)),"opening release consumed");check(h.catalog.movieRequest==null&&h.changed==0,"release does not choose/open a film");check(!action.key.onKey(action,23,new KeyEvent(0)),"new OK press can choose");h.choose(action);check(!PopupWindow.last.showing&&h.menu.movies()==null,"dismiss while loading keeps existing Movies catalog");h.catalog.moviesReady(true);check(h.menu.label().equals("Action")&&h.menu.movies().size()==1&&h.changed==1,"successful selection publishes tab and posters together");
   h.open();check(h.list().getChildAt(0).getPaddingLeft()==h.list().getChildAt(1).getPaddingLeft(),"checked genre does not indent");android.graphics.Canvas tick=new android.graphics.Canvas();h.list().getChildAt(0).draw(tick);check(tick.paths==1&&tick.color==android.graphics.Color.BLACK,"check follows focused row ink");h.menu.released();View next=h.list().getChildAt(1);check(!next.key.onKey(next,23,new KeyEvent(0)),"release delivered to home also clears opening press");h.choose(next);h.catalog.moviesReady(false);check(h.menu.label().equals("Action")&&h.changed==1,"network error preserves previous label and posters");

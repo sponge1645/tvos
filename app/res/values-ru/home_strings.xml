@@ -58,8 +58,10 @@
     <string name="home_tab_watching" formatted="false">"Я смотрю"</string>
     <string name="home_watching_remaining" formatted="false">"Осталось: %1$d мин."</string>
     <string name="home_watching_episode" formatted="false">"С%1$s / Э%2$s"</string>
-    <string name="home_watching_empty" formatted="false">"Откройте «Продолжить просмотр» в KinoPub, чтобы обновить список."</string>
+    <string name="home_watching_empty" formatted="false">"Откройте «Продолжить просмотр» в выбранном сервисе, чтобы обновить список."</string>
     <string name="home_watching_permission" formatted="false">"Разрешите доступ к телепрограммам для раздела «Я смотрю»."</string>
     <string name="home_watching_failed" formatted="false">"Не удалось загрузить «Я смотрю»."</string>
-    <string name="home_watching_open_failed" formatted="false">"Не удалось открыть карточку в KinoPub."</string>
+    <string name="home_watching_open_failed" formatted="false">"Не удалось открыть карточку в приложении."</string>
+    <string name="home_watching_services" formatted="false">"Сервисы"</string>
+    <string name="home_watching_all" formatted="false">"Все"</string>
 </resources>

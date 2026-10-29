@@ -55,7 +55,7 @@ final class PosterCache {
     }
 
     static String cacheName(String path) {
-        if (!path.startsWith("https://")) return path.replace("/", "");
+        if (path.startsWith("/")) return path.replace("/", "");
         try {
             byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
                     .digest(path.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -109,15 +109,12 @@ final class PosterCache {
                 boolean downloaded = false;
                 if (!f.isFile() || f.length() == 0) {
                     tmp = new File(f.getPath() + ".part");
-                    HttpURLConnection c = (HttpURLConnection) new URL(imageUrl(path)).openConnection();
-                    c.setConnectTimeout(8000);
-                    c.setReadTimeout(20000);
-                    try {
-                        long expected = c.getContentLengthLong();
-                        if (expected > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
-                        long received = 0;
-                        try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
+                    if (path.startsWith("content://") || path.startsWith("android.resource://")) {
+                        try (InputStream in = context.getContentResolver().openInputStream(android.net.Uri.parse(path));
+                                FileOutputStream out = new FileOutputStream(tmp)) {
+                            if (in == null) throw new IOException("Poster provider returned no stream");
                             byte[] buf = new byte[16384];
+                            long received = 0;
                             int n;
                             while ((n = in.read(buf)) != -1) {
                                 if (!posterWanted(path)) { abandoned = true; return; }
@@ -126,8 +123,27 @@ final class PosterCache {
                                 out.write(buf, 0, n);
                             }
                         }
-                        if (expected >= 0 && received != expected) throw new IOException("Incomplete poster download");
-                    } finally { c.disconnect(); }
+                    } else {
+                        HttpURLConnection c = (HttpURLConnection) new URL(imageUrl(path)).openConnection();
+                        c.setConnectTimeout(8000);
+                        c.setReadTimeout(20000);
+                        try {
+                            long expected = c.getContentLengthLong();
+                            if (expected > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
+                            long received = 0;
+                            try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
+                                byte[] buf = new byte[16384];
+                                int n;
+                                while ((n = in.read(buf)) != -1) {
+                                    if (!posterWanted(path)) { abandoned = true; return; }
+                                    received += n;
+                                    if (received > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
+                                    out.write(buf, 0, n);
+                                }
+                            }
+                            if (expected >= 0 && received != expected) throw new IOException("Incomplete poster download");
+                        } finally { c.disconnect(); }
+                    }
                     if (!tmp.renameTo(f)) throw new IOException("Poster cache write failed");
                     downloaded = true;
                 }

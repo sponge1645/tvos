@@ -6,7 +6,7 @@ f=metadata_files()
 f.pop('io/tvos/TmdbMetadata.java')
 f.update({
 'android/net/Uri.java':'''package android.net;public class Uri {final String s;private Uri(String s){this.s=s;}public static Uri parse(String s){return new Uri(s);}public String getLastPathSegment(){return s.substring(s.lastIndexOf('/')+1);}public String toString(){return s;}}''',
-'android/content/pm/PackageManager.java':'package android.content.pm;public class PackageManager {public static final int PERMISSION_GRANTED=0;}',
+'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public static final int PERMISSION_GRANTED=0;public static class NameNotFoundException extends Exception {}public Object getApplicationInfo(String p,int flags)throws NameNotFoundException{return p;}public CharSequence getApplicationLabel(Object p){return \"App \"+p;}}''',
 'android/content/ComponentName.java':'package android.content;public class ComponentName {final String owner;public ComponentName(String owner){this.owner=owner;}public String getPackageName(){return owner;}}',
 'android/content/Intent.java':'''package android.content;import java.util.*;import android.net.Uri;public class Intent {
  public static final int URI_INTENT_SCHEME=1,FLAG_ACTIVITY_NEW_TASK=0x10000000;
@@ -14,7 +14,7 @@ f.update({
  public static Intent parseUri(String link,int flags)throws java.net.URISyntaxException {Intent original=data.get(link);if(original==null)throw new java.net.URISyntaxException(link,"bad");Intent i=new Intent();i.component=original.component;i.extra=original.extra;i.uri=original.uri;return i;}
  public ComponentName getComponent(){return component;}public Intent setSelector(Object o){selector=o;return this;}public Intent setPackage(String p){owner=p;return this;}public void setClipData(Object o){clip=o;}public Intent setFlags(int f){flags=f;return this;}public String getStringExtra(String key){return extra;}public Uri getData(){return uri;}
 }''',
-'android/content/Context.java':'''package android.content;public class Context {public boolean permitted;public final ContentResolver resolver=new ContentResolver();public Context getApplicationContext(){return this;}public int checkSelfPermission(String p){return permitted?0:-1;}public ContentResolver getContentResolver(){return resolver;}}''',
+'android/content/Context.java':'''package android.content;public class Context {public boolean permitted;public final ContentResolver resolver=new ContentResolver();public Context getApplicationContext(){return this;}public int checkSelfPermission(String p){return permitted?0:-1;}public ContentResolver getContentResolver(){return resolver;}public android.content.pm.PackageManager getPackageManager(){return new android.content.pm.PackageManager();}}''',
 'android/app/Activity.java':'''package android.app;public class Activity extends android.content.Context {public int requested;public void requestPermissions(String[] p,int code){requested=code;}}''',
 'android/database/ContentObserver.java':'''package android.database;public abstract class ContentObserver {public ContentObserver(android.os.Handler h){}public void onChange(boolean self){}}''',
 'android/database/Cursor.java':'''package android.database;public interface Cursor extends AutoCloseable {boolean moveToNext();String getString(int i);long getLong(int i);int getInt(int i);void close();}''',
@@ -28,8 +28,9 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>();publi
 'android/util/Log.java':'package android.util;public class Log {public static int w(String t,String m){return 0;}}',
 'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
 })
+f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
 f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('private final Map<String,Object> m=new HashMap<>();','''public static final Map<String,JSONObject> encoded=new HashMap<>();private final Map<String,Object> m=new HashMap<>();public JSONObject(){}public JSONObject(String s)throws JSONException{JSONObject value=encoded.get(s);if(value==null)throw new JSONException("bad JSON");m.putAll(value.m);}''')
-for name in ['WatchingCatalog','WatchingItems','WatchingText']:
+for name in ['WatchingCatalog','WatchingItems','WatchingText','WatchingSources']:
  f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 f['io/tvos/WatchingHarness.java']='''package io.tvos;
 import java.util.*;import java.util.concurrent.Executor;import android.content.*;import android.os.Handler;import android.net.Uri;import org.json.JSONObject;
@@ -51,6 +52,11 @@ public class WatchingHarness {
   List<Recs.Pick> selected=WatchingItems.latest(input);
   check(selected.size()==10&&selected.get(0)==latest&&selected.get(1).watchingUpdated==19,"10 unique most recent titles");
   check(input.size()==21,"caller list unchanged");
+  for(Recs.Pick p:input)p.pkg="watch.kino.mod";
+  for(String pkg:new String[]{"com.seena.app","top.rootu.lampa","org.example.player"})for(int i=0;i<14;i++){Recs.Pick p=pick("id"+i,200+i);p.pkg=pkg;input.add(p);}
+  selected=WatchingItems.latest(input);check(selected.size()==40,"All gives ten per service without cross-service deduplication");
+  check(WatchingItems.latest(input,"seena").size()==10&&WatchingItems.latest(input,"missing").isEmpty(),"single-service filter and empty source");
+  Recs.Pick alias=pick("id3",999);alias.pkg="watch.kino";input.add(alias);selected=WatchingItems.latest(input,"kinopub");check(selected.size()==10&&selected.get(0)==alias,"original and MOD share a quota and title identity");
   android.app.Activity context=new android.app.Activity();Worker worker=new Worker();int[] notices={0};WatchingCatalog catalog=new WatchingCatalog(context,()->notices[0]++,worker);
   catalog.start();check(worker.tasks.isEmpty()&&catalog.picks().isEmpty(),"no permission no query");
   catalog.requestPermission(context);check(context.requested==WatchingCatalog.PERMISSION_REQUEST,"runtime permission requested");
@@ -75,6 +81,16 @@ public class WatchingHarness {
   check(catalog.open(serial)&&AppLaunch.opened.owner.equals("watch.kino.mod")&&AppLaunch.opened.extra.equals("resume"),"resume extras and source package preserved");
   check(AppLaunch.opened.flags==Intent.FLAG_ACTIVITY_NEW_TASK&&AppLaunch.opened.selector==null&&AppLaunch.opened.clip==null,"external intent flags constrained");
   check(context.resolver.closes==context.resolver.queries,"cursors closed");
+  context.resolver.rows.add(row("com.seena.app","id42","Seena title",500,link("seena","com.seena.app",null)));
+  context.resolver.rows.add(row("top.rootu.lampa","id42","Lampa title",600,link("lampa","top.rootu.lampa",null)));
+  context.resolver.rows.add(row("org.example.player","id42","Other title",700,link("other","org.example.player",null)));
+  catalog.refresh();worker.drain();Handler.drain();check(catalog.picks().size()==5,"generic Watch Next publishers included");
+  check(catalog.sources().equals(Arrays.asList("kinopub","seena","lampa","org.example.player")),"known sources pinned and other publishers discovered");
+  check(catalog.sourceLabel("org.example.player").equals("App org.example.player"),"unknown publisher uses application label");
+  catalog.selectSource("seena");check(catalog.picks().size()==1&&catalog.picks().get(0).title.equals("Seena title"),"selection filters cached results immediately");
+  check(catalog.open(catalog.picks().get(0))&&AppLaunch.opened.owner.equals("com.seena.app"),"generic resume link opens its own service");
+  catalog.selectSource("lampa");catalog.refresh();worker.drain();Handler.drain();check(catalog.picks().size()==1&&catalog.picks().get(0).pkg.equals("top.rootu.lampa"),"filter survives provider refresh");
+  catalog.selectSource("all");check(catalog.picks().size()==5,"All restores combined list");
   int before=context.resolver.queries;context.resolver.observer.onChange(false);context.resolver.observer.onChange(false);Handler.drain();check(worker.tasks.size()==1,"observer bursts debounced");worker.drain();Handler.drain();check(context.resolver.queries==before+1,"one refresh after changes");
   List<Recs.Pick> saved=catalog.picks();context.resolver.denied=true;catalog.refresh();worker.drain();Handler.drain();check(catalog.picks()==saved,"transient query failure keeps previous successful list");
   context.resolver.denied=false;catalog.refresh();catalog.stop();worker.drain();Handler.drain();check(catalog.picks()==saved,"late result after pause ignored");

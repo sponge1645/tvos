@@ -5,20 +5,32 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
-/** Source identities stay separate from TMDB; one latest entry per KinoPub title. */
+/** Source identities stay separate from TMDB; latest entries with a separate limit for each service. */
 final class WatchingItems {
     private WatchingItems() {}
 
     static List<Recs.Pick> latest(List<Recs.Pick> entries) {
+        return latest(entries, "all");
+    }
+
+    static List<Recs.Pick> latest(List<Recs.Pick> entries, String source) {
         List<Recs.Pick> sorted = new ArrayList<>(entries);
         sorted.sort(Comparator.comparingLong((Recs.Pick p) -> p.watchingUpdated).reversed()
                 .thenComparing(p -> p.watchingKey));
         Set<String> seen = new HashSet<>();
+        Map<String, Integer> counts = new HashMap<>();
         List<Recs.Pick> result = new ArrayList<>();
         for (Recs.Pick pick : sorted) {
-            if (seen.add(pick.watchingKey)) result.add(pick);
-            if (result.size() == 10) break;
+            String service = WatchingSources.id(pick.pkg);
+            if (!"all".equals(source) && !service.equals(source)) continue;
+            int count = counts.containsKey(service) ? counts.get(service) : 0;
+            if (count < 10 && seen.add(service + ":" + pick.watchingKey)) {
+                result.add(pick);
+                counts.put(service, count + 1);
+            }
         }
         return result;
     }

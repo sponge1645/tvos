@@ -40,6 +40,17 @@ final class HomeGenres {
         void changed();
         void message(String text);
     }
+    static final class Choice {
+        final String id, label;
+        Choice(String id, String label) { this.id = id; this.label = label; }
+    }
+    interface Choices {
+        String label();
+        String heading();
+        List<Choice> items();
+        String selected();
+        void select(String id);
+    }
     // All labels share one text column; the checkmark occupies its own fixed gutter.
     private static final float TEXT_LEFT = 54, CHECK_LEFT = 22;
     private static final int VISIBLE_GENRES = 7;
@@ -117,6 +128,7 @@ final class HomeGenres {
     private final Handler handler;
     private final GenreCatalog catalog;
     private final Host host;
+    private final Choices choices;
     private final Runnable hold = this::show;
     private final int[] location = new int[2];
     private final class MenuSurface extends LinearLayout {
@@ -177,10 +189,17 @@ final class HomeGenres {
     private boolean openingRelease;
 
     HomeGenres(View home, Handler handler, GenreCatalog catalog, Host host) {
+        this(home, handler, catalog, host, null);
+    }
+    HomeGenres(View home, Handler handler, Host host, Choices choices) {
+        this(home, handler, null, host, choices);
+    }
+    private HomeGenres(View home, Handler handler, GenreCatalog catalog, Host host, Choices choices) {
         this.home = home; this.context = home.getContext(); this.handler = handler;
-        this.catalog = catalog; this.host = host;
+        this.catalog = catalog; this.host = host; this.choices = choices;
     }
     void resume() {
+        if (choices != null) return;
         cancelRestore();
         Selection saved = selections.get(host.kind());
         if (saved == null) return;
@@ -211,7 +230,7 @@ final class HomeGenres {
     }
     boolean visible() { return popup != null; }
     int selectedId() { return selected == null ? 0 : selected.id; }
-    String label() { return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
+    String label() { if (choices != null) return choices.label(); return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
     List<Recs.Pick> movies() { return movies; } // null means the ordinary Movies catalog.
     void arm() {
         cancelHold();
@@ -253,8 +272,9 @@ final class HomeGenres {
         root.setBackground(panel);
         root.setFocusableInTouchMode(true);
         root.setOnKeyListener(this::initialRelease);
-        row(root, null, k); // Pinned reset, outside the scrolling genre list.
-        heading(root, AppStrings.get(R.string.home_genre), k);
+        if (choices == null) row(root, null, k); // Pinned reset, outside the scrolling genre list.
+        heading(root, choices == null ? AppStrings.get(R.string.home_genre) : choices.heading(), k);
+        List<Choice> localItems = choices == null ? null : choices.items();
         GenreScroll scroll = new GenreScroll(context, k);
         scroll.setFillViewport(true);
         scroll.setSmoothScrollingEnabled(true);
@@ -262,8 +282,13 @@ final class HomeGenres {
         LinearLayout list = new LinearLayout(context);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list, new ScrollView.LayoutParams(-1, -2));
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, VISIBLE_GENRES * Math.round(68 * k)));
-        for (int i = 0; i < VISIBLE_GENRES; i++) {
+        int visibleRows = localItems == null ? VISIBLE_GENRES : Math.min(VISIBLE_GENRES, localItems.size());
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, visibleRows * Math.round(68 * k)));
+        if (localItems != null) {
+            for (Choice item : localItems) choiceRow(list, item, k);
+            choiceRow(root, new Choice("all", AppStrings.get(R.string.home_watching_all)), k);
+        }
+        for (int i = 0; localItems == null && i < VISIBLE_GENRES; i++) {
             TextView placeholder = text(i == 0 ? AppStrings.get(R.string.home_genre_loading) : "", 26, k);
             placeholder.setTextColor(0xFF999999);
             list.addView(placeholder, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
@@ -310,6 +335,18 @@ final class HomeGenres {
                 return true;
             }
         });
+        if (localItems != null) {
+            Runnable focus = () -> {
+                View target = root.getChildAt(root.getChildCount() - 1);
+                for (int i = 0; i < localItems.size(); i++) {
+                    if (localItems.get(i).id.equals(choices.selected())) target = list.getChildAt(i);
+                }
+                target.requestFocus();
+                scroll.showPosition();
+            };
+            if (reduced) focus.run(); else window.afterOpen = focus;
+            return;
+        }
         genreRequest = catalog.genres(host.kind(), AppLanguage.current(), choices -> {
             if (popup != window) return;
             Runnable content = () -> {
@@ -425,6 +462,17 @@ final class HomeGenres {
     private void row(LinearLayout root, GenreCatalog.Genre genre, float k) {
         boolean checked = genre == null ? selected == null : selected != null && genre.id == selected.id;
         String label = genre == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : genre.name;
+        actionRow(root, label, checked, k, () -> choose(genre));
+    }
+    private void choiceRow(LinearLayout root, Choice item, float k) {
+        actionRow(root, item.label, item.id.equals(choices.selected()), k, () -> {
+            if (popup == null || popup.closing) return;
+            popup.dismiss();
+            choices.select(item.id);
+            host.changed();
+        });
+    }
+    private void actionRow(LinearLayout root, String label, boolean checked, float k, Runnable action) {
         TextView row = new MenuRow(context, checked, k);
         styleText(row, label, 34, k);
         row.setTextColor(Color.WHITE);
@@ -437,7 +485,7 @@ final class HomeGenres {
             row.setBackground(fill);
             row.setTextColor(focused ? Color.BLACK : Color.WHITE);
         });
-        row.setOnClickListener(v -> choose(genre));
+        row.setOnClickListener(v -> action.run());
         root.addView(row, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
     }
     private void choose(GenreCatalog.Genre genre) {

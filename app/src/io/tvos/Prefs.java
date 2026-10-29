@@ -189,6 +189,9 @@ final class Prefs {
     static void setWeather(boolean on) { put("weather", on); }
 
     // Home screen recommendation sections (enabled by default).
+    static String watchingSource() { return sp().getString("watching_source", "all"); }
+    static void setWatchingSource(String source) { put("watching_source", source); }
+
     static boolean randomMovie() { return sp().getBoolean("showRandomMovie", true); }
     static void setRandomMovie(boolean on) { put("showRandomMovie", on); }
 
