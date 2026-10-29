@@ -661,7 +661,7 @@ public class SettingsActivity extends Activity {
             invalidate();
         }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
-        private void toggleAutomaticRegion() { Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.ensure(getContext()); invalidate(); }
+        private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.ensure(getContext()); invalidate(); }
         // Legacy display/Wi-Fi information remains available on older TV firmware.
         @SuppressWarnings("deprecation")
         // Approved About-screen geometry (all dimensions are scaled by k).
@@ -1237,7 +1237,8 @@ public class SettingsActivity extends Activity {
         }
 
         private void showCityResults(List<String[]> result) {
-            if (screen != HOME_SETTINGS && screen != GENERAL) return;
+            if (screen != HOME_SETTINGS && screen != GENERAL && screen != REGION) return;
+            if (screen == REGION && Prefs.automaticRegion()) return;
             cities.clear();
             cities.addAll(result);
             openPicker(PICK_CITY);

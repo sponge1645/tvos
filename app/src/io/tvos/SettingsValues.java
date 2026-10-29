@@ -73,7 +73,7 @@ final class SettingsValues {
             v[2] = freeActive.getAsBoolean() ? "tvOS" : AppStrings.get(R.string.settings_built_in);
         } else if (screen == REGION) {
             v[0] = onOff(Prefs.automaticRegion());
-            v[1] = Prefs.manualCity();
+            v[1] = !cityStatus.get().isEmpty() ? cityStatus.get() : Prefs.manualCity();
         } else if (screen == MENU_BUTTONS) {
             for (int i = 0; i < buttonEditor.size(); i++) {
                 int id = buttonEditor.get(i);

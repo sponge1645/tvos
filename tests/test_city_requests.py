@@ -18,7 +18,8 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
     header='''package io.tvos;
     import java.util.*;import java.util.concurrent.*;import android.os.Handler;
     public class CityHarness {
-     static final int GENERAL=1,HOME_SETTINGS=2,PICK_CITY=0;
+     static final int GENERAL=1,HOME_SETTINGS=2,REGION=23,PICK_CITY=0;
+     static class Prefs {static boolean automatic;static boolean automaticRegion(){return automatic;}}
      static class Ui {static boolean ru;static String tr(String p,String e){return e;} }
      static class Choreographer {static Choreographer getInstance(){return new Choreographer();}void removeFrameCallback(Object o){} }
      static class Spoken {void focusMoved(){} }
@@ -52,6 +53,8 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
        h.citySearch.search("error");h.flush();h.handler.drain();check(h.citySearch.status().contains("offline"),"failure status exposed");
        h.pause();check(h.handler.delayed.isEmpty()&&h.citySearch.status().isEmpty(),"pause cancels status timer");
        h.running=true;h.citySearch.search(" ");h.flush();h.handler.drain();check(h.pickers==1,"blank query is no-op");
+       h.screen=REGION;h.citySearch.search("region-city");h.flush();h.handler.drain();check(h.pickers==2&&h.cities.get(0)[0].equals("region-city"),"new Region submenu displays real search results");
+       h.citySearch.search("stale-manual");h.flush();Prefs.automatic=true;h.handler.drain();check(h.pickers==2,"enabling automatic region rejects a pending manual result");Prefs.automatic=false;
        System.out.println("PASS: paused city callback, navigation guard, cancelled city queue, latest city delivery");
       } finally {CITY_IO.shutdownNow();}
      }
