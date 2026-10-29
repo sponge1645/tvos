@@ -109,6 +109,8 @@ public class DownloadHarness {
   org.json.JSONObject.version="../../bad";reply("metadata".getBytes(),8);
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(4),true,arm32,()->false).url.equals("https://seena.su/d.apk"),"invalid release metadata uses official stable endpoint");
   org.json.JSONObject.version="1.9.3";
+  check(!ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(4),new AppDownloadCatalog.Source("https://seena.su/d.apk",null)),"Seena rolling first install authenticated by signer pin");
+  check(ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(6),new AppDownloadCatalog.Source("https://example.test/update.apk",null)),"unpinned mirror update still requires installed app");
   File tmp=Files.createTempDirectory("app-transfer-").resolve("part.apk").toFile();
   Response ok=reply(bytes,bytes.length);
   ApkTransfer.download(src,tmp,()->false,p->{});

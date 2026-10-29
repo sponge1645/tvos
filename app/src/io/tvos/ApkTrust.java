@@ -44,6 +44,13 @@ final class ApkTrust {
         return archive;
     }
 
+    static boolean requiresInstalledApp(AppDownloadCatalog.Entry app, AppDownloadCatalog.Source source) {
+        // A declared rolling bootstrap is authenticated by its pinned package signer on first install.
+        boolean rollingBootstrap = app.bootstrap != null && app.bootstrap.sha256 == null
+                && app.signerSha256 != null;
+        return source.sha256 == null && !rollingBootstrap;
+    }
+
     static boolean reviewedVersionInstalled(AppDownloadCatalog.Entry app, PackageInfo installed) {
         return app.fixedArtifact && app.reviewedVersionCode > 0 && installed != null
                 && app.packageName.equals(installed.packageName) && app.signerSha256 != null
