@@ -30,6 +30,13 @@ public class HomeRenderHarness {
   SystemClock.now=4100;b.show(null);b.tickFade(4900,true);check(scene.glass!=null&&b.profilePixels()==null,"gradient restores neutral glass");
   Backdrop hero=new Backdrop(30);hero.image=new Bitmap(99);hero.lightImage=null;hero.nightImage=null;
   b.show(hero,false);c=new Canvas();b.draw(c,0);check(entries(c,"bitmap").size()==1&&entries(c,"bitmap").get(0).text.equals("99"),"Dock hero uses full photo instead of blurred backdrop");check(!b.tickFade(5000,true),"reduced motion skips photo crossfade");
+  Backdrop moving=new Backdrop(40);moving.image=new Bitmap(100);moving.lightImage=moving.nightImage=null;
+  SystemClock.now=6000;b.show(moving,true,1);SystemClock.now=6200;c=new Canvas();b.draw(c,0);Canvas.Entry incoming=entries(c,"bitmap").get(1);float startCenter=(incoming.l+incoming.r)/2;check(startCenter>960&&incoming.l<=0&&incoming.r>=1920&&incoming.t<=0&&incoming.b>=1080,"rightward Dock scroll starts image to the right with all edges covered");
+  b.show(moving,true,-1);SystemClock.now=6400;c=new Canvas();b.draw(c,0);incoming=entries(c,"bitmap").get(1);near((incoming.l+incoming.r)/2,976,"incoming photo moves left during original fade, enrichment does not restart it");check((incoming.l+incoming.r)/2<startCenter,"opposing movement approaches center");
+  Backdrop reverse=new Backdrop(50);reverse.image=new Bitmap(101);reverse.lightImage=reverse.nightImage=null;b.show(reverse,true,-1);c=new Canvas();b.draw(c,0);Canvas.Entry outgoing=entries(c,"bitmap").get(0);near((outgoing.l+outgoing.r)/2,976,"interrupted fade preserves outgoing image pose");
+  SystemClock.now=6600;c=new Canvas();b.draw(c,0);incoming=entries(c,"bitmap").get(1);check((incoming.l+incoming.r)/2<960&&incoming.l<=0&&incoming.r>=1920,"reverse Dock scroll starts image to the left without exposed edges");SystemClock.now=6800;c=new Canvas();b.draw(c,0);incoming=entries(c,"bitmap").get(1);near((incoming.l+incoming.r)/2,944,"reverse image moves right toward center");
+  b.tickFade(7200,true);SystemClock.now=7200;c=new Canvas();b.draw(c,0);incoming=entries(c,"bitmap").get(0);near(incoming.l,0,"settled image restores original left edge");near(incoming.r,1920,"settled image restores full composition without persistent crop");
+  SystemClock.now=7300;b.show(moving,false,1);c=new Canvas();b.draw(c,0);incoming=entries(c,"bitmap").get(0);check(incoming.l==0&&incoming.r==1920&&!b.tickFade(7400,true),"Reduced Motion skips both pan and fade");
   b.show(null,false);
   int count=LinearGradient.allocations;b.resize(1280,720);b.draw(new Canvas(),0);check(LinearGradient.allocations==count+2,"gradients rebuilt for resize");
  }

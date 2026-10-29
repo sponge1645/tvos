@@ -108,6 +108,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final WatchingCatalog watching;
     private final DockBackdrop dockBackdrop;
     private final DockBanner dockBanner = new DockBanner();
+    private int backdropDockIndex = -1, backdropDirection;
+    private String backdropFocus;
     private List<Recs.Pick> cards = new ArrayList<>();
     private int cardPage = 0; // five portrait posters per page
     private boolean largePostersWithoutWidgets = false;
@@ -527,6 +529,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.removeListener(this);
         watching.stop();
         dockBackdrop.pause();
+        backdropDockIndex = -1; backdropDirection = 0; backdropFocus = null;
         recs.setPosterWindow(java.util.Collections.emptyList());
         rouletteWork.invalidatePosters();
         images.clear();
@@ -646,12 +649,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void updateDockBackdrop() {
         if (!running) return;
-        if (Prefs.categoryCount() != 0 || searchMode) { dockBackdrop.pause(); return; }
+        if (Prefs.categoryCount() != 0 || searchMode) { dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
         if (sheetOpen || drawerOpen || zone != Z_SHELF || shelfIndex < 0 || shelfIndex >= shelf.size()) return;
         HomeApps.Item item = shelf.get(shelfIndex);
         String pkg = item.kind == HomeApps.APP ? item.pkg
                 : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
-        if (pkg != null) dockBackdrop.focus(pkg);
+        int direction = backdropDockIndex < 0 ? 0 : Integer.compare(shelfIndex, backdropDockIndex);
+        backdropDockIndex = shelfIndex;
+        if (pkg != null) {
+            if (!pkg.equals(backdropFocus)) { backdropDirection = direction; backdropFocus = pkg; }
+            dockBackdrop.focus(pkg);
+        }
     }
 
     private void showDockBackdrop(DockBackdrop.Artwork artwork) {
@@ -659,7 +667,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean animate = !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
         dockBanner.show(artwork, animate);
         heroDirty = true; heroLayer.invalidate();
-        background.show(artwork == null ? null : artwork.background, animate);
+        background.show(artwork == null ? null : artwork.background, animate, backdropDirection);
         wake();
     }
 

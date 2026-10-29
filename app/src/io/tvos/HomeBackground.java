@@ -17,11 +17,13 @@ final class HomeBackground {
     private float night, nightFrom;
     private long nightAt, bgFadeAt;
     private Backdrop bgFrom, bgTo;
+    private int panDirection;
+    private float fromPan, fromZoom;
     private final int[] glassNight = new int[Backdrop.GW * Backdrop.GH], frostNight = new int[Backdrop.FW * Backdrop.FH];
     private final int[] neutralGlassPx = new int[Backdrop.GW * Backdrop.GH], neutralFrostPx = new int[Backdrop.FW * Backdrop.FH];
     private final int[] frostMix = new int[Backdrop.FW * Backdrop.FH];
     private Shader nightGradient, lightGradient;
-    private final RectF screen = new RectF();
+    private final RectF screen = new RectF(), imageBounds = new RectF();
     private int h;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint imagePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
@@ -39,6 +41,12 @@ final class HomeBackground {
         return t * t * (3 - 2 * t);
     }
 
+    void show(Backdrop b, boolean animate, int direction) {
+        if (b == bgTo) return; // Caption enrichment must not restart the image transition.
+        show(b, animate);
+        panDirection = animate ? Integer.signum(direction) : 0;
+    }
+
     void show(Backdrop b, boolean animate) {
         show(b);
         if (!animate) { bgFrom = null; bgFadeAt = 0; nightChanged(); }
@@ -49,7 +57,13 @@ final class HomeBackground {
         long up = SystemClock.uptimeMillis();
 
         // In the middle of another swap, start from whichever is more visible.
-        if (bgFadeAt == 0 || fadeEase(bgFadeAt, up) >= 0.5f) bgFrom = bgTo;
+        if (bgFadeAt == 0 || fadeEase(bgFadeAt, up) >= 0.5f) {
+            bgFrom = bgTo;
+            float remaining = bgFadeAt == 0 ? 0 : 1 - fadeEase(bgFadeAt, up);
+            fromPan = panDirection * remaining;
+            fromZoom = panDirection == 0 ? 0 : remaining;
+        }
+        panDirection = 0;
         bgTo = b;
         bgFadeAt = up;
         nightPair = false;
@@ -209,13 +223,23 @@ final class HomeBackground {
             fill.setColorFilter(null);
         }
         imagePaint.setColorFilter(v);
-        if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1);
-        if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1);
+        if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1, fromPan, fromZoom);
+        float remaining = fading && panDirection != 0 ? 1 - e : 0;
+        if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1, panDirection * remaining, remaining);
         imagePaint.setColorFilter(null);
     }
 
-    private void drawLightImage(Canvas c, Backdrop b, float alpha) {
-        if (b.image != null && b.lightImage == null) { drawImage(c, b.image, alpha); return; }
+    private void drawLightImage(Canvas c, Backdrop b, float alpha, float pan, float zoom) {
+        if (b.image != null && b.lightImage == null) {
+            if (alpha <= .004f) return;
+            // A small temporary crop covers the translated edges and settles back to the full composition.
+            float mx = screen.width() * .02f * zoom, my = screen.height() * .02f * zoom;
+            float dx = screen.width() * (32f / 1920) * pan;
+            imageBounds.set(screen.left - mx + dx, screen.top - my, screen.right + mx + dx, screen.bottom + my);
+            imagePaint.setAlpha(Math.round(255 * Math.min(1, alpha)));
+            c.drawBitmap(b.image, null, imageBounds, imagePaint);
+            return;
+        }
         if (night < 0.999f || b.nightImage == null) drawImage(c, b.lightImage, alpha);
         if (night > 0.001f) drawImage(c, b.nightImage, alpha * night);
     }
