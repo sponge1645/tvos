@@ -65,6 +65,7 @@ final class WatchingCatalog {
 
     void selectSource(String source) {
         Prefs.setWatchingSource(source);
+        requestSeenaRefresh();
         picks = WatchingItems.latest(allPicks, source);
         Log.i(TAG, "Selected source=" + source + ": " + WatchingItems.trace(picks));
     }
@@ -129,6 +130,12 @@ final class WatchingCatalog {
         if (active) return;
         active = true;
         refresh();
+        requestSeenaRefresh();
+    }
+
+    private void requestSeenaRefresh() {
+        if (active && Prefs.categoryEnabled(2) && ("all".equals(source()) || "seena".equals(source()))
+                && installedSource("seena")) SeenaChannelRefresh.request(context);
     }
 
     void stop() {

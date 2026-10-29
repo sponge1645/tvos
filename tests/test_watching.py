@@ -28,7 +28,8 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),chann
 'android/util/Log.java':'package android.util;public class Log {public static int i(String t,String m){return 0;}public static int w(String t,String m){return 0;}}',
 'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
 })
-f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
+f['io/tvos/SeenaChannelRefresh.java']='package io.tvos;class SeenaChannelRefresh {static void request(Object c){}}'
+f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static boolean categoryEnabled(int i){return true;}static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
 f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('private final Map<String,Object> m=new HashMap<>();','''public static final Map<String,JSONObject> encoded=new HashMap<>();private final Map<String,Object> m=new HashMap<>();public JSONObject(){}public JSONObject(String s)throws JSONException{JSONObject value=encoded.get(s);if(value==null)throw new JSONException("bad JSON");m.putAll(value.m);}''')
 for name in ['WatchingCatalog','WatchingItems','WatchingText','WatchingSources']:
  f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
