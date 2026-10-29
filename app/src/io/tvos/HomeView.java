@@ -791,7 +791,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean vpnMoving = vpnColor.step(dt);
         boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
         if (topMoving || vpnMoving) status.invalidate();
-        boolean heroMoving = topMoving | cardsMoving;
+        boolean bannerMoving = Prefs.categoryCount() == 0 && !searchMode && dockBanner.tick(up);
+        boolean heroMoving = topMoving | cardsMoving | bannerMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
         boolean gridMoving = step(gridFocus, dt) | scroll.step(dt);
         boolean drawerMoving = drawer.step(dt);
@@ -830,6 +831,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             // Short text needs only the normal clock tick. Long text wakes at its dwell deadline,
             // then keeps the existing 50 ms marquee cadence without polling during the wait.
             long delay = Math.min(posters.nextDelay(up), reveal.delay(up));
+            if (Prefs.categoryCount() == 0 && !searchMode) delay = Math.min(delay, dockBanner.nextDelay(up));
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
     }
@@ -1848,7 +1850,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         HomeHeaderRenderer.Frame heading = headerFrame();
         header.drawDateWeather(c, heading);
         if (!picksOn()) {
-            if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, getWidth());
+            if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k);
             return;
         }
         header.drawTabs(c, heading);

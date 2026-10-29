@@ -88,7 +88,7 @@ final class DockBackdrop {
                         if (background != null || token != generation) break;
                     }
                     if (token != generation) return;
-                    if (background != null) publish(pkg, token, new Artwork(background, candidate.title, null));
+                    if (background != null) publish(pkg, token, new Artwork(background, "", null));
                     DockArtwork extra = new DockArtwork();
                     try { extra = DockArtwork.find(candidate.title, candidate.poster, candidate.year); }
                     catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
