@@ -259,7 +259,7 @@ final class SettingsUpdateDialog {
             RectF b = popupButton;
             b.set(left+25*k, buttonTop+i*84*k, right-25*k, buttonTop+(i*84+72)*k);
             boolean selected = i == updatePopupFocus || buttons.length == 1;
-            // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
+            // Dialog buttons: static fills, no shadows or per-frame focus animation.
             p.clearShadowLayer();
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);

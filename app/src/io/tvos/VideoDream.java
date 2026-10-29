@@ -62,7 +62,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private DreamView fallback;
     private boolean running, surfaceReady, preparing;
     private int index, failures, generation;
-    private boolean appleMode, loadingCatalog;
+    private boolean aerialMode, loadingCatalog;
     private boolean showAerialClock() {
         return settings.getBoolean("aerial_show_clock", false);
     }
@@ -189,7 +189,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
 
     private void loadPlaylist() {
-        appleMode = "apple".equals(settings.getString("video_dream_source", "google"));
+        aerialMode = "apple".equals(settings.getString("video_dream_source", "google"));
         // Google and National Geographic use DreamView's photo catalogs.
     }
 
@@ -205,7 +205,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         aerialWeather.animate().cancel();
         aerialWeather.setAlpha(0f);
         updateClock.run();
-        if (appleMode) loadAppleCatalog();
+        if (aerialMode) loadAerialCatalog();
         else if (urls.isEmpty()) showFallback();
         else if (surfaceReady) playNext();
     }
@@ -269,7 +269,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         if (fallback != null) { fallback.stop(); removeView(fallback); fallback = null; }
     }
 
-    private void loadAppleCatalog() {
+    private void loadAerialCatalog() {
         if (loadingCatalog) return;
         loadingCatalog = true;
         final int token = ++catalogGeneration;
@@ -309,7 +309,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
         }, "tvos-aerial-catalog").start();
     }
 
-    // Apple distributes entries.json inside an uncompressed POSIX tar archive.
+    // The provider distributes entries.json inside an uncompressed POSIX tar archive.
     private static byte[] downloadCatalog() throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(CATALOG).openConnection();
         connection.setConnectTimeout(10000);
@@ -380,7 +380,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             for (int i = 0; i < a.length(); i++) collectEntries(a.opt(i), result, seen, titles, depth + 1);
         } else if (node instanceof JSONObject) {
             JSONObject obj = (JSONObject) node;
-            // New Apple catalog: one entry has an assets array, each asset has url-1080-H264.
+            // New aerial catalog: one entry has an assets array, each asset has url-1080-H264.
             JSONArray assets = obj.optJSONArray("assets");
             if (assets != null) {
                 String place = getPlace(obj);
@@ -465,7 +465,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     }
 
     private void updateAerialWeather() {
-        if (!appleMode || fallback != null || !showScreensaverWeather()) {
+        if (!aerialMode || fallback != null || !showScreensaverWeather()) {
             aerialWeather.setVisibility(View.GONE);
             return;
         }
@@ -548,7 +548,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
                 preparing = false;
                 failures = 0;
                 try {
-                    if (appleMode) {
+                    if (aerialMode) {
                         videoFade.animate().cancel();
                         if (!entered) videoFade.setAlpha(0f);
                         else videoFade.animate().alpha(0f).setDuration(850).start();
@@ -580,7 +580,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
                 return true;
             });
             mp.setOnCompletionListener(p -> { if (running && token == generation && p == player) {
-                if (appleMode) {
+                if (aerialMode) {
                     videoFade.animate().cancel();
                     videoFade.setAlpha(1f);
                     aerialLocation.animate().cancel();
@@ -602,9 +602,9 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             String currentUrl = urls.get(index % urls.size());
             String title = locations.get(currentUrl);
             aerialLocation.animate().cancel();
-            if (appleMode) aerialLocation.setAlpha(0f);
+            if (aerialMode) aerialLocation.setAlpha(0f);
             aerialLocation.setText(title != null ? title : aerialPlace(currentUrl));
-            aerialLocation.setVisibility(appleMode && showAerialLocation() ? View.VISIBLE : View.GONE);
+            aerialLocation.setVisibility(aerialMode && showAerialLocation() ? View.VISIBLE : View.GONE);
             aerialWeather.animate().cancel();
             aerialWeather.setAlpha(0f);
             updateAerialWeather();
@@ -618,7 +618,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private void onFailure(int token) {
         if (token != generation || !running) return;
         releasePlayer();
-        if (appleMode) {
+        if (aerialMode) {
             videoFade.animate().cancel();
             videoFade.setAlpha(1f);
             aerialLocation.animate().cancel();

@@ -257,7 +257,7 @@ final class HomeData {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(6000);
         c.setReadTimeout(6000);
-        c.setRequestProperty("User-Agent", "FreeMyTV");
+        c.setRequestProperty("User-Agent", "tvOS");
         try {
             if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
             try (InputStream in = c.getInputStream()) {
@@ -273,7 +273,7 @@ final class HomeData {
     }
 
     /**
-     * Night at your location: from sunset to sunrise (like Apple's "Automatic" appearance: the light design darkens).
+     * Night at your location: from sunset to sunrise (the light design darkens).
      * Uses the last weather fetched (it moves ~1 min a day); without data, 6:00 and 18:00.
      */
     boolean isNight(long now) {

@@ -25,7 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The home screen, styled after the Apple TV app with the macOS 27 glass:
+ * The home screen, with translucent panels:
  *  - at the top left, the "For You" title and the tabs (Explore, Movies, Shows); at the top right, icon-only glass
  *    buttons (Live TV, HDMI Inputs, Settings), with the focused one's name below it.
  *  - three cards with the titles recommended for right now in the selected tab (Recs, from TMDB); the background is
@@ -1832,7 +1832,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     int next = nextTopControl(topIndex, dx);
                     if (next == topIndex) return true;
                     topIndex = next;
-                    if (topIndex < 5) selectTab(topIndex);   // like Apple TV tabs: focusing a tab selects it
+                    if (topIndex < 5) selectTab(topIndex);   // category tabs: focusing a tab selects it
                 } else if (dy > 0) {
                     if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                         zone = Z_SHELF;

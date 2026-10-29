@@ -69,7 +69,7 @@ final class SettingsValues {
             }
         } else if (screen == SCREENSAVER) {
             String src = localPrefs().getString("video_dream_source", "google");
-            v[0] = "apple".equals(src) ? "Apple" : "na".equals(src) ? "National Geographic" : "Google";
+            v[0] = "apple".equals(src) ? "Aerial" : "na".equals(src) ? "National Geographic" : "Google";
             v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
             v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));

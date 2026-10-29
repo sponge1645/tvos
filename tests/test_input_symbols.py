@@ -17,7 +17,7 @@ harness='''import java.util.*;import java.util.regex.*;public class InputSymbols
   for(String name:new String[]{"HDMI 1","FAUX","auxiliary",null,""})check(deviceSymbol(name),"hdmi");
   check(inputSymbol("HDMI 1","Игровая приставка"),"gamepad");check(inputSymbol("HDMI 2","HDMI AUX"),"speaker");
   check(inputSymbol("PlayStation 5","HDMI AUX"),"gamepad");check(inputSymbol("Soundbar","Игровая приставка"),"speaker");
-  check(inputSymbol("Apple TV","HDMI AUX"),"play");check(inputSymbol("HDMI 1","HDMI 1"),"hdmi");
+  check(inputSymbol("Streaming box","HDMI AUX"),"play");check(inputSymbol("HDMI 1","HDMI 1"),"hdmi");
   System.out.println("PASS: HDMI system/custom symbol selection, Russian console aliases, AUX boundaries and existing devices");
  }
 }'''

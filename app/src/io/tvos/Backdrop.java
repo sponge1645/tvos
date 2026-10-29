@@ -135,7 +135,7 @@ final class Backdrop {
         return g;
     }
 
-    /** Blends with a near-black (the darkest gray of Apple's dark-mode backgrounds), keeping the photo's tint. */
+    /** Blends with a near-black (the dark theme base), keeping the photo's tint. */
     private static int[] darken(int[] px, float amount) {
         float keep = 1 - amount, base = 11 * amount;
         for (int i = 0; i < px.length; i++) {

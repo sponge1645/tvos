@@ -8,7 +8,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.TypedValue;
 
-/** One transparent, cached glyph-shadow badge for Apple, Google and National Geographic. */
+/** One transparent, cached glyph-shadow badge for all screensaver sources. */
 final class ScreensaverWeather {
     private final Context context;
     private Bitmap badge;

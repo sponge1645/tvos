@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 
 /**
  * Home screen picks ("This morning / afternoon / tonight"): what's trending this week plus recent releases, only from
- * the streaming apps installed on the TV (Netflix, Prime Video, Disney+, Max, Apple TV, Hulu, Paramount+, Peacock,
+ * the streaming apps installed on the TV (Netflix, Prime Video, Disney+, Max, streaming TV, Hulu, Paramount+, Peacock,
  * Globoplay...), via TMDB (an open movie database that knows what streams where in each country). Three per hour.
  * "Watch" opens the service's app.
  *
@@ -443,7 +443,7 @@ final class Recs {
                     }
                 }
             } catch (IOException | org.json.JSONException e) {
-                android.util.Log.w("FreeMyTV", "TMDB search failed", e);
+                android.util.Log.w("tvOS", "TMDB search failed", e);
             } catch (RuntimeException e) {
                 AppLog.unexpected("TMDB search", e);
             }

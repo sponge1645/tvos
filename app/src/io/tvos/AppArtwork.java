@@ -411,7 +411,7 @@ final class AppArtwork {
         int size = Math.round(TILE_H * 0.56f);
         float left = (TILE_W - size) / 2f, top = (TILE_H - size) / 2f;
         if (icon instanceof AdaptiveIconDrawable) {
-            // Adaptive icon: the layers clipped to a squircle, like an Apple icon.
+            // Adaptive icon: the layers clipped to a squircle, with rounded corners.
             AdaptiveIconDrawable a = (AdaptiveIconDrawable) icon;
             Path clip = new Path();
             clip.addRoundRect(new RectF(left, top, left + size, top + size), size * 0.2237f, size * 0.2237f, Path.Direction.CW);

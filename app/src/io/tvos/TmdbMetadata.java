@@ -35,7 +35,7 @@ final class TmdbMetadata {
         SERVICE_NAME.put("peacock", "Peacock");
         SERVICE_NAME.put("globoplay", "Globoplay");
         SERVICE_NAME.put("max", "Max");
-        SERVICE_NAME.put("appletv", "Apple TV");
+        SERVICE_NAME.put("appletv", "Streaming TV");
     }
     static String serviceName(Pick p) {
         return p == null || p.app == null ? "" : SERVICE_NAME.get(p.app);

@@ -12,11 +12,11 @@ if os.environ.get('CI')!='true':raise SystemExit('This integration test requires
 bt=signing.build_tools();payload=Path('out/aligned.apk').resolve()
 with tempfile.TemporaryDirectory(prefix='tvos-rotation-') as tmp:
     root=Path(tmp);(root/'app').mkdir()
-    original=root/'freemytv.keystore';password=root/'old-password.txt'
+    original=root/'legacy.keystore';password=root/'old-password.txt'
     signing.private_file(password,secrets.token_urlsafe(32)+'\n')
-    signing.run([signing.java_tool('keytool'),'-genkeypair','-keystore',original,'-alias','freemytv',
+    signing.run([signing.java_tool('keytool'),'-genkeypair','-keystore',original,'-alias','legacy',
                  '-keyalg','RSA','-keysize','2048','-validity','2','-storepass:file',password,'-dname','CN=Disposable Rotation Test'])
-    old_hash=signing.key_certificate(original,'freemytv',password)
+    old_hash=signing.key_certificate(original,'legacy',password)
     signing.initialize(root,root/'owner-keys',original,password.read_text().strip(),expected=old_hash)
     assert not original.exists() and (root/'owner-keys/legacy-original.keystore').is_file()
     signing.LEGACY_SHA256=old_hash

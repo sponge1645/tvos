@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-signing-policy-') as tmp:
     try:signing.sign(root,root/'bt',root/'in.apk',root/'out.apk',mode='release')
     except ValueError as error:assert 'init' in str(error)
     else:raise AssertionError('release silently generated a key')
-    assert not (root/'freemytv.keystore').exists()
+    assert not (root/'legacy.keystore').exists()
     for version,code in [('1.0.4',7),('1.1',104),('1.1.1',105),('1.2',106),('2.0',107)]:
         data={'packageName':'io.tvos','asset':'tvOS.apk','versionName':version,
               'versionCode':code,'tag':'v'+version,'size':20000,'sha256':'a'*64}

@@ -47,8 +47,8 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * tvOS's settings (the app's icon, "All Apps", or the gear on the home screen), in the style of Apple TV's
- * settings: the big symbol and title on the left, the list on the right with the focused row in white. "Default Launcher"
+ * tvOS's settings (the app's icon, "All Apps", or the gear on the home screen), with a two-column layout:
+ * the big symbol and title on the left, the list on the right with the focused row in white. "Default Launcher"
  * opens the tvOS / Original choice (with a check on the current one); the switch runs in the main process
  * (HomeMode) and this screen only asks for it and follows the state file.
  */
