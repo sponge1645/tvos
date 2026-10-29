@@ -107,6 +107,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
     private final WatchingCatalog watching;
     private final DockBackdrop dockBackdrop;
+    private final DockBanner dockBanner = new DockBanner();
     private List<Recs.Pick> cards = new ArrayList<>();
     private int cardPage = 0; // five portrait posters per page
     private boolean largePostersWithoutWidgets = false;
@@ -648,12 +649,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (Prefs.categoryCount() != 0 || searchMode) { dockBackdrop.pause(); return; }
         String pkg = !sheetOpen && !drawerOpen && zone == Z_SHELF && !shelf.isEmpty()
                 && shelfIndex < shelf.size() && shelf.get(shelfIndex).kind == HomeApps.APP ? shelf.get(shelfIndex).pkg : null;
-        dockBackdrop.focus(pkg);
+        if (pkg != null) dockBackdrop.focus(pkg);
     }
 
-    private void showDockBackdrop(Backdrop image) {
+    private void showDockBackdrop(DockBackdrop.Artwork artwork) {
         if (!running || Prefs.categoryCount() != 0 || searchMode) return;
-        background.show(image, !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false));
+        boolean animate = !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
+        dockBanner.show(artwork, animate);
+        heroDirty = true; heroLayer.invalidate();
+        background.show(artwork == null ? null : artwork.background, animate);
         wake();
     }
 
@@ -804,7 +808,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // glass shows the background where it ended up.
         if (tilesMoving || tilesDirty) tiles.invalidate();
         if (statusDirty || bgFading) status.invalidate();
-        if (heroMoving || heroDirty || searchHeadingMoving) heroLayer.invalidate();
+        if (heroMoving || heroDirty || searchHeadingMoving || (bgFading && Prefs.categoryCount() == 0)) heroLayer.invalidate();
         if (drawerItemsMoving || drawerDirty || bgFading) drawerLayer.invalidate();
         if (gridMoving || gridDirty) sheetLayer.invalidate();
         if (drawerMoving || bgFading) { sky.invalidate(); revealBackdrop.invalidate(); }
@@ -1843,7 +1847,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
         header.drawDateWeather(c, heading);
-        if (!picksOn()) return;
+        if (!picksOn()) {
+            if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, getWidth());
+            return;
+        }
         header.drawTabs(c, heading);
         if (tab == 4 && !searchMode) {
             rouletteRenderer.draw(c, k, background.night(), lCardTitle, rouletteButtonFocus.value,

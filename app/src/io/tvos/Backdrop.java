@@ -43,11 +43,13 @@ final class Backdrop {
     }
 
     static Backdrop hero(Bitmap source) {
-        Backdrop photo = make(source, false);
+        Backdrop photo = make(source, false, false);
         return new Backdrop(photo.image, photo.frost, photo.glass, null, photo.glass, null, photo.glass);
     }
 
-    static Backdrop make(Bitmap src, boolean forLight) {
+    static Backdrop make(Bitmap src, boolean forLight) { return make(src, forLight, true); }
+
+    private static Backdrop make(Bitmap src, boolean forLight, boolean scrims) {
         Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
@@ -67,21 +69,22 @@ final class Backdrop {
             return new Backdrop(null, frost, null, light, lightGlass, night, nightGlass);
         }
 
-        float boost = Math.max(0, Math.min(0.3f, (luminance(out, 0, 0.22f, 0.5f, 0.62f) - 0.22f) * 1.1f));
-        Paint scrim = new Paint(Paint.DITHER_FLAG);
-        scrim.setShader(new LinearGradient(0, 0, W * 0.68f, 0,
-                new int[] {black(0.66f + boost), black(0.52f + boost * 0.8f), black(0.26f + boost * 0.4f), black(0.07f), 0},
-                new float[] {0, 0.25f, 0.55f, 0.8f, 1}, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, W, H, scrim);
-        // At the bottom, a faint scrim: the photo must show through the glass shelf (the glass provides the contrast).
-        scrim.setShader(new LinearGradient(0, H, 0, H * 0.4f,
-                new int[] {black(0.38f), black(0.3f), black(0.18f), black(0.05f), 0},
-                new float[] {0, 0.25f, 0.55f, 0.8f, 1}, Shader.TileMode.CLAMP));
-        c.drawRect(0, H * 0.4f, W, H, scrim);
-        scrim.setShader(new LinearGradient(0, 0, 0, H * 0.24f, new int[] {black(0.34f), black(0.1f), 0},
-                new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, W, H * 0.24f, scrim);
-
+        if (scrims) {
+            float boost = Math.max(0, Math.min(0.3f, (luminance(out, 0, 0.22f, 0.5f, 0.62f) - 0.22f) * 1.1f));
+            Paint scrim = new Paint(Paint.DITHER_FLAG);
+            scrim.setShader(new LinearGradient(0, 0, W * 0.68f, 0,
+                    new int[] {black(0.66f + boost), black(0.52f + boost * 0.8f), black(0.26f + boost * 0.4f), black(0.07f), 0},
+                    new float[] {0, 0.25f, 0.55f, 0.8f, 1}, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, W, H, scrim);
+            // At the bottom, a faint scrim: the photo must show through the glass shelf (the glass provides the contrast).
+            scrim.setShader(new LinearGradient(0, H, 0, H * 0.4f,
+                    new int[] {black(0.38f), black(0.3f), black(0.18f), black(0.05f), 0},
+                    new float[] {0, 0.25f, 0.55f, 0.8f, 1}, Shader.TileMode.CLAMP));
+            c.drawRect(0, H * 0.4f, W, H, scrim);
+            scrim.setShader(new LinearGradient(0, 0, 0, H * 0.24f, new int[] {black(0.34f), black(0.1f), 0},
+                    new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, W, H * 0.24f, scrim);
+        }
         int[] frost = reduce(out, FW, FH, 3, 3);
         int[] glass = reduce(out, GW, GH, 2, 2);
         return new Backdrop(gpu(out), frost, glass, null, null, null, null);

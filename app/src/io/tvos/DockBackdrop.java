@@ -26,16 +26,28 @@ import java.util.function.Consumer;
 final class DockBackdrop {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private final Context context;
-    private final Consumer<Backdrop> changed;
+    private final Consumer<Artwork> changed;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable load = this::loadFocused;
     private volatile int generation;
     private String focused;
     private String cachedPackage;
-    private Backdrop cached;
+    private Artwork cached;
 
-    DockBackdrop(Context context, Consumer<Backdrop> changed) {
+    DockBackdrop(Context context, Consumer<Artwork> changed) {
         this.context = context.getApplicationContext(); this.changed = changed;
+    }
+
+    static final class Artwork {
+        final Backdrop background;
+        final String title;
+        final Bitmap logo;
+        Artwork(Backdrop background, String title, Bitmap logo) { this.background = background; this.title = title; this.logo = logo; }
+    }
+    static final class Candidate {
+        final String title, poster, year;
+        final List<String> urls = new ArrayList<>();
+        Candidate(String title, String poster, String year) { this.title = title; this.poster = poster; this.year = year; }
     }
 
     static void requestPermission(Activity activity) {
@@ -65,24 +77,48 @@ final class DockBackdrop {
         if (pkg == null) return;
         IO.execute(() -> {
             if (token != generation) return;
-            Backdrop result = null;
+            Artwork result = null;
             try {
-                List<String> urls = candidates(pkg);
-                for (String url : urls) {
+                for (Candidate candidate : candidates(pkg)) {
                     if (token != generation) return;
-                    try { result = read(url, token); }
-                    catch (IOException | SecurityException | IllegalArgumentException e) { /* Try another published image. */ }
-                    if (result != null) break;
+                    Backdrop background = null;
+                    for (String url : candidate.urls) {
+                        try { Bitmap image = read(url, token, true); if (image != null) background = Backdrop.hero(image); }
+                        catch (IOException | SecurityException | IllegalArgumentException e) { /* Try another published image. */ }
+                        if (background != null || token != generation) break;
+                    }
+                    if (token != generation) return;
+                    if (background != null) publish(pkg, token, new Artwork(background, candidate.title, null));
+                    DockArtwork extra = new DockArtwork();
+                    try { extra = DockArtwork.find(candidate.title, candidate.poster, candidate.year); }
+                    catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
+                    if (token != generation) return;
+                    if (background == null && !extra.backdrop.isEmpty()) {
+                        try { Bitmap image = read(extra.backdrop, token, true); if (image != null) background = Backdrop.hero(image); }
+                        catch (IOException | SecurityException | IllegalArgumentException e) { /* Next published title. */ }
+                    }
+                    if (background == null) continue;
+                    Bitmap logo = null;
+                    if (!extra.logo.isEmpty() && token == generation) {
+                        try { logo = read(extra.logo, token, false); }
+                        catch (IOException | SecurityException | IllegalArgumentException e) { /* The published title remains available. */ }
+                    }
+                    result = new Artwork(background, candidate.title, logo);
+                    break;
                 }
             } catch (RuntimeException | OutOfMemoryError e) {
                 AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
             }
-            final Backdrop ready = result;
-            main.post(() -> {
-                if (token != generation) return;
-                cachedPackage = pkg; cached = ready;
-                changed.accept(ready);
-            });
+            if (result != null) publish(pkg, token, result);
+            else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
+        });
+    }
+
+    private void publish(String pkg, int token, Artwork ready) {
+        main.post(() -> {
+            if (token != generation) return;
+            cachedPackage = pkg; cached = ready;
+            changed.accept(ready);
         });
     }
 
@@ -95,7 +131,7 @@ final class DockBackdrop {
         return 10;
     }
 
-    private List<String> candidates(String pkg) {
+    private List<Candidate> candidates(String pkg) {
         List<long[]> channels = new ArrayList<>();
         String service = WatchingSources.id(pkg);
         try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/channel"),
@@ -107,29 +143,30 @@ final class DockBackdrop {
             }
         }
         channels.sort(Comparator.comparingLong((long[] c) -> c[1]).reversed());
-        List<String> urls = new ArrayList<>();
+        List<Candidate> result = new ArrayList<>();
         for (long[] channel : channels) {
-            if (channel[1] < 0 || urls.size() >= 6) continue;
-            try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/preview_program?channel=" + channel[0]),
-                    new String[]{"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio"}, null, null, "weight DESC, _id ASC")) {
-                if (c != null) while (c.moveToNext() && urls.size() < 6) {
-                    if (!service.equals(WatchingSources.id(c.getString(0)))) continue;
-                    if (c.getInt(4) == 0) add(urls, value(c, 2));
-                    if (c.getInt(3) == 0) add(urls, value(c, 1));
-                }
+            if (channel[1] < 0 || result.size() >= 6) continue;
+            collect("content://android.media.tv/preview_program?channel=" + channel[0], service,
+                    "weight DESC, _id ASC", result);
+        }
+        if (result.isEmpty()) collect("content://android.media.tv/watch_next_program", service,
+                "last_engagement_time_utc_millis DESC", result);
+        return result;
+    }
+
+    private void collect(String uri, String service, String order, List<Candidate> result) {
+        try (Cursor c = context.getContentResolver().query(Uri.parse(uri),
+                new String[]{"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio", "title", "release_date"},
+                null, null, order)) {
+            if (c != null) while (c.moveToNext() && result.size() < 6) {
+                if (!service.equals(WatchingSources.id(c.getString(0)))) continue;
+                String date = value(c, 6);
+                Candidate candidate = new Candidate(value(c, 5), value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
+                if (c.getInt(4) == 0) add(candidate.urls, value(c, 2));
+                if (c.getInt(3) == 0) add(candidate.urls, value(c, 1));
+                if (!candidate.urls.isEmpty() || !candidate.title.isEmpty()) result.add(candidate);
             }
         }
-        if (urls.isEmpty()) {
-            try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/watch_next_program"),
-                    new String[]{"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio"}, null, null, "last_engagement_time_utc_millis DESC")) {
-                if (c != null) while (c.moveToNext() && urls.size() < 6) {
-                    if (!service.equals(WatchingSources.id(c.getString(0)))) continue;
-                    if (c.getInt(4) == 0) add(urls, value(c, 2));
-                    if (c.getInt(3) == 0) add(urls, value(c, 1));
-                }
-            }
-        }
-        return urls;
     }
 
     private static String value(Cursor c, int column) { String s = c.getString(column); return s == null ? "" : s; }
@@ -137,7 +174,7 @@ final class DockBackdrop {
         if (urls.size() < 6 && !urls.contains(url) && (url.startsWith("https://") || url.startsWith("content://") || url.startsWith("android.resource://"))) urls.add(url);
     }
 
-    private Backdrop read(String url, int token) throws IOException {
+    private Bitmap read(String url, int token, boolean landscape) throws IOException {
         File dir = new File(context.getCacheDir(), "dock-backdrops");
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create backdrop cache");
         File file = new File(dir, PosterCache.cacheName(url));
@@ -172,11 +209,11 @@ final class DockBackdrop {
         BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(file.getPath(), bounds);
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) { file.delete(); return null; }
-        if ((double) bounds.outWidth / bounds.outHeight < 1.2) return null;
+        if (landscape && (double) bounds.outWidth / bounds.outHeight < 1.2) return null;
         BitmapFactory.Options options = new BitmapFactory.Options(); options.inSampleSize = 1;
-        while (bounds.outWidth / options.inSampleSize > 1920 || bounds.outHeight / options.inSampleSize > 1080) options.inSampleSize *= 2;
+        while (bounds.outWidth / options.inSampleSize > (landscape ? 1920 : 600) || bounds.outHeight / options.inSampleSize > (landscape ? 1080 : 300)) options.inSampleSize *= 2;
         if (token != generation) return null;
         Bitmap image = BitmapFactory.decodeFile(file.getPath(), options);
-        return image == null ? null : Backdrop.hero(image);
+        return image;
     }
 }
