@@ -39,6 +39,11 @@ final class HomeBackground {
         return t * t * (3 - 2 * t);
     }
 
+    void show(Backdrop b, boolean animate) {
+        show(b);
+        if (!animate) { bgFrom = null; bgFadeAt = 0; nightChanged(); }
+    }
+
     void show(Backdrop b) {
         if (b == bgTo) return;
         long up = SystemClock.uptimeMillis();
@@ -210,6 +215,7 @@ final class HomeBackground {
     }
 
     private void drawLightImage(Canvas c, Backdrop b, float alpha) {
+        if (b.image != null && b.lightImage == null) { drawImage(c, b.image, alpha); return; }
         if (night < 0.999f || b.nightImage == null) drawImage(c, b.lightImage, alpha);
         if (night > 0.001f) drawImage(c, b.nightImage, alpha * night);
     }

@@ -43,3 +43,9 @@ Seena/«Все», если приложение установлено и раз
 откладывается, не сбрасывая очередь. Сама Seena начинает публикацию с задержкой
 45 секунд и требует доступа к сети. Ограничение прошивки на системный broadcast
 обрабатывается через встроенный ADB. Номер задания JobScheduler не закрепляется.
+
+## Dock backgrounds
+
+When every poster category is disabled, focusing a Dock app for 450 ms loads a static landscape image from that service’s published TV channels. New movies take priority, followed by recommendations and movie channels; Watch Next is a fallback when no landscape candidates are published. KinoPub and its mod share a service identity. Apps without suitable artwork keep the gradient background.
+
+Queries, downloads and decoding run on a single worker. Focus changes invalidate stale results. Images are sampled to at most 1920 × 1080 before composing the background; only the current image and transition are retained, with six downloaded files (16 MiB each maximum) on disk. Reduced Motion skips the crossfade. Device memory and frame timing still need measurement on TVs; image quality depends on what each app publishes.

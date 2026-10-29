@@ -106,6 +106,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
     private final WatchingCatalog watching;
+    private final DockBackdrop dockBackdrop;
     private List<Recs.Pick> cards = new ArrayList<>();
     private int cardPage = 0; // five portrait posters per page
     private boolean largePostersWithoutWidgets = false;
@@ -285,6 +286,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         appSurfaces = new HomeAppsRenderer(a, scene, shadows, widgets, images);
         recs = Recs.get(a);
         posters = new PosterRenderer(recs, shadows, images, cardRects.length);
+        dockBackdrop = new DockBackdrop(activity, this::showDockBackdrop);
         watching = new WatchingCatalog(activity, () -> {
             if (running && tab == 2 && !searchMode) {
                 updateCards();
@@ -406,6 +408,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         data.addListener(this);
         recs.addListener(this);
         watching.start();
+        if (Prefs.categoryCount() == 0) DockBackdrop.requestPermission(activity);
+        updateDockBackdrop();
         data.refreshIfStale();
         recs.refreshIfStale();
         if (tvInputs != null) tvInputs.registerCallback(inputCallback, handler);
@@ -521,6 +525,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         data.removeListener(this);
         recs.removeListener(this);
         watching.stop();
+        dockBackdrop.pause();
         recs.setPosterWindow(java.util.Collections.emptyList());
         rouletteWork.invalidatePosters();
         images.clear();
@@ -638,12 +643,26 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         platter.invalidate();
     }
 
+    private void updateDockBackdrop() {
+        if (!running) return;
+        if (Prefs.categoryCount() != 0 || searchMode) { dockBackdrop.pause(); return; }
+        String pkg = !sheetOpen && !drawerOpen && zone == Z_SHELF && !shelf.isEmpty()
+                && shelfIndex < shelf.size() && shelf.get(shelfIndex).kind == HomeApps.APP ? shelf.get(shelfIndex).pkg : null;
+        dockBackdrop.focus(pkg);
+    }
+
+    private void showDockBackdrop(Backdrop image) {
+        if (!running || Prefs.categoryCount() != 0 || searchMode) return;
+        background.show(image, !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false));
+        wake();
+    }
+
     private void logWatchingCards() {
         android.util.Log.i("tvOS-WatchNext", "Home source=" + watching.source()
                 + ", page=" + cardPage + ": " + WatchingItems.trace(cards));
     }
 
-    void refreshWatching() { watching.refresh(); }
+    void refreshWatching() { watching.refresh(); dockBackdrop.pause(); updateDockBackdrop(); }
 
     @Override public void onRecs() {
         wake();
@@ -1063,6 +1082,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Sets the springs' targets from the current focus (snap: no animation). */
     private void retarget(boolean snap) {
+        updateDockBackdrop();
         // Only the group whose focus changed is redrawn (moving along the shelf doesn't redraw the hero or capsule).
         boolean tilesChanged = aim(tileFocus, !sheetOpen && zone == Z_SHELF ? shelfIndex : -1, snap);
         boolean drawerChanged = aim(drawerFocus, !sheetOpen && zone == Z_DRAWER ? drawerIndex : -1, snap);

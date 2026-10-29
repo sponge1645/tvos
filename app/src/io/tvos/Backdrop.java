@@ -42,6 +42,11 @@ final class Backdrop {
         nightImage = night == null ? null : Bitmap.createBitmap(night, FW, FH, Bitmap.Config.ARGB_8888);
     }
 
+    static Backdrop hero(Bitmap source) {
+        Backdrop photo = make(source, false);
+        return new Backdrop(photo.image, photo.frost, photo.glass, null, photo.glass, null, photo.glass);
+    }
+
     static Backdrop make(Bitmap src, boolean forLight) {
         Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);

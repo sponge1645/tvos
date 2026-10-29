@@ -28,6 +28,9 @@ public class HomeRenderHarness {
   b.tickNight(3500);near(b.night(),.15625f,"three-quarter transition");check(scene.pairs==pairs,"glass pair reused through transition");
   check(b.tickNight(4000)&&b.night()==0&&!b.tickNight(4001),"day transition settles and stops ticking");
   SystemClock.now=4100;b.show(null);b.tickFade(4900,true);check(scene.glass!=null&&b.profilePixels()==null,"gradient restores neutral glass");
+  Backdrop hero=new Backdrop(30);hero.image=new Bitmap(99);hero.lightImage=null;hero.nightImage=null;
+  b.show(hero,false);c=new Canvas();b.draw(c,0);check(entries(c,"bitmap").size()==1&&entries(c,"bitmap").get(0).text.equals("99"),"Dock hero uses full photo instead of blurred backdrop");check(!b.tickFade(5000,true),"reduced motion skips photo crossfade");
+  b.show(null,false);
   int count=LinearGradient.allocations;b.resize(1280,720);b.draw(new Canvas(),0);check(LinearGradient.allocations==count+2,"gradients rebuilt for resize");
  }
  static void images()throws Exception{
