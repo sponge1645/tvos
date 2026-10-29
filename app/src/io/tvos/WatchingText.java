@@ -10,7 +10,11 @@ final class WatchingText {
             episode = String.format(Ui.locale(), AppStrings.get(R.string.home_watching_episode),
                     pick.watchingSeason, pick.watchingEpisode);
         }
-        if (pick.watchingRemaining < 0) return episode;
+        if (pick.watchingRemaining < 0) {
+            String service = WatchingSources.knownLabel(WatchingSources.id(pick.pkg));
+            if (service.isEmpty()) service = pick.pkg == null ? "" : pick.pkg;
+            return episode.isEmpty() ? service : service.isEmpty() ? episode : episode + " · " + service;
+        }
         String remaining = String.format(Ui.locale(), AppStrings.get(R.string.home_watching_remaining),
                 pick.watchingRemaining);
         return episode.isEmpty() ? remaining : episode + " · " + remaining;

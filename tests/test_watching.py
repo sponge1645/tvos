@@ -42,6 +42,13 @@ public class WatchingHarness {
  static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
  public static void main(String[] args){
   Ui.language("ru");
+  Recs.Pick caption=new Recs.Pick();caption.pkg="top.rootu.lampa";caption.kind="movie";
+  check(WatchingText.caption(caption).equals("Lampa"),"missing playback time shows service name");
+  caption.pkg="com.seena.app";check(WatchingText.caption(caption).equals("Seena"),"Seena caption fallback");
+  caption.kind="tv";caption.watchingSeason="1";caption.watchingEpisode="2";
+  check(WatchingText.caption(caption).equals("С1 / Э2 · Seena"),"episode information retained with source name");
+  String trace=WatchingItems.trace(Arrays.asList(caption));caption.title="Changed";
+  check(!trace.equals(WatchingItems.trace(Arrays.asList(caption))),"trace detects content changes without logging titles");
   check(WatchingItems.remaining(1800000,840000)==16,"remaining minutes");
   check(WatchingItems.remaining(60001,0)==2,"round up partial minute");
   check(WatchingItems.remaining(0,0)==-1,"unknown duration stays unknown");

@@ -286,7 +286,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs = Recs.get(a);
         posters = new PosterRenderer(recs, shadows, images, cardRects.length);
         watching = new WatchingCatalog(activity, () -> {
-            if (running && tab == 2 && !searchMode) { updateCards(); wake(); }
+            if (running && tab == 2 && !searchMode) {
+                updateCards();
+                logWatchingCards();
+                wake();
+            }
         });
         searchWork = new SearchController(handler, recs, () -> running && searchMode,
                 this::acceptSearchResults);
@@ -632,6 +636,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         background.checkNight(data.isNight(System.currentTimeMillis()), running);
         heroDirty = statusDirty = drawerDirty = true;
         platter.invalidate();
+    }
+
+    private void logWatchingCards() {
+        android.util.Log.i("tvOS-WatchNext", "Home source=" + watching.source()
+                + ", page=" + cardPage + ": " + WatchingItems.trace(cards));
     }
 
     void refreshWatching() { watching.refresh(); }

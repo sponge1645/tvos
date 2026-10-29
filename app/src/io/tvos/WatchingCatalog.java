@@ -66,6 +66,7 @@ final class WatchingCatalog {
     void selectSource(String source) {
         Prefs.setWatchingSource(source);
         picks = WatchingItems.latest(allPicks, source);
+        Log.i(TAG, "Selected source=" + source + ": " + WatchingItems.trace(picks));
     }
 
     List<String> sources() {
@@ -188,6 +189,8 @@ final class WatchingCatalog {
                         for (Recs.Pick pick : result) pick.meta = WatchingText.caption(pick);
                         allPicks = result;
                         picks = WatchingItems.latest(allPicks, source());
+                        Log.i(TAG, "Provider snapshot: " + WatchingItems.trace(allPicks));
+                        Log.i(TAG, "Selected source=" + source() + ": " + WatchingItems.trace(picks));
                     }
                     changed.run();
                 }
@@ -224,6 +227,7 @@ final class WatchingCatalog {
         columns[10] = "_id"; // Preview programs do not have Watch Next engagement timestamps.
         int rank = 0;
         for (java.util.Map.Entry<Long, String> channel : channels.entrySet()) {
+            List<Recs.Pick> channelPicks = new ArrayList<>();
             try (Cursor cursor = context.getContentResolver().query(
                     Uri.parse("content://android.media.tv/preview_program?channel=" + channel.getKey()),
                     columns, null, null, "_id ASC")) {
@@ -236,8 +240,11 @@ final class WatchingCatalog {
                     pick.watchingUpdated = -1L - rank++;
                     pick.watchingRemaining = -1;
                     found.add(pick);
+                    channelPicks.add(pick);
                 }
             }
+            Log.i(TAG, "History channel=" + channel.getKey() + ", owner=" + channel.getValue()
+                    + ": " + WatchingItems.trace(channelPicks));
         }
     }
 

@@ -35,6 +35,14 @@ final class WatchingItems {
         return result;
     }
 
+    static String trace(List<Recs.Pick> picks) {
+        int fingerprint = 1;
+        for (Recs.Pick pick : picks) fingerprint = 31 * fingerprint + java.util.Objects.hash(
+                pick.pkg, pick.watchingKey, pick.title, pick.watchingUpdated,
+                pick.watchingRemaining, pick.watchingSeason, pick.watchingEpisode);
+        return "cards=" + picks.size() + ", fingerprint=" + Integer.toHexString(fingerprint);
+    }
+
     static long remaining(long duration, long position) {
         if (duration <= 0) return -1;
         long millis = duration - Math.min(duration, Math.max(0, position));
