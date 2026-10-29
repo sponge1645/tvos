@@ -111,7 +111,7 @@ final class DockBackdrop {
                         Bitmap image = BitmapFactory.decodeStream(input);
                         if (image == null) throw new IOException("Unreadable bundled backdrop");
                         if (token != generation) { image.recycle(); return; }
-                        publish(pkg, token, new Artwork(Backdrop.hero(image), "", null));
+                        publish(pkg, token, new Artwork(Backdrop.wideHero(image), "", null));
                     }
                     return;
                 }

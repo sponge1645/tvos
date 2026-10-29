@@ -47,6 +47,19 @@ final class Backdrop {
         return new Backdrop(photo.image, photo.frost, photo.glass, null, photo.glass, null, photo.glass);
     }
 
+    /** Keep a panoramic source intact; only the small glass textures use a centered viewport. */
+    static Backdrop wideHero(Bitmap source) {
+        Bitmap viewport = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        float scale = Math.max((float) W / source.getWidth(), (float) H / source.getHeight());
+        float width = source.getWidth() * scale, height = source.getHeight() * scale;
+        new Canvas(viewport).drawBitmap(source, null, new RectF((W - width) / 2, (H - height) / 2,
+                (W + width) / 2, (H + height) / 2), new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG));
+        int[] frost = reduce(viewport, FW, FH, 3, 3);
+        int[] glass = reduce(viewport, GW, GH, 2, 2);
+        viewport.recycle();
+        return new Backdrop(gpu(source), frost, glass, null, glass, null, glass);
+    }
+
     static Backdrop make(Bitmap src, boolean forLight) { return make(src, forLight, true); }
 
     private static Backdrop make(Bitmap src, boolean forLight, boolean scrims) {

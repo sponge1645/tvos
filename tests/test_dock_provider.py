@@ -14,7 +14,7 @@ files={
 'android/os/Handler.java':'package android.os;public class Handler {public Handler(Looper l){}public void removeCallbacks(Runnable r){}public void postDelayed(Runnable r,long n){}public void post(Runnable r){r.run();}}',
 'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {public void recycle(){}}',
 'android/graphics/BitmapFactory.java':'package android.graphics;public class BitmapFactory {public static class Options {public boolean inJustDecodeBounds;public int outWidth,outHeight,inSampleSize;}public static Bitmap decodeStream(java.io.InputStream s){return new Bitmap();}public static Bitmap decodeFile(String f,Options o){return new Bitmap();}}',
-'io/tvos/Backdrop.java':'package io.tvos;class Backdrop {static Backdrop hero(android.graphics.Bitmap b){return new Backdrop();}}',
+'io/tvos/Backdrop.java':'package io.tvos;class Backdrop {static Backdrop hero(android.graphics.Bitmap b){return new Backdrop();}static Backdrop wideHero(android.graphics.Bitmap b){return new Backdrop();}}',
 'io/tvos/DockArtwork.java':'package io.tvos;class DockArtwork {String backdrop="",logo="";static void loadLogo(DockArtwork r,java.util.function.Consumer<java.net.HttpURLConnection> opened){}static DockArtwork lookup(String a,String b,String c,java.util.function.Consumer<java.net.HttpURLConnection> opened)throws java.io.IOException,org.json.JSONException{return new DockArtwork();}}',
 'io/tvos/PosterCache.java':'package io.tvos;class PosterCache {static String cacheName(String s){return Integer.toString(s.hashCode());}}',
 'io/tvos/WatchingSources.java':'package io.tvos;class WatchingSources {static String id(String p){return p;}}',

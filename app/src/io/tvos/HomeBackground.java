@@ -232,10 +232,15 @@ final class HomeBackground {
     private void drawLightImage(Canvas c, Backdrop b, float alpha, float pan, float zoom) {
         if (b.image != null && b.lightImage == null) {
             if (alpha <= .004f) return;
-            // A small temporary crop covers the translated edges and settles back to the full composition.
-            float mx = screen.width() * .02f * zoom, my = screen.height() * .02f * zoom;
-            float dx = screen.width() * (32f / 1920) * pan;
-            imageBounds.set(screen.left - mx + dx, screen.top - my, screen.right + mx + dx, screen.bottom + my);
+            float cover = Math.max(screen.width() / b.image.getWidth(), screen.height() / b.image.getHeight());
+            float width = b.image.getWidth() * cover, height = b.image.getHeight() * cover;
+            float drift = screen.width() * (32f / 1920);
+            // Panoramic assets already have side margins: move them without changing their scale.
+            float scale = (width - screen.width()) / 2 >= drift ? 1 : 1 + .04f * zoom;
+            width *= scale; height *= scale;
+            float dx = drift * pan;
+            imageBounds.set(screen.centerX() - width / 2 + dx, screen.centerY() - height / 2,
+                    screen.centerX() + width / 2 + dx, screen.centerY() + height / 2);
             imagePaint.setAlpha(Math.round(255 * Math.min(1, alpha)));
             c.drawBitmap(b.image, null, imageBounds, imagePaint);
             return;
