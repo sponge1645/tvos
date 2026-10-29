@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
-methods='\n'.join(block(home,sig) for sig in ['    boolean onKey(', '    private void move(', '    private boolean moveLight(', '    private void back(', '    private void beginSearch(', '    private void closeSearch(', '    private void cancelRouletteWork(', '    private boolean topControlVisible(', '    private boolean topButtonEnabled(', '    private int nextTopControl(', '    private int availableTopButton(', '    private static boolean tabEnabled(', '    private int posterCornerTarget(', '    private static int nearest(RectF[] rects, int count, float x)'])
+methods='\n'.join(block(home,sig) for sig in ['    private boolean vpnFocused(', '    private void openVpnOnHold(', '    boolean onKey(', '    private void move(', '    private boolean moveLight(', '    private void back(', '    private void beginSearch(', '    private void closeSearch(', '    private void cancelRouletteWork(', '    private boolean topControlVisible(', '    private boolean topButtonEnabled(', '    private int nextTopControl(', '    private int availableTopButton(', '    private static boolean tabEnabled(', '    private int posterCornerTarget(', '    private static int nearest(RectF[] rects, int count, float x)'])
 handler='''package android.os;import java.util.*;public class Handler {long now;final Map<Runnable,Long> pending=new LinkedHashMap<>();public void postDelayed(Runnable r,long ms){pending.put(r,now+ms);}public void removeCallbacks(Runnable r){pending.remove(r);}public void advance(long ms){now+=ms;for(Runnable r:new ArrayList<>(pending.keySet()))if(pending.get(r)<=now){pending.remove(r);r.run();}}}'''
 keys='''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_NUMPAD_ENTER=160,KEYCODE_BACK=4;final int action,key,repeat;public KeyEvent(int action,int key,int repeat){this.action=action;this.key=key;this.repeat=repeat;}public int getAction(){return action;}public int getKeyCode(){return key;}public int getRepeatCount(){return repeat;}public boolean isCanceled(){return false;}}'''
 harness='''package io.tvos;
@@ -14,6 +14,7 @@ public class RemoteNavigationHarness {
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static final int Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
  int zone=Z_SHELF,shelfIndex,drawerIndex,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;
+ boolean running=true,vpnPress;int vpnOpens;final Runnable vpnHold=this::openVpnOnHold;void openVpnApp(){vpnOpens++;}
  boolean okDown,backDown,sheetOpen,searchMode,drawerOpen,enabled=true,heroDirty,statusDirty;
  List<HomeApps.Item> shelf=new ArrayList<>(),drawerItems=new ArrayList<>();List<Object> cards=new ArrayList<>(),searchResults=new ArrayList<>();
  static class RectF {final float x;RectF(float x){this.x=x;}float centerX(){return x;}}
@@ -55,6 +56,10 @@ public class RemoteNavigationHarness {
   h.rouletteWork.spin=true;int at=h.shelfIndex;h.right();check(h.shelfIndex==at,"running roulette retains existing focus lock");h.key(4);check(!h.rouletteWork.spin,"Back releases roulette lock");h.traverse();
   RemoteNavigationHarness offline=new RemoteNavigationHarness(6);offline.enabled=false;offline.up();check(offline.zone==Z_TOP,"no-catalog home reaches actions");offline.down();check(offline.zone==Z_SHELF,"no-catalog home returns to Dock");offline.traverse();
   RemoteNavigationHarness empty=new RemoteNavigationHarness(0);empty.right();empty.left();check(empty.shelfIndex==0,"empty Dock arrows remain safe");empty.up();check(empty.zone==Z_TOP,"empty Dock reaches top controls");
+  RemoteNavigationHarness vpn=new RemoteNavigationHarness(1);vpn.zone=Z_TOP;vpn.topIndex=7;
+  vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
+  vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold opens app and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");
+  vpn.event(23,true,0);vpn.right();vpn.handler.advance(500);vpn.event(23,false,0);check(vpn.vpnOpens==1&&vpn.launches==1,"moving off VPN cancels both delayed open and release activation");
   System.out.println("PASS: real key→move→moveLight chain, Dock arrows/counts/edges/repeats, filled and empty search entry/exit across tabs, drawer, OK, long-press edit/save and roulette lock");
  }
 }'''
