@@ -176,8 +176,8 @@ final class WatchingCatalog {
                 error = true;
                 Log.w(TAG, "Watch Next read failed: " + e.getClass().getSimpleName());
             }
-            try { readSeenaHistory(found); }
-            catch (RuntimeException e) { Log.w(TAG, "Seena history read failed: " + e.getClass().getSimpleName()); }
+            try { readHistoryChannels(found); }
+            catch (RuntimeException e) { Log.w(TAG, "History channel read failed: " + e.getClass().getSimpleName()); }
             final List<Recs.Pick> result = WatchingItems.latest(found);
             final boolean failedRead = error;
             main.post(() -> {
@@ -199,28 +199,38 @@ final class WatchingCatalog {
         });
     }
 
-    private void readSeenaHistory(List<Recs.Pick> found) {
-        java.util.Set<Long> channels = new java.util.HashSet<>();
+    private void readHistoryChannels(List<Recs.Pick> found) {
+        java.util.Map<Long, String> channels = new java.util.LinkedHashMap<>();
+        java.util.Map<Long, String> lampaHistory = new java.util.LinkedHashMap<>(), lampaContinued = new java.util.LinkedHashMap<>();
         try (Cursor cursor = context.getContentResolver().query(Uri.parse("content://android.media.tv/channel"),
-                new String[]{"_id", "package_name", "internal_provider_id", "display_name"}, null, null, null)) {
+                new String[]{"_id", "package_name", "internal_provider_id", "display_name", "app_link_intent_uri"}, null, null, null)) {
             if (cursor == null) return;
             while (cursor.moveToNext()) {
-                if (!"com.seena.app".equals(text(cursor, 1))) continue;
-                if ("seena_tv_history".equals(text(cursor, 2)))
-                    channels.add(cursor.getLong(0));
+                String owner = text(cursor, 1);
+                if ("com.seena.app".equals(owner) && "seena_tv_history".equals(text(cursor, 2)))
+                    channels.put(cursor.getLong(0), owner);
+                if ("top.rootu.lampa".equals(owner)) {
+                    String link = text(cursor, 4);
+                    if ("lampa://top.rootu.lampa/update_channel/history".equals(link)) lampaHistory.put(cursor.getLong(0), owner);
+                    if ("lampa://top.rootu.lampa/update_channel/continued".equals(link)) lampaContinued.put(cursor.getLong(0), owner);
+                }
             }
         }
+        Log.i(TAG, "History channels: total=" + (channels.size() + lampaContinued.size() + lampaHistory.size())
+                + ", lampa=" + (lampaContinued.size() + lampaHistory.size()));
+        channels.putAll(lampaContinued);
+        channels.putAll(lampaHistory);
         String[] columns = COLUMNS.clone();
         columns[10] = "_id"; // Preview programs do not have Watch Next engagement timestamps.
         int rank = 0;
-        for (long channel : channels) {
+        for (java.util.Map.Entry<Long, String> channel : channels.entrySet()) {
             try (Cursor cursor = context.getContentResolver().query(
-                    Uri.parse("content://android.media.tv/preview_program?channel=" + channel),
+                    Uri.parse("content://android.media.tv/preview_program?channel=" + channel.getKey()),
                     columns, null, null, "_id ASC")) {
                 if (cursor == null) continue;
                 while (cursor.moveToNext()) {
-                    if (!"com.seena.app".equals(text(cursor, 1))) continue;
-                    Recs.Pick pick = read(cursor, "com.seena.app");
+                    if (!channel.getValue().equals(text(cursor, 1))) continue;
+                    Recs.Pick pick = read(cursor, channel.getValue());
                     if (pick == null) continue;
                     // Preserve publisher insertion order; do not invent playback dates or remaining time.
                     pick.watchingUpdated = -1L - rank++;

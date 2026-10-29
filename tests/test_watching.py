@@ -25,7 +25,7 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),chann
 }''',
 'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
 'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty())tasks.remove().run();}}''',
-'android/util/Log.java':'package android.util;public class Log {public static int w(String t,String m){return 0;}}',
+'android/util/Log.java':'package android.util;public class Log {public static int i(String t,String m){return 0;}public static int w(String t,String m){return 0;}}',
 'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
 })
 f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
@@ -107,7 +107,12 @@ public class WatchingHarness {
   context.resolver.previews.add(row("com.seena.app","old2","Seena History Second",2,link("history2","com.seena.app",null)));
   catalog.start();worker.drain();Handler.drain();check(catalog.picks().size()==2&&catalog.picks().get(0).title.equals("Seena History First"),"Seena history channel read in publisher order");
   check(catalog.picks().get(0).watchingRemaining==-1,"preview duration never presented as remaining time");catalog.stop();
-  System.out.println("PASS: Seena history channel and Watch Next permissions, foreign-row filtering, safe source intents, portrait extraction, dedup/sort/limit, remaining time, RU/EN captions, lifecycle and refresh coalescing");
+  context.resolver.channels.clear();context.resolver.previews.clear();
+  context.resolver.channels.add(new Object[]{10L,"top.rootu.lampa","","History","lampa://top.rootu.lampa/update_channel/history"});
+  context.resolver.previews.add(row("top.rootu.lampa","l1","Local history",1,link("local","top.rootu.lampa",null)));
+  catalog.selectSource("lampa");catalog.start();worker.drain();Handler.drain();check(catalog.picks().size()==1&&catalog.picks().get(0).title.equals("Local history"),"Lampa history fallback without any account or sync dependency");
+  check(catalog.open(catalog.picks().get(0))&&AppLaunch.opened.owner.equals("top.rootu.lampa"),"history card opens Lampa");catalog.stop();
+  System.out.println("PASS: Lampa local history, Seena history channel and Watch Next permissions, foreign-row filtering, safe source intents, portrait extraction, dedup/sort/limit, remaining time, RU/EN captions, lifecycle and refresh coalescing");
  }
 }
 '''
