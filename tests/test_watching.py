@@ -6,7 +6,7 @@ f=metadata_files()
 f.pop('io/tvos/TmdbMetadata.java')
 f.update({
 'android/net/Uri.java':'''package android.net;public class Uri {final String s;private Uri(String s){this.s=s;}public static Uri parse(String s){return new Uri(s);}public String getLastPathSegment(){return s.substring(s.lastIndexOf('/')+1);}public String toString(){return s;}}''',
-'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public static final int PERMISSION_GRANTED=0;public static class NameNotFoundException extends Exception {}public Object getApplicationInfo(String p,int flags)throws NameNotFoundException{return p;}public CharSequence getApplicationLabel(Object p){return \"App \"+p;}}''',
+'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public static final int PERMISSION_GRANTED=0;public static final java.util.Set<String> missing=new java.util.HashSet<>();public static class NameNotFoundException extends Exception {}public Object getApplicationInfo(String p,int flags)throws NameNotFoundException{if(missing.contains(p))throw new NameNotFoundException();return p;}public CharSequence getApplicationLabel(Object p){return \"App \"+p;}}''',
 'android/content/ComponentName.java':'package android.content;public class ComponentName {final String owner;public ComponentName(String owner){this.owner=owner;}public String getPackageName(){return owner;}}',
 'android/content/Intent.java':'''package android.content;import java.util.*;import android.net.Uri;public class Intent {
  public static final int URI_INTENT_SCHEME=1,FLAG_ACTIVITY_NEW_TASK=0x10000000;
@@ -87,6 +87,10 @@ public class WatchingHarness {
   catalog.refresh();worker.drain();Handler.drain();check(catalog.picks().size()==5,"generic Watch Next publishers included");
   check(catalog.sources().equals(Arrays.asList("kinopub","seena","lampa","org.example.player")),"known sources pinned and other publishers discovered");
   check(catalog.sourceLabel("org.example.player").equals("App org.example.player"),"unknown publisher uses application label");
+  android.content.pm.PackageManager.missing.add("com.seena.app");check(!catalog.sources().contains("seena"),"uninstalled service hidden even with stale cards");
+  android.content.pm.PackageManager.missing.add("watch.kino");check(catalog.sources().contains("kinopub"),"MOD alone keeps KinoPub visible");
+  android.content.pm.PackageManager.missing.add("watch.kino.mod");check(!catalog.sources().contains("kinopub"),"both KinoPub aliases absent hides source");
+  android.content.pm.PackageManager.missing.clear();
   catalog.selectSource("seena");check(catalog.picks().size()==1&&catalog.picks().get(0).title.equals("Seena title"),"selection filters cached results immediately");
   check(catalog.open(catalog.picks().get(0))&&AppLaunch.opened.owner.equals("com.seena.app"),"generic resume link opens its own service");
   catalog.selectSource("lampa");catalog.refresh();worker.drain();Handler.drain();check(catalog.picks().size()==1&&catalog.picks().get(0).pkg.equals("top.rootu.lampa"),"filter survives provider refresh");

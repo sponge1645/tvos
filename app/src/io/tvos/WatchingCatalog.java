@@ -70,11 +70,33 @@ final class WatchingCatalog {
 
     List<String> sources() {
         java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>();
-        Collections.addAll(ids, "kinopub", "seena", "lampa");
-        for (Recs.Pick pick : allPicks) ids.add(WatchingSources.id(pick.pkg));
+        for (String id : new String[]{"kinopub", "seena", "lampa"}) if (installedSource(id)) ids.add(id);
+        for (Recs.Pick pick : allPicks) {
+            String id = WatchingSources.id(pick.pkg);
+            if (installedSource(id)) ids.add(id);
+        }
         String selected = source();
-        if (!"all".equals(selected)) ids.add(selected);
+        if (!"all".equals(selected) && installedSource(selected)) ids.add(selected);
         return new ArrayList<>(ids);
+    }
+
+    private boolean installedSource(String source) {
+        String[] packages;
+        switch (source) {
+            case "kinopub": packages = new String[]{"watch.kino", "watch.kino.mod"}; break;
+            case "seena": packages = new String[]{"com.seena.app"}; break;
+            case "lampa": packages = new String[]{"top.rootu.lampa"}; break;
+            default: packages = new String[]{source};
+        }
+        for (String pkg : packages) {
+            try {
+                context.getPackageManager().getApplicationInfo(pkg, 0);
+                return true;
+            } catch (android.content.pm.PackageManager.NameNotFoundException | SecurityException e) {
+                // Try another package alias.
+            }
+        }
+        return false;
     }
 
     String sourceLabel(String source) {
