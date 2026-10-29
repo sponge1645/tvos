@@ -719,8 +719,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean searchHeadingMoving = tickSearchHeading(dt);
         vpnColor.target = networkStatus.vpn() ? 1 : 0;
         if (reducedDreamMotion()) vpnColor.snap(vpnColor.target);
-        boolean topMoving = step(topFocus, dt) | vpnColor.step(dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
-        if (topMoving) status.invalidate();
+        boolean vpnMoving = vpnColor.step(dt);
+        boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
+        if (topMoving || vpnMoving) status.invalidate();
         boolean heroMoving = topMoving | cardsMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
         boolean gridMoving = step(gridFocus, dt) | scroll.step(dt);
@@ -753,7 +754,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // Busy: something is moving, or the sheet or the drawer is open.
         boolean busy = tilesMoving || heroMoving || drawerItemsMoving || gridMoving || drawerMoving
                 || sheetMoving || toastFading || bgFading || nightMoving || searchHeadingMoving
-                || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
+                || vpnMoving || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
         idle = !busy;
         if (busy) Choreographer.getInstance().postFrameCallback(this);
         else {
