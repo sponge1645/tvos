@@ -57,8 +57,8 @@ public class RemoteNavigationHarness {
   RemoteNavigationHarness offline=new RemoteNavigationHarness(6);offline.enabled=false;offline.up();check(offline.zone==Z_TOP,"no-catalog home reaches actions");offline.down();check(offline.zone==Z_SHELF,"no-catalog home returns to Dock");offline.traverse();
   RemoteNavigationHarness empty=new RemoteNavigationHarness(0);empty.right();empty.left();check(empty.shelfIndex==0,"empty Dock arrows remain safe");empty.up();check(empty.zone==Z_TOP,"empty Dock reaches top controls");
   RemoteNavigationHarness vpn=new RemoteNavigationHarness(1);vpn.zone=Z_TOP;vpn.topIndex=7;
-  vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
-  vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold opens app and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");
+  vpn.searchMode=true;vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
+  vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold works inside Search and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");
   vpn.event(23,true,0);vpn.right();vpn.handler.advance(500);vpn.event(23,false,0);check(vpn.vpnOpens==1&&vpn.launches==1,"moving off VPN cancels both delayed open and release activation");
   System.out.println("PASS: real key→move→moveLight chain, Dock arrows/counts/edges/repeats, filled and empty search entry/exit across tabs, drawer, OK, long-press edit/save and roulette lock");
  }

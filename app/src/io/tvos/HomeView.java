@@ -166,7 +166,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Runnable vpnHold = this::openVpnOnHold;
 
     private boolean vpnFocused() {
-        return running && !sheetOpen && !drawerOpen && !searchMode && zone == Z_TOP
+        return running && !sheetOpen && !drawerOpen && zone == Z_TOP
                 && topIndex == 7 && topButtonEnabled(2);
     }
     private void openVpnOnHold() {

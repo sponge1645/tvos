@@ -773,12 +773,11 @@ public class SettingsActivity extends Activity {
 
         private boolean menuChevronVisible(int row) {
             switch (screen) {
-                case SCREENSAVER: return row != 4;
-                case ACCESSIBILITY: return row != 2;
-                case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: return false;
-                case UPDATES: return row == 1;
+                case GENERAL: return row == 0 || row == 3 || row == 4;
+                case SCREENSAVER: case ACCESSIBILITY: case WEATHER: case DATE_TIME:
+                case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
                 case SYSTEM: return row != 3;
-                case REGION: return row == 0 || !Prefs.automaticRegion();
+                case REGION: return row == 1 && !Prefs.automaticRegion();
                 default: return true;
             }
         }
@@ -817,7 +816,7 @@ public class SettingsActivity extends Activity {
                     } else {
                         rowValue.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : valueInk(f));
                         drawTrackedText(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
-                                rowRect.right - 61 * k, base, rowValue, 0.02f);
+                                rowRect.right - (menuChevronVisible(i) ? 61 : 13) * k, base, rowValue, 0.02f);
                     }
                 } else {
                     rowValue.setColor(valueInk(f));
@@ -1143,8 +1142,8 @@ public class SettingsActivity extends Activity {
                 if (vpnApp) drawTrackedText(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
                         rowRect.right - 61 * k, base, rowValue, 0.02f);
                 if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
-                        rowRect.right - 61 * k, base, rowValue, 0.02f);
-                if (!disabled) drawApprovedChevron(c);
+                        rowRect.right - 13 * k, base, rowValue, 0.02f);
+                if (vpnApp && !disabled) drawApprovedChevron(c);
             }
         }
 
@@ -1293,8 +1292,7 @@ public class SettingsActivity extends Activity {
                 drawTrackedText(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
                         base, rowLabel, 0.02f);
                 drawTrackedText(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off),
-                        rowRect.right - 61 * k, base, rowValue, 0.02f);
-                drawApprovedChevron(c);
+                        rowRect.right - 13 * k, base, rowValue, 0.02f);
             }
         }
 
@@ -1340,8 +1338,7 @@ public class SettingsActivity extends Activity {
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                drawTrackedText(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect.right - 61 * k, base, rowValue, 0.02f);
-                drawApprovedChevron(c);
+                drawTrackedText(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect.right - 13 * k, base, rowValue, 0.02f);
             }
         }
 
@@ -1431,8 +1428,9 @@ public class SettingsActivity extends Activity {
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                drawTrackedText(c, values[i], rowRect.right - 61 * k, base, rowValue, 0.02f);
-                drawApprovedChevron(c);
+                boolean transition = keys || (settingsGroup != SYSTEM && i == CITY_ROW);
+                drawTrackedText(c, values[i], rowRect.right - (transition ? 61 : 13) * k, base, rowValue, 0.02f);
+                if (transition) drawApprovedChevron(c);
             }
 
         }

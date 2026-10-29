@@ -33,6 +33,9 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
+   for(int page:new int[]{SCREENSAVER,WEATHER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
+   h.screen=GENERAL;for(int row=0;row<8;row++)check(h.menuChevronVisible(row)==(row==0||row==3||row==4),"only General destinations have chevrons");
+   h.screen=REGION;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
    h.screen=ACCESSIBILITY;check(!h.menuChevronVisible(2),"TV Settings action has no ghost launcher chevron");
    h.screen=MAIN;check(h.menuLabels()[2].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
