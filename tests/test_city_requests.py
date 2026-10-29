@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
  Object getContext(){return this;}
  static final ThreadPoolExecutor CITY_IO=executor();
  static ThreadPoolExecutor executor(){try{java.lang.reflect.Field f=SettingsCitySearch.class.getDeclaredField("IO");f.setAccessible(true);return (ThreadPoolExecutor)f.get(null);}catch(Exception e){throw new AssertionError(e);}}
-     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean running=true;
+     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean regionWasOpen;boolean running=true;
  final SettingsCitySearch citySearch=new SettingsCitySearch(handler,()->running,()->screen,this::showCityResults,this::invalidate);
      List<String[]> cities=new ArrayList<>();Runnable poll=()->{};
      void invalidate(){}static class Background {void clear(){}}final Background background=new Background();void openPicker(int id){pickers++;}
