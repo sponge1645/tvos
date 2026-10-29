@@ -192,26 +192,26 @@ final class Prefs {
     static boolean randomMovie() { return sp().getBoolean("showRandomMovie", true); }
     static void setRandomMovie(boolean on) { put("showRandomMovie", on); }
 
-    // Keep persisted IDs stable: New=0, Movies=1, Shows=3, Random Movie=4; ID 2 is retired.
+    // Keep existing IDs stable; Watching uses the vacant ID 2 with its own preference key.
     private static int categoryVersion = -1, categoryMask;
     private static int[] categoryOrderCache;
 
     private static void readCategories() {
         if (categoryOrderCache != null && categoryVersion == version) return;
-        int[] order = new int[4];
+        int[] order = new int[5];
         boolean[] seen = new boolean[5];
         int count = 0;
-        for (String value : sp().getString("category_order", "0,1,3,4").split(",")) {
+        for (String value : sp().getString("category_order", "0,1,3,2,4").split(",")) {
             try {
                 int id = Integer.parseInt(value);
-                if (id >= 0 && id < 5 && id != 2 && !seen[id]) { order[count++] = id; seen[id] = true; }
+                if (id >= 0 && id < 5 && !seen[id]) { order[count++] = id; seen[id] = true; }
             } catch (NumberFormatException ignored) { }
         }
-        for (int id = 0; id < 5; id++) if (id != 2 && !seen[id]) order[count++] = id;
+        for (int id = 0; id < 5; id++) if (!seen[id]) order[count++] = id;
         categoryMask = 0;
         for (int id = 0; id < 5; id++) {
-            boolean enabled = id != 2 && (id == 4 ? randomMovie()
-                    : sp().getBoolean("category_" + id, true));
+            boolean enabled = id == 4 ? randomMovie()
+                    : sp().getBoolean(id == 2 ? "category_watching" : "category_" + id, true);
             if (enabled) categoryMask |= 1 << id;
         }
         categoryOrderCache = order;
@@ -238,17 +238,17 @@ final class Prefs {
     }
 
     static void setCategoryEnabled(int id, boolean enabled) {
-        if (id < 0 || id >= 5 || id == 2) throw new IllegalArgumentException("Invalid category");
+        if (id < 0 || id >= 5) throw new IllegalArgumentException("Invalid category");
         if (id == 4) setRandomMovie(enabled);
-        else put("category_" + id, enabled);
+        else put(id == 2 ? "category_watching" : "category_" + id, enabled);
     }
 
     static void setCategoryOrder(List<Integer> order) {
-        if (order.size() != 4) throw new IllegalArgumentException("Incomplete categories");
+        if (order.size() != 5) throw new IllegalArgumentException("Incomplete categories");
         boolean[] seen = new boolean[5];
         StringBuilder value = new StringBuilder();
         for (Integer id : order) {
-            if (id == null || id < 0 || id >= 5 || id == 2 || seen[id]) throw new IllegalArgumentException("Invalid category order");
+            if (id == null || id < 0 || id >= 5 || seen[id]) throw new IllegalArgumentException("Invalid category order");
             seen[id] = true;
             if (value.length() > 0) value.append(',');
             value.append(id);

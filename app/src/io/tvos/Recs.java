@@ -37,6 +37,9 @@ final class Recs {
         int id;
         String kind;            // "movie" or "tv"
         String title, originalTitle = "", backdrop, poster, meta = "", duration = "", tvOrigin = "", movieOrigin = "", app, pkg;
+        String watchingKey, resumeUri;
+        String watchingSeason = "", watchingEpisode = "";
+        long watchingRemaining = -1, watchingUpdated;
         double rating;
         boolean detailed;
     }

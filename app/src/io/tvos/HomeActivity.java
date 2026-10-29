@@ -107,6 +107,11 @@ public class HomeActivity extends Activity {
         if (home != null) home.reset(true);
     }
 
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == WatchingCatalog.PERMISSION_REQUEST && home != null) home.refreshWatching();
+    }
+
     private boolean runWatchNextProbe(Intent intent) {
         if (intent == null || !intent.getBooleanExtra("io.tvos.PROBE_WATCH_NEXT", false)) return false;
         intent.removeExtra("io.tvos.PROBE_WATCH_NEXT");

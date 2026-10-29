@@ -30,6 +30,10 @@ tests='''
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  public static void main(String[] args)throws Exception {
   URL.setURLStreamHandlerFactory(protocol->new URLStreamHandler(){protected URLConnection openConnection(URL url){return new Fake(url);}});
+  check(PosterCache.imageUrl("https://cdn.example/poster.jpg?x=1").equals("https://cdn.example/poster.jpg?x=1"),"external poster URL is not prefixed with TMDB");
+  check(PosterCache.imageUrl("/poster.jpg").equals("https://image.tmdb.org/t/p/w500/poster.jpg"),"TMDB paths unchanged");
+  check(PosterCache.cacheName("https://cdn.example/p?x=1").matches("external-[0-9a-f]{64}"),"external filenames bounded and safe");
+  check(!PosterCache.cacheName("https://cdn.example/p?x=1").equals(PosterCache.cacheName("https://cdn.example/p?x=2")),"full URL identity includes query");
   PosterHarness h=new PosterHarness(new File(args[0]));
   for(int i=0;i<100;i++){String p="/p"+i;h.fixture(p);h.poster(new Pick(p));}
   check(h.posterPending.size()==24,"pending queue cap");

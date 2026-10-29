@@ -1,0 +1,92 @@
+"""Execute production Watch Next parsing, permission/lifecycle, deduplication and localized captions."""
+from pathlib import Path
+import subprocess,tempfile
+from tmdb_metadata_fixture import files as metadata_files
+f=metadata_files()
+f.pop('io/tvos/TmdbMetadata.java')
+f.update({
+'android/net/Uri.java':'''package android.net;public class Uri {final String s;private Uri(String s){this.s=s;}public static Uri parse(String s){return new Uri(s);}public String getLastPathSegment(){return s.substring(s.lastIndexOf('/')+1);}public String toString(){return s;}}''',
+'android/content/pm/PackageManager.java':'package android.content.pm;public class PackageManager {public static final int PERMISSION_GRANTED=0;}',
+'android/content/ComponentName.java':'package android.content;public class ComponentName {final String owner;public ComponentName(String owner){this.owner=owner;}public String getPackageName(){return owner;}}',
+'android/content/Intent.java':'''package android.content;import java.util.*;import android.net.Uri;public class Intent {
+ public static final int URI_INTENT_SCHEME=1,FLAG_ACTIVITY_NEW_TASK=0x10000000;
+ public static final Map<String,Intent> data=new HashMap<>();public ComponentName component;public String owner,extra;public int flags;public Object selector,clip;public Uri uri;
+ public static Intent parseUri(String link,int flags)throws java.net.URISyntaxException {Intent original=data.get(link);if(original==null)throw new java.net.URISyntaxException(link,"bad");Intent i=new Intent();i.component=original.component;i.extra=original.extra;i.uri=original.uri;return i;}
+ public ComponentName getComponent(){return component;}public Intent setSelector(Object o){selector=o;return this;}public Intent setPackage(String p){owner=p;return this;}public void setClipData(Object o){clip=o;}public Intent setFlags(int f){flags=f;return this;}public String getStringExtra(String key){return extra;}public Uri getData(){return uri;}
+}''',
+'android/content/Context.java':'''package android.content;public class Context {public boolean permitted;public final ContentResolver resolver=new ContentResolver();public Context getApplicationContext(){return this;}public int checkSelfPermission(String p){return permitted?0:-1;}public ContentResolver getContentResolver(){return resolver;}}''',
+'android/app/Activity.java':'''package android.app;public class Activity extends android.content.Context {public int requested;public void requestPermissions(String[] p,int code){requested=code;}}''',
+'android/database/ContentObserver.java':'''package android.database;public abstract class ContentObserver {public ContentObserver(android.os.Handler h){}public void onChange(boolean self){}}''',
+'android/database/Cursor.java':'''package android.database;public interface Cursor extends AutoCloseable {boolean moveToNext();String getString(int i);long getLong(int i);int getInt(int i);void close();}''',
+'android/content/ContentResolver.java':'''package android.content;import java.util.*;import android.database.*;import android.net.Uri;
+public class ContentResolver {public List<Object[]> rows=new ArrayList<>();public int queries,closes,registered,unregistered;public boolean denied;public ContentObserver observer;
+ public void registerContentObserver(Uri u,boolean children,ContentObserver o){observer=o;registered++;}public void unregisterContentObserver(ContentObserver o){unregistered++;observer=null;}
+ public Cursor query(Uri u,String[] columns,String a,String[] b,String sort){queries++;if(denied)throw new SecurityException();if(!sort.equals("last_engagement_time_utc_millis DESC"))throw new AssertionError("order");List<Object[]> snapshot=new ArrayList<>(rows);return new Cursor(){int at=-1;public boolean moveToNext(){return ++at<snapshot.size();}public String getString(int i){Object v=snapshot.get(at)[i];return v==null?null:v.toString();}public long getLong(int i){Object v=snapshot.get(at)[i];return v==null?0:((Number)v).longValue();}public int getInt(int i){return (int)getLong(i);}public void close(){closes++;}};}
+}''',
+'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
+'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty())tasks.remove().run();}}''',
+'android/util/Log.java':'package android.util;public class Log {public static int w(String t,String m){return 0;}}',
+'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
+})
+f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('private final Map<String,Object> m=new HashMap<>();','''public static final Map<String,JSONObject> encoded=new HashMap<>();private final Map<String,Object> m=new HashMap<>();public JSONObject(){}public JSONObject(String s)throws JSONException{JSONObject value=encoded.get(s);if(value==null)throw new JSONException("bad JSON");m.putAll(value.m);}''')
+for name in ['WatchingCatalog','WatchingItems','WatchingText']:
+ f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
+f['io/tvos/WatchingHarness.java']='''package io.tvos;
+import java.util.*;import java.util.concurrent.Executor;import android.content.*;import android.os.Handler;import android.net.Uri;import org.json.JSONObject;
+public class WatchingHarness {
+ static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
+ static class Worker implements Executor {ArrayDeque<Runnable> tasks=new ArrayDeque<>();public void execute(Runnable r){tasks.add(r);}void drain(){while(!tasks.isEmpty())tasks.remove().run();}}
+ static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
+ static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3};}
+ static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
+ public static void main(String[] args){
+  Ui.language("ru");
+  check(WatchingItems.remaining(1800000,840000)==16,"remaining minutes");
+  check(WatchingItems.remaining(60001,0)==2,"round up partial minute");
+  check(WatchingItems.remaining(0,0)==-1,"unknown duration stays unknown");
+  check(WatchingItems.remaining(60000,999999)==0,"overshoot clamped");
+  check(WatchingItems.remaining(60000,-1)==1,"negative position clamped");
+  List<Recs.Pick> input=new ArrayList<>();for(int i=0;i<20;i++)input.add(pick("id"+i,i));
+  Recs.Pick latest=pick("id3",100);input.add(latest);Collections.reverse(input);
+  List<Recs.Pick> selected=WatchingItems.latest(input);
+  check(selected.size()==10&&selected.get(0)==latest&&selected.get(1).watchingUpdated==19,"10 unique most recent titles");
+  check(input.size()==21,"caller list unchanged");
+  android.app.Activity context=new android.app.Activity();Worker worker=new Worker();int[] notices={0};WatchingCatalog catalog=new WatchingCatalog(context,()->notices[0]++,worker);
+  catalog.start();check(worker.tasks.isEmpty()&&catalog.picks().isEmpty(),"no permission no query");
+  catalog.requestPermission(context);check(context.requested==WatchingCatalog.PERMISSION_REQUEST,"runtime permission requested");
+  context.permitted=true;
+  JSONObject.encoded.put("resume",new JSONObject().put("id",42).put("posterBig","https://cdn.example/portrait.jpg"));
+  String target=link("target","watch.kino.mod","resume");
+  context.resolver.rows.add(row("watch.kino.mod","s42:1:2","Serial",300,target));
+  context.resolver.rows.add(row("watch.kino.mod","s42:1:1","Old episode",100,target));
+  context.resolver.rows.add(row("watch.kino","m7:0:0","Movie",200,link("movie","watch.kino",null)));
+  Object[] movie=context.resolver.rows.get(2);movie[6]=null;movie[7]=null;movie[8]=1920000L;movie[9]=0L;movie[11]=0;
+  context.resolver.rows.add(row("other.app","s999","Foreign",999,target));
+  context.resolver.rows.add(row("watch.kino.mod","s8","Wrong component",999,link("wrong","other.app",null)));
+  context.resolver.rows.add(row("watch.kino.mod","s9","Bad URI",999,"malformed"));
+  catalog.refresh();catalog.refresh();check(worker.tasks.size()==1,"overlapping requests coalesced");worker.drain();Handler.drain();worker.drain();Handler.drain();
+  check(catalog.picks().size()==2,"foreign rows, broken intents and duplicate episodes excluded");
+  Recs.Pick serial=catalog.picks().get(0),film=catalog.picks().get(1);
+  check(serial.id==0&&serial.watchingKey.equals("kinopub:42"),"source identity never becomes TMDB id");
+  check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
+  check(serial.meta.equals("С1 / Э2 · Осталось: 16 мин."),"serial caption");
+  check(film.meta.equals("Осталось: 32 мин."),"movie caption omits season/episode");
+  Ui.language("en");check(WatchingText.caption(serial).equals("S1 / E2 · 16 min left"),"English caption");Ui.language("ru");
+  check(catalog.open(serial)&&AppLaunch.opened.owner.equals("watch.kino.mod")&&AppLaunch.opened.extra.equals("resume"),"resume extras and source package preserved");
+  check(AppLaunch.opened.flags==Intent.FLAG_ACTIVITY_NEW_TASK&&AppLaunch.opened.selector==null&&AppLaunch.opened.clip==null,"external intent flags constrained");
+  check(context.resolver.closes==context.resolver.queries,"cursors closed");
+  int before=context.resolver.queries;context.resolver.observer.onChange(false);context.resolver.observer.onChange(false);Handler.drain();check(worker.tasks.size()==1,"observer bursts debounced");worker.drain();Handler.drain();check(context.resolver.queries==before+1,"one refresh after changes");
+  List<Recs.Pick> saved=catalog.picks();context.resolver.denied=true;catalog.refresh();worker.drain();Handler.drain();check(catalog.picks()==saved,"transient query failure keeps previous successful list");
+  context.resolver.denied=false;catalog.refresh();catalog.stop();worker.drain();Handler.drain();check(catalog.picks()==saved,"late result after pause ignored");
+  check(context.resolver.unregistered==1,"observer removed on pause");
+  catalog.start();worker.drain();Handler.drain();check(context.resolver.registered==2,"observer restored on resume");catalog.stop();
+  System.out.println("PASS: Watch Next permissions, foreign-row filtering, safe source intents, portrait extraction, dedup/sort/limit, remaining time, RU/EN captions, lifecycle and refresh coalescing");
+ }
+}
+'''
+with tempfile.TemporaryDirectory(prefix='tvos-watching-') as directory:
+ root=Path(directory)
+ for name,code in f.items():
+  path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(code)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','-cp',directory,'io.tvos.WatchingHarness'],check=True,timeout=20)

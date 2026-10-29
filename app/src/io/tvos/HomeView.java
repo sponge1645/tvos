@@ -105,6 +105,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeDockEditor dockEditor;
 
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
+    private final WatchingCatalog watching;
     private List<Recs.Pick> cards = new ArrayList<>();
     private int cardPage = 0; // five portrait posters per page
     private boolean largePostersWithoutWidgets = false;
@@ -285,6 +286,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         appSurfaces = new HomeAppsRenderer(a, scene, shadows, widgets, images);
         recs = Recs.get(a);
         posters = new PosterRenderer(recs, shadows, images, cardRects.length);
+        watching = new WatchingCatalog(activity, () -> {
+            if (running && tab == 2 && !searchMode) { updateCards(); wake(); }
+        });
         searchWork = new SearchController(handler, recs, () -> running && searchMode,
                 this::acceptSearchResults);
         rouletteWork = new RouletteController(handler, recs, () -> running,
@@ -397,6 +401,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lastStep = 0;
         data.addListener(this);
         recs.addListener(this);
+        watching.start();
         data.refreshIfStale();
         recs.refreshIfStale();
         if (tvInputs != null) tvInputs.registerCallback(inputCallback, handler);
@@ -483,6 +488,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         handler.removeCallbacks(reloadSoon);
         data.removeListener(this);
         recs.removeListener(this);
+        watching.stop();
         recs.setPosterWindow(java.util.Collections.emptyList());
         rouletteWork.invalidatePosters();
         images.clear();
@@ -584,7 +590,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         AppLanguage language = AppLanguage.current();
         String[] labels = tabLabels.get(language);
         if (labels == null) {
-            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), "", AppStrings.get(R.string.home_tab_shows, language), "🎲"};
+            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), AppStrings.get(R.string.home_tab_watching, language), AppStrings.get(R.string.home_tab_shows, language), "🎲"};
             tabLabels.put(language, labels);
         }
         labels[1] = genres.label();
@@ -599,6 +605,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         heroDirty = statusDirty = drawerDirty = true;
         platter.invalidate();
     }
+
+    void refreshWatching() { watching.refresh(); }
 
     @Override public void onRecs() {
         wake();
@@ -1366,6 +1374,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         tab == 0 ? baseCatalog() : null,
                         () -> { updateCards(); wake(); },
                         () -> { showToast(AppStrings.get(R.string.home_genre_failed)); updateCards(); wake(); });
+            } else if (p.watchingKey != null) {
+                if (!watching.open(p)) showToast(AppStrings.get(R.string.home_watching_open_failed));
             } else movieApps.choose(p);
             return;
         } else {
@@ -1659,6 +1669,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private List<Recs.Pick> baseCatalog() {
+        if (tab == 2) return watching.picks();
         if (tab == 1 && genres.movies() != null) return genres.movies();
         if (tab == 3 && tvGenres.movies() != null) return tvGenres.movies();
         return recs.catalog(TAB_KIND[tab]);
@@ -1667,6 +1678,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private List<Recs.Pick> currentCatalog() {
         if (searchMode) return searchResults;
         if (tab == 4) return java.util.Collections.emptyList();
+        if (tab == 2) return watching.picks();
         List<Recs.Pick> base = baseCatalog();
         List<Recs.Pick> all = new ArrayList<>(base.subList(0, Math.min(24, base.size())));
         if (tab != 4 && !all.isEmpty())
@@ -1714,7 +1726,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.setPosterWindow(running ? posterWindow : java.util.Collections.emptyList());
         if (running) for (Recs.Pick pick : posterWindow) recs.poster(pick);
         if (running) {
-            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0) recs.requestDuration(pick);
+            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0 && pick.watchingKey == null) recs.requestDuration(pick);
             Backdrop b = cards.isEmpty() || cards.get(0).id <= 0 ? null : recs.backdrop(cards.get(0));
             if (cards.isEmpty() || b != null) background.show(b);
         }
@@ -1730,6 +1742,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         randomPoster.clear();
         tab = index;
+        if (tab == 2) watching.requestPermission(activity);
         layoutLight();
         cardPage = 0;
         cardIndex = 0;
@@ -1780,6 +1793,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     zone == Z_CARDS && !sheetOpen ? cardFocus[0].value : 0f, contentTop, contentBottom);
             return;
         }
+        if (tab == 2 && !searchMode && cards.isEmpty()) {
+            c.drawText(watching.emptyText(), MARGIN * k, contentTop + 55 * k, lCardMeta);
+        }
         int top = -1;
         for (int i = 0; i < cards.size(); i++) if (cardFocus[i].value > 0.02f && (top < 0 || cardFocus[i].value > cardFocus[top].value)) top = i;
         for (int i = 0; i < cards.size(); i++) if (i != top) posters.draw(c, cards.get(i), cardRects[i], cardFocus[i].value, i);
@@ -1806,7 +1822,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean picksOn() {
-        return Recs.hasKey(getContext()) && (searchMode || Prefs.categoryCount() > 0);
+        return (Recs.hasKey(getContext()) || (!searchMode && Prefs.categoryEnabled(2)))
+                && (searchMode || Prefs.categoryCount() > 0);
     }
 
     private void openNetworkSettings() {

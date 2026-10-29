@@ -1257,6 +1257,7 @@ public class SettingsActivity extends Activity {
             switch (id) {
                 case 0: return AppStrings.get(R.string.settings_new);
                 case 1: return AppStrings.get(R.string.settings_movies);
+                case 2: return AppStrings.get(R.string.home_tab_watching);
                 case 3: return AppStrings.get(R.string.settings_shows);
                 default: return AppStrings.get(R.string.settings_random_movie);
             }

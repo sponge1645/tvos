@@ -44,6 +44,8 @@ public class HomeRenderHarness {
   p.focus(-1,0,1,1700);p.begin(1,1,1,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(!p.marqueeActive(9999)&&p.nextDelay(9999)==1000,"losing focus stops marquee");
   recs.missing=true;p.begin(.5f,1,0,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(entries(c,"bitmap").isEmpty()&&entries(c,"round").size()>0,"missing poster placeholder");
   Recs.Pick question=new Recs.Pick();question.id=-1;question.kind="movie";question.title="Random Movie";c=new Canvas();p.draw(c,question,base,0,0);text(c,"?");text(c,"Random Movie");
+  pick.watchingKey="kinopub:42";pick.meta="16 min left";c=new Canvas();p.draw(c,pick,base,0,0);
+  check(entries(c,"text").stream().anyMatch(e->e.text.equals("16 min left"))&&!entries(c,"text").stream().anyMatch(e->e.text.equals("8.0")),"Watch Next caption bypasses TMDB metadata and rating badge");
   p.clear();check(((Map<?,?>)field(field(p,"posterText"),"entries")).isEmpty(),"poster text cache released");check(title.getTextSize()==31&&meta.getTextSize()==25,"caller fonts unmodified");
  }
  static HomeAppsRenderer.Frame appsFrame(){

@@ -55,4 +55,11 @@
     <string name="home_random_series" formatted="false">Случайный сериал</string>
     <string name="home_default_service_unavailable" formatted="false">Выбранный сервис недоступен. Выберите другое приложение.</string>
     <string name="home_vpn_toggle_failed" formatted="false">Не удалось переключить VPN. Проверьте приложение и подключение ADB.</string>
+    <string name="home_tab_watching" formatted="false">"Я смотрю"</string>
+    <string name="home_watching_remaining" formatted="false">"Осталось: %1$d мин."</string>
+    <string name="home_watching_episode" formatted="false">"С%1$s / Э%2$s"</string>
+    <string name="home_watching_empty" formatted="false">"Откройте «Продолжить просмотр» в KinoPub, чтобы обновить список."</string>
+    <string name="home_watching_permission" formatted="false">"Разрешите доступ к телепрограммам для раздела «Я смотрю»."</string>
+    <string name="home_watching_failed" formatted="false">"Не удалось загрузить «Я смотрю»."</string>
+    <string name="home_watching_open_failed" formatted="false">"Не удалось открыть карточку в KinoPub."</string>
 </resources>

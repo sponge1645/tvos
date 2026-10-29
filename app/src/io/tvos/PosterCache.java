@@ -48,6 +48,25 @@ final class PosterCache {
     // Used only by the single poster worker.
     private boolean posterCacheChecked;
 
+    static String imageUrl(String path) {
+        if (path.startsWith("https://")) return path;
+        if (!path.startsWith("/") || path.startsWith("//")) throw new IllegalArgumentException("Invalid poster path");
+        return "https://image.tmdb.org/t/p/w500" + path;
+    }
+
+    static String cacheName(String path) {
+        if (!path.startsWith("https://")) return path.replace("/", "");
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(path.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder name = new StringBuilder("external-");
+            for (byte value : digest) name.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
+            return name.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
     /** Retain only visible/prefetched paths; disk copies remain when browsing back. */
     void setWindow(java.util.Set<String> wanted) {
         synchronized (posters) {
@@ -86,11 +105,11 @@ final class PosterCache {
                 if (!posterWanted(path)) { abandoned = true; return; }
                 File dir = new File(context.getCacheDir(), "tmdb-posters");
                 if (!dir.exists() && !dir.mkdirs()) throw new IOException("Cannot create poster cache");
-                File f = new File(dir, path.replace("/", ""));
+                File f = new File(dir, cacheName(path));
                 boolean downloaded = false;
                 if (!f.isFile() || f.length() == 0) {
                     tmp = new File(f.getPath() + ".part");
-                    HttpURLConnection c = (HttpURLConnection) new URL("https://image.tmdb.org/t/p/w500" + path).openConnection();
+                    HttpURLConnection c = (HttpURLConnection) new URL(imageUrl(path)).openConnection();
                     c.setConnectTimeout(8000);
                     c.setReadTimeout(20000);
                     try {

@@ -128,6 +128,11 @@ final class PosterRenderer {
             c.drawText("?", cell.centerX(), cell.centerY() - (questionPaint.ascent() + questionPaint.descent()) / 2, questionPaint);
             return;
         }
+        if (p.watchingKey != null) {
+            drawCardMarquee(c, p.meta, lCardMeta, base.left,
+                    base.bottom + HomeLayout.POSTER_META_BASELINE * k, bw, i);
+            return;
+        }
         PosterText.Entry text = posterText.get(p);
         String detail = text.detail(tab == 0 && !searchMode);
         float metaLeft = base.left;
