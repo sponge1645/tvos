@@ -8,26 +8,50 @@ import java.util.Locale;
 
 /** Match published artwork to TMDB; never treat another service's numeric IDs as TMDB IDs. */
 final class DockArtwork {
+    private static final java.util.Map<String, DockArtwork> CACHE = new java.util.LinkedHashMap<>(16, .75f, true);
     String backdrop = "", logo = "";
+    private String kind, cacheKey, languageCode;
+    private int id;
+    private boolean logoLoaded;
 
     static DockArtwork find(String title, String poster, String year) throws IOException, org.json.JSONException {
+        DockArtwork result = lookup(title, poster, year, connection -> {});
+        loadLogo(result, connection -> {});
+        return result;
+    }
+
+    static DockArtwork lookup(String title, String poster, String year,
+            java.util.function.Consumer<java.net.HttpURLConnection> opened) throws IOException, org.json.JSONException {
         DockArtwork result = new DockArtwork();
         if (!TmdbClient.hasKey() || title.isEmpty()) return result;
-        String language = AppLanguage.current().apiTag;
+        AppLanguage requestedLanguage = AppLanguage.current();
+        String language = requestedLanguage.apiTag;
+        String key = language + "\n" + year + "\n" + poster + "\n" + title;
+        synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) return cached; }
         JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
-                + URLEncoder.encode(title, "UTF-8") + "&include_adult=false").optJSONArray("results");
+                + URLEncoder.encode(title, "UTF-8") + "&include_adult=false", opened).optJSONArray("results");
         JSONObject match = match(items, title, poster, year);
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
-        String kind = match.optString("media_type", "");
+        result.languageCode = requestedLanguage.code;
+        result.kind = match.optString("media_type", ""); result.id = match.optInt("id"); result.cacheKey = key;
+        return result;
+    }
+
+    static void loadLogo(DockArtwork result, java.util.function.Consumer<java.net.HttpURLConnection> opened) {
+        if (result.logoLoaded || result.id <= 0) return;
         try {
-            JSONObject images = TmdbClient.get("/" + kind + "/" + match.optInt("id")
-                    + "/images?include_image_language=" + AppLanguage.current().code + ",en,null");
-            result.logo = image(logo(images.optJSONArray("logos"), AppLanguage.current().code), "w500");
+            JSONObject images = TmdbClient.get("/" + result.kind + "/" + result.id
+                    + "/images?include_image_language=" + result.languageCode + ",en,null", opened);
+            result.logo = image(logo(images.optJSONArray("logos"), result.languageCode), "w500");
+            result.logoLoaded = true;
+            synchronized (CACHE) {
+                CACHE.put(result.cacheKey, result);
+                if (CACHE.size() > 16) CACHE.remove(CACHE.keySet().iterator().next());
+            }
         } catch (IOException | org.json.JSONException e) {
             AppLog.w("Dock logo unavailable: " + e.getClass().getSimpleName());
         }
-        return result;
     }
 
     static JSONObject match(JSONArray items, String title, String poster, String year) {

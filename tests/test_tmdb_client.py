@@ -63,6 +63,8 @@ public class TmdbHarness {
   check(last.disconnected&&last.body.closed,"read failure closes body and disconnects");failRead=false;
   response="{\\"text\\":\\""+"я".repeat(12000)+"\\"}";h.get("/movie/7");
   check(last.disconnected&&last.body.closed,"response larger than buffer is read and closed");
+  java.util.List<HttpURLConnection> handles=new java.util.ArrayList<>();TmdbClient.get("/movie/8",handles::add);check(handles.size()==2&&handles.get(0)==last&&handles.get(1)==null,"transport registers active connection and clears it after completion");
+  try{TmdbClient.get("/movie/9",connection->{if(connection!=null)throw new java.util.concurrent.CancellationException();});throw new AssertionError("stale request accepted");}catch(java.util.concurrent.CancellationException expected){}check(last.disconnected&&last.body==null,"cancellation before connect still disconnects without response read");
   System.out.println("PASS: Recs delegation, API key/token auth, URL encoding, timeouts, UTF-8, HTTP errors and response cleanup");
  }
 }

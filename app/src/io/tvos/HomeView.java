@@ -1870,7 +1870,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (top >= 0) posters.draw(c, cards.get(top), cardRects[top], cardFocus[top].value, top);
     }
 
-    /** Date and weather share one line, centered vertically with right-side controls. */
+    /** Date and weather use the same top inset as the right-side controls. */
     private boolean showHeaderPart(String key) {
         return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean(key, true);
     }

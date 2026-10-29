@@ -21,7 +21,7 @@ final class HomeHeaderRenderer {
         List<HomeApps.Item> lightButtons;
         Paint lDate, lTab, lTabOn;
     }
-    private static final float MARGIN = HomeLayout.EDGE, L_BUTTON_CY = HomeLayout.HEADER_CY, L_TABBAR_TOP = HomeLayout.TAB_TOP, SHADOW_BLUR = 26;
+    private static final float MARGIN = HomeLayout.EDGE, L_TABBAR_TOP = HomeLayout.TAB_TOP, SHADOW_BLUR = 26;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7;
     private final Context context;
     private final HomeData data;
@@ -31,7 +31,7 @@ final class HomeHeaderRenderer {
     private int profileAvatarIndex = -1;
     private Frame frame;
     private final Paint headerDateScratch = new Paint(), headerWeatherScratch = new Paint(), searchHeadingScratch = new Paint();
-    private final Paint.FontMetrics headerMetricsScratch = new Paint.FontMetrics(), clockMetricsScratch = new Paint.FontMetrics();
+    private final Paint.FontMetrics clockMetricsScratch = new Paint.FontMetrics();
     private final Paint clockCapsuleScratch = new Paint(Paint.ANTI_ALIAS_FLAG), shadow = new Paint(Paint.ANTI_ALIAS_FLAG), fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF avatarShouldersScratch = new RectF(), cell = new RectF(), tmp = new RectF();
 
@@ -60,14 +60,12 @@ final class HomeHeaderRenderer {
     void drawDateWeather(Canvas c, Frame frame) {
         this.frame = frame;
         final float x = MARGIN * frame.k;
-        final float cy = L_BUTTON_CY * frame.k;
+        final float top = HomeLayout.TOP * frame.k;
         Paint datePaint = headerDateScratch;
         datePaint.set(frame.lDate);
         datePaint.setTextSize(29 * frame.k);
         datePaint.setColor(tone(L_INK, WHITE));
-        Paint.FontMetrics fm = headerMetricsScratch;
-        datePaint.getFontMetrics(fm);
-        float baseline = cy - (fm.ascent + fm.descent) / 2f;
+        float baseline = top + Ui.cap(datePaint);
         float nextX = x;
         if (frame.showDate) {
             String date = frame.dateText;
@@ -84,8 +82,8 @@ final class HomeHeaderRenderer {
         float iconSize = 28 * frame.k;
         float sw = Symbols.width(context, symbol, iconSize);
         Symbols.draw(context, c, symbol, nextX + sw / 2f - 3f,
-                cy, iconSize, weatherPaint.getColor());
-        c.drawText(HomeData.degrees(wx.temp), nextX + sw + 10 * frame.k, baseline, weatherPaint);
+                top + Symbols.height(context, symbol, iconSize) / 2f, iconSize, weatherPaint.getColor());
+        c.drawText(HomeData.degrees(wx.temp), nextX + sw + 10 * frame.k, top + Ui.cap(weatherPaint), weatherPaint);
     }
 
     private float drawActionSurface(Canvas c, RectF bounds, float focus) {

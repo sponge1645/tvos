@@ -25,11 +25,13 @@ import java.util.function.Consumer;
 /** Focus-debounced static recommendations artwork. No per-frame queries or per-app bitmap collection. */
 final class DockBackdrop {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
+    private static final ExecutorService CANCEL = Executors.newSingleThreadExecutor();
     private final Context context;
     private final Consumer<Artwork> changed;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable load = this::loadFocused;
     private volatile int generation;
+    private volatile HttpURLConnection activeConnection;
     private String focused;
     private String cachedPackage;
     private Artwork cached;
@@ -60,15 +62,32 @@ final class DockBackdrop {
 
     void focus(String pkg) {
         if (java.util.Objects.equals(focused, pkg)) return;
-        focused = pkg; generation++; main.removeCallbacks(load);
+        focused = pkg; generation++; cancelConnection(); main.removeCallbacks(load);
         if (pkg == null) { changed.accept(null); return; }
-        if (pkg.equals(cachedPackage) && cached != null) { changed.accept(cached); return; }
+        if (pkg.equals(cachedPackage) && cached != null) {
+            changed.accept(cached);
+            if (bundled(pkg) != null || !cached.title.isEmpty() || cached.logo != null) return;
+        }
         main.postDelayed(load, 450);
     }
 
     void pause() {
-        generation++; focused = null; main.removeCallbacks(load);
+        generation++; cancelConnection(); focused = null; main.removeCallbacks(load);
         cached = null; cachedPackage = null;
+    }
+
+    private void cancelConnection() {
+        HttpURLConnection connection = activeConnection;
+        activeConnection = null;
+        if (connection != null) CANCEL.execute(connection::disconnect);
+    }
+
+    private void trackConnection(int token, HttpURLConnection connection) {
+        activeConnection = connection;
+        if (connection != null && token != generation) {
+            connection.disconnect();
+            throw new java.util.concurrent.CancellationException();
+        }
     }
 
     static String bundled(String pkg) {
@@ -107,7 +126,7 @@ final class DockBackdrop {
                     if (token != generation) return;
                     if (background != null) publish(pkg, token, new Artwork(background, "", null));
                     DockArtwork extra = new DockArtwork();
-                    try { extra = DockArtwork.find(candidate.title, candidate.poster, candidate.year); }
+                    try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connection -> trackConnection(token, connection)); }
                     catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
                     if (token != generation) return;
                     if (background == null && !extra.backdrop.isEmpty()) {
@@ -115,6 +134,9 @@ final class DockBackdrop {
                         catch (IOException | SecurityException | IllegalArgumentException e) { /* Next published title. */ }
                     }
                     if (background == null) continue;
+                    publish(pkg, token, new Artwork(background, "", null));
+                    DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
+                    if (token != generation) return;
                     Bitmap logo = null;
                     if (!extra.logo.isEmpty() && token == generation) {
                         try { logo = read(extra.logo, token, false); }
@@ -124,7 +146,7 @@ final class DockBackdrop {
                     break;
                 }
             } catch (IOException | RuntimeException | OutOfMemoryError e) {
-                AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
+                if (token == generation) AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
             }
             if (result != null) publish(pkg, token, result);
             else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
@@ -203,6 +225,7 @@ final class DockBackdrop {
                 if (url.startsWith("https://")) {
                     connection = (HttpURLConnection) new URL(url).openConnection();
                     connection.setConnectTimeout(8000); connection.setReadTimeout(8000);
+                    trackConnection(token, connection);
                     stream = connection.getInputStream();
                 } else stream = context.getContentResolver().openInputStream(Uri.parse(url));
                 if (stream == null) throw new IOException("No image stream");
@@ -215,7 +238,7 @@ final class DockBackdrop {
                     }
                 }
                 if (!part.renameTo(file)) throw new IOException("Cannot publish image");
-            } finally { if (connection != null) connection.disconnect(); part.delete(); }
+            } finally { if (connection != null) { connection.disconnect(); if (activeConnection == connection) activeConnection = null; } part.delete(); }
         }
         file.setLastModified(System.currentTimeMillis());
         File[] files = dir.listFiles();

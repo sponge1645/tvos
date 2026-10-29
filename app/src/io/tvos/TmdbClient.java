@@ -17,6 +17,10 @@ final class TmdbClient {
     static boolean hasKey() { return readKey() != null; }
 
     static JSONObject get(String path) throws IOException, org.json.JSONException {
+        return get(path, connection -> {});
+    }
+
+    static JSONObject get(String path, java.util.function.Consumer<HttpURLConnection> opened) throws IOException, org.json.JSONException {
         String key = readKey();
         if (key == null) throw new IOException("no TMDB key");
         boolean bearer = key.startsWith("eyJ");   // read access token (v4) or API key (v3)
@@ -27,6 +31,7 @@ final class TmdbClient {
         c.setRequestProperty("Accept", "application/json");
         if (bearer) c.setRequestProperty("Authorization", "Bearer " + key);
         try {
+            opened.accept(c);
             int code = c.getResponseCode();
             if (code == 401) throw new IOException("TMDB rejected the key");
             if (code != 200) throw new IOException("TMDB returned HTTP " + code);
@@ -35,6 +40,7 @@ final class TmdbClient {
             }
         } finally {
             c.disconnect();
+            opened.accept(null);
         }
     }
 
