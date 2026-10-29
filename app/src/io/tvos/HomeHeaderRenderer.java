@@ -12,6 +12,7 @@ final class HomeHeaderRenderer {
     static final class Frame {
         float k, night, headingOpacity;
         int tab, networkState;
+        int hiddenTab = -1;
         boolean showDate, weatherTop, searchMode, largePostersWithoutWidgets;
         String clockText, dateText, searchQuery;
         String[] tabs;
@@ -162,7 +163,7 @@ final class HomeHeaderRenderer {
         // the white pill with a shadow and grows a little (the tvOS focus).
         float focus = Ui.clamp(frame.topFocus[frame.tab].value);
         for (int i = 0; i < 5 && !frame.searchMode; i++) {
-            if (!Prefs.categoryEnabled(i)) continue;
+            if (!Prefs.categoryEnabled(i) || i == frame.hiddenTab) continue;
             RectF r = frame.topRects[i];
             if (i == frame.tab && focus > 0.01f) {
                 float s = 1 + 0.05f * focus;

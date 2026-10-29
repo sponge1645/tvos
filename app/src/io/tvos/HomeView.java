@@ -386,6 +386,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         && !dockEditor.editing() && (zone == Z_TOP && topIndex == category);
             }
             @Override public RectF anchor() { return topRects[category]; }
+            @Override public Paint anchorPaint() { return lTabOn; }
+            @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
             @Override public void changed() {
                 layoutLight();
@@ -1750,6 +1752,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private HomeHeaderRenderer.Frame headerFrame() {
         applyTone();
         headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = searchHeadingOpacity.value;
+        headingFrame.hiddenTab = genres.visible() ? 1 : tvGenres.visible() ? 3 : -1;
         headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.tabs = tabs();
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = searchQuery;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
