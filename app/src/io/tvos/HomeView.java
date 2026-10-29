@@ -265,7 +265,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         @Override public void run() {
             if (!running) return;
             wake();
-            AutoRegion.ensure(getContext());
             data.refreshIfStale();
             recs.refreshIfStale();
             SelfUpdate.get(getContext()).maybeAutomatic(false);

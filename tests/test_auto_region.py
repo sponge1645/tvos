@@ -16,6 +16,7 @@ s['org/json/JSONException.java']='package org.json;public class JSONException ex
 s['io/tvos/Prefs.java']='''package io.tvos;class Prefs {static boolean enabled;static long generation;static String city="Manual";static boolean automaticRegion(){return enabled;}static long regionGeneration(){return generation;}static String language(){return "en";}static boolean applyAutomaticCity(String name,String lat,String lon,String language,long token){if(!enabled||token!=generation)return false;city=name;return true;}}'''
 s['io/tvos/HomeData.java']='package io.tvos;class HomeData {static HomeData get(Object c){return new HomeData();}void refreshIfStale(){}}'
 s['io/tvos/AppLog.java']='package io.tvos;class AppLog {static void w(String s){}}'
+s['io/tvos/RegionVpnPause.java']='package io.tvos;class RegionVpnPause implements AutoCloseable {static RegionVpnPause open(Object c){return new RegionVpnPause();}long remainingMillis(){return 30000;}public void close(){}}'
 s['io/tvos/AutoRegion.java']=Path('app/src/io/tvos/AutoRegion.java').read_text()
 s['io/tvos/RegionHarness.java']='''package io.tvos;import android.content.*;import android.net.*;import android.os.Handler;import org.json.*;public class RegionHarness {
  static void check(boolean b,String message){if(!b)throw new AssertionError(message);}static Network add(ConnectivityManager m,long id,int transport){Network n=new Network();n.id=id;m.networks.add(n);NetworkCapabilities caps=new NetworkCapabilities();caps.transports.add(transport);caps.validated=true;m.caps.put(n,caps);return n;}

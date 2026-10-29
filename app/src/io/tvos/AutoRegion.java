@@ -26,6 +26,11 @@ final class AutoRegion {
     private static boolean busy;
     private AutoRegion() {}
 
+    static synchronized void enter(Context supplied) {
+        checkedGeneration = -1;
+        ensure(supplied);
+    }
+
     static synchronized void ensure(Context supplied) {
         if (!Prefs.automaticRegion() || busy) return;
         long now = System.currentTimeMillis(), generation = Prefs.regionGeneration();
@@ -47,7 +52,10 @@ final class AutoRegion {
         String language = Prefs.language();
         IO.execute(() -> {
             Result result = null;
-            try { result = lookup(network, language); }
+            try (RegionVpnPause pause = RegionVpnPause.open(context)) {
+                result = lookup(network, language, pause);
+                if (pause.remainingMillis() == 0) throw new IOException("Region lookup timed out");
+            }
             catch (IOException | org.json.JSONException | RuntimeException e) {
                 AppLog.w("Automatic region unavailable: " + e.getClass().getSimpleName()
                         + ": " + String.valueOf(e.getMessage()));
@@ -103,16 +111,18 @@ final class AutoRegion {
             throw new IOException("Invalid region response");
         return new Result(city, lat, lon);
     }
-    private static Result lookup(Network network, String language) throws IOException, org.json.JSONException {
+    private static Result lookup(Network network, String language, RegionVpnPause pause) throws IOException, org.json.JSONException {
         URL url = new URL("https://ipwho.is/?fields=success,city,latitude,longitude&lang=" + ("ru".equals(language) ? "ru" : "en"));
         HttpURLConnection connection = (HttpURLConnection) network.openConnection(url, Proxy.NO_PROXY);
         try {
-            connection.setConnectTimeout(8000); connection.setReadTimeout(8000);
+            int timeout = (int) Math.max(1, Math.min(8000, pause.remainingMillis() / 3));
+            connection.setConnectTimeout(timeout); connection.setReadTimeout(timeout);
             connection.setInstanceFollowRedirects(false);
             if (connection.getResponseCode() != 200) throw new IOException("Region lookup failed");
             try (InputStream input = connection.getInputStream(); ByteArrayOutputStream body = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[2048]; int count;
                 while ((count = input.read(buffer)) != -1) {
+                    if (pause.remainingMillis() == 0) throw new IOException("Region lookup timed out");
                     if (body.size() + count > 65536) throw new IOException("Oversized region response");
                     body.write(buffer, 0, count);
                 }

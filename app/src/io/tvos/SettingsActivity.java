@@ -205,10 +205,12 @@ public class SettingsActivity extends Activity {
 
         private Paint pageTitle, logoInk, logoTile, capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+        private boolean regionWasOpen;
         private final Runnable poll = new Runnable() {
             @Override public void run() {
                 if (!running) return;
-                if (screen == REGION) AutoRegion.ensure(getContext());
+                if (screen == REGION && !regionWasOpen) AutoRegion.enter(getContext());
+                regionWasOpen = screen == REGION;
                 state = HomeMode.state(getContext());
                 boolean nowBusy = !busyText().isEmpty();
                 if (nowBusy) pendingAt = 0;
@@ -361,6 +363,7 @@ public class SettingsActivity extends Activity {
             running = false;
             updateDialog.pause();
             citySearch.cancel();
+            regionWasOpen = false;
             handler.removeCallbacks(poll);
             Choreographer.getInstance().removeFrameCallback(this);
             background.clear(); // Free cached bitmap when settings are hidden.
@@ -661,7 +664,7 @@ public class SettingsActivity extends Activity {
             invalidate();
         }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
-        private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.ensure(getContext()); invalidate(); }
+        private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.enter(getContext()); invalidate(); }
         // Legacy display/Wi-Fi information remains available on older TV firmware.
         @SuppressWarnings("deprecation")
         // Approved About-screen geometry (all dimensions are scaled by k).
