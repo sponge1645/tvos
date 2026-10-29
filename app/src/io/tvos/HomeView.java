@@ -161,7 +161,44 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private float k = 1;
     private String clockText = "", dateText = "";
     private long clockMinute = -1;
-    private boolean okDown, backDown;
+    private boolean okDown, backDown, vpnPress, vpnBusy;
+    private final Spring vpnColor = new Spring(.35f, 1f, 0);
+    private final Runnable vpnHold = this::openVpnOnHold;
+
+    private boolean vpnFocused() {
+        return running && !sheetOpen && !drawerOpen && !searchMode && zone == Z_TOP
+                && topIndex == 7 && topButtonEnabled(2);
+    }
+    private void openVpnOnHold() {
+        if (!okDown || !vpnPress || !vpnFocused()) return;
+        okDown = false;
+        openVpnApp();
+    }
+    private void openVpnApp() {
+        String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
+        if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app)); return; }
+        Intent launch = HomeApps.launchIntent(activity.getPackageManager(), pkg);
+        if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found)); return; }
+        if (!AppLaunch.start(activity, launch, "VPN launch")) showToast(AppStrings.get(R.string.home_could_not_open_vpn));
+    }
+    private void toggleVpn() {
+        String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
+        if (!VpnControl.PACKAGE.equals(pkg)) { openVpnApp(); return; }
+        if (vpnBusy) return;
+        vpnBusy = true;
+        int epoch = workEpoch;
+        Context context = activity.getApplicationContext();
+        LOADER.execute(() -> {
+            boolean failed = false;
+            try { VpnControl.toggle(context); }
+            catch (java.io.IOException | RuntimeException e) { AppLog.w("VPN toggle failed: " + e.getClass().getSimpleName()); failed = true; }
+            final boolean error = failed;
+            handler.post(() -> {
+                vpnBusy = false;
+                if (error && running && epoch == workEpoch) showToast(AppStrings.get(R.string.home_vpn_toggle_failed));
+            });
+        });
+    }
     private void beginDockEdit() {
         dockLiftIndex = shelfIndex;
         dockWiggleAt = SystemClock.uptimeMillis();
@@ -347,7 +384,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (running) return;
         running = true;
         genres.resume(); tvGenres.resume();
-        if (topButtonEnabled(5)) networkStatus.start();
+        if (topButtonEnabled(5) || topButtonEnabled(2)) networkStatus.start();
+        vpnColor.snap(networkStatus.vpn() ? 1 : 0);
         background.checkNight(data.isNight(System.currentTimeMillis()), false);
         syncVisibleTabs();
         // SettingsActivity runs separately; the old button rectangles remain cached.
@@ -433,6 +471,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
+        handler.removeCallbacks(vpnHold); vpnPress = false;
         workEpoch++;
         searchWork.pause(searchMode);
         cancelRouletteWork();
@@ -678,7 +717,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (dockMoving) tilesDirty = true;
         boolean tilesMoving = step(tileFocus, dt) | dockMoving;
         boolean searchHeadingMoving = tickSearchHeading(dt);
-        boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
+        vpnColor.target = networkStatus.vpn() ? 1 : 0;
+        if (reducedDreamMotion()) vpnColor.snap(vpnColor.target);
+        boolean topMoving = step(topFocus, dt) | vpnColor.step(dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
         if (topMoving) status.invalidate();
         boolean heroMoving = topMoving | cardsMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
@@ -1076,7 +1117,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         int genreKey = e.getKeyCode();
         if (genreKey != KeyEvent.KEYCODE_DPAD_CENTER && genreKey != KeyEvent.KEYCODE_ENTER
-                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); }
+                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); handler.removeCallbacks(vpnHold); }
         if (dockEditor.editing()) {
             boolean handled = dockEditor.onKey(e);
             if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER
@@ -1104,13 +1145,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (down) {
                     if (e.getRepeatCount() == 0) {
                         okDown = true;
+                        vpnPress = vpnFocused();
+                        if (vpnPress) handler.postDelayed(vpnHold, HomeDockEditor.HOLD_MS);
                         dockEditor.arm();
                         genres.arm(); tvGenres.arm();
                     }
                 } else {
+                    handler.removeCallbacks(vpnHold);
                     dockEditor.cancelHold();
                     genres.released(); tvGenres.released();
-                    if (okDown && !e.isCanceled() && spoken.keyClick()) activate();
+                    if (okDown && !e.isCanceled() && (!vpnPress || vpnFocused()) && spoken.keyClick()) activate();
+                    vpnPress = false;
                     okDown = false;
                 }
                 return true;
@@ -1332,12 +1377,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             return;
         }
         if (it.kind == HomeApps.INPUTS && "vpn".equals(it.key)) {
-            String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
-            if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app)); return; }
-            Intent launch = HomeApps.launchIntent(activity.getPackageManager(), pkg);
-            if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found)); return; }
-            if (!AppLaunch.start(activity, launch, "VPN launch"))
-                showToast(AppStrings.get(R.string.home_could_not_open_vpn));
+            toggleVpn();
             return;
         }
         if (it.kind == HomeApps.INPUTS) {
@@ -1752,6 +1792,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private HomeHeaderRenderer.Frame headerFrame() {
         applyTone();
         headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = searchHeadingOpacity.value;
+        headingFrame.vpnTint = Ui.clamp(vpnColor.value);
         headingFrame.hiddenTab = genres.visible() ? 1 : tvGenres.visible() ? 3 : -1;
         headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.tabs = tabs();
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = searchQuery;

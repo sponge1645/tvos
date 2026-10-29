@@ -51,7 +51,12 @@ public class StatusHarness {
   cb.onAvailable(wifi);Handler.drain();check(changes[0]==2,"unchanged state does not redraw");
   cb.onAvailable(wifi);s.stop();s.stop();cb.onAvailable(wifi);Handler.drain();
   check(m.unregistrations==2&&Handler.pending.isEmpty()&&changes[0]==2,"pause cancels events and releases callbacks once");
-  m.caps.get(wifi).validated=true;s.start();check(s.state()==1&&changes[0]==3&&m.registrations==4,"resume takes fresh snapshot");s.stop();
+  m.caps.get(wifi).validated=true;s.start();check(s.state()==1&&changes[0]==3&&m.registrations==4,"resume takes fresh snapshot");
+  check(s.vpn(),"VPN state independent of physical connection");
+  m.networks.remove(vpn);m.callbacks.get(0).onLost(vpn);Handler.drain();
+  check(!s.vpn()&&s.state()==1&&changes[0]==4,"disconnect updates icon while internet stays Wi-Fi");
+  m.networks.add(vpn);m.callbacks.get(0).onAvailable(vpn);Handler.drain();
+  check(s.vpn()&&s.state()==1&&changes[0]==5,"connect updates icon without changing physical state");s.stop();
   System.out.println("PASS: three menu states, validation, dual transport, VPN, IPv6-only LAN, callback coalescing, pause/resume cleanup");
  }
 }'''

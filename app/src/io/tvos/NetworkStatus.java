@@ -15,14 +15,15 @@ final class NetworkStatus {
     private final ConnectivityManager manager;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable changed;
-    private boolean running, allRegistered, defaultRegistered;
+    private boolean running, allRegistered, defaultRegistered, vpn;
     private int state = OFFLINE;
     private final Runnable refresh = this::refreshNow;
 
     private void refreshNow() {
         if (!running) return;
         int next = detect(manager);
-        if (next != state) { state = next; changed.run(); }
+        boolean nextVpn = detectVpn(manager);
+        if (next != state || nextVpn != vpn) { state = next; vpn = nextVpn; changed.run(); }
     }
 
     NetworkStatus(Context context, Runnable changed) {
@@ -32,6 +33,19 @@ final class NetworkStatus {
     }
 
     int state() { return state; }
+    boolean vpn() { return vpn; }
+
+    @SuppressWarnings("deprecation")
+    static boolean detectVpn(ConnectivityManager manager) {
+        if (manager == null) return false;
+        try {
+            for (Network network : manager.getAllNetworks()) {
+                NetworkCapabilities caps = manager.getNetworkCapabilities(network);
+                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return true;
+            }
+        } catch (RuntimeException ignored) {}
+        return false;
+    }
 
     private ConnectivityManager.NetworkCallback callback() {
         return new ConnectivityManager.NetworkCallback() {

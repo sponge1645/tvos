@@ -54,4 +54,5 @@
     <string name="home_genre_failed" formatted="false">"Could not load this selection. Try again."</string>
     <string name="home_random_series" formatted="false">Random Series</string>
     <string name="home_default_service_unavailable" formatted="false">The selected service is unavailable. Choose another app.</string>
+    <string name="home_vpn_toggle_failed" formatted="false">Could not switch VPN. Check the app and ADB connection.</string>
 </resources>

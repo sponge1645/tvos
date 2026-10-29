@@ -10,7 +10,7 @@ import java.util.List;
 /** Header date/weather, tabs, search heading, clock/profile and action buttons. */
 final class HomeHeaderRenderer {
     static final class Frame {
-        float k, night, headingOpacity;
+        float k, night, headingOpacity, vpnTint;
         int tab, networkState;
         int hiddenTab = -1;
         boolean showDate, weatherTop, searchMode, largePostersWithoutWidgets;
@@ -152,7 +152,8 @@ final class HomeHeaderRenderer {
             float s = drawActionSurface(c, r, f);
             Symbols.draw(context, c, frame.lightButtons.get(i).symbol, cell.centerX(), cell.centerY(),
                     27f * 1.15f * unit * s,
-                    blend(tone(L_INK, 0xEBFFFFFF), L_INK, f));
+                    blend(blend(tone(L_INK, 0xEBFFFFFF), L_INK, f), 0xFF618FEF,
+                            "vpn".equals(frame.lightButtons.get(i).key) ? frame.vpnTint : 0));
 
         }
     }
