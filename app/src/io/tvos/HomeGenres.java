@@ -162,7 +162,8 @@ final class HomeGenres {
         final Rect clip = new Rect();
         final boolean reduced;
         float originX, originY, progress;
-        boolean closing, opening;
+        boolean closing, opening, returningAnchor;
+        ViewTreeObserver.OnPreDrawListener handoff;
         Runnable afterOpen;
         MenuPopup(MenuSurface root, GradientDrawable panel, int width, boolean reduced, float radius) {
             super(root, width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
@@ -229,6 +230,7 @@ final class HomeGenres {
         restoreRequest = restoreMoviesRequest = null;
     }
     boolean visible() { return popup != null; }
+    boolean hidesAnchor() { return popup != null && !popup.returningAnchor; }
     int selectedId() { return selected == null ? 0 : selected.id; }
     String label() { if (choices != null) return choices.label(); return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
     List<Recs.Pick> movies() { return movies; } // null means the ordinary Movies catalog.
@@ -306,11 +308,15 @@ final class HomeGenres {
         window.setOnDismissListener(() -> {
             if (popup != window) return;
             cancelAnimation();
+            if (window.handoff != null) {
+                home.getViewTreeObserver().removeOnPreDrawListener(window.handoff);
+                window.handoff = null;
+            }
             window.afterOpen = null;
             if (genreRequest != null) genreRequest.cancel();
             genreRequest = null;
             if (popup == window) popup = null;
-            host.visibilityChanged();
+            if (!window.returningAnchor) host.visibilityChanged();
         });
         RectF anchor = host.anchor();
         home.getLocationOnScreen(location);
@@ -429,7 +435,7 @@ final class HomeGenres {
                 if (animation != animator || popup != window) return;
                 animation = null;
                 window.opening = false;
-                if (!opening) { window.dismissNow(); return; }
+                if (!opening) { returnAnchor(window); return; }
                 applyReveal(window, 1);
                 Runnable content = window.afterOpen;
                 window.afterOpen = null;
@@ -439,6 +445,24 @@ final class HomeGenres {
             }
         });
         animator.start();
+    }
+
+    private void returnAnchor(MenuPopup window) {
+        // Keep the collapsed capsule until Home has drawn its replacement. Dismissing
+        // this separate window first can expose one frame of the cached, hidden tab.
+        window.returningAnchor = true;
+        window.handoff = new ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                home.getViewTreeObserver().removeOnPreDrawListener(this);
+                window.handoff = null;
+                window.root.postOnAnimation(() -> {
+                    if (popup == window && window.returningAnchor) window.dismissNow();
+                });
+                return true;
+            }
+        };
+        home.getViewTreeObserver().addOnPreDrawListener(window.handoff);
+        host.visibilityChanged();
     }
 
     private TextView text(String label, float size, float k) {
