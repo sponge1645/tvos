@@ -77,7 +77,7 @@ sources = {
             static void close(float a,float b){check(Math.abs(a-b)<.01f,a+" != "+b);}
             public static void main(String[] args)throws Exception{
                 File assets=new File(args[0]);Context c=new Context(assets);File symbols=new File(assets,"symbols");
-                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad"));
+                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg"));
                 check(files.length==33,"33 approved SVG symbols");double worst=0;
                 for(File file:files){String name=file.getName().replace(".svg","");SvgSymbol icon;
                     try(InputStream in=new FileInputStream(file)){icon=SvgSymbol.read(in);}
@@ -95,6 +95,9 @@ sources = {
                     Canvas large=new Canvas(800,800);Symbols.draw(c,large,name,400,400,200,0xff123456);
                     check(large.paths>0&&large.depth()==0,"draw paths at enlarged size: "+name);
                 }
+                Canvas device=new Canvas(800,800);Symbols.draw(c,device,"apple_tv_device",400,400,200,0xff123456);
+                check(device.paths>0&&device.depth()==0,"device symbol renders as native paths");
+                close(Symbols.aspect(c,"apple_tv_device"),1f);
                 check(BitmapFactory.decodes==0,"all 33 loaded as SVG, zero PNG decoding");
                 check(Bitmap.allocations==0,"ordinary vector drawing does not allocate bitmap masks");
                 close(Symbols.width(c,"home",40),37.5f);close(Symbols.width(c,"wifi",36),38);

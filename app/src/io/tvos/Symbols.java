@@ -85,7 +85,7 @@ final class Symbols {
             case "foggy": case "rainy": return 155;
             case "gamepad": case "sparkles": case "partly_cloudy_day": return 156;
             case "partly_cloudy_night": case "bell": return 154;
-            case "speaker": case "live_tv": case "tv_settings": return 153;
+            case "apple_tv_device": case "speaker": case "live_tv": case "tv_settings": return 153;
             case "thunderstorm": return 160;
             case "sunny": case "cloud": return 166;
             case "sunrise": case "sunset": return 151;

@@ -14,6 +14,9 @@ harness='''import java.util.*;import java.util.regex.*;public class InputSymbols
  public static void main(String[] args){
   for(String name:new String[]{"Игровая приставка","HDMI 2 — ИГРОВАЯ ПРИСТАВКА","Игровая консоль","PlayStation 5","Xbox"})check(deviceSymbol(name),"gamepad");
   for(String name:new String[]{"HDMI AUX","AUX","hdmi_aux","HDMI 1 (AUX)","Yamaha receiver"})check(deviceSymbol(name),"speaker");
+  for(String name:new String[]{"Apple TV","AppleTV 4K","HDMI 2 — Apple TV","apple-tv","APPLE_TV"})check(deviceSymbol(name),"apple_tv_device");
+  check(inputSymbol("HDMI 1","Apple TV 4K"),"apple_tv_device");
+  check(inputSymbol("Apple TV","HDMI AUX"),"apple_tv_device");
   for(String name:new String[]{"HDMI 1","FAUX","auxiliary",null,""})check(deviceSymbol(name),"hdmi");
   check(inputSymbol("HDMI 1","Игровая приставка"),"gamepad");check(inputSymbol("HDMI 2","HDMI AUX"),"speaker");
   check(inputSymbol("PlayStation 5","HDMI AUX"),"gamepad");check(inputSymbol("Soundbar","Игровая приставка"),"speaker");

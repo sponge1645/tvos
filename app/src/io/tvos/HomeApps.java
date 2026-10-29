@@ -334,6 +334,7 @@ final class HomeApps {
 
     /** Words in a device's name, by the icon they pick: a game console, a streaming box, a sound system, a TV box. */
     private static final String[][] DEVICE_WORDS = {
+        {"apple_tv_device", "apple tv", "appletv", "apple-tv", "apple_tv"},
         {"gamepad", "playstation", "ps5", "ps4", "ps3", "xbox", "nintendo", "switch", "steam deck", "console", "game", "игровая приставка", "игровая консоль"},
         {"play", "chromecast", "fire tv", "firetv", "roku", "shield", "mi box", "tv box", "tvbox", "stick", "streaming", "google tv", "android tv"},
         {"speaker", "soundbar", "sound bar", "receiver", "denon", "yamaha", "marantz", "onkyo", "bose", "sonos", "jbl", "audio", "home theater"},
