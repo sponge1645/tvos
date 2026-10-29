@@ -206,7 +206,7 @@ final class WatchingCatalog {
             if (cursor == null) return;
             while (cursor.moveToNext()) {
                 if (!"com.seena.app".equals(text(cursor, 1))) continue;
-                if ("seena_tv_history".equals(text(cursor, 2)) || "Seena — История".equals(text(cursor, 3)))
+                if ("seena_tv_history".equals(text(cursor, 2)))
                     channels.add(cursor.getLong(0));
             }
         }
