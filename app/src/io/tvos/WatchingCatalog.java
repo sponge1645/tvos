@@ -151,7 +151,7 @@ final class WatchingCatalog {
         }
         if (!observing) {
             try {
-                context.getContentResolver().registerContentObserver(URI, true, observer);
+                context.getContentResolver().registerContentObserver(Uri.parse("content://android.media.tv"), true, observer);
                 observing = true;
             } catch (SecurityException e) {
                 Log.w(TAG, "Watch Next observer denied");
@@ -176,6 +176,8 @@ final class WatchingCatalog {
                 error = true;
                 Log.w(TAG, "Watch Next read failed: " + e.getClass().getSimpleName());
             }
+            try { readSeenaHistory(found); }
+            catch (RuntimeException e) { Log.w(TAG, "Seena history read failed: " + e.getClass().getSimpleName()); }
             final List<Recs.Pick> result = WatchingItems.latest(found);
             final boolean failedRead = error;
             main.post(() -> {
@@ -195,6 +197,38 @@ final class WatchingCatalog {
                 }
             });
         });
+    }
+
+    private void readSeenaHistory(List<Recs.Pick> found) {
+        java.util.Set<Long> channels = new java.util.HashSet<>();
+        try (Cursor cursor = context.getContentResolver().query(Uri.parse("content://android.media.tv/channel"),
+                new String[]{"_id", "package_name", "internal_provider_id", "display_name"}, null, null, null)) {
+            if (cursor == null) return;
+            while (cursor.moveToNext()) {
+                if (!"com.seena.app".equals(text(cursor, 1))) continue;
+                if ("seena_tv_history".equals(text(cursor, 2)) || "Seena — История".equals(text(cursor, 3)))
+                    channels.add(cursor.getLong(0));
+            }
+        }
+        String[] columns = COLUMNS.clone();
+        columns[10] = "_id"; // Preview programs do not have Watch Next engagement timestamps.
+        int rank = 0;
+        for (long channel : channels) {
+            try (Cursor cursor = context.getContentResolver().query(
+                    Uri.parse("content://android.media.tv/preview_program?channel=" + channel),
+                    columns, null, null, "_id ASC")) {
+                if (cursor == null) continue;
+                while (cursor.moveToNext()) {
+                    if (!"com.seena.app".equals(text(cursor, 1))) continue;
+                    Recs.Pick pick = read(cursor, "com.seena.app");
+                    if (pick == null) continue;
+                    // Preserve publisher insertion order; do not invent playback dates or remaining time.
+                    pick.watchingUpdated = -1L - rank++;
+                    pick.watchingRemaining = -1;
+                    found.add(pick);
+                }
+            }
+        }
     }
 
     private static String text(Cursor cursor, int column) {

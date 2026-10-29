@@ -19,9 +19,9 @@ f.update({
 'android/database/ContentObserver.java':'''package android.database;public abstract class ContentObserver {public ContentObserver(android.os.Handler h){}public void onChange(boolean self){}}''',
 'android/database/Cursor.java':'''package android.database;public interface Cursor extends AutoCloseable {boolean moveToNext();String getString(int i);long getLong(int i);int getInt(int i);void close();}''',
 'android/content/ContentResolver.java':'''package android.content;import java.util.*;import android.database.*;import android.net.Uri;
-public class ContentResolver {public List<Object[]> rows=new ArrayList<>();public int queries,closes,registered,unregistered;public boolean denied;public ContentObserver observer;
+public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),channels=new ArrayList<>(),previews=new ArrayList<>();public int queries,closes,registered,unregistered;public boolean denied;public ContentObserver observer;
  public void registerContentObserver(Uri u,boolean children,ContentObserver o){observer=o;registered++;}public void unregisterContentObserver(ContentObserver o){unregistered++;observer=null;}
- public Cursor query(Uri u,String[] columns,String a,String[] b,String sort){queries++;if(denied)throw new SecurityException();if(!sort.equals("last_engagement_time_utc_millis DESC"))throw new AssertionError("order");List<Object[]> snapshot=new ArrayList<>(rows);return new Cursor(){int at=-1;public boolean moveToNext(){return ++at<snapshot.size();}public String getString(int i){Object v=snapshot.get(at)[i];return v==null?null:v.toString();}public long getLong(int i){Object v=snapshot.get(at)[i];return v==null?0:((Number)v).longValue();}public int getInt(int i){return (int)getLong(i);}public void close(){closes++;}};}
+ public Cursor query(Uri u,String[] columns,String a,String[] b,String sort){boolean channel=u.toString().equals("content://android.media.tv/channel"),preview=u.toString().contains("preview_program?");if(channel&&channels.isEmpty())return null;queries++;if(denied)throw new SecurityException();if(!channel&&!preview&&!sort.equals("last_engagement_time_utc_millis DESC"))throw new AssertionError("order");List<Object[]> snapshot=new ArrayList<>(channel?channels:preview?previews:rows);return new Cursor(){int at=-1;public boolean moveToNext(){return ++at<snapshot.size();}public String getString(int i){Object v=snapshot.get(at)[i];return v==null?null:v.toString();}public long getLong(int i){Object v=snapshot.get(at)[i];return v==null?0:((Number)v).longValue();}public int getInt(int i){return (int)getLong(i);}public void close(){closes++;}};}
 }''',
 'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
 'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty())tasks.remove().run();}}''',
@@ -100,7 +100,14 @@ public class WatchingHarness {
   context.resolver.denied=false;catalog.refresh();catalog.stop();worker.drain();Handler.drain();check(catalog.picks()==saved,"late result after pause ignored");
   check(context.resolver.unregistered==1,"observer removed on pause");
   catalog.start();worker.drain();Handler.drain();check(context.resolver.registered==2,"observer restored on resume");catalog.stop();
-  System.out.println("PASS: Watch Next permissions, foreign-row filtering, safe source intents, portrait extraction, dedup/sort/limit, remaining time, RU/EN captions, lifecycle and refresh coalescing");
+  catalog.selectSource("seena");context.resolver.rows.clear();
+  context.resolver.channels.add(new Object[]{323L,"com.seena.app","seena_tv_history","Seena — История"});
+  context.resolver.channels.add(new Object[]{999L,"other.app","seena_tv_history","Seena — История"});
+  context.resolver.previews.add(row("com.seena.app","old","Seena History First",1,link("history1","com.seena.app",null)));
+  context.resolver.previews.add(row("com.seena.app","old2","Seena History Second",2,link("history2","com.seena.app",null)));
+  catalog.start();worker.drain();Handler.drain();check(catalog.picks().size()==2&&catalog.picks().get(0).title.equals("Seena History First"),"Seena history channel read in publisher order");
+  check(catalog.picks().get(0).watchingRemaining==-1,"preview duration never presented as remaining time");catalog.stop();
+  System.out.println("PASS: Seena history channel and Watch Next permissions, foreign-row filtering, safe source intents, portrait extraction, dedup/sort/limit, remaining time, RU/EN captions, lifecycle and refresh coalescing");
  }
 }
 '''

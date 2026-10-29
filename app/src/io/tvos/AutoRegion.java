@@ -49,7 +49,8 @@ final class AutoRegion {
             Result result = null;
             try { result = lookup(network, language); }
             catch (IOException | org.json.JSONException | RuntimeException e) {
-                AppLog.w("Automatic region unavailable: " + e.getClass().getSimpleName());
+                AppLog.w("Automatic region unavailable: " + e.getClass().getSimpleName()
+                        + ": " + String.valueOf(e.getMessage()));
             }
             final Result found = result;
             MAIN.post(() -> {
