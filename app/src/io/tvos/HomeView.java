@@ -1852,7 +1852,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         HomeHeaderRenderer.Frame heading = headerFrame();
         header.drawDateWeather(c, heading);
         if (!picksOn()) {
-            if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k);
+            if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;
         }
         header.drawTabs(c, heading);

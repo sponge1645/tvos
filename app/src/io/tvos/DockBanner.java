@@ -69,12 +69,12 @@ final class DockBanner {
         return current == null && target != null ? Math.max(0, appearAt - up) : Long.MAX_VALUE;
     }
 
-    void draw(Canvas canvas, float k) {
+    void draw(Canvas canvas, float k, boolean noTopWidgets) {
         long up = SystemClock.uptimeMillis();
         advance(up);
         float alpha = opacity(up);
         if (current == null || alpha <= .004f) return;
-        float left = 40 * k, top = 180 * k;
+        float left = (noTopWidgets ? 70 : 40) * k, top = (noTopWidgets ? 70 : 180) * k;
         if (current.logo != null) {
             float scale = Math.min(420 * k / current.logo.getWidth(), 170 * k / current.logo.getHeight());
             bounds.set(left, top, left + current.logo.getWidth() * scale, top + current.logo.getHeight() * scale);
