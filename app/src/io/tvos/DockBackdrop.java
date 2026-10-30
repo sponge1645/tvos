@@ -359,7 +359,8 @@ final class DockBackdrop {
         File dir = new File(context.getCacheDir(), "dock-backdrops");
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create backdrop cache");
         File file = new File(dir, PosterCache.cacheName(url));
-        if (!file.isFile()) {
+        boolean downloaded = !file.isFile();
+        if (downloaded) {
             File part = new File(file.getPath() + ".part");
             HttpURLConnection connection = null;
             try {
@@ -383,7 +384,7 @@ final class DockBackdrop {
             } finally { if (connection != null) { connection.disconnect(); if (activeConnection == connection) activeConnection = null; } part.delete(); }
         }
         file.setLastModified(System.currentTimeMillis());
-        File[] files = dir.listFiles();
+        File[] files = downloaded ? dir.listFiles() : null;
         if (files != null) {
             java.util.Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
             for (int i = 6; i < files.length; i++) files[i].delete();

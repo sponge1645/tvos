@@ -9,10 +9,11 @@ import java.util.Locale;
 /** Match published artwork to TMDB; never treat another service's numeric IDs as TMDB IDs. */
 final class DockArtwork {
     private static final java.util.Map<String, DockArtwork> CACHE = new java.util.LinkedHashMap<>(16, .75f, true);
-    String backdrop = "", logo = "";
-    private String kind, cacheKey, languageCode, originalLanguage = "";
+    String backdrop = "";
+    volatile String logo = "";
+    private String kind, languageCode, originalLanguage = "";
     private int id;
-    private boolean logoLoaded;
+    private volatile boolean logoLoaded;
 
     static DockArtwork find(String title, String poster, String year) throws IOException, org.json.JSONException {
         DockArtwork result = lookup(title, poster, year, connection -> {});
@@ -37,7 +38,11 @@ final class DockArtwork {
         result.languageCode = requestedLanguage.code;
         String original = match.optString("original_language", "");
         if (original.matches("[a-z]{2,3}")) result.originalLanguage = original;
-        result.kind = match.optString("media_type", ""); result.id = match.optInt("id"); result.cacheKey = key;
+        result.kind = match.optString("media_type", ""); result.id = match.optInt("id");
+        synchronized (CACHE) {
+            CACHE.put(key, result);
+            if (CACHE.size() > 16) CACHE.remove(CACHE.keySet().iterator().next());
+        }
         return result;
     }
 
@@ -67,10 +72,6 @@ final class DockArtwork {
                     + (result.originalLanguage.isEmpty() ? "" : "," + result.originalLanguage), opened);
             result.logo = image(logo(images.optJSONArray("logos"), result.languageCode, result.originalLanguage), "w500");
             result.logoLoaded = true;
-            synchronized (CACHE) {
-                CACHE.put(result.cacheKey, result);
-                if (CACHE.size() > 16) CACHE.remove(CACHE.keySet().iterator().next());
-            }
         } catch (IOException | org.json.JSONException e) {
             AppLog.w("Dock logo unavailable: " + e.getClass().getSimpleName());
         }

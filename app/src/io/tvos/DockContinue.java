@@ -83,7 +83,8 @@ final class DockContinue {
         if (!visible) enter();
         visible = true;
         StringBuilder key = new StringBuilder();
-        for (Recs.Pick p : picks) key.append(p.watchingKey).append(p.resumeUri).append(p.meta).append('\n');
+        for (Recs.Pick p : picks) key.append(p.watchingKey).append('\n').append(p.resumeUri).append('\n')
+                .append(p.meta).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
         if (signature.equals(key.toString())) return;
         String selected = index < items.size() ? items.get(index).watchingKey : null;
         signature = key.toString(); generation++; pending.clear(); paths.clear(); imageAppeared.clear();
