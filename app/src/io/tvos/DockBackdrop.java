@@ -198,14 +198,20 @@ final class DockBackdrop {
     private List<Candidate> candidates(String pkg) {
         List<long[]> channels = new ArrayList<>();
         String service = WatchingSources.id(pkg);
+        int visible = 0;
         try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/channel"),
                 new String[]{"_id", "package_name", "display_name", "internal_provider_id", "app_link_intent_uri"}, null, null, null)) {
             if (c != null) while (c.moveToNext()) {
+                visible++;
                 if (!service.equals(WatchingSources.id(c.getString(1)))) continue;
                 int score = priority(value(c, 2), value(c, 3) + " " + value(c, 4));
                 channels.add(new long[]{c.getLong(0), score});
+                android.util.Log.i("tvOS-DockBackdrop", pkg + " channel=" + c.getLong(0)
+                        + ", name=" + value(c, 2) + ", score=" + score
+                        + ", route=" + route(value(c, 4)));
             }
         }
+        android.util.Log.i("tvOS-DockBackdrop", pkg + " visible channels=" + visible + ", owned=" + channels.size());
         channels.sort(Comparator.comparingLong((long[] c) -> c[1]).reversed());
         List<Candidate> result = new ArrayList<>();
         int queried = 0;
@@ -225,12 +231,16 @@ final class DockBackdrop {
     }
 
     private void collect(String uri, String service, String order, List<Candidate> result) {
+        long started = System.nanoTime();
+        int rows = 0, owned = 0, before = result.size();
         try (Cursor c = context.getContentResolver().query(Uri.parse(uri),
                 new String[]{"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio", "title", "release_date"},
                 null, null, order)) {
             int added = 0;
             if (c != null) while (added < 6 && c.moveToNext()) {
+                rows++;
                 if (!service.equals(WatchingSources.id(c.getString(0)))) continue;
+                owned++;
                 String date = value(c, 6);
                 Candidate candidate = new Candidate(value(c, 5), value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
                 if (c.getInt(4) == 0) add(candidate.urls, value(c, 2));
@@ -238,6 +248,14 @@ final class DockBackdrop {
                 if (!candidate.urls.isEmpty() || !candidate.title.isEmpty()) { result.add(candidate); added++; }
             }
         }
+        trace(service, uri.contains("?channel=") ? "programs channel=" + uri.substring(uri.indexOf("?channel=") + 9) : "watch next",
+                started, "rows=" + rows + ", owned=" + owned + ", accepted=" + (result.size() - before));
+    }
+
+    private static String route(String link) {
+        int end = link.indexOf('?');
+        String path = end < 0 ? link : link.substring(0, end);
+        return path.substring(path.lastIndexOf('/') + 1);
     }
 
     private static String value(Cursor c, int column) { String s = c.getString(column); return s == null ? "" : s; }
