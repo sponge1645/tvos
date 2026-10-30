@@ -461,7 +461,7 @@ public class SettingsActivity extends Activity {
         private int rowCount() {
             switch (screen) {
                 case MAIN: return 10;
-                case MEDIA: return 1;
+                case MEDIA: return 2;
                 case MOVIE_SERVICE: return MovieService.count();
                 case APPS_DOWNLOADS: return 7;
                 case GENERAL: return 8;
@@ -776,6 +776,7 @@ public class SettingsActivity extends Activity {
 
         private boolean menuChevronVisible(int row) {
             switch (screen) {
+                case MEDIA: return row == 0;
                 case GENERAL: return row == 0 || row == 3 || row == 4;
                 case SCREENSAVER: case ACCESSIBILITY: case WEATHER: case DATE_TIME:
                 case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
@@ -1162,6 +1163,7 @@ public class SettingsActivity extends Activity {
 
         private void adjustMenu(int dir) {
             switch (SettingsActions.adjustment(screen, focus)) {
+                case DOCK_CONTINUE: setLocalFlag(DockContinue.KEY, !localFlag(DockContinue.KEY)); return;
                 case HOME: adjust(dir); return;
                 case WEATHER: toggleWeather(focus == 0); return;
                 case DATE: toggleDateTime(); return;

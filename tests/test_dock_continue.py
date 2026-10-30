@@ -1,0 +1,22 @@
+"""Execute the optional resume row controller, geometry and bounded artwork window."""
+from pathlib import Path
+import subprocess,tempfile
+from home_renderers_fixture import files
+from settings_strings_fixture import write
+f=files()
+f['android/os/Looper.java']='package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}'
+f['android/os/Handler.java']='package android.os;public class Handler {public Handler(Looper l){}public void post(Runnable r){r.run();}}'
+f['android/view/KeyEvent.java']='''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_NUMPAD_ENTER=160,KEYCODE_BACK=4;int a,k;public KeyEvent(int action,int code){a=action;k=code;}public int getAction(){return a;}public int getKeyCode(){return k;}public int getRepeatCount(){return 0;}public boolean isCanceled(){return false;}}'''
+f['io/tvos/PosterCache.java']='''package io.tvos;import java.util.*;class PosterCache {static int max;static Set<String> window;PosterCache(android.content.Context c,Runnable r){}void setWindow(Set<String> s){window=s;max=Math.max(max,s.size());}android.graphics.Bitmap poster(String p){return new android.graphics.Bitmap(1);}}'''
+f['io/tvos/DockArtwork.java']='''package io.tvos;class DockArtwork {static int calls;String backdrop="https://example.com/wide.jpg";static DockArtwork lookup(String t,String p,String y,java.util.function.Consumer<java.net.HttpURLConnection> c)throws java.io.IOException,org.json.JSONException{calls++;DockArtwork a=new DockArtwork();a.backdrop="https://example.com/"+t+".jpg";return a;}}'''
+f['io/tvos/AppLog.java']='package io.tvos;class AppLog {static void w(String s){}}'
+f['io/tvos/WatchingSources.java']=Path('app/src/io/tvos/WatchingSources.java').read_text()
+f['io/tvos/WatchingText.java']=Path('app/src/io/tvos/WatchingText.java').read_text()
+f['io/tvos/DockContinue.java']=Path('app/src/io/tvos/DockContinue.java').read_text()
+f['io/tvos/ContinueHarness.java']='''package io.tvos;import java.util.*;import android.view.KeyEvent;import android.graphics.Canvas;public class ContinueHarness {static void check(boolean b,String s){if(!b)throw new AssertionError(s);}public static void main(String[] args){int[] opens={0},tops={0};DockContinue row=new DockContinue(new android.content.Context(),()->{},Runnable::run);List<Recs.Pick> list=new ArrayList<>();for(int i=0;i<12;i++){Recs.Pick p=new Recs.Pick();p.title="Film"+i;p.watchingKey="kinopub:"+i;p.resumeUri="intent:"+i;p.pkg="watch.kino.mod";list.add(p);}row.show(list);check(DockArtwork.calls==4,"prefetch bounded to four cards");row.show(list);check(DockArtwork.calls==4,"same snapshot does not repeat metadata queries");java.util.function.Consumer<Recs.Pick> open=p->{check(p==list.get(2),"resume original provider pick");opens[0]++;};Runnable top=()->tops[0]++;check(!row.key(new KeyEvent(0,19),false,top,open),"top controls do not enter row");check(row.key(new KeyEvent(0,19),true,top,open),"up from Dock enters cards");row.key(new KeyEvent(1,19),true,top,open);row.key(new KeyEvent(1,23),true,top,open);check(opens[0]==0,"stray OK release does not launch");row.key(new KeyEvent(0,22),true,top,open);row.key(new KeyEvent(0,22),true,top,open);row.key(new KeyEvent(0,23),true,top,open);row.key(new KeyEvent(1,23),true,top,open);check(opens[0]==1,"OK resumes selected card once");Canvas c=new Canvas();row.draw(c,1,810,0);check(c.entries.stream().anyMatch(e->e.kind.equals("text")&&e.text.equals("Continue Watching")),"localized heading");check(PosterCache.max<=4,"bitmap window bounded");row.key(new KeyEvent(0,20),true,top,open);check(!row.key(new KeyEvent(0,22),true,top,open),"down returns horizontal navigation to Dock");row.hide();check(!row.visible()&&PosterCache.window.isEmpty(),"hide clears image window and focus");check(!row.key(new KeyEvent(0,19),true,top,open),"disabled row never intercepts navigation");System.out.println("PASS: Dock resume navigation, saved links, bounded prefetch, localization and lifecycle");}}'''
+with tempfile.TemporaryDirectory() as d:
+ root=Path(d);write(root)
+ for name,text in f.items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','-cp',d,'io.tvos.ContinueHarness'],check=True,timeout=20)

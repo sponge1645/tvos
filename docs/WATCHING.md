@@ -64,3 +64,7 @@ TMDB matching treats Russian e/yo as equivalent and accepts bilingual provider l
 
 
 Installed app icons are not drawn in the banner area. Missing artwork restores the plain background; movie captions and bundled settings/YouTube compositions remain available.
+
+## Optional Dock resume row
+
+Video and Audio includes a disabled-by-default Continue Watching above Dock switch. With all Home categories disabled, focusing KinoPub shows up to ten resume cards instead of its single banner. Up enters the wide row, Left/Right browse, Down/Back returns to Dock, Up from the row reaches top controls, and OK uses the original Watching resume intent. Other Dock apps retain banner behavior. Disabling the switch restores KinoPub banners. The row reads a service-specific snapshot without changing the Watching source selection. Artwork lookup and bounded image prefetch run off the UI thread; only four image paths are retained in the visible/prefetch window. TMDB landscape matching is preferred, with source poster fallback. Movies without matching artwork remain selectable with their titles. TV validation remains required for layout, navigation and third-party resume behavior.

@@ -60,6 +60,7 @@ final class WatchingCatalog {
     }
 
     List<Recs.Pick> picks() { return picks; }
+    List<Recs.Pick> forSource(String source) { return WatchingItems.latest(allPicks, source); }
 
     String source() { return Prefs.watchingSource(); }
 

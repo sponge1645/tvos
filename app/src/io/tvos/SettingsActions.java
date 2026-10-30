@@ -25,12 +25,13 @@ final class SettingsActions {
 
     enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL
+        DOCK_CONTINUE, AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL
     }
 
     static boolean canAdjust(int screen, int row, int buttonCount) {
         switch (screen) {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
+            case MEDIA: return row == 1;
             case GENERAL: return row == 1 || row == 2 || row == 5 || row == 6 || row == 7;
             case SCREENSAVER: return row >= 0 && row < 4;
             case UPDATES: return row == 1;
@@ -43,6 +44,7 @@ final class SettingsActions {
 
     static Adjustment adjustment(int screen, int row) {
         switch (screen) {
+            case MEDIA: return row == 1 ? Adjustment.DOCK_CONTINUE : Adjustment.NONE;
             case HOME_SETTINGS: return Adjustment.HOME;
             case WEATHER: return Adjustment.WEATHER;
             case DATE_TIME: return Adjustment.DATE;
@@ -87,7 +89,7 @@ final class SettingsActions {
                     case 9: return Action.SYSTEM_SCREEN;
                     default: return Action.NONE;
                 }
-            case MEDIA: return Action.MOVIE_SERVICE_SCREEN;
+            case MEDIA: return row == 1 ? Action.MENU_ADJUST : Action.MOVIE_SERVICE_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
             case GENERAL: return row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : row == 4 ? Action.DATE_SETTINGS : Action.MENU_ADJUST;

@@ -46,7 +46,7 @@ final class SettingsContent {
 
     static String[] menuLabels(int screen, AppLanguage language) {
         switch (screen) {
-            case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language)};
+            case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language), AppStrings.get(R.string.settings_dock_continue, language)};
             case MOVIE_SERVICE: return MovieService.labels(language);
             case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_date_time, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_navigation_clicks, language)};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
@@ -74,6 +74,7 @@ final class SettingsContent {
                 else if (focus == 7) info = AppStrings.get(R.string.settings_help_dock, language);
                 break;
             case MEDIA: case MOVIE_SERVICE:
+                if (screen == MEDIA && focus == 1) return AppStrings.get(R.string.settings_help_dock_continue, language);
                 info = AppStrings.get(R.string.settings_help_default_service, language);
                 break;
             case REGION: return AppStrings.get(R.string.settings_help_auto_region, language);

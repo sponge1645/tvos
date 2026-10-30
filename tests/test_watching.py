@@ -102,7 +102,7 @@ public class WatchingHarness {
   catalog.selectSource("seena");check(catalog.picks().size()==1&&catalog.picks().get(0).title.equals("Seena title"),"selection filters cached results immediately");
   check(catalog.open(catalog.picks().get(0))&&AppLaunch.opened.owner.equals("com.seena.app"),"generic resume link opens its own service");
   catalog.selectSource("lampa");catalog.refresh();worker.drain();Handler.drain();check(catalog.picks().size()==1&&catalog.picks().get(0).pkg.equals("top.rootu.lampa"),"filter survives provider refresh");
-  catalog.selectSource("all");check(catalog.picks().size()==5,"All restores combined list");
+  catalog.selectSource("all");check(catalog.picks().size()==5,"All restores combined list");check(!catalog.forSource("kinopub").isEmpty()&&catalog.source().equals("all")&&catalog.picks().size()==5,"Dock source snapshot does not change Watching selection");
   int before=context.resolver.queries;context.resolver.observer.onChange(false);context.resolver.observer.onChange(false);Handler.drain();check(worker.tasks.size()==1,"observer bursts debounced");worker.drain();Handler.drain();check(context.resolver.queries==before+1,"one refresh after changes");
   List<Recs.Pick> saved=catalog.picks();context.resolver.denied=true;catalog.refresh();worker.drain();Handler.drain();check(catalog.picks()==saved,"transient query failure keeps previous successful list");
   context.resolver.denied=false;catalog.refresh();catalog.stop();worker.drain();Handler.drain();check(catalog.picks()==saved,"late result after pause ignored");

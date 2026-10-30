@@ -110,6 +110,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final DockBanner dockBanner = new DockBanner();
     private int backdropDockIndex = -1, backdropDirection;
     private String backdropFocus;
+    private final DockContinue dockContinue;
     private List<Recs.Pick> cards = new ArrayList<>();
     private int cardPage = 0; // five portrait posters per page
     private boolean largePostersWithoutWidgets = false;
@@ -295,7 +296,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs = Recs.get(a);
         posters = new PosterRenderer(recs, shadows, images, cardRects.length);
         dockBackdrop = new DockBackdrop(activity, this::showDockBackdrop);
+        dockContinue = new DockContinue(activity, () -> { heroDirty = true; heroLayer.invalidate(); wake(); });
         watching = new WatchingCatalog(activity, () -> {
+            if (running) updateDockBackdrop();
             if (running && tab == 2 && !searchMode) {
                 updateCards();
                 logWatchingCards();
@@ -534,6 +537,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.removeListener(this);
         watching.stop();
         dockBackdrop.pause();
+        dockContinue.hide();
         backdropDockIndex = -1; backdropDirection = 0; backdropFocus = null;
         recs.setPosterWindow(java.util.Collections.emptyList());
         rouletteWork.invalidatePosters();
@@ -654,11 +658,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void updateDockBackdrop() {
         if (!running) return;
-        if (Prefs.categoryCount() != 0 || searchMode) { dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
+        if (Prefs.categoryCount() != 0 || searchMode) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
         if (sheetOpen || drawerOpen || zone != Z_SHELF || shelfIndex < 0 || shelfIndex >= shelf.size()) return;
         HomeApps.Item item = shelf.get(shelfIndex);
         String pkg = item.kind == HomeApps.APP ? item.pkg
                 : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
+        if (getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean(DockContinue.KEY, false)
+                && "kinopub".equals(WatchingSources.id(pkg))) {
+            dockContinue.show(watching.forSource("kinopub"));
+            dockBackdrop.focus(null);
+            return;
+        }
+        dockContinue.hide();
         int direction = backdropDockIndex < 0 ? 0 : Integer.compare(shelfIndex, backdropDockIndex);
         backdropDockIndex = shelfIndex;
         if (pkg != null) {
@@ -1200,8 +1211,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // MARK: - Keys: only the arrows, OK and Back (system keys pass through to the system)
 
+    private boolean dockContinueKey(KeyEvent e) {
+        if (!dockEditor.editing() && !sheetOpen && !drawerOpen && !searchMode && dockContinue.key(e, zone == Z_SHELF,
+                () -> { zone = Z_TOP; topIndex = availableTopButton(5); retarget(false); },
+                pick -> { if (!watching.open(pick)) showToast(AppStrings.get(R.string.home_watching_open_failed)); })) {
+            okDown = false; dockEditor.cancelHold(); return true;
+        }
+        return false;
+    }
+
     boolean onKey(KeyEvent e) {
         wake();
+        if (dockContinueKey(e)) return true;
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         int genreKey = e.getKeyCode();
         if (genreKey != KeyEvent.KEYCODE_DPAD_CENTER && genreKey != KeyEvent.KEYCODE_ENTER
@@ -1864,7 +1885,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
         if (!picksOn()) {
-            if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
+            if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night());
+            else if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;
         }
         header.drawTabs(c, heading);

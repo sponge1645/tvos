@@ -47,7 +47,7 @@ static String get(int id,AppLanguage language){return get(id,language==AppLangua
 static String quantity(int id,int n){return quantity(id,AppLanguage.current(),n);}
 static String quantity(int id,AppLanguage language,int n){return quantity(id,language==AppLanguage.RUSSIAN,n);}
 }'''
- return {'io/tvos/MovieService.java':Path('app/src/io/tvos/MovieService.java').read_text(),'io/tvos/R.java':r,'io/tvos/AppStrings.java':getter,
+ return {'io/tvos/DockContinue.java':'package io.tvos;class DockContinue {static final String KEY="dock_continue";}','io/tvos/MovieService.java':Path('app/src/io/tvos/MovieService.java').read_text(),'io/tvos/R.java':r,'io/tvos/AppStrings.java':getter,
          'io/tvos/AppLanguage.java':Path('app/src/io/tvos/AppLanguage.java').read_text()}
 
 def write(root, package=True):

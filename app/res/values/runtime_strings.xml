@@ -232,4 +232,5 @@
   <string name="runtime_country_gb" formatted="false">UK</string>
   <string name="runtime_country_za" formatted="false">South Africa</string>
   <string name="runtime_country_kr" formatted="false">South Korea</string>
+    <string name="home_continue_watching">Continue Watching</string>
 </resources>

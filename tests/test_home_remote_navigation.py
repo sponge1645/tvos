@@ -11,6 +11,7 @@ import java.util.*;import android.os.Handler;import android.view.KeyEvent;
 class HomeApps {static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
 class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
 public class RemoteNavigationHarness {
+ boolean dockContinueKey(KeyEvent e){return false;}
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static final int Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
  int zone=Z_SHELF,shelfIndex,drawerIndex,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;

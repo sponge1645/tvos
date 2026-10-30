@@ -52,6 +52,7 @@ final class SettingsValues {
         java.util.Arrays.fill(v, "");
         if (screen == MEDIA) {
             v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
+            v[1] = onOff(localFlag(DockContinue.KEY));
         } else if (screen == MOVIE_SERVICE) {
             v[MovieService.index(localPrefs().getString(MovieService.KEY, ""))] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == GENERAL) {

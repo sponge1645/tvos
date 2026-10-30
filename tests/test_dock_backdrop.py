@@ -11,6 +11,7 @@ harness='''import java.util.*;import java.net.HttpURLConnection;public class Doc
  METHODS
  static class HomeFocus {
  static final int Z_SHELF=1;boolean running=true,searchMode,sheetOpen,drawerOpen;int zone=Z_SHELF,shelfIndex,backdropDockIndex=-1,backdropDirection;String backdropFocus;
+ static class Context {static final int MODE_PRIVATE=0;boolean getBoolean(String k,boolean d){return false;}Context getSharedPreferences(String n,int m){return this;}}Context getContext(){return new Context();}static class DockContinue {static final String KEY="dock_continue";void hide(){}void show(Object p){}}DockContinue dockContinue=new DockContinue();static class Watching {Object forSource(String s){return null;}}Watching watching=new Watching();static class WatchingSources {static String id(String s){return "watch.kino".equals(s)?"kinopub":s;} }
  static class Prefs {static int count;static int categoryCount(){return count;}}
  static class HomeApps {static final int APP=0,SETTINGS=4,ANDROID_SETTINGS=5;static class Item {int kind;String pkg;Item(String p){pkg=p;}}}
  static class Dock {String pkg;int calls,pauses;void focus(String p){pkg=p;calls++;}void pause(){pauses++;}}
