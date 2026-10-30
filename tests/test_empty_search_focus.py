@@ -20,7 +20,7 @@ public class SearchFocusHarness {static class RandomPoster {boolean resetAway(in
  SearchFocusHarness(){Arrays.fill(topRects,new RectF());}
  static class Recs {List<Object> catalog(Object kind){return new ArrayList<>();}}
  Recs recs=new Recs();Object[] TAB_KIND=new Object[5];
- class Click {void move(){clicks++;}}Click click=new Click();
+ class Click {void move(){clicks++;}void app(){clicks++;}}Click click=new Click();
  boolean topControlVisible(int id){return id<5?!searchMode&&enabled:topButtonEnabled(id-5);}
  java.util.List<Object> currentCatalog(){return searchMode?searchResults:recs.catalog(TAB_KIND[tab]);}
  boolean picksOn(){return enabled;}boolean topButtonEnabled(int i){return (actions&(1<<i))!=0;}boolean clockButtonEnabled(){return topButtonEnabled(4);}
@@ -55,6 +55,6 @@ tests='''
  }
 }'''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d)/'SearchFocusHarness.java';p.write_text(header+method('    private boolean moveLight(')+method('    private int availableTopButton(')+method('    private static int nearest(RectF[] rects, int count, float x)')+tests)
+ p=Path(d)/'SearchFocusHarness.java';p.write_text(header+method('    private void focusSound(')+method('    private boolean moveLight(')+method('    private int availableTopButton(')+method('    private static int nearest(RectF[] rects, int count, float x)')+tests)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,str(p)],check=True)
  subprocess.run(['java','-cp',d,'SearchFocusHarness'],check=True)

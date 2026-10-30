@@ -1332,7 +1332,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void back() {
         if (rouletteWork.spinning()) cancelRouletteWork();
-        if (dockEditor.editing()) { dockEditor.finish(false); click.move(); return; }
+        if (dockEditor.editing()) { dockEditor.finish(false); click.back(); return; }
         if (sheetOpen) {
             closeSheet();
         } else if (searchMode) {
@@ -1346,7 +1346,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } else {
             return;
         }
-        click.move();
+        click.back();
+    }
+
+    private void focusSound() {
+        if (zone == Z_SHELF) click.app(); else click.move();
     }
 
     private void move(int dx, int dy) {
@@ -1397,7 +1401,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
         }
         retarget(false);
-        click.move();
+        focusSound();
     }
 
     private static int nearest(RectF[] rects, float x) {
@@ -1698,7 +1702,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         zone = group;
         retarget(false);
-        click.move();
+        if (group == Z_SHELF) click.app(); else click.move();
     }
 
     private List<Integer> widgets() {
@@ -1921,7 +1925,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = searchHeadingOpacity.value;
         headingFrame.vpnTint = Ui.clamp(vpnColor.value);
         headingFrame.hiddenTab = genres.hidesAnchor() ? 1 : tvGenres.hidesAnchor() ? 3 : watchingMenu.hidesAnchor() ? 2 : -1;
-        headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.tabs = tabs();
+        headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.wifiLevel = networkStatus.wifiLevel(); headingFrame.tabs = tabs();
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = searchQuery;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
         headingFrame.lDate = lDate; headingFrame.lTab = lTab; headingFrame.lTabOn = lTabOn;
@@ -2021,7 +2025,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
         retarget(false);
-        click.move();
+        focusSound();
         return true;
     }
 

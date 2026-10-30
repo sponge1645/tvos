@@ -397,6 +397,7 @@ public final class ProfileActivity extends Activity {
         }
 
         private void back() {
+            if (click != null) click.back();
             if (!choosing) { finish(); return; }
             choosing = false;
             changePage(selected / 9);

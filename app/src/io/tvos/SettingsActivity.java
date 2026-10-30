@@ -970,7 +970,8 @@ public class SettingsActivity extends Activity {
                 if (e.getAction() == KeyEvent.ACTION_UP) {
                     int code = e.getKeyCode();
                     if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) tvosClick.move();
-                    else if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER || code == KeyEvent.KEYCODE_BACK) tvosClick.open();
+                    else if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER) tvosClick.open();
+                    else if (code == KeyEvent.KEYCODE_BACK) tvosClick.back();
                 }
                 return updateDialog.onKey(e);
             }
@@ -1022,12 +1023,12 @@ public class SettingsActivity extends Activity {
                     }
                     return true;
                 case KeyEvent.KEYCODE_BACK:
-                    if (screen == MAIN) return false;   // leaves the settings
+                    if (screen == MAIN) { if (!down && !e.isCanceled()) tvosClick.back(); return false; }
                     if (down) {
                         if (e.getRepeatCount() == 0) backDown = true;
                     } else {
                         if (backDown && !e.isCanceled()) {
-                            tvosClick.open();
+                            tvosClick.back();
                             backFromScreen();
                         }
                         backDown = false;

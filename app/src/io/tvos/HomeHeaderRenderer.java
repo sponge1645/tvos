@@ -12,6 +12,7 @@ final class HomeHeaderRenderer {
     static final class Frame {
         float k, night, headingOpacity, vpnTint;
         int tab, networkState;
+        int wifiLevel = -1;
         int hiddenTab = -1;
         boolean showDate, weatherTop, searchMode, largePostersWithoutWidgets;
         String clockText, dateText, searchQuery;
@@ -145,7 +146,7 @@ final class HomeHeaderRenderer {
         if (Prefs.topButtonEnabled(5)) {
             float networkFocus = Ui.clamp(frame.topFocus[10].value);
             float networkScale = drawActionSurface(c, frame.topRects[10], networkFocus);
-            String networkSymbol = frame.networkState == NetworkStatus.WIFI ? "wifi"
+            String networkSymbol = frame.networkState == NetworkStatus.WIFI ? (frame.wifiLevel < 0 ? "wifi" : "wifi_" + frame.wifiLevel)
                     : frame.networkState == NetworkStatus.ETHERNET ? "ethernet" : "nonetwork";
             Symbols.draw(context, c, networkSymbol, cell.centerX(), cell.centerY(),
                     30 * unit * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));

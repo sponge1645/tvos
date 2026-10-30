@@ -77,8 +77,8 @@ sources = {
             static void close(float a,float b){check(Math.abs(a-b)<.01f,a+" != "+b);}
             public static void main(String[] args)throws Exception{
                 File assets=new File(args[0]);Context c=new Context(assets);File symbols=new File(assets,"symbols");
-                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg"));
-                check(files.length==33,"33 approved SVG symbols");double worst=0;
+                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg")&&!name.startsWith("wifi"));
+                check(files.length==32,"32 reference-matched SVG symbols");double worst=0;
                 for(File file:files){String name=file.getName().replace(".svg","");SvgSymbol icon;
                     try(InputStream in=new FileInputStream(file)){icon=SvgSymbol.read(in);}
                     BufferedImage png=ImageIO.read(new File(symbols,name+".png"));
@@ -95,10 +95,18 @@ sources = {
                     Canvas large=new Canvas(800,800);Symbols.draw(c,large,name,400,400,200,0xff123456);
                     check(large.paths>0&&large.depth()==0,"draw paths at enlarged size: "+name);
                 }
+                long previousCoverage=-1;
+                for(int level=0;level<4;level++){
+                    Canvas signal=new Canvas(160,112);Symbols.draw(c,signal,"wifi_"+level,80,56,144,0xff123456);
+                    check(signal.paths==3&&signal.depth()==0,"Wi-Fi uses three cached vector layers");
+                    long coverage=0;for(int y=0;y<signal.image.getHeight();y++)for(int x=0;x<signal.image.getWidth();x++)coverage+=signal.image.getRGB(x,y)>>>24;
+                    check(coverage>previousCoverage,"each Wi-Fi level lights another component");previousCoverage=coverage;
+                    close(Symbols.aspect(c,"wifi_"+level),40f/28f);
+                }
                 Canvas device=new Canvas(800,800);Symbols.draw(c,device,"apple_tv_device",400,400,200,0xff123456);
                 check(device.paths>0&&device.depth()==0,"device symbol renders as native paths");
                 close(Symbols.aspect(c,"apple_tv_device"),1f);
-                check(BitmapFactory.decodes==0,"all 33 loaded as SVG, zero PNG decoding");
+                check(BitmapFactory.decodes==0,"all reference symbols loaded as SVG, zero PNG decoding");
                 check(Bitmap.allocations==0,"ordinary vector drawing does not allocate bitmap masks");
                 close(Symbols.width(c,"home",40),37.5f);close(Symbols.width(c,"wifi",36),38);
                 int opens=c.getAssets().count();for(int i=0;i<100;i++)Symbols.draw(c,new Canvas(100,100),"wifi",50,50,36,0xaaffffff);
@@ -124,7 +132,7 @@ sources = {
                     Thread thread=new Thread(()->{try{for(int i=0;i<40;i++){Canvas target=new Canvas(100,100);Symbols.draw(c,target,"cloud",50,50,60,color);
                         check((target.image.getRGB(50,50)&0xffffff)==(color&0xffffff),"concurrent tint isolation");}}catch(Throwable e){failure.set(e);}});threads.add(thread);thread.start();}
                 for(Thread thread:threads)thread.join();if(failure.get()!=null)throw new AssertionError(failure.get());
-                System.out.println("PASS: 33 SVGs, curves/holes, native alpha MAE <= "+worst+", tint, group opacity, geometry, cache, masks, fallback, concurrent drawing");
+                System.out.println("PASS: SVGs, curves/holes, native alpha MAE <= "+worst+", tint, group opacity, geometry, cache, masks, fallback, concurrent drawing");
             }
         }''',
 }

@@ -1,6 +1,7 @@
 package io.tvos;
 
 import android.content.Context;
+import io.tvos.network.WifiSignal;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.Network;
@@ -13,6 +14,8 @@ import android.os.Looper;
 final class NetworkStatus {
     static final int OFFLINE = 0, WIFI = 1, ETHERNET = 2;
     private final ConnectivityManager manager;
+    private final WifiSignal signal;
+    private int wifiLevel = -1;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable changed;
     private boolean running, allRegistered, defaultRegistered, vpn;
@@ -23,16 +26,21 @@ final class NetworkStatus {
         if (!running) return;
         int next = detect(manager);
         boolean nextVpn = detectVpn(manager);
-        if (next != state || nextVpn != vpn) { state = next; vpn = nextVpn; changed.run(); }
+        int nextLevel = next == WIFI ? signal.level() : -1;
+        if (next != state || nextVpn != vpn || nextLevel != wifiLevel) {
+            state = next; vpn = nextVpn; wifiLevel = nextLevel; changed.run();
+        }
     }
 
     NetworkStatus(Context context, Runnable changed) {
         manager = (ConnectivityManager) context.getApplicationContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         this.changed = changed;
+        signal = new WifiSignal(context, this::schedule);
     }
 
     int state() { return state; }
+    int wifiLevel() { return wifiLevel; }
     boolean vpn() { return vpn; }
 
     @SuppressWarnings("deprecation")
@@ -77,11 +85,14 @@ final class NetworkStatus {
                 defaultRegistered = true;
             } catch (RuntimeException ignored) {}
         }
+        signal.start();
         refresh.run();
     }
 
     void stop() {
+        if (!running) return;
         running = false;
+        signal.stop();
         handler.removeCallbacks(refresh);
         if (allRegistered) {
             try { manager.unregisterNetworkCallback(all); } catch (RuntimeException ignored) {}

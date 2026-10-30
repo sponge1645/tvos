@@ -33,7 +33,7 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
  static class Spring {float target;}final Spring scroll=new Spring();static class Work {boolean active;boolean spinning(){return active;}}final Work rouletteWork=new Work();
  final NetworkStatus networkStatus=new NetworkStatus();final HomeData data=new HomeData();final Context context=new Context();
  final HomeAccessibility source=new HomeAccessibility(context,data,this);final boolean[] visible=new boolean[11];
- int moves,wakes,activations,retargets,gridRetargets,selected=-1;static class Click {int count;void move(){count++;}}final Click click=new Click();
+ int moves,wakes,activations,retargets,gridRetargets,selected=-1;static class Click {int count;void move(){count++;}void app(){count++;}}final Click click=new Click();
  AccessibilityHarness(){for(int i=0;i<11;i++){topRects[i]=new RectF(i*100,46,i*100+68,114);lightButtons.add(new HomeApps.Item("Action"+i));visible[i]=true;}}
  public void read(HomeAccessibility.State s){readAccessibilityState(s);}public void focus(int group,int i){moves++;focusAccessibleItem(group,i);}public void wake(){wakes++;}public void activate(){activations++;}
  boolean picksOn(){return picks;}boolean weatherBottom(){return weather;}boolean topControlVisible(int i){return visible[i]&&(i>=5||!searchMode&&picks);}

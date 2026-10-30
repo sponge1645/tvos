@@ -65,7 +65,7 @@ class Choreographer {
  static Choreographer getInstance(){return instance;}
  void postFrameCallback(Object c){pending++;}void removeFrameCallback(Object c){pending=0;}
 }
-class Click {Click(Context c){}void move(){}void open(){}void release(){}}
+class Click {Click(Context c){}void move(){}void open(){}void back(){}void release(){}}
 class Bundle {
  final java.util.Map<String,Object> data=new java.util.HashMap<>();
  void putBoolean(String k,boolean v){data.put(k,v);}void putInt(String k,int v){data.put(k,v);}
