@@ -296,7 +296,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs = Recs.get(a);
         posters = new PosterRenderer(recs, shadows, images, cardRects.length);
         dockBackdrop = new DockBackdrop(activity, this::showDockBackdrop);
-        dockContinue = new DockContinue(activity, () -> { heroDirty = true; heroLayer.invalidate(); wake(); });
+        dockContinue = new DockContinue(activity, this::dockContinueChanged);
         watching = new WatchingCatalog(activity, () -> {
             if (running) updateDockBackdrop();
             if (running && tab == 2 && !searchMode) {
@@ -654,6 +654,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         background.checkNight(data.isNight(System.currentTimeMillis()), running);
         heroDirty = statusDirty = drawerDirty = true;
         platter.invalidate();
+    }
+
+    private void dockContinueChanged() {
+        heroDirty = true;
+        if (running) { heroLayer.invalidate(); wake(); }
     }
 
     private void updateDockBackdrop() {
