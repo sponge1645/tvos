@@ -116,12 +116,20 @@ final class DockBackdrop {
                     }
                     return;
                 }
-                for (Candidate candidate : candidates(pkg)) {
+                long stage = System.nanoTime();
+                List<Candidate> choices = candidates(pkg);
+                int landscapes = 0;
+                for (Candidate candidate : choices) if (!candidate.urls.isEmpty()) landscapes++;
+                trace(pkg, "channels", stage, "candidates=" + choices.size() + ", landscapes=" + landscapes);
+                for (Candidate candidate : choices) {
                     if (token != generation) return;
                     Backdrop background = null;
                     for (String url : candidate.urls) {
-                        try { Bitmap image = read(publishedImage(url), token, true, 2500); if (image != null) background = Backdrop.hero(image); }
-                        catch (IOException | SecurityException | IllegalArgumentException e) { /* Try another published image. */ }
+                        stage = System.nanoTime();
+                        String outcome = "unusable";
+                        try { Bitmap image = read(publishedImage(url), token, true, 2500); if (image != null) { background = Backdrop.hero(image); outcome = "ready"; } }
+                        catch (IOException | SecurityException | IllegalArgumentException e) { outcome = e.getClass().getSimpleName(); }
+                        if (token == generation) trace(pkg, "published image", stage, outcome);
                         if (background != null || token != generation) break;
                     }
                     if (token != generation) return;
@@ -129,19 +137,25 @@ final class DockBackdrop {
                         android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                         publish(pkg, token, new Artwork(background, "", null));
                     }
+                    stage = System.nanoTime();
                     DockArtwork extra = new DockArtwork();
                     try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connection -> trackConnection(token, connection)); }
                     catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
                     if (token != generation) return;
+                    trace(pkg, "metadata", stage, extra.backdrop.isEmpty() ? "no backdrop match" : "matched");
                     if (background == null && !extra.backdrop.isEmpty()) {
+                        stage = System.nanoTime();
                         try { Bitmap image = read(extra.backdrop, token, true); if (image != null) background = Backdrop.hero(image); }
                         catch (IOException | SecurityException | IllegalArgumentException e) { /* Next published title. */ }
+                        if (token == generation) trace(pkg, "fallback image", stage, background == null ? "unusable" : "ready");
                     }
                     if (background == null) continue;
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                     publish(pkg, token, new Artwork(background, "", null));
+                    stage = System.nanoTime();
                     DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
                     if (token != generation) return;
+                    trace(pkg, "logo metadata", stage, extra.logo.isEmpty() ? "none" : "matched");
                     Bitmap logo = null;
                     if (!extra.logo.isEmpty() && token == generation) {
                         try { logo = read(extra.logo, token, false); }
@@ -157,6 +171,11 @@ final class DockBackdrop {
             if (result != null) publish(pkg, token, result);
             else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
         });
+    }
+
+    private static void trace(String pkg, String stage, long started, String outcome) {
+        android.util.Log.i("tvOS-DockBackdrop", pkg + " " + stage + ": "
+                + (System.nanoTime() - started) / 1_000_000 + " ms, " + outcome);
     }
 
     private void publish(String pkg, int token, Artwork ready) {
@@ -189,8 +208,10 @@ final class DockBackdrop {
         }
         channels.sort(Comparator.comparingLong((long[] c) -> c[1]).reversed());
         List<Candidate> result = new ArrayList<>();
+        int queried = 0;
         for (long[] channel : channels) {
-            if (channel[1] < 0 || result.size() >= 6) continue;
+            if (channel[1] < 0) continue;
+            if (queried++ >= 4) break;
             collect("content://android.media.tv/preview_program?channel=" + channel[0], service,
                     "weight DESC, _id ASC", result);
         }
@@ -199,6 +220,7 @@ final class DockBackdrop {
         // Prefer published landscapes over portrait-only titles requiring a fallback lookup.
         // Stable sort retains channel priority among equally suitable candidates.
         result.sort(Comparator.comparingInt(candidate -> candidate.urls.isEmpty() ? 1 : 0));
+        if (result.size() > 6) result.subList(6, result.size()).clear();
         return result;
     }
 
@@ -206,13 +228,14 @@ final class DockBackdrop {
         try (Cursor c = context.getContentResolver().query(Uri.parse(uri),
                 new String[]{"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio", "title", "release_date"},
                 null, null, order)) {
-            if (c != null) while (c.moveToNext() && result.size() < 6) {
+            int added = 0;
+            if (c != null) while (added < 6 && c.moveToNext()) {
                 if (!service.equals(WatchingSources.id(c.getString(0)))) continue;
                 String date = value(c, 6);
                 Candidate candidate = new Candidate(value(c, 5), value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
                 if (c.getInt(4) == 0) add(candidate.urls, value(c, 2));
                 if (c.getInt(3) == 0) add(candidate.urls, value(c, 1));
-                if (!candidate.urls.isEmpty() || !candidate.title.isEmpty()) result.add(candidate);
+                if (!candidate.urls.isEmpty() || !candidate.title.isEmpty()) { result.add(candidate); added++; }
             }
         }
     }
