@@ -124,31 +124,31 @@ final class DockBackdrop {
                 for (Candidate candidate : choices) {
                     if (token != generation) return;
                     Backdrop background = null;
+                    DockArtwork extra = null;
+                    boolean resolvedFirst = "lampa".equals(WatchingSources.id(pkg));
+                    if (resolvedFirst) {
+                        extra = lookup(candidate, pkg, token);
+                        if (token != generation) return;
+                        background = resolvedBackground(extra, pkg, token);
+                    }
+                    boolean publishedReady = false;
                     for (String url : candidate.urls) {
+                        if (background != null || token != generation) break;
                         stage = System.nanoTime();
                         String outcome = "unusable";
-                        try { Bitmap image = read(publishedImage(url), token, true, 2500); if (image != null) { background = Backdrop.hero(image); outcome = "ready"; } }
+                        try { Bitmap image = read(publishedImage(url), token, true, 2500); if (image != null) { background = Backdrop.hero(image); publishedReady = true; outcome = "ready"; } }
                         catch (IOException | SecurityException | IllegalArgumentException e) { outcome = e.getClass().getSimpleName(); }
                         if (token == generation) trace(pkg, "published image", stage, outcome);
                         if (background != null || token != generation) break;
                     }
                     if (token != generation) return;
-                    if (background != null) {
+                    if (publishedReady) {
                         android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                         publish(pkg, token, new Artwork(background, "", null));
                     }
-                    stage = System.nanoTime();
-                    DockArtwork extra = new DockArtwork();
-                    try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connection -> trackConnection(token, connection)); }
-                    catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
+                    if (extra == null) extra = lookup(candidate, pkg, token);
                     if (token != generation) return;
-                    trace(pkg, "metadata", stage, extra.backdrop.isEmpty() ? "no backdrop match" : "matched");
-                    if (background == null && !extra.backdrop.isEmpty()) {
-                        stage = System.nanoTime();
-                        try { Bitmap image = read(extra.backdrop, token, true); if (image != null) background = Backdrop.hero(image); }
-                        catch (IOException | SecurityException | IllegalArgumentException e) { /* Next published title. */ }
-                        if (token == generation) trace(pkg, "fallback image", stage, background == null ? "unusable" : "ready");
-                    }
+                    if (background == null && !resolvedFirst) background = resolvedBackground(extra, pkg, token);
                     if (background == null) continue;
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                     publish(pkg, token, new Artwork(background, "", null));
@@ -171,6 +171,25 @@ final class DockBackdrop {
             if (result != null) publish(pkg, token, result);
             else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
         });
+    }
+
+    private DockArtwork lookup(Candidate candidate, String pkg, int token) {
+        long started = System.nanoTime();
+        DockArtwork extra = new DockArtwork();
+        try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connection -> trackConnection(token, connection)); }
+        catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
+        if (token == generation) trace(pkg, "metadata", started, extra.backdrop.isEmpty() ? "no backdrop match" : "matched");
+        return extra;
+    }
+
+    private Backdrop resolvedBackground(DockArtwork extra, String pkg, int token) {
+        if (extra.backdrop.isEmpty() || token != generation) return null;
+        long started = System.nanoTime();
+        Backdrop background = null;
+        try { Bitmap image = read(extra.backdrop, token, true); if (image != null) background = Backdrop.hero(image); }
+        catch (IOException | SecurityException | IllegalArgumentException e) { /* Published artwork remains a fallback. */ }
+        if (token == generation) trace(pkg, "fallback image", started, background == null ? "unusable" : "ready");
+        return background;
     }
 
     private static void trace(String pkg, String stage, long started, String outcome) {
