@@ -10,7 +10,7 @@ import java.util.Locale;
 final class DockArtwork {
     private static final java.util.Map<String, DockArtwork> CACHE = new java.util.LinkedHashMap<>(16, .75f, true);
     String backdrop = "", logo = "";
-    private String kind, cacheKey, languageCode;
+    private String kind, cacheKey, languageCode, originalLanguage = "";
     private int id;
     private boolean logoLoaded;
 
@@ -35,6 +35,8 @@ final class DockArtwork {
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
+        String original = match.optString("original_language", "");
+        if (original.matches("[a-z]{2,3}")) result.originalLanguage = original;
         result.kind = match.optString("media_type", ""); result.id = match.optInt("id"); result.cacheKey = key;
         return result;
     }
@@ -61,8 +63,9 @@ final class DockArtwork {
         if (result.logoLoaded || result.id <= 0) return;
         try {
             JSONObject images = TmdbClient.get("/" + result.kind + "/" + result.id
-                    + "/images?include_image_language=" + result.languageCode + ",en,null", opened);
-            result.logo = image(logo(images.optJSONArray("logos"), result.languageCode), "w500");
+                    + "/images?include_image_language=" + result.languageCode + ",en,null"
+                    + (result.originalLanguage.isEmpty() ? "" : "," + result.originalLanguage), opened);
+            result.logo = image(logo(images.optJSONArray("logos"), result.languageCode, result.originalLanguage), "w500");
             result.logoLoaded = true;
             synchronized (CACHE) {
                 CACHE.put(result.cacheKey, result);
@@ -97,6 +100,10 @@ final class DockArtwork {
     }
 
     static String logo(JSONArray items, String language) {
+        return logo(items, language, "");
+    }
+
+    static String logo(JSONArray items, String language, String originalLanguage) {
         String selected = ""; int best = -1;
         if (items != null) for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
@@ -104,7 +111,7 @@ final class DockArtwork {
             String path = item.optString("file_path", "");
             if (!path.endsWith(".png")) continue;
             String lang = item.optString("iso_639_1", "");
-            int score = language.equals(lang) ? 3 : "en".equals(lang) ? 2 : (lang.isEmpty() || "null".equals(lang)) ? 1 : 0;
+            int score = language.equals(lang) ? 4 : "en".equals(lang) ? 3 : (lang.isEmpty() || "null".equals(lang)) ? 2 : (!originalLanguage.isEmpty() && originalLanguage.equals(lang)) ? 1 : 0;
             if (score > best && score > 0) { best = score; selected = path; }
         }
         return selected;
