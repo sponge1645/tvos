@@ -54,6 +54,7 @@ final class DockContinue {
         this.context = context.getApplicationContext();
         this.changed = changed;
         this.worker = worker;
+        titlePaint.setAntiAlias(true);
         images = new PosterCache(context, () -> main.post(changed));
     }
 
