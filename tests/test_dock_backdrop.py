@@ -4,10 +4,10 @@ import tempfile,subprocess
 from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/DockBackdrop.java').read_text()
 host=block(Path('app/src/io/tvos/HomeView.java').read_text(),'    private void updateDockBackdrop(')
-methods='\n'.join(block(source, key) for key in ['    void focus(', '    void pause(', '    private void cancelConnection(', '    static int priority(', '    static String bundled(', '    static void add('])
+methods='\n'.join(block(source, key) for key in ['    void focus(', '    void pause(', '    private void cancelConnection(', '    private void cancelLoading(', '    static String loadingBanner(', '    static int priority(', '    static String bundled(', '    static void add('])
 harness='''import java.util.*;import java.net.HttpURLConnection;public class DockHarness {
  static class Handler {Runnable queued;long delay;void removeCallbacks(Runnable r){queued=null;}void postDelayed(Runnable r,long d){queued=r;delay=d;}}
- static class Artwork {String title="Ready";Object logo;} java.net.HttpURLConnection activeConnection;static final java.util.concurrent.Executor CANCEL=Runnable::run; final Handler main=new Handler();final Runnable load=()->{};int generation;String focused,cachedPackage;Artwork cached;List<Artwork> results=new ArrayList<>();java.util.function.Consumer<Artwork> changed=results::add;
+ static class Artwork {String title="Ready";Object logo;} java.net.HttpURLConnection activeConnection;static final java.util.concurrent.Executor CANCEL=Runnable::run; final Handler main=new Handler();final Runnable load=()->{};int generation;Runnable pendingLoading;String focused,cachedPackage;Artwork cached;List<Artwork> results=new ArrayList<>();java.util.function.Consumer<Artwork> changed=results::add;
  METHODS
  static class HomeFocus {
  static final int Z_SHELF=1;boolean running=true,searchMode,sheetOpen,drawerOpen;int zone=Z_SHELF,shelfIndex,backdropDockIndex=-1,backdropDirection;String backdropFocus;

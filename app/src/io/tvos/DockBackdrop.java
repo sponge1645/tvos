@@ -35,6 +35,7 @@ final class DockBackdrop {
     private String focused;
     private String cachedPackage;
     private Artwork cached;
+    private Runnable pendingLoading;
 
     DockBackdrop(Context context, Consumer<Artwork> changed) {
         this.context = context.getApplicationContext(); this.changed = changed;
@@ -62,18 +63,45 @@ final class DockBackdrop {
 
     void focus(String pkg) {
         if (java.util.Objects.equals(focused, pkg)) return;
-        focused = pkg; generation++; cancelConnection(); main.removeCallbacks(load);
+        focused = pkg; generation++; cancelConnection(); cancelLoading(); main.removeCallbacks(load);
         if (pkg == null) { changed.accept(null); return; }
         if (pkg.equals(cachedPackage) && cached != null) {
-            changed.accept(cached);
+            boolean temporary = loadingBanner(pkg) != null && cached.title.isEmpty() && cached.logo == null;
+            if (!temporary) changed.accept(cached);
             if (bundled(pkg) != null || !cached.title.isEmpty() || cached.logo != null) return;
         }
         main.postDelayed(load, 450);
     }
 
     void pause() {
-        generation++; cancelConnection(); focused = null; main.removeCallbacks(load);
+        generation++; cancelConnection(); cancelLoading(); focused = null; main.removeCallbacks(load);
         cached = null; cachedPackage = null;
+    }
+
+    private void cancelLoading() {
+        if (pendingLoading != null) main.removeCallbacks(pendingLoading);
+        pendingLoading = null;
+    }
+
+    private void scheduleLoading(String pkg, int token, Artwork ready, long requested,
+            java.util.concurrent.atomic.AtomicBoolean imageReady) {
+        main.post(() -> {
+            if (token != generation || imageReady.get()) return;
+            cancelLoading();
+            pendingLoading = () -> {
+                pendingLoading = null;
+                if (token != generation || imageReady.get()) return;
+                cachedPackage = pkg; cached = ready;
+                changed.accept(ready);
+            };
+            long elapsed = (System.nanoTime() - requested) / 1_000_000;
+            main.postDelayed(pendingLoading, Math.max(0, 2000 - elapsed));
+        });
+    }
+
+    private void imagePrepared(int token, java.util.concurrent.atomic.AtomicBoolean imageReady) {
+        imageReady.set(true);
+        main.post(() -> { if (token == generation) cancelLoading(); });
     }
 
     private void cancelConnection() {
@@ -108,11 +136,14 @@ final class DockBackdrop {
         final String pkg = focused;
         final int token = generation;
         if (pkg == null) return;
+        final long requested = System.nanoTime();
+        final java.util.concurrent.atomic.AtomicBoolean imageReady = new java.util.concurrent.atomic.AtomicBoolean();
         IO.execute(() -> {
             if (token != generation) return;
             long started = System.nanoTime();
             Artwork result = null;
             String loading = loadingBanner(pkg);
+            boolean hasLoading = false;
             try {
                 String bundled = bundled(pkg);
                 if (bundled != null) {
@@ -129,8 +160,9 @@ final class DockBackdrop {
                         Bitmap image = BitmapFactory.decodeStream(input);
                         if (image == null) throw new IOException("Unreadable loading backdrop");
                         if (token != generation) { image.recycle(); return; }
-                        result = new Artwork(Backdrop.wideHero(image), "", null);
-                        publish(pkg, token, result);
+                        Artwork preview = new Artwork(Backdrop.wideHero(image), "", null);
+                        scheduleLoading(pkg, token, preview, requested, imageReady);
+                        hasLoading = true;
                     } catch (IOException | RuntimeException e) {
                         if (token == generation) AppLog.w("Dock loading backdrop unavailable: " + e.getClass().getSimpleName());
                     }
@@ -162,6 +194,7 @@ final class DockBackdrop {
                     }
                     if (token != generation) return;
                     if (publishedReady) {
+                        imagePrepared(token, imageReady);
                         android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                         if (loading == null) {
                             result = new Artwork(background, "", null);
@@ -172,11 +205,13 @@ final class DockBackdrop {
                     if (token != generation) return;
                     if (background == null && !resolvedFirst) background = resolvedBackground(extra, pkg, token);
                     if (background == null) continue;
+                    imagePrepared(token, imageReady);
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                     if (loading == null) {
                         result = new Artwork(background, "", null);
                         publish(pkg, token, result);
                     }
+                    result = new Artwork(background, candidate.title, null);
                     stage = System.nanoTime();
                     DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
                     if (token != generation) return;
@@ -193,8 +228,11 @@ final class DockBackdrop {
             } catch (IOException | RuntimeException | OutOfMemoryError e) {
                 if (token == generation) AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
             }
-            if (result != null) publish(pkg, token, result);
-            else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
+            if (result != null) {
+                imageReady.set(true);
+                main.post(() -> { if (token == generation) cancelLoading(); });
+                publish(pkg, token, result);
+            } else if (!hasLoading) main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
         });
     }
 
