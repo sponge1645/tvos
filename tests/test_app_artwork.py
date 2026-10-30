@@ -114,6 +114,7 @@ public class ArtworkHarness {
   AppArtwork.holes(colored,40,40);check(colored[18*40+18]==-1&&colored[0]==0,"small saturated hole fills, exterior stays transparent");
   int[] letters=new int[40*40];for(int y=15;y<22;y++)for(int x=15;x<22;x++)if(x==15||x==21||y==15||y==21)letters[y*40+x]=-1;
   AppArtwork.holes(letters,40,40);check(letters[18*40+18]==0,"white letter counters stay open");
+  c.assets.put("music",solid(540,252,-1));c.assets.data.put("logos/music.webp",c.assets.data.remove("logos/music.png"));check(AppArtwork.ownLogoCached(c,"music")!=null,"music loads supplied WebP icon");
   c.assets.put("bundled",solid(1280,640,-1));Bitmap bundled=AppArtwork.ownLogoCached(c,"bundled");
   check(bundled.w==640&&bundled.h==320&&BitmapFactory.sample==2,"bounded power-of-two decode preserves prior sampling");
   int opens=c.assets.opens;check(AppArtwork.ownLogoCached(c,"bundled")==bundled&&c.assets.opens==opens,"bundled image decoded once");

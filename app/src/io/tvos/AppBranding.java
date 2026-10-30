@@ -28,7 +28,7 @@ final class AppBranding {
         add("com.seena.app", 0xFF007AFF, 0xFF007AFF, "seena", 1f, 1f, 1f);
         add("top.rootu.lampa", 0xFF313130, 0xFF161613, "lampa", 1f, 1f, 1f);
         add("tv-settings", 0xFFA5A6AB, 0xFF656368, "settings", 2f, 1.6632f, 1f);
-        add("com.applemusicktv", 0xFFEB576D, 0xFFEA333C, "music", 1f, 1f, 1.25f);
+        add("com.applemusicktv", 0xFF313130, 0xFF161613, "music", 1f, 1f, 1.25f);
         add("com.android.tv.settings", 0xFFA5A6AB, 0xFF656368, "settings", 2.4f, 1f, 1f);
         add("io.github.jqssun.airplay", 0xFFF79E1F, 0xFFFF6933, "airplay", 1f, 1f, 1f);
         add("llc.itdev.incy", 0xFF024824, 0xFF0B1B11, "incy", 1f, 1f, 1f);

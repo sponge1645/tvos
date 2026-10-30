@@ -508,10 +508,11 @@ final class AppArtwork {
     }
 
     private static Bitmap ownLogo(Context c, String key) {
+        String asset = "logos/" + key + ("music".equals(key) ? ".webp" : ".png");
         try {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
-            try (InputStream in = c.getAssets().open("logos/" + key + ".png")) {
+            try (InputStream in = c.getAssets().open(asset)) {
                 BitmapFactory.decodeStream(in, null, bounds);
             }
             BitmapFactory.Options opts = new BitmapFactory.Options();
@@ -519,7 +520,7 @@ final class AppArtwork {
             int largest = Math.max(bounds.outWidth, bounds.outHeight);
             while (largest / (opts.inSampleSize * 2) >= 640) opts.inSampleSize *= 2;
             Bitmap b;
-            try (InputStream in = c.getAssets().open("logos/" + key + ".png")) {
+            try (InputStream in = c.getAssets().open(asset)) {
                 b = BitmapFactory.decodeStream(in, null, opts);
             }
             if (b == null) return null;
