@@ -170,14 +170,6 @@ final class DockBackdrop {
             } catch (IOException | RuntimeException | OutOfMemoryError e) {
                 if (token == generation) AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
             }
-            if (result == null && token == generation) {
-                try {
-                    Backdrop local = DockAppBackdrop.create(context, pkg);
-                    if (local != null) result = new Artwork(local, "", null);
-                } catch (RuntimeException | OutOfMemoryError e) {
-                    if (token == generation) AppLog.w("Dock app backdrop unavailable: " + e.getClass().getSimpleName());
-                }
-            }
             if (result != null) publish(pkg, token, result);
             else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
         });
