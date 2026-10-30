@@ -28,20 +28,33 @@ final class DockArtwork {
         String language = requestedLanguage.apiTag;
         String key = language + "\n" + year + "\n" + poster + "\n" + title;
         synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) return cached; }
-        JSONObject match = null;
-        String[] titles = titles(title);
-        // Bilingual provider labels are not a single movie title. Try the original first.
-        for (int i = titles.length - 1; i >= 0; i--) {
-            JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
-                    + URLEncoder.encode(titles[i], "UTF-8") + "&include_adult=false", opened).optJSONArray("results");
-            match = match(items, title, poster, year);
-            if (match != null) break;
-        }
+        JSONObject match = search(title, poster, year, language, opened);
+        // Providers may keep Russian titles/posters even when the launcher requests English metadata.
+        if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
+            match = search(title, poster, year, "ru-RU", opened);
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
         result.kind = match.optString("media_type", ""); result.id = match.optInt("id"); result.cacheKey = key;
         return result;
+    }
+
+    private static boolean hasCyrillic(String title) {
+        for (int i = 0; i < title.length(); i++)
+            if (Character.UnicodeBlock.of(title.charAt(i)) == Character.UnicodeBlock.CYRILLIC) return true;
+        return false;
+    }
+
+    private static JSONObject search(String title, String poster, String year, String language,
+            java.util.function.Consumer<java.net.HttpURLConnection> opened) throws IOException, org.json.JSONException {
+        String[] variants = titles(title);
+        for (int i = variants.length - 1; i >= 0; i--) {
+            JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
+                    + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", opened).optJSONArray("results");
+            JSONObject matched = match(items, title, poster, year);
+            if (matched != null) return matched;
+        }
+        return null;
     }
 
     static void loadLogo(DockArtwork result, java.util.function.Consumer<java.net.HttpURLConnection> opened) {
