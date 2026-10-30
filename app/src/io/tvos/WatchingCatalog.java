@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.watching.WatchingSources;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -37,11 +39,14 @@ final class WatchingCatalog {
     private final Runnable changed;
     private final Executor worker;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Runnable reload = this::refresh;
+    private boolean observerPending;
+    private long nextObservedRefresh;
+    private final Runnable reload = () -> { observerPending = false; refresh(); };
     private final ContentObserver observer = new ContentObserver(main) {
         @Override public void onChange(boolean selfChange) {
-            main.removeCallbacks(reload);
-            main.postDelayed(reload, 350);
+            if (!active || observerPending) return;
+            observerPending = true;
+            main.postDelayed(reload, Math.max(350, nextObservedRefresh - android.os.SystemClock.elapsedRealtime()));
         }
     };
     private List<Recs.Pick> allPicks = Collections.emptyList();
@@ -144,6 +149,7 @@ final class WatchingCatalog {
         generation++;
         pending = false;
         main.removeCallbacks(reload);
+        observerPending = false;
         if (observing) {
             context.getContentResolver().unregisterContentObserver(observer);
             observing = false;
@@ -160,7 +166,8 @@ final class WatchingCatalog {
         }
         if (!observing) {
             try {
-                context.getContentResolver().registerContentObserver(Uri.parse("content://android.media.tv"), true, observer);
+                for (String table : new String[]{"watch_next_program", "channel", "preview_program"})
+                    context.getContentResolver().registerContentObserver(Uri.parse("content://android.media.tv/" + table), true, observer);
                 observing = true;
             } catch (SecurityException e) {
                 Log.w(TAG, "Watch Next observer denied");
@@ -168,6 +175,7 @@ final class WatchingCatalog {
         }
         if (busy) { pending = true; return; }
         busy = true;
+        nextObservedRefresh = android.os.SystemClock.elapsedRealtime() + 5000;
         final int request = generation;
         worker.execute(() -> {
             List<Recs.Pick> found = new ArrayList<>();
@@ -261,7 +269,7 @@ final class WatchingCatalog {
         return value == null ? "" : value;
     }
 
-    private static Recs.Pick read(Cursor cursor, String owner) {
+    private Recs.Pick read(Cursor cursor, String owner) {
         String title = text(cursor, 3), link = text(cursor, 5);
         if (title.isEmpty() || link.isEmpty()) return null;
         Intent intent = intent(link, owner);
@@ -277,7 +285,7 @@ final class WatchingCatalog {
         pick.watchingEpisode = text(cursor, 7);
         pick.watchingRemaining = WatchingItems.remaining(cursor.getLong(8), cursor.getLong(9));
         pick.watchingUpdated = cursor.getLong(10);
-        pick.poster = poster(text(cursor, 4));
+        pick.poster = poster(text(cursor, 4), owner);
         String service = WatchingSources.id(owner);
         if (!"kinopub".equals(service)) {
             pick.watchingKey = service + ":" + pick.kind + ":" + title.trim().toLowerCase(java.util.Locale.ROOT);
@@ -293,8 +301,8 @@ final class WatchingCatalog {
                 JSONObject data = new JSONObject(resume);
                 if (data.optInt("id") > 0) pick.watchingKey = "kinopub:" + data.optInt("id");
                 // The system row may deliberately use a landscape thumbnail; keep the portrait poster.
-                String portrait = poster(data.optString("posterBig", ""));
-                if (portrait.isEmpty()) portrait = poster(data.optString("poster", ""));
+                String portrait = poster(data.optString("posterBig", ""), owner);
+                if (portrait.isEmpty()) portrait = poster(data.optString("poster", ""), owner);
                 if (!portrait.isEmpty()) pick.poster = portrait;
             } catch (JSONException e) {
                 Log.w(TAG, "Invalid KinoPub resume metadata");
@@ -310,9 +318,8 @@ final class WatchingCatalog {
         return pick;
     }
 
-    private static String poster(String value) {
-        return value.startsWith("https://") || value.startsWith("content://")
-                || value.startsWith("android.resource://") ? value : "";
+    private String poster(String value, String owner) {
+        return ProviderImages.allowed(context, value, owner) ? value : "";
     }
 
     private static Intent intent(String link, String owner) {

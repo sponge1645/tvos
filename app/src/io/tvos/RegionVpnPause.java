@@ -1,7 +1,6 @@
 package io.tvos;
 
 import android.content.Context;
-import android.net.ConnectivityManager;
 import java.io.IOException;
 
 /** A short, state-checked Incy pause owned by one automatic-region request. */
@@ -17,18 +16,15 @@ final class RegionVpnPause implements AutoCloseable {
     private java.util.concurrent.ScheduledFuture<?> expiry;
     private final Control control;
     private boolean restore;
+    private RegionVpnRecovery recovery;
     private long deadline;
 
     RegionVpnPause(Control control) { this.control = control; }
 
     static RegionVpnPause open(Context context) throws IOException {
-        ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        RegionVpnPause pause = new RegionVpnPause(new Control() {
-            public boolean connected() { return NetworkStatus.detectVpn(manager); }
-            public void toggle() throws IOException { VpnControl.toggle(context); }
-            public long now() { return android.os.SystemClock.elapsedRealtime(); }
-            public void waitStep() throws InterruptedException { Thread.sleep(100); }
-        });
+        RegionVpnRecovery.recover(context);
+        RegionVpnPause pause = new RegionVpnPause(RegionVpnRecovery.control(context));
+        pause.recovery = new RegionVpnRecovery(context);
         if (pause.control.connected() && !VpnControl.PACKAGE.equals(context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                 .getString("vpn_app", ""))) throw new IOException("Automatic region VPN pause supports Incy only");
         pause.begin();
@@ -43,8 +39,8 @@ final class RegionVpnPause implements AutoCloseable {
         if (!control.connected()) return;
         restore = true;
         try {
-            control.toggle();
-            await(false, control.now() + 8000);
+            if (recovery != null) recovery.pause(control);
+            else { control.toggle(); await(false, control.now() + 8000); }
             deadline = control.now() + 30000;
         } catch (IOException e) {
             try { close(); } catch (IOException restoreFailure) { e.addSuppressed(restoreFailure); }
@@ -67,7 +63,8 @@ final class RegionVpnPause implements AutoCloseable {
     @Override public synchronized void close() throws IOException {
         if (expiry != null) expiry.cancel(false);
         if (!restore) return;
-        if (!control.connected()) {
+        if (recovery != null) recovery.restore(control);
+        else if (!control.connected()) {
             control.toggle();
             await(true, control.now() + 8000);
         }

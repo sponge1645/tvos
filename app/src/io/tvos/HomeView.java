@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.watching.WatchingSources;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;

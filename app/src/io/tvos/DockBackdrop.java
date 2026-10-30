@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.watching.WatchingSources;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -325,8 +327,8 @@ final class DockBackdrop {
                 owned++;
                 String date = value(c, 6);
                 Candidate candidate = new Candidate(value(c, 5), value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
-                if (c.getInt(4) == 0) add(candidate.urls, value(c, 2));
-                if (c.getInt(3) == 0) add(candidate.urls, value(c, 1));
+                if (c.getInt(4) == 0 && ProviderImages.allowed(context, value(c, 2), value(c, 0))) add(candidate.urls, value(c, 2));
+                if (c.getInt(3) == 0 && ProviderImages.allowed(context, value(c, 1), value(c, 0))) add(candidate.urls, value(c, 1));
                 if (!candidate.urls.isEmpty() || !candidate.title.isEmpty()) { result.add(candidate); added++; }
             }
         }

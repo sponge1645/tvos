@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.watching.WatchingSources;
+
 /** Caption formatting follows the selected app language without changing the provider data. */
 final class WatchingText {
     private WatchingText() {}

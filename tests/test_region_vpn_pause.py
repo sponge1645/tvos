@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess,tempfile
 files={
+'io/tvos/RegionVpnRecovery.java':'package io.tvos;class RegionVpnRecovery {RegionVpnRecovery(Object c){}static void recover(Object c){}static RegionVpnPause.Control control(Object c){return null;}void pause(RegionVpnPause.Control c){}void restore(RegionVpnPause.Control c){}}',
 'io/tvos/AppLog.java':'package io.tvos;class AppLog {static void w(String s){}}',
 'android/content/Context.java':'package android.content;public class Context {public static final String CONNECTIVITY_SERVICE="connectivity";public static final int MODE_PRIVATE=0;public Object getSystemService(String s){return null;}public Context getSharedPreferences(String n,int m){return this;}public String getString(String k,String d){return "llc.itdev.incy";}}',
 'android/net/ConnectivityManager.java':'package android.net;public class ConnectivityManager {}',

@@ -24,14 +24,14 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),chann
  public Cursor query(Uri u,String[] columns,String a,String[] b,String sort){boolean channel=u.toString().equals("content://android.media.tv/channel"),preview=u.toString().contains("preview_program?");if(channel&&channels.isEmpty())return null;queries++;if(denied)throw new SecurityException();if(!channel&&!preview&&!sort.equals("last_engagement_time_utc_millis DESC"))throw new AssertionError("order");List<Object[]> snapshot=new ArrayList<>(channel?channels:preview?previews:rows);return new Cursor(){int at=-1;public boolean moveToNext(){return ++at<snapshot.size();}public String getString(int i){Object v=snapshot.get(at)[i];return v==null?null:v.toString();}public long getLong(int i){Object v=snapshot.get(at)[i];return v==null?0:((Number)v).longValue();}public int getInt(int i){return (int)getLong(i);}public void close(){closes++;}};}
 }''',
 'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
-'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty())tasks.remove().run();}}''',
+'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {public static long delay;static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){delay=d;tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty())tasks.remove().run();}}''',
 'android/util/Log.java':'package android.util;public class Log {public static int i(String t,String m){return 0;}public static int w(String t,String m){return 0;}}',
 'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
 })
 f['io/tvos/SeenaChannelRefresh.java']='package io.tvos;class SeenaChannelRefresh {static void request(Object c){}}'
 f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static boolean categoryEnabled(int i){return true;}static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
 f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('private final Map<String,Object> m=new HashMap<>();','''public static final Map<String,JSONObject> encoded=new HashMap<>();private final Map<String,Object> m=new HashMap<>();public JSONObject(){}public JSONObject(String s)throws JSONException{JSONObject value=encoded.get(s);if(value==null)throw new JSONException("bad JSON");m.putAll(value.m);}''')
-for name in ['WatchingCatalog','WatchingItems','WatchingText','WatchingSources']:
+for name in ['WatchingCatalog','WatchingItems','WatchingText']:
  f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 f['io/tvos/WatchingHarness.java']='''package io.tvos;
 import java.util.*;import java.util.concurrent.Executor;import android.content.*;import android.os.Handler;import android.net.Uri;import org.json.JSONObject;
@@ -103,11 +103,11 @@ public class WatchingHarness {
   check(catalog.open(catalog.picks().get(0))&&AppLaunch.opened.owner.equals("com.seena.app"),"generic resume link opens its own service");
   catalog.selectSource("lampa");catalog.refresh();worker.drain();Handler.drain();check(catalog.picks().size()==1&&catalog.picks().get(0).pkg.equals("top.rootu.lampa"),"filter survives provider refresh");
   catalog.selectSource("all");check(catalog.picks().size()==5,"All restores combined list");check(!catalog.forSource("kinopub").isEmpty()&&catalog.source().equals("all")&&catalog.picks().size()==5,"Dock source snapshot does not change Watching selection");
-  int before=context.resolver.queries;context.resolver.observer.onChange(false);context.resolver.observer.onChange(false);Handler.drain();check(worker.tasks.size()==1,"observer bursts debounced");worker.drain();Handler.drain();check(context.resolver.queries==before+1,"one refresh after changes");
+  int before=context.resolver.queries;context.resolver.observer.onChange(false);context.resolver.observer.onChange(false);check(Handler.delay==5000,"observer refreshes rate limited to five seconds");Handler.drain();check(worker.tasks.size()==1,"observer bursts debounced");worker.drain();Handler.drain();check(context.resolver.queries==before+1,"one refresh after changes");
   List<Recs.Pick> saved=catalog.picks();context.resolver.denied=true;catalog.refresh();worker.drain();Handler.drain();check(catalog.picks()==saved,"transient query failure keeps previous successful list");
   context.resolver.denied=false;catalog.refresh();catalog.stop();worker.drain();Handler.drain();check(catalog.picks()==saved,"late result after pause ignored");
   check(context.resolver.unregistered==1,"observer removed on pause");
-  catalog.start();worker.drain();Handler.drain();check(context.resolver.registered==2,"observer restored on resume");catalog.stop();
+  catalog.start();worker.drain();Handler.drain();check(context.resolver.registered==6,"observer restored on resume");catalog.stop();
   catalog.selectSource("seena");context.resolver.rows.clear();
   context.resolver.channels.add(new Object[]{323L,"com.seena.app","seena_tv_history","Seena — История"});
   context.resolver.channels.add(new Object[]{999L,"other.app","seena_tv_history","Seena — История"});
@@ -124,6 +124,11 @@ public class WatchingHarness {
  }
 }
 '''
+f['io/tvos/ProviderImages.java']='package io.tvos;class ProviderImages {static boolean allowed(Object c,String v,String o){return v!=null&&v.startsWith("https://");}}'
+f['android/os/SystemClock.java']='package android.os;public class SystemClock {public static long elapsedRealtime(){return 0;}}'
+f['io/tvos/watching/WatchingSources.java']=Path('app/src/io/tvos/watching/WatchingSources.java').read_text()
+for key in list(f):
+ if key.endswith('.java') and 'WatchingSources.' in f[key] and 'package io.tvos;' in f[key]: f[key]=f[key].replace('package io.tvos;', 'package io.tvos;import io.tvos.watching.WatchingSources;')
 with tempfile.TemporaryDirectory(prefix='tvos-watching-') as directory:
  root=Path(directory)
  for name,code in f.items():

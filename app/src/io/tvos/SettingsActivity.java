@@ -58,6 +58,7 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        RegionVpnRecovery.request(this);
         Watchdog.install(this);
         Ui.init(this);
         view = new SettingsView(this);

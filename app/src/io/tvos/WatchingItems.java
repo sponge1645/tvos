@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.watching.WatchingSources;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;

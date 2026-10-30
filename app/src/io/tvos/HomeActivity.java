@@ -31,6 +31,7 @@ public class HomeActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        RegionVpnRecovery.request(this);
         Watchdog.install(this);
         ChiqBootGuard.homeCreated(this);
         if (Watchdog.crashedTooOften(this)) {

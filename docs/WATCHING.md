@@ -78,3 +78,27 @@ When a provider retains a Cyrillic title while the launcher uses another languag
 KinoPub (original and mod), Seena and Lampa display bundled service artwork only if the movie background is still unavailable after two seconds. A background prepared before that deadline suppresses the service banner even if its logo is still loading. These panoramic assets are copied unchanged from the supplied files. A decoded movie background replaces the previous image immediately, without waiting for metadata or logo downloads. The logo enriches the same background later without restarting its transition. If no movie artwork is available, the service banner remains. Other apps retain their existing progressive loading. The optional KinoPub resume-card mode remains independent.
 
 The delayed service-banner callback is cancelled on a prepared movie image, completed movie artwork, changed focus or Home pause. Cached service artwork does not bypass the delay when revisiting an app. The two-second timer starts with the focus-debounced loading request, not after network work finishes.
+
+## Recovery and provider boundaries
+
+An automatic-region request may temporarily disconnect a configured Incy VPN;
+TV traffic uses the direct connection during this pause. Before disconnecting,
+tvOS syncs a private restore-intent file and requires successful scheduling of a
+persisted recovery job in the main process. Normal completion and the local timer
+also attempt restoration. Home/Settings startup, boot and package replacement
+request recovery for unfinished intents. Cross-process file locking prevents
+concurrent restore attempts from toggling a reconnected VPN off. Failed recovery
+retains the intent, retries, and displays a notice. Job execution is best effort:
+firmware restrictions, force-stop, missing Incy or network failure can delay
+reconnection, and a later manual VPN change cannot always be distinguished.
+
+Watching observes only Watch Next, channels and preview programs. Observer-driven
+reloads have a five-second minimum interval and coalesce changes without
+indefinitely delaying them during continuous updates. Explicit Home/permission
+refreshes remain immediate. Other publishers cannot be identified reliably from
+change notifications alone, so these relevant tables are still re-read.
+
+Published content images must resolve through PackageManager to the publishing
+package. Resource URIs must name that package; HTTPS CDN images remain supported.
+Missing, foreign or unavailable content providers are rejected. No new URI grants
+are requested. APK download trust is documented in APK-SOURCES.md.
