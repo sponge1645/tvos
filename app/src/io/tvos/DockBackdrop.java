@@ -119,6 +119,8 @@ final class DockBackdrop {
     }
 
     static String bundled(String pkg) {
+        if ("com.applemusicktv".equals(pkg)) return "music.webp";
+        if ("com.android.vending".equals(pkg) || "com.yandex.devices.appstore".equals(pkg)) return "googleplay.webp";
         if ("io.tvos".equals(pkg) || "com.android.tv.settings".equals(pkg)) return "settings.webp";
         if ("com.google.android.youtube.tv".equals(pkg) || "com.google.android.youtube".equals(pkg)
                 || "io.gh.reisxd.tizentube.cobalt".equals(pkg)) return "youtube.webp";
