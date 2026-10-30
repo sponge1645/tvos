@@ -144,14 +144,16 @@ final class DockBackdrop {
                     if (token != generation) return;
                     if (publishedReady) {
                         android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                        publish(pkg, token, new Artwork(background, "", null));
+                        result = new Artwork(background, "", null);
+                        publish(pkg, token, result);
                     }
                     if (extra == null) extra = lookup(candidate, pkg, token);
                     if (token != generation) return;
                     if (background == null && !resolvedFirst) background = resolvedBackground(extra, pkg, token);
                     if (background == null) continue;
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                    publish(pkg, token, new Artwork(background, "", null));
+                    result = new Artwork(background, "", null);
+                    publish(pkg, token, result);
                     stage = System.nanoTime();
                     DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
                     if (token != generation) return;
@@ -167,6 +169,14 @@ final class DockBackdrop {
                 }
             } catch (IOException | RuntimeException | OutOfMemoryError e) {
                 if (token == generation) AppLog.w("Dock backdrop unavailable: " + e.getClass().getSimpleName());
+            }
+            if (result == null && token == generation) {
+                try {
+                    Backdrop local = DockAppBackdrop.create(context, pkg);
+                    if (local != null) result = new Artwork(local, "", null);
+                } catch (RuntimeException | OutOfMemoryError e) {
+                    if (token == generation) AppLog.w("Dock app backdrop unavailable: " + e.getClass().getSimpleName());
+                }
             }
             if (result != null) publish(pkg, token, result);
             else main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
