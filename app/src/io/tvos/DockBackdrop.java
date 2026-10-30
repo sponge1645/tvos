@@ -97,6 +97,13 @@ final class DockBackdrop {
         return null;
     }
 
+    static String loadingBanner(String pkg) {
+        if ("watch.kino".equals(pkg) || "watch.kino.mod".equals(pkg)) return "kinopub.webp";
+        if ("com.seena.app".equals(pkg)) return "seena.webp";
+        if ("top.rootu.lampa".equals(pkg)) return "lampa.webp";
+        return null;
+    }
+
     private void loadFocused() {
         final String pkg = focused;
         final int token = generation;
@@ -105,6 +112,7 @@ final class DockBackdrop {
             if (token != generation) return;
             long started = System.nanoTime();
             Artwork result = null;
+            String loading = loadingBanner(pkg);
             try {
                 String bundled = bundled(pkg);
                 if (bundled != null) {
@@ -115,6 +123,17 @@ final class DockBackdrop {
                         publish(pkg, token, new Artwork(Backdrop.wideHero(image), "", null));
                     }
                     return;
+                }
+                if (loading != null) {
+                    try (InputStream input = context.getAssets().open("banners/" + loading)) {
+                        Bitmap image = BitmapFactory.decodeStream(input);
+                        if (image == null) throw new IOException("Unreadable loading backdrop");
+                        if (token != generation) { image.recycle(); return; }
+                        result = new Artwork(Backdrop.wideHero(image), "", null);
+                        publish(pkg, token, result);
+                    } catch (IOException | RuntimeException e) {
+                        if (token == generation) AppLog.w("Dock loading backdrop unavailable: " + e.getClass().getSimpleName());
+                    }
                 }
                 long stage = System.nanoTime();
                 List<Candidate> choices = candidates(pkg);
@@ -144,16 +163,20 @@ final class DockBackdrop {
                     if (token != generation) return;
                     if (publishedReady) {
                         android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                        result = new Artwork(background, "", null);
-                        publish(pkg, token, result);
+                        if (loading == null) {
+                            result = new Artwork(background, "", null);
+                            publish(pkg, token, result);
+                        }
                     }
                     if (extra == null) extra = lookup(candidate, pkg, token);
                     if (token != generation) return;
                     if (background == null && !resolvedFirst) background = resolvedBackground(extra, pkg, token);
                     if (background == null) continue;
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                    result = new Artwork(background, "", null);
-                    publish(pkg, token, result);
+                    if (loading == null) {
+                        result = new Artwork(background, "", null);
+                        publish(pkg, token, result);
+                    }
                     stage = System.nanoTime();
                     DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
                     if (token != generation) return;
