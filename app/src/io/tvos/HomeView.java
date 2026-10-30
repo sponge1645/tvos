@@ -1890,7 +1890,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
         if (!picksOn()) {
-            if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night());
+            if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night(), noTopWidgets());
             else if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;
         }

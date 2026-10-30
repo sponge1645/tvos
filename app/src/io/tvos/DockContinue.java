@@ -1,6 +1,8 @@
 package io.tvos;
 
 import android.content.Context;
+import android.animation.ValueAnimator;
+import android.view.animation.DecelerateInterpolator;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -34,6 +36,11 @@ final class DockContinue {
     private String signature = "";
     private volatile int generation;
     private int index;
+    private float scroll;
+    private ValueAnimator slide;
+    private final Context context;
+    private final android.text.TextPaint titlePaint = new android.text.TextPaint();
+    private final Paint metaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean visible, focused, pressed;
     private final RectF rect = new RectF(), imageRect = new RectF();
     private final Path clip = new Path();
@@ -44,6 +51,7 @@ final class DockContinue {
     }
 
     DockContinue(Context context, Runnable changed, java.util.concurrent.Executor worker) {
+        this.context = context.getApplicationContext();
         this.changed = changed;
         this.worker = worker;
         images = new PosterCache(context, () -> main.post(changed));
@@ -61,18 +69,22 @@ final class DockContinue {
         index = 0;
         for (int i = 0; i < items.size(); i++) if (java.util.Objects.equals(selected, items.get(i).watchingKey)) index = i;
         if (items.isEmpty()) focused = pressed = false;
+        if (slide != null) slide.cancel();
+        scroll = Math.max(0, index - 1);
         prepare(); changed.run();
     }
 
     void hide() {
         if (!visible) return;
         visible = focused = pressed = false; generation++; signature = "";
+        if (slide != null) { slide.cancel(); slide = null; }
+        scroll = 0;
         items = Collections.emptyList(); paths.clear(); pending.clear();
         images.setWindow(Collections.emptySet()); changed.run();
     }
 
     private void prepare() {
-        int first = index / 2 * 2;
+        int first = windowStart();
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             Recs.Pick p = items.get(i);
             String key = p.watchingKey;
@@ -98,13 +110,36 @@ final class DockContinue {
 
     private void window() {
         Set<String> wanted = new HashSet<>();
-        int first = index / 2 * 2;
+        int first = windowStart();
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             String path = paths.get(items.get(i).watchingKey);
             if (path != null && !path.isEmpty()) wanted.add(path);
         }
         images.setWindow(wanted);
         for (String path : wanted) images.poster(path);
+    }
+
+    private int windowStart() { return Math.max(0, Math.min(Math.max(0, index - 1), (int) Math.floor(scroll))); }
+
+    private void moveTo(int next) {
+        if (next == index) return;
+        index = next;
+        if (slide != null) slide.cancel();
+        float target = Math.max(0, index - 1);
+        if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false) || target == scroll) {
+            scroll = target; prepare(); changed.run(); return;
+        }
+        prepare();
+        slide = ValueAnimator.ofFloat(scroll, target);
+        slide.setDuration(360);
+        slide.setInterpolator(new DecelerateInterpolator(1.5f));
+        slide.addUpdateListener(animation -> {
+            scroll = (Float) animation.getAnimatedValue();
+            if (scroll == target) prepare();
+            changed.run();
+        });
+        slide.start();
+        changed.run();
     }
 
     boolean key(KeyEvent e, boolean canEnter, Runnable top, Consumer<Recs.Pick> open) {
@@ -119,7 +154,7 @@ final class DockContinue {
             return false;
         }
         if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (down) { index = Math.max(0, Math.min(items.size() - 1, index + (code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1))); prepare(); changed.run(); }
+            if (down) moveTo(Math.max(0, Math.min(items.size() - 1, index + (code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1))));
             return true;
         }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_DPAD_UP) {
@@ -134,21 +169,26 @@ final class DockContinue {
         return false;
     }
 
-    void draw(Canvas c, float k, float bottom, float night) {
+    void draw(Canvas c, float k, float bottom, float night, boolean noWidgets) {
         if (!visible) return;
-        Paint title = Ui.text(Ui.semibold, 36 * k, ActionSurface.ink(night, 0));
-        Paint meta = Ui.text(Ui.medium, 26 * k, ActionSurface.ink(night, 0));
-        float top = Math.max(170 * k, bottom - 550 * k);
-        c.drawText(AppStrings.get(R.string.home_continue_watching), 40 * k, top, title);
-        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 40 * k, top + 65 * k, meta); return; }
-        int first = index / 2 * 2;
-        float width = 850 * k, height = width * 9 / 16;
-        height = Math.min(height, Math.max(180 * k, bottom - top - 110 * k));
-        width = height * 16 / 9;
-        for (int i = first; i < Math.min(items.size(), first + 3); i++) {
+        titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(36 * k); titlePaint.setColor(ActionSurface.ink(night, 0));
+        metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(26 * k); metaPaint.setColor(ActionSurface.ink(night, 0));
+        Paint title = titlePaint, meta = metaPaint;
+        float headingTop = (noWidgets ? HomeLayout.TOP : 150) * k;
+        float headingBaseline = headingTop + Ui.cap(title);
+        c.drawText(AppStrings.get(R.string.home_continue_watching), 40 * k, headingBaseline, title);
+        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 40 * k, headingBaseline + 65 * k, meta); return; }
+        float areaTop = headingBaseline + 35 * k;
+        float height = Math.min(510 * k, Math.max(180 * k, bottom - areaTop - 80 * k));
+        float width = height * 16 / 9;
+        float top = areaTop + (bottom - areaTop - height - 80 * k) / 2;
+        int first = Math.max(0, (int) Math.floor(scroll));
+        for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             Recs.Pick p = items.get(i);
-            float left = 40 * k + (i - first) * (width + 45 * k);
-            rect.set(left, top + 28 * k, left + width, top + 28 * k + height);
+            float left = 40 * k + (i - scroll) * (width + 45 * k);
+            if (left >= 1920 * k) break;
+            if (left + width <= 0) continue;
+            rect.set(left, top, left + width, top + height);
             paint.setColor(0xFF343A3D); paint.setStyle(Paint.Style.FILL);
             c.drawRoundRect(rect, 28 * k, 28 * k, paint);
             String url = paths.get(p.watchingKey);
@@ -162,7 +202,7 @@ final class DockContinue {
                 c.drawBitmap(image, null, imageRect, paint); c.restore();
             }
             if (focused && i == index) { paint.setColor(0xFFFFFFFF); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(4 * k); c.drawRoundRect(rect, 28 * k, 28 * k, paint); paint.setStyle(Paint.Style.FILL); }
-            String label = android.text.TextUtils.ellipsize(p.title, new android.text.TextPaint(title), width, android.text.TextUtils.TruncateAt.END).toString();
+            String label = android.text.TextUtils.ellipsize(p.title, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
             c.drawText(label, left, rect.bottom + 37 * k, title);
             c.drawText(WatchingText.caption(p), left, rect.bottom + 70 * k, meta);
         }
