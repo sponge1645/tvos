@@ -24,7 +24,7 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),chann
  public Cursor query(Uri u,String[] columns,String a,String[] b,String sort){boolean channel=u.toString().equals("content://android.media.tv/channel"),preview=u.toString().contains("preview_program?");if(channel&&channels.isEmpty())return null;queries++;if(denied)throw new SecurityException();if(!channel&&!preview&&!sort.equals("last_engagement_time_utc_millis DESC"))throw new AssertionError("order");List<Object[]> snapshot=new ArrayList<>(channel?channels:preview?previews:rows);return new Cursor(){int at=-1;public boolean moveToNext(){return ++at<snapshot.size();}public String getString(int i){Object v=snapshot.get(at)[i];return v==null?null:v.toString();}public long getLong(int i){Object v=snapshot.get(at)[i];return v==null?0:((Number)v).longValue();}public int getInt(int i){return (int)getLong(i);}public void close(){closes++;}};}
 }''',
 'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
-'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {public static long delay;static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){delay=d;tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty())tasks.remove().run();}}''',
+'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {public static long delay;static final java.util.Map<Runnable,Long> due=new java.util.IdentityHashMap<>();static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){delay=d;due.put(r,android.os.SystemClock.now+d);tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty()){Runnable r=tasks.remove();Long at=due.remove(r);if(at!=null)android.os.SystemClock.now=Math.max(android.os.SystemClock.now,at);r.run();}}}''',
 'android/util/Log.java':'package android.util;public class Log {public static int i(String t,String m){return 0;}public static int w(String t,String m){return 0;}}',
 'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
 })
@@ -125,7 +125,7 @@ public class WatchingHarness {
 }
 '''
 f['io/tvos/ProviderImages.java']='package io.tvos;class ProviderImages {static boolean allowed(Object c,String v,String o){return v!=null&&v.startsWith("https://");}}'
-f['android/os/SystemClock.java']='package android.os;public class SystemClock {public static long elapsedRealtime(){return 0;}}'
+f['android/os/SystemClock.java']='package android.os;public class SystemClock {public static long now;public static long elapsedRealtime(){return now;}}'
 f['io/tvos/watching/WatchingSources.java']=Path('app/src/io/tvos/watching/WatchingSources.java').read_text()
 for key in list(f):
  if key.endswith('.java') and 'WatchingSources.' in f[key] and 'package io.tvos;' in f[key]: f[key]=f[key].replace('package io.tvos;', 'package io.tvos;import io.tvos.watching.WatchingSources;')

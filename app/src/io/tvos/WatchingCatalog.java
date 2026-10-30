@@ -41,7 +41,14 @@ final class WatchingCatalog {
     private final Handler main = new Handler(Looper.getMainLooper());
     private boolean observerPending;
     private long nextObservedRefresh;
-    private final Runnable reload = () -> { observerPending = false; refresh(); };
+    private final Runnable reload = this::refreshObserved;
+    private void refreshObserved() {
+        if (!active) { observerPending = false; return; }
+        long remaining = nextObservedRefresh - android.os.SystemClock.elapsedRealtime();
+        if (remaining > 0) { main.postDelayed(reload, remaining); return; }
+        observerPending = false;
+        refresh();
+    }
     private final ContentObserver observer = new ContentObserver(main) {
         @Override public void onChange(boolean selfChange) {
             if (!active || observerPending) return;
