@@ -10,7 +10,7 @@ import android.os.SystemClock;
 
 /** Background images, glass pixels, crossfade and day/night transitions. No view or focus ownership. */
 final class HomeBackground {
-    private static final long FADE_MS = 800, PAN_MS = 600, NIGHT_MS = 2000;
+    private static final long FADE_MS = 400, PAN_MS = 400, NIGHT_MS = 2000;
     private final Scene scene;
     private final Runnable changed;
     private boolean nightTarget, nightPair;
@@ -18,7 +18,7 @@ final class HomeBackground {
     private long nightAt, bgFadeAt;
     private Backdrop bgFrom, bgTo;
     private int panDirection;
-    private float fromPan, fromZoom;
+    private float fromPan;
     private final int[] glassNight = new int[Backdrop.GW * Backdrop.GH], frostNight = new int[Backdrop.FW * Backdrop.FH];
     private final int[] neutralGlassPx = new int[Backdrop.GW * Backdrop.GH], neutralFrostPx = new int[Backdrop.FW * Backdrop.FH];
     private final int[] frostMix = new int[Backdrop.FW * Backdrop.FH];
@@ -66,7 +66,6 @@ final class HomeBackground {
             bgFrom = bgTo;
             float remaining = bgFadeAt == 0 ? 0 : panRemaining(bgFadeAt, up);
             fromPan = panDirection * remaining;
-            fromZoom = panDirection == 0 ? 0 : remaining;
         }
         panDirection = 0;
         bgTo = b;
@@ -228,23 +227,24 @@ final class HomeBackground {
             fill.setColorFilter(null);
         }
         imagePaint.setColorFilter(v);
-        if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1, fromPan, fromZoom);
+        if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1, fromPan);
         float remaining = fading && panDirection != 0 ? panRemaining(bgFadeAt, up) : 0;
-        if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1, panDirection * remaining, remaining);
+        if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1, panDirection * remaining);
         imagePaint.setColorFilter(null);
     }
 
-    private void drawLightImage(Canvas c, Backdrop b, float alpha, float pan, float zoom) {
+    private void drawLightImage(Canvas c, Backdrop b, float alpha, float pan) {
         if (b.image != null && b.lightImage == null) {
             if (alpha <= .004f) return;
             float cover = Math.max(screen.width() / b.image.getWidth(), screen.height() / b.image.getHeight());
             float width = b.image.getWidth() * cover, height = b.image.getHeight() * cover;
             float drift = screen.width() * (32f / 1920);
-            // Panoramic assets already have side margins: move them without changing their scale.
-            float scale = (width - screen.width()) / 2 >= drift ? 1 : 1 + .04f * zoom;
+            // Keep a fixed crop throughout the transition and at rest; never animate scale.
+            boolean panoramic = (width - screen.width()) / 2 >= drift;
+            float scale = panoramic ? 1 : 1.04f;
             width *= scale; height *= scale;
             float margin = Math.max(0, (width - screen.width()) / 2);
-            float dx = (margin >= drift ? margin * .5f : drift) * pan;
+            float dx = (panoramic ? margin * .5f : drift) * pan;
             imageBounds.set(screen.centerX() - width / 2 + dx, screen.centerY() - height / 2,
                     screen.centerX() + width / 2 + dx, screen.centerY() + height / 2);
             imagePaint.setAlpha(Math.round(255 * Math.min(1, alpha)));

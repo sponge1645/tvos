@@ -196,6 +196,9 @@ final class DockBackdrop {
         }
         if (result.isEmpty()) collect("content://android.media.tv/watch_next_program", service,
                 "last_engagement_time_utc_millis DESC", result);
+        // Prefer published landscapes over portrait-only titles requiring a fallback lookup.
+        // Stable sort retains channel priority among equally suitable candidates.
+        result.sort(Comparator.comparingInt(candidate -> candidate.urls.isEmpty() ? 1 : 0));
         return result;
     }
 
