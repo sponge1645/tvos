@@ -28,9 +28,15 @@ final class DockArtwork {
         String language = requestedLanguage.apiTag;
         String key = language + "\n" + year + "\n" + poster + "\n" + title;
         synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) return cached; }
-        JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
-                + URLEncoder.encode(title, "UTF-8") + "&include_adult=false", opened).optJSONArray("results");
-        JSONObject match = match(items, title, poster, year);
+        JSONObject match = null;
+        String[] titles = titles(title);
+        // Bilingual provider labels are not a single movie title. Try the original first.
+        for (int i = titles.length - 1; i >= 0; i--) {
+            JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
+                    + URLEncoder.encode(titles[i], "UTF-8") + "&include_adult=false", opened).optJSONArray("results");
+            match = match(items, title, poster, year);
+            if (match != null) break;
+        }
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
@@ -57,7 +63,8 @@ final class DockArtwork {
     static JSONObject match(JSONArray items, String title, String poster, String year) {
         if (items == null) return null;
         JSONObject named = null; int names = 0;
-        String normalized = normalize(title);
+        String[] normalized = titles(title);
+        for (int i = 0; i < normalized.length; i++) normalized[i] = normalize(normalized[i]);
         String filename = filename(poster);
         for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
@@ -69,7 +76,9 @@ final class DockArtwork {
             if (!year.isEmpty() && !date.startsWith(year)) continue;
             String name = item.optString("movie".equals(kind) ? "title" : "name", "");
             String original = item.optString("movie".equals(kind) ? "original_title" : "original_name", "");
-            if (normalized.equals(normalize(name)) || normalized.equals(normalize(original))) { named = item; names++; }
+            for (String variant : normalized) {
+                if (variant.equals(normalize(name)) || variant.equals(normalize(original))) { named = item; names++; break; }
+            }
         }
         return names == 1 ? named : null;
     }
@@ -92,6 +101,12 @@ final class DockArtwork {
         return path.startsWith("/") && !path.contains("..") && !path.contains("?")
                 ? "https://image.tmdb.org/t/p/" + size + path : "";
     }
+    private static String[] titles(String title) {
+        String[] parts = title.trim().split("\\s+/\\s+", 2);
+        if (parts.length == 2 && (parts[0].length() < 2 || parts[1].length() < 2)) return new String[]{title};
+        return parts;
+    }
+
     private static String filename(String url) { int end = url.indexOf('?'); if (end >= 0) url = url.substring(0, end); return url.substring(url.lastIndexOf('/') + 1); }
-    private static String normalize(String s) { return s.trim().toLowerCase(Locale.ROOT).replaceAll("[\\p{Punct}\\s]+", " ").trim(); }
+    private static String normalize(String s) { return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFC).trim().toLowerCase(Locale.ROOT).replace('\u0451', '\u0435').replaceAll("[\\p{Punct}\\s]+", " ").trim(); }
 }

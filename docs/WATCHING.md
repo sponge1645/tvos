@@ -59,3 +59,5 @@ Landscape selection inspects up to four eligible channels, retaining six titles 
 Provider diagnostics also report the visible/owned channel counts, channel display names, rank and final link path segment, plus per-channel scanned/owned/accepted program counts. This distinguishes provider visibility, history filtering, empty channels and missing usable card data without logging card titles or full deep links.
 
 Lampa resolves its title through TMDB before downloading published artwork: device logs showed repeated 2.5-second timeouts on its published image address while the matched backdrop completed quickly. A successful matched image bypasses that address entirely; missing matches or failed matched downloads still try the published landscape. Other services retain published-image-first ordering.
+
+TMDB matching treats Russian e/yo as equivalent and accepts bilingual provider labels separated by a spaced slash. At most two individual title queries are made, original title first; year checks and ambiguity rejection remain enforced. This improves matching without claiming a logo exists for a particular movie.
