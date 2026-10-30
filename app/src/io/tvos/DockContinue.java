@@ -38,7 +38,9 @@ final class DockContinue {
     private volatile int generation;
     private int index;
     private float scroll;
-    private ValueAnimator slide, entrance;
+    private ValueAnimator slide, entrance, focusAnimation;
+    private final float[] cardFocus = new float[10];
+    private final Paint headingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float opacity = 1;
     private final Map<String, Long> imageAppeared = new HashMap<>();
     private final Runnable frame = () -> changedFrame();
@@ -91,7 +93,7 @@ final class DockContinue {
         if (items.isEmpty()) focused = pressed = false;
         if (slide != null) slide.cancel();
         scroll = Math.max(0, index - 1);
-        prepare(); changed.run();
+        animateFocus(); prepare(); changed.run();
     }
 
     void hide() {
@@ -99,6 +101,8 @@ final class DockContinue {
         visible = focused = pressed = false; generation++; signature = "";
         if (slide != null) { slide.cancel(); slide = null; }
         if (entrance != null) { entrance.cancel(); entrance = null; }
+        if (focusAnimation != null) { focusAnimation.cancel(); focusAnimation = null; }
+        java.util.Arrays.fill(cardFocus, 0);
         main.removeCallbacks(frame); opacity = 0; imageAppeared.clear();
         scroll = 0;
         items = Collections.emptyList(); paths.clear(); pending.clear();
@@ -143,9 +147,32 @@ final class DockContinue {
 
     private int windowStart() { return Math.max(0, Math.min(Math.max(0, index - 1), (int) Math.floor(scroll))); }
 
+    private void animateFocus() {
+        if (focusAnimation != null) focusAnimation.cancel();
+        float[] from = cardFocus.clone();
+        boolean moving = false;
+        for (int i = 0; i < cardFocus.length; i++) if (from[i] != (focused && i == index ? 1 : 0)) moving = true;
+        if (!moving) return;
+        if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)) {
+            for (int i = 0; i < cardFocus.length; i++) cardFocus[i] = focused && i == index ? 1 : 0;
+            return;
+        }
+        final int selected = focused ? index : -1;
+        focusAnimation = ValueAnimator.ofFloat(0, 1);
+        focusAnimation.setDuration(260);
+        focusAnimation.setInterpolator(new DecelerateInterpolator(1.5f));
+        focusAnimation.addUpdateListener(animation -> {
+            float progress = (Float) animation.getAnimatedValue();
+            for (int i = 0; i < cardFocus.length; i++) cardFocus[i] = from[i] + ((i == selected ? 1 : 0) - from[i]) * progress;
+            changedFrame();
+        });
+        focusAnimation.start();
+    }
+
     private void moveTo(int next) {
         if (next == index) return;
         index = next;
+        animateFocus();
         if (slide != null) slide.cancel();
         float target = Math.max(0, index - 1);
         if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false) || target == scroll) {
@@ -170,7 +197,7 @@ final class DockContinue {
         int code = e.getKeyCode();
         if (!focused) {
             if (canEnter && !items.isEmpty() && code == KeyEvent.KEYCODE_DPAD_UP) {
-                if (down) { focused = true; pressed = false; changed.run(); }
+                if (down) { focused = true; pressed = false; animateFocus(); changed.run(); }
                 return true;
             }
             return false;
@@ -180,7 +207,7 @@ final class DockContinue {
             return true;
         }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_DPAD_UP) {
-            if (down) { focused = pressed = false; if (code == KeyEvent.KEYCODE_DPAD_UP) top.run(); changed.run(); }
+            if (down) { focused = pressed = false; animateFocus(); if (code == KeyEvent.KEYCODE_DPAD_UP) top.run(); changed.run(); }
             return true;
         }
         if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER) {
@@ -197,23 +224,25 @@ final class DockContinue {
         titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(36 * k); titlePaint.setColor(ActionSurface.ink(night, 0));
         metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(26 * k); metaPaint.setColor(ActionSurface.ink(night, 0));
         Paint title = titlePaint, meta = metaPaint;
-        float headingTop = (noWidgets ? HomeLayout.TOP : 150) * k;
-        float headingBaseline = headingTop + Ui.cap(title);
-        c.drawText(AppStrings.get(R.string.home_continue_watching), 40 * k, headingBaseline, title);
+        headingPaint.setTypeface(Ui.displayBold); headingPaint.setTextSize(54 * k); headingPaint.setColor(ActionSurface.ink(night, 0));
+        float headingBaseline = Math.max(170 * k, bottom - 550 * k);
+        c.drawText(AppStrings.get(R.string.home_continue_watching), 40 * k, headingBaseline, headingPaint);
         if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 40 * k, headingBaseline + 65 * k, meta); c.restoreToCount(layer); return; }
-        float areaTop = headingBaseline + 35 * k;
-        float height = Math.min(((1920 - 80 - 45) / 2f) * k * 9 / 16, Math.max(180 * k, bottom - areaTop - 80 * k));
+        float areaTop = headingBaseline + 40 * k;
+        float height = Math.min(410 * k, Math.max(180 * k, bottom - areaTop - 100 * k));
         float width = height * 16 / 9;
-        float top = areaTop + (bottom - areaTop - height - 80 * k) / 2;
-        c.save(); c.clipRect(40 * k, areaTop - 4 * k, 1880 * k, bottom);
+        float top = areaTop + (bottom - areaTop - height - 90 * k) / 2;
+        c.save(); c.clipRect(40 * k, headingBaseline + 15 * k, 1880 * k, bottom);
         boolean fadingImage = false;
         int first = Math.max(0, (int) Math.floor(scroll));
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             Recs.Pick p = items.get(i);
-            float left = 40 * k + (i - scroll) * (width + 45 * k);
+            float left = 60 * k + (i - scroll) * (width + 45 * k);
             if (left >= 1880 * k) break;
             if (left + width <= 40 * k) continue;
-            rect.set(left, top, left + width, top + height);
+            float scaleFocus = 1 + .05f * cardFocus[i];
+            float cx = left + width / 2, cy = top + height / 2 - 6 * k * cardFocus[i];
+            rect.set(cx - width * scaleFocus / 2, cy - height * scaleFocus / 2, cx + width * scaleFocus / 2, cy + height * scaleFocus / 2);
             paint.setAlpha(255);
             paint.setColor(0xFF343A3D); paint.setStyle(Paint.Style.FILL);
             c.drawRoundRect(rect, 28 * k, 28 * k, paint);
@@ -236,8 +265,8 @@ final class DockContinue {
             }
             if (focused && i == index) { paint.setColor(0xFFFFFFFF); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(4 * k); c.drawRoundRect(rect, 28 * k, 28 * k, paint); paint.setStyle(Paint.Style.FILL); }
             String label = android.text.TextUtils.ellipsize(p.title, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
-            c.drawText(label, left, rect.bottom + 37 * k, title);
-            c.drawText(WatchingText.caption(p), left, rect.bottom + 70 * k, meta);
+            c.drawText(label, left, top + height + 37 * k, title);
+            c.drawText(WatchingText.caption(p), left, top + height + 70 * k, meta);
         }
         c.restore(); c.restoreToCount(layer);
         if (fadingImage) { main.removeCallbacks(frame); main.postDelayed(frame, 16); }
