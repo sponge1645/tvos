@@ -670,8 +670,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
         if (getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean(DockContinue.KEY, false)
                 && "kinopub".equals(WatchingSources.id(pkg))) {
-            dockContinue.show(watching.forSource("kinopub"));
             dockBackdrop.focus(null);
+            dockContinue.show(watching.forSource("kinopub"));
             return;
         }
         dockContinue.hide();

@@ -10,6 +10,7 @@ import android.graphics.Path;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.KeyEvent;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +38,10 @@ final class DockContinue {
     private volatile int generation;
     private int index;
     private float scroll;
-    private ValueAnimator slide;
+    private ValueAnimator slide, entrance;
+    private float opacity = 1;
+    private final Map<String, Long> imageAppeared = new HashMap<>();
+    private final Runnable frame = () -> changedFrame();
     private final Context context;
     private final android.text.TextPaint titlePaint = new android.text.TextPaint();
     private final Paint metaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -58,14 +62,29 @@ final class DockContinue {
         images = new PosterCache(context, () -> main.post(changed));
     }
 
+    private void changedFrame() { if (visible) changed.run(); }
+
+    private void enter() {
+        if (entrance != null) entrance.cancel();
+        if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)) { opacity = 1; return; }
+        opacity = 0;
+        entrance = ValueAnimator.ofFloat(0, 1);
+        entrance.setStartDelay(400); // Let the previous Dock background finish its fade to the plain background.
+        entrance.setDuration(320);
+        entrance.setInterpolator(new DecelerateInterpolator(1.5f));
+        entrance.addUpdateListener(animation -> { opacity = (Float) animation.getAnimatedValue(); changedFrame(); });
+        entrance.start();
+    }
+
     boolean visible() { return visible; }
     void show(List<Recs.Pick> picks) {
+        if (!visible) enter();
         visible = true;
         StringBuilder key = new StringBuilder();
         for (Recs.Pick p : picks) key.append(p.watchingKey).append(p.resumeUri).append(p.meta).append('\n');
         if (signature.equals(key.toString())) return;
         String selected = index < items.size() ? items.get(index).watchingKey : null;
-        signature = key.toString(); generation++; pending.clear(); paths.clear();
+        signature = key.toString(); generation++; pending.clear(); paths.clear(); imageAppeared.clear();
         items = new ArrayList<>(picks.subList(0, Math.min(10, picks.size())));
         index = 0;
         for (int i = 0; i < items.size(); i++) if (java.util.Objects.equals(selected, items.get(i).watchingKey)) index = i;
@@ -79,6 +98,8 @@ final class DockContinue {
         if (!visible) return;
         visible = focused = pressed = false; generation++; signature = "";
         if (slide != null) { slide.cancel(); slide = null; }
+        if (entrance != null) { entrance.cancel(); entrance = null; }
+        main.removeCallbacks(frame); opacity = 0; imageAppeared.clear();
         scroll = 0;
         items = Collections.emptyList(); paths.clear(); pending.clear();
         images.setWindow(Collections.emptySet()); changed.run();
@@ -171,41 +192,54 @@ final class DockContinue {
     }
 
     void draw(Canvas c, float k, float bottom, float night, boolean noWidgets) {
-        if (!visible) return;
+        if (!visible || opacity <= .001f) return;
+        int layer = opacity < .999f ? c.saveLayerAlpha(0, 0, 1920 * k, bottom, Math.round(255 * opacity)) : c.save();
         titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(36 * k); titlePaint.setColor(ActionSurface.ink(night, 0));
         metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(26 * k); metaPaint.setColor(ActionSurface.ink(night, 0));
         Paint title = titlePaint, meta = metaPaint;
         float headingTop = (noWidgets ? HomeLayout.TOP : 150) * k;
         float headingBaseline = headingTop + Ui.cap(title);
         c.drawText(AppStrings.get(R.string.home_continue_watching), 40 * k, headingBaseline, title);
-        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 40 * k, headingBaseline + 65 * k, meta); return; }
+        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 40 * k, headingBaseline + 65 * k, meta); c.restoreToCount(layer); return; }
         float areaTop = headingBaseline + 35 * k;
-        float height = Math.min(510 * k, Math.max(180 * k, bottom - areaTop - 80 * k));
+        float height = Math.min(((1920 - 80 - 45) / 2f) * k * 9 / 16, Math.max(180 * k, bottom - areaTop - 80 * k));
         float width = height * 16 / 9;
         float top = areaTop + (bottom - areaTop - height - 80 * k) / 2;
+        c.save(); c.clipRect(40 * k, areaTop - 4 * k, 1880 * k, bottom);
+        boolean fadingImage = false;
         int first = Math.max(0, (int) Math.floor(scroll));
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             Recs.Pick p = items.get(i);
             float left = 40 * k + (i - scroll) * (width + 45 * k);
-            if (left >= 1920 * k) break;
-            if (left + width <= 0) continue;
+            if (left >= 1880 * k) break;
+            if (left + width <= 40 * k) continue;
             rect.set(left, top, left + width, top + height);
+            paint.setAlpha(255);
             paint.setColor(0xFF343A3D); paint.setStyle(Paint.Style.FILL);
             c.drawRoundRect(rect, 28 * k, 28 * k, paint);
             String url = paths.get(p.watchingKey);
             Bitmap image = url == null || url.isEmpty() ? null : images.poster(url);
             if (image != null) {
+                long now = SystemClock.uptimeMillis();
+                Long appeared = imageAppeared.get(url);
+                if (appeared == null) { appeared = now; imageAppeared.put(url, appeared); }
+                float progress = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
+                        ? 1 : Ui.clamp((now - appeared) / 240f);
+                fadingImage |= progress < 1;
+                paint.setAlpha(Math.round(255 * progress * progress * (3 - 2 * progress)));
                 clip.reset(); clip.addRoundRect(rect, 28 * k, 28 * k, Path.Direction.CW);
                 c.save(); c.clipPath(clip);
                 float scale = Math.max(rect.width() / image.getWidth(), rect.height() / image.getHeight());
                 float w = image.getWidth() * scale, h = image.getHeight() * scale;
                 imageRect.set(rect.centerX() - w / 2, rect.centerY() - h / 2, rect.centerX() + w / 2, rect.centerY() + h / 2);
-                c.drawBitmap(image, null, imageRect, paint); c.restore();
+                c.drawBitmap(image, null, imageRect, paint); c.restore(); paint.setAlpha(255);
             }
             if (focused && i == index) { paint.setColor(0xFFFFFFFF); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(4 * k); c.drawRoundRect(rect, 28 * k, 28 * k, paint); paint.setStyle(Paint.Style.FILL); }
             String label = android.text.TextUtils.ellipsize(p.title, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
             c.drawText(label, left, rect.bottom + 37 * k, title);
             c.drawText(WatchingText.caption(p), left, rect.bottom + 70 * k, meta);
         }
+        c.restore(); c.restoreToCount(layer);
+        if (fadingImage) { main.removeCallbacks(frame); main.postDelayed(frame, 16); }
     }
 }
