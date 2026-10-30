@@ -244,7 +244,7 @@ final class HomeBackground {
             float scale = (width - screen.width()) / 2 >= drift ? 1 : 1 + .04f * zoom;
             width *= scale; height *= scale;
             float margin = Math.max(0, (width - screen.width()) / 2);
-            float dx = (margin >= drift ? margin : drift) * pan;
+            float dx = (margin >= drift ? margin * .5f : drift) * pan;
             imageBounds.set(screen.centerX() - width / 2 + dx, screen.centerY() - height / 2,
                     screen.centerX() + width / 2 + dx, screen.centerY() + height / 2);
             imagePaint.setAlpha(Math.round(255 * Math.min(1, alpha)));
