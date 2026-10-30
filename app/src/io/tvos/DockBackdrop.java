@@ -103,6 +103,7 @@ final class DockBackdrop {
         if (pkg == null) return;
         IO.execute(() -> {
             if (token != generation) return;
+            long started = System.nanoTime();
             Artwork result = null;
             try {
                 String bundled = bundled(pkg);
@@ -119,12 +120,15 @@ final class DockBackdrop {
                     if (token != generation) return;
                     Backdrop background = null;
                     for (String url : candidate.urls) {
-                        try { Bitmap image = read(url, token, true); if (image != null) background = Backdrop.hero(image); }
+                        try { Bitmap image = read(publishedImage(url), token, true, 2500); if (image != null) background = Backdrop.hero(image); }
                         catch (IOException | SecurityException | IllegalArgumentException e) { /* Try another published image. */ }
                         if (background != null || token != generation) break;
                     }
                     if (token != generation) return;
-                    if (background != null) publish(pkg, token, new Artwork(background, "", null));
+                    if (background != null) {
+                        android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
+                        publish(pkg, token, new Artwork(background, "", null));
+                    }
                     DockArtwork extra = new DockArtwork();
                     try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connection -> trackConnection(token, connection)); }
                     catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
@@ -134,6 +138,7 @@ final class DockBackdrop {
                         catch (IOException | SecurityException | IllegalArgumentException e) { /* Next published title. */ }
                     }
                     if (background == null) continue;
+                    android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                     publish(pkg, token, new Artwork(background, "", null));
                     DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
                     if (token != generation) return;
@@ -142,6 +147,7 @@ final class DockBackdrop {
                         try { logo = read(extra.logo, token, false); }
                         catch (IOException | SecurityException | IllegalArgumentException e) { /* The published title remains available. */ }
                     }
+                    android.util.Log.i("tvOS-DockBackdrop", pkg + " caption ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
                     result = new Artwork(background, candidate.title, logo);
                     break;
                 }
@@ -213,7 +219,17 @@ final class DockBackdrop {
         if (urls.size() < 6 && !urls.contains(url) && (url.startsWith("https://") || url.startsWith("content://") || url.startsWith("android.resource://"))) urls.add(url);
     }
 
+    static String publishedImage(String url) {
+        // Avoid fetching original-resolution TMDB artwork for a 1080p background.
+        return url.startsWith("https://image.tmdb.org/t/p/original/")
+                ? url.replace("/t/p/original/", "/t/p/w1280/") : url;
+    }
+
     private Bitmap read(String url, int token, boolean landscape) throws IOException {
+        return read(url, token, landscape, 8000);
+    }
+
+    private Bitmap read(String url, int token, boolean landscape, int timeout) throws IOException {
         File dir = new File(context.getCacheDir(), "dock-backdrops");
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create backdrop cache");
         File file = new File(dir, PosterCache.cacheName(url));
@@ -224,7 +240,7 @@ final class DockBackdrop {
                 InputStream stream;
                 if (url.startsWith("https://")) {
                     connection = (HttpURLConnection) new URL(url).openConnection();
-                    connection.setConnectTimeout(8000); connection.setReadTimeout(8000);
+                    connection.setConnectTimeout(timeout); connection.setReadTimeout(timeout);
                     trackConnection(token, connection);
                     stream = connection.getInputStream();
                 } else stream = context.getContentResolver().openInputStream(Uri.parse(url));

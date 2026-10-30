@@ -10,7 +10,7 @@ import android.os.SystemClock;
 
 /** Background images, glass pixels, crossfade and day/night transitions. No view or focus ownership. */
 final class HomeBackground {
-    private static final long FADE_MS = 800, NIGHT_MS = 2000;
+    private static final long FADE_MS = 800, PAN_MS = 600, NIGHT_MS = 2000;
     private final Scene scene;
     private final Runnable changed;
     private boolean nightTarget, nightPair;
@@ -41,6 +41,11 @@ final class HomeBackground {
         return t * t * (3 - 2 * t);
     }
 
+    private static float panRemaining(long start, long up) {
+        float remaining = 1 - Ui.clamp((up - start) / (float) PAN_MS);
+        return remaining * remaining * remaining;
+    }
+
     void show(Backdrop b, boolean animate, int direction) {
         if (b == bgTo) return; // Caption enrichment must not restart the image transition.
         show(b, animate);
@@ -59,7 +64,7 @@ final class HomeBackground {
         // In the middle of another swap, start from whichever is more visible.
         if (bgFadeAt == 0 || fadeEase(bgFadeAt, up) >= 0.5f) {
             bgFrom = bgTo;
-            float remaining = bgFadeAt == 0 ? 0 : 1 - fadeEase(bgFadeAt, up);
+            float remaining = bgFadeAt == 0 ? 0 : panRemaining(bgFadeAt, up);
             fromPan = panDirection * remaining;
             fromZoom = panDirection == 0 ? 0 : remaining;
         }
@@ -224,7 +229,7 @@ final class HomeBackground {
         }
         imagePaint.setColorFilter(v);
         if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1, fromPan, fromZoom);
-        float remaining = fading && panDirection != 0 ? 1 - e : 0;
+        float remaining = fading && panDirection != 0 ? panRemaining(bgFadeAt, up) : 0;
         if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1, panDirection * remaining, remaining);
         imagePaint.setColorFilter(null);
     }
@@ -238,7 +243,8 @@ final class HomeBackground {
             // Panoramic assets already have side margins: move them without changing their scale.
             float scale = (width - screen.width()) / 2 >= drift ? 1 : 1 + .04f * zoom;
             width *= scale; height *= scale;
-            float dx = drift * pan;
+            float margin = Math.max(0, (width - screen.width()) / 2);
+            float dx = (margin >= drift ? margin : drift) * pan;
             imageBounds.set(screen.centerX() - width / 2 + dx, screen.centerY() - height / 2,
                     screen.centerX() + width / 2 + dx, screen.centerY() + height / 2);
             imagePaint.setAlpha(Math.round(255 * Math.min(1, alpha)));
