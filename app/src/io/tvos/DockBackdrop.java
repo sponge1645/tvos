@@ -196,10 +196,8 @@ final class DockBackdrop {
                     if (publishedReady) {
                         imagePrepared(token, imageReady);
                         android.util.Log.i("tvOS-DockBackdrop", pkg + " published image ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                        if (loading == null) {
-                            result = new Artwork(background, "", null);
-                            publish(pkg, token, result);
-                        }
+                        result = new Artwork(background, "", null);
+                        publish(pkg, token, result);
                     }
                     if (extra == null) extra = lookup(candidate, pkg, token);
                     if (token != generation) return;
@@ -207,7 +205,7 @@ final class DockBackdrop {
                     if (background == null) continue;
                     imagePrepared(token, imageReady);
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " background ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                    if (loading == null) {
+                    if (!publishedReady) {
                         result = new Artwork(background, "", null);
                         publish(pkg, token, result);
                     }
