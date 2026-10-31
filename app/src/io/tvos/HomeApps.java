@@ -109,6 +109,7 @@ final class HomeApps {
             if (items.size() >= MAX_SHELF) break;
             if (TV_SETTINGS_FAVORITE.equals(pkg)) {
                 Item settings = shortcut(ANDROID_SETTINGS, "tv-settings", AppStrings.get(R.string.settings_tv_settings), "tv_settings");
+                settings.pkg = "com.android.tv.settings";
                 // Complete artwork takes precedence over the generated logo surface.
                 settings.logo = AppArtwork.ownLogoCached(c, "settings");
                 if (settings.logo != null) {
@@ -175,9 +176,10 @@ final class HomeApps {
         List<String> custom = Prefs.shelf();
         List<String> out = new ArrayList<>();
         PackageManager pm = c.getPackageManager();
+        String systemSettings = settingsPackage(pm);
         if (custom != null) {
             for (String pkg : custom) {
-                if (TV_SETTINGS_FAVORITE.equals(pkg)) pkg = "com.android.tv.settings";
+                if ("com.android.tv.settings".equals(pkg) || pkg.equals(systemSettings)) pkg = TV_SETTINGS_FAVORITE;
                 if (!out.contains(pkg)) out.add(pkg);
             }
         } else {
@@ -185,7 +187,7 @@ final class HomeApps {
                 if (out.size() >= MAX_SHELF - 1) break;
                 if (launchIntent(pm, d[2]) != null) out.add(d[2]);
             }
-            out.add("com.android.tv.settings");
+            out.add(TV_SETTINGS_FAVORITE);
         }
         return out;
     }
@@ -195,6 +197,12 @@ final class HomeApps {
         PackageManager pm = c.getPackageManager();
         List<String[]> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        // Settings may have no launcher entry and may use a manufacturer-specific package.
+        out.add(new String[] {TV_SETTINGS_FAVORITE, AppStrings.get(R.string.settings_tv_settings)});
+        seen.add(TV_SETTINGS_FAVORITE);
+        seen.add("com.android.tv.settings");
+        String systemSettings = settingsPackage(pm);
+        if (systemSettings != null) seen.add(systemSettings);
         for (String[] d : SHELF) if (launchIntent(pm, d[2]) != null && seen.add(d[2])) out.add(new String[] {d[2], d[1]});
         List<String[]> more = new ArrayList<>();
         for (ResolveInfo ri : launcherActivities(pm)) {

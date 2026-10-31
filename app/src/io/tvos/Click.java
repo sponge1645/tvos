@@ -46,8 +46,8 @@ final class Click {
         if (movementStream != 0) { pool.stop(movementStream); movementStream = 0; }
         if (action) {
             if (actionStream != 0) pool.stop(actionStream);
-            actionStream = pool.play(id, 1f, 1f, 2, 0, 1f);
-        } else movementStream = pool.play(id, .8f, .8f, 1, 0, 1f);
+            actionStream = pool.play(id, .5f, .5f, 2, 0, 1f);
+        } else movementStream = pool.play(id, .4f, .4f, 1, 0, 1f);
     }
     void release() {
         if (pool != null) { pool.setOnLoadCompleteListener(null); pool.release(); }

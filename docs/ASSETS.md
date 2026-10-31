@@ -27,6 +27,6 @@
 
 Complete Dock cards live in `app/assets/tiles/` (1000×600, 5:3). These eight supplied cards include their own background and logo. The app loader decodes them once at 500×300; existing rounded clipping, shadows and focus transforms render the whole card. The same cards are used in All Apps; other brands retain their current artwork.
 
-Navigation playback gain: 0.8 for focus movement and 1.0 for opening/back. System audio volume and the existing sound preference still apply.
+Navigation playback gain: 0.4 for focus movement and 0.5 for opening/back. System audio volume and the existing sound preference still apply.
 
-The four navigation WAV samples have +12 dB PCM gain relative to the original conversion (no clipping, no limiting). Playback gain remains 0.8 for movement and 1.0 for actions.
+The four navigation WAV samples have +12 dB PCM gain relative to the original conversion (no clipping, no limiting). Playback gain remains 0.4 for movement and 0.5 for actions.
