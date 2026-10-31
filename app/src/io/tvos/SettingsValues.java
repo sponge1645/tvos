@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.version.SoftwareBuild;
+
 import static io.tvos.SettingsContent.*;
 import android.app.Activity;
 import android.content.Context;
@@ -101,8 +103,8 @@ final class SettingsValues {
                 if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
             } catch (Exception ignored) {}
             try {
-                v[2] = activity.getPackageManager()
-                        .getPackageInfo(activity.getPackageName(), 0).versionName;
+                v[2] = SoftwareBuild.display(activity.getPackageManager()
+                        .getPackageInfo(activity.getPackageName(), 0).versionName);
             } catch (Exception e) { v[2] = "—"; }
             v[3] = "Android " + android.os.Build.VERSION.RELEASE;
             android.util.DisplayMetrics dm = new android.util.DisplayMetrics();

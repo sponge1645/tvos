@@ -1,5 +1,9 @@
 package io.tvos;
 
+import io.tvos.version.SoftwareBuild;
+
+import io.tvos.settings.UpdateDialogText;
+
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -77,7 +81,7 @@ final class SettingsUpdateDialog {
 
     static String versionName(Context c) {
         try {
-            return "tvOS " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+            return "tvOS " + SoftwareBuild.display(c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName);
         } catch (android.content.pm.PackageManager.NameNotFoundException e) {
             return "tvOS";
         }

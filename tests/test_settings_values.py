@@ -44,7 +44,7 @@ public class ValuesHarness {
    mappings=SettingsValues.keyValues(Collections.emptyList(),Collections.emptyList());
    for(String mapping:mappings)check(mapping.equals(ru?"Не настроено":"Not configured"),"empty catalog uses same status for all four buttons");
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN123")&&about[3].equals("1.1.0")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
+   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN123")&&about[3].equals("1.1.0 (1B117)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,8)[6].equals("Home"),"SSID quotes removed");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,8);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");
@@ -55,6 +55,7 @@ public class ValuesHarness {
 }'''
 }
 for name in ['SettingsValues','SettingsContent']:sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
+sources['io/tvos/version/SoftwareBuild.java']=Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-settings-values-') as tmp:
  root=Path(tmp);write(root)
  for name,content in sources.items():

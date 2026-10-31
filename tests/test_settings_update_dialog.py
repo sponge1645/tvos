@@ -3,8 +3,8 @@ from pathlib import Path
 import subprocess, tempfile
 from settings_strings_fixture import write
 stubs={
-'io/tvos/SettingsPopupBackdrop.java':'''package io.tvos;import android.graphics.*;final class SettingsPopupBackdrop {interface Source{void draw(Canvas c);}boolean ready(){return false;}void clear(){}void prepare(int w,int h,boolean theme,Source source){}void draw(Canvas c,RectF panel,float radius){}}''',
-'io/tvos/SettingsUpdateProgress.java':'package io.tvos;class SettingsUpdateProgress {int kind,percent;void observe(int k,int p,long now){kind=k;percent=p;}}',
+'io/tvos/SettingsPopupBackdrop.java':'''package io.tvos;import io.tvos.settings.UpdateDialogText;import android.graphics.*;final class SettingsPopupBackdrop {interface Source{void draw(Canvas c);}boolean ready(){return false;}void clear(){}void prepare(int w,int h,boolean theme,Source source){}void draw(Canvas c,RectF panel,float radius){}}''',
+'io/tvos/SettingsUpdateProgress.java':'package io.tvos;import io.tvos.settings.UpdateDialogText;class SettingsUpdateProgress {int kind,percent;void observe(int k,int p,long now){kind=k;percent=p;}}',
 'android/content/Context.java':'''package android.content;public class Context {public final android.content.pm.PackageManager pm=new android.content.pm.PackageManager();public android.content.pm.PackageManager getPackageManager(){return pm;}public String getPackageName(){return "io.tvos";}}''',
 'android/app/Activity.java':'''package android.app;public class Activity extends android.content.Context {}''',
 'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public static int lookups;public boolean missing;public static class NameNotFoundException extends Exception {private static final long serialVersionUID=1L;}public static class PackageInfo {public String versionName="1.1";}public PackageInfo getPackageInfo(String p,int f)throws NameNotFoundException{lookups++;if(missing)throw new NameNotFoundException();return new PackageInfo();}}''',
@@ -16,8 +16,8 @@ stubs={
 'android/graphics/Paint.java':'''package android.graphics;public class Paint {public static final int ANTI_ALIAS_FLAG=1;public enum Align{CENTER,LEFT}public enum Style{FILL,STROKE}public int color,alpha=255;public float size;public static class FontMetrics{public float ascent,descent;}public void getFontMetrics(FontMetrics m){m.ascent=-size*.8f;m.descent=size*.2f;}public Paint(int flags){}public void setTextAlign(Align a){}public static int measurements;public float measureText(String s){measurements++;return s.length()*size*.48f;}public void reset(){alpha=255;}public void setAntiAlias(boolean b){}public void setColor(int c){color=c;}public void setAlpha(int a){alpha=a;}public void setStyle(Style s){}public void setStrokeWidth(float w){}public void setShader(Shader s){}public void clearShadowLayer(){}}''',
 'android/graphics/RectF.java':'''package android.graphics;public class RectF {public float left,top,right,bottom;public void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}public float centerX(){return (left+right)/2;}public float centerY(){return (top+bottom)/2;}}''',
 'android/graphics/Canvas.java':'''package android.graphics;import java.util.*;public class Canvas {public final List<String> text=new ArrayList<>();public final List<Integer> colors=new ArrayList<>();public final List<Float> sizes=new ArrayList<>(),ys=new ArrayList<>();public int depth,layerAlpha=-1,dimAlpha;public float scale,panelLeft,panelTop,panelBottom,buttonRadius;public void save(){depth++;}public void restore(){if(--depth<0)throw new AssertionError("unbalanced canvas");}public void scale(float a,float b,float x,float y){scale=a;}public void saveLayerAlpha(float l,float t,float r,float b,int a){depth++;layerAlpha=a;}public void drawRect(float l,float t,float r,float b,Paint p){dimAlpha=p.alpha;colors.add(p.color);}public void drawRoundRect(RectF r,float x,float y,Paint p){if(text.isEmpty()){panelLeft=r.left;panelTop=r.top;panelBottom=r.bottom;}else buttonRadius=x;}public void drawText(String s,float x,float y,Paint p){text.add(s);colors.add(p.color);sizes.add(p.size);ys.add(y);}}''',
-'io/tvos/Ui.java':'''package io.tvos;import android.graphics.Paint;final class Ui {static final Object displaySemibold=new Object(),displayBold=new Object(),displayMedium=new Object(),regular=new Object();static Paint text(Object face,float size,int color){Paint p=new Paint(1);p.size=size;p.setColor(color);return p;}static float halfCap(Paint p){return p.size/3;}}''',
-'io/tvos/SelfUpdate.java':'''package io.tvos;import java.util.*;import android.app.Activity;import android.content.Context;final class SelfUpdate {
+'io/tvos/Ui.java':'''package io.tvos;import io.tvos.settings.UpdateDialogText;import android.graphics.Paint;final class Ui {static final Object displaySemibold=new Object(),displayBold=new Object(),displayMedium=new Object(),regular=new Object();static Paint text(Object face,float size,int color){Paint p=new Paint(1);p.size=size;p.setColor(color);return p;}static float halfCap(Paint p){return p.size/3;}}''',
+'io/tvos/SelfUpdate.java':'''package io.tvos;import io.tvos.settings.UpdateDialogText;import java.util.*;import android.app.Activity;import android.content.Context;final class SelfUpdate {
  static final int IDLE=0,CHECKING=1,CURRENT=2,AVAILABLE=3,DOWNLOADING=4,READY=5,ERROR=6;interface Listener{void onUpdate();}
  static SelfUpdate instance=new SelfUpdate();static SelfUpdate get(Context c){return instance;}
  static class Release {final String versionName="1.2.3";}static class Status {final int kind,percent;final String message;final Release release;Status(int k,int p,String m){kind=k;percent=p;message=m;release=new Release();}}
@@ -27,7 +27,7 @@ stubs={
  void maybeAutomatic(boolean force){automatic++;}void check(boolean automatic){checks++;emit(CHECKING,-1,"");}void download(){downloads++;emit(DOWNLOADING,-1,"");}void install(Activity a){installs++;}
 }'''
 }
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.settings.UpdateDialogText;
 import android.app.Activity;import android.view.*;import android.graphics.*;import android.os.SystemClock;
 public class UpdateDialogHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
@@ -60,7 +60,7 @@ public class UpdateDialogHarness {
   d=create();u=SelfUpdate.instance;d.check();u.emit(SelfUpdate.READY,100,"");key(d,OK);check(u.installs==1,"ready primary installs immediately");
   for(String language:new String[]{"en","ru"}){
    AppLanguage.select(language);boolean ru=language.equals("ru");
-   u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;c=draw(d,true);check(String.join(" ",c.text).contains(ru?"На ТВ установлена актуальная версия ПО: tvOS 1.1":"Your TV has the latest software: tvOS 1.1")&&c.text.contains("1.1"),"current version localized");check(c.text.get(0).equals(AppStrings.get(R.string.settings_tvos_update))&&c.text.get(1).equals("1.1")&&c.ys.get(2)-c.ys.get(1)==33&&c.panelBottom-c.panelTop<550,"current layout keeps title, adjacent version/body lines, compact height and capsule button");
+   u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;c=draw(d,true);check(String.join(" ",c.text).contains(ru?"На ТВ установлена актуальная версия ПО: tvOS 1.1":"Your TV has the latest software: tvOS 1.1")&&c.text.contains("1.1 (1B117)"),"current version localized");check(c.text.get(0).equals(AppStrings.get(R.string.settings_tvos_update))&&c.text.get(1).equals("1.1 (1B117)")&&c.ys.get(2)-c.ys.get(1)==33&&c.panelBottom-c.panelTop<550,"current layout keeps title, adjacent version/body lines, compact height and capsule button");
    u.emit(SelfUpdate.ERROR,-1,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");SystemClock.now+=260;c=draw(d,false);check(String.join("",c.text).contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),"wrapped error retains all characters");
    u.emit(SelfUpdate.AVAILABLE,-1,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Загрузить и установить":"Download and Install"),"language read at drawing time");
    u.emit(SelfUpdate.READY,100,"");SystemClock.now+=260;c=draw(d,true);check(c.text.contains(ru?"Версия 1.2.3":"Version 1.2.3"),"ready version spacing");
@@ -71,14 +71,15 @@ public class UpdateDialogHarness {
   d.check();u.emit(SelfUpdate.CURRENT,-1,"");Canvas reduced=new Canvas();d.draw(reduced,1920,1080,false,false,true);check(reduced.scale==1&&reduced.layerAlpha==-1,"reduced motion opens without scale or fade");key(d,OK);d.draw(new Canvas(),1920,1080,false,false,true);check(!d.visible(),"reduced motion closes immediately");
   d.check();u.emit(SelfUpdate.CURRENT,-1,"");SystemClock.now+=260;draw(d,false);int reads=android.content.pm.PackageManager.lookups,measures=Paint.measurements;for(int frame=0;frame<60;frame++){SystemClock.now+=16;draw(d,false);}check(android.content.pm.PackageManager.lookups==reads&&Paint.measurements==measures,"steady dialog reuses installed version and text wrapping");
   d.check();u.emit(SelfUpdate.ERROR,-1,String.join("",java.util.Collections.nCopies(2000,"😃")));SystemClock.now+=260;c=draw(d,false);check(c.panelTop>=39&&c.panelBottom<=1041,"long Unicode error stays on screen");for(int i=1;i<c.text.size()-1;i++){check(c.text.get(i).length()*25*.48f<=410.01f,"unbroken error stays inside body column");}
-  Activity a=new Activity();check(SettingsUpdateDialog.versionName(a).equals("tvOS 1.1"),"installed version lookup");a.pm.missing=true;check(SettingsUpdateDialog.versionName(a).equals("tvOS"),"missing version safe fallback");
+  Activity a=new Activity();check(SettingsUpdateDialog.versionName(a).equals("tvOS 1.1 (1B117)"),"installed version lookup");a.pm.missing=true;check(SettingsUpdateDialog.versionName(a).equals("tvOS"),"missing version safe fallback");
   System.out.println("PASS: actual update modal lifecycle, input, status transitions, deferred install, cancellation, fades, geometry and live localization");
  }
 }
 '''
+stubs['io/tvos/version/SoftwareBuild.java']=Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-update-dialog-') as tmp:
  root=Path(tmp);write(root)
- stubs['io/tvos/UpdateDialogText.java']=Path('app/src/io/tvos/UpdateDialogText.java').read_text()
+ stubs['io/tvos/UpdateDialogText.java']=Path('app/src/io/tvos/settings/UpdateDialogText.java').read_text()
  stubs['io/tvos/SettingsUpdateDialog.java']=Path('app/src/io/tvos/SettingsUpdateDialog.java').read_text()
  stubs['io/tvos/UpdateDialogHarness.java']=harness
  for name,content in stubs.items():

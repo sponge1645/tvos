@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 stubs = {
- 'io/tvos/AppDownloads.java': '''package io.tvos; final class AppDownloads {
+ 'io/tvos/AppDownloads.java': '''package io.tvos;import io.tvos.version.AppVersions; final class AppDownloads {
  static String text(String ru,String en){return en;} }''',
  'android/os/Build.java': '''package android.os; public class Build {
  public static class VERSION {public static int SDK_INT=30;} }''',
@@ -39,7 +39,7 @@ stubs = {
  public JSONArray optJSONArray(String k){return (JSONArray)data.get(k);} }'''
 }
 
-harness = r'''package io.tvos;
+harness = r'''package io.tvos;import io.tvos.version.AppVersions;
 import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;
 import java.util.concurrent.atomic.*;import android.content.pm.*;
 
@@ -180,7 +180,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-app-downloads-') as directory:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
     for name in ['AppDownloadCatalog', 'ApkTransfer', 'ApkTrust', 'AppVersions']:
-        (root / 'io/tvos' / (name + '.java')).write_text(Path('app/src/io/tvos', name + '.java').read_text())
+        (root / 'io/tvos' / (name + '.java')).write_text(Path('app/src/io/tvos/version' if name == 'AppVersions' else 'app/src/io/tvos', name + '.java').read_text())
     (root / 'io/tvos/DownloadHarness.java').write_text(harness)
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory,
