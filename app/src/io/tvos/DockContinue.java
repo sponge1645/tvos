@@ -237,8 +237,8 @@ final class DockContinue {
         Paint title = titlePaint, meta = metaPaint;
         headingPaint.setTypeface(Ui.displayBold); headingPaint.setTextSize(54 * k); headingPaint.setColor(ActionSurface.ink(night, 0));
         float headingBaseline = Math.max(170 * k, bottom - 550 * k);
-        c.drawText(AppStrings.get(R.string.home_continue_watching), 40 * k, headingBaseline, headingPaint);
-        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 40 * k, headingBaseline + 65 * k, meta); c.restoreToCount(layer); return; }
+        c.drawText(AppStrings.get(R.string.home_continue_watching), 60 * k, headingBaseline - 20 * k, headingPaint);
+        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 60 * k, headingBaseline + 65 * k, meta); c.restoreToCount(layer); return; }
         if (shadowScale != k) {
             shadowScale = k;
             shadow.setMaskFilter(new BlurMaskFilter(30 * k, BlurMaskFilter.Blur.NORMAL));

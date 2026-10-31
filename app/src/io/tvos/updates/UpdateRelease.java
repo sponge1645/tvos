@@ -1,14 +1,14 @@
-package io.tvos;
+package io.tvos.updates;
 
 import java.util.Locale;
 import org.json.JSONObject;
 
 /** A release manifest never supplies an arbitrary download URL. Assets are pinned to a release tag. */
-final class UpdateRelease {
-    static final String REPOSITORY = "https://github.com/sponge1645/tvos";
-    static final String LATEST = REPOSITORY + "/releases/download/ota-v1/update.json";
-    final String versionName, tag, sha256;
-    final long versionCode, size;
+public final class UpdateRelease {
+    public static final String REPOSITORY = "https://github.com/sponge1645/tvos";
+    public static final String LATEST = REPOSITORY + "/releases/download/ota-v1/update.json";
+    public final String versionName, tag, sha256;
+    public final long versionCode, size;
 
     private UpdateRelease(String name, long code, String tag, String digest, long size) {
         this.versionName = name;
@@ -18,7 +18,7 @@ final class UpdateRelease {
         this.size = size;
     }
 
-    static UpdateRelease parse(JSONObject json) throws Exception {
+    public static UpdateRelease parse(JSONObject json) throws Exception {
         String name = json.getString("versionName");
         String tag = json.getString("tag");
         String digest = json.getString("sha256").toLowerCase(Locale.ROOT);
@@ -35,5 +35,5 @@ final class UpdateRelease {
         return new UpdateRelease(name, code, tag, digest, size);
     }
 
-    String apkUrl() { return REPOSITORY + "/releases/download/" + tag + "/tvOS.apk"; }
+    public String apkUrl() { return REPOSITORY + "/releases/download/" + tag + "/tvOS.apk"; }
 }

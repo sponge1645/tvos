@@ -18,7 +18,7 @@ stubs={
  public static Map<String,Map<String,Object>> fixtures=new HashMap<>();Map<String,Object> data;
  public JSONObject(String key){data=fixtures.get(key);}public String getString(String k){return (String)data.get(k);}
  public long getLong(String k){return ((Number)data.get(k)).longValue();} }'''}
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.updates.UpdateRelease;
 import java.util.*;import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.atomic.AtomicBoolean;import org.json.JSONObject;
 public class OtaRefreshHarness {
  static final int IDLE=0,CHECKING=1,CURRENT=2,AVAILABLE=3,DOWNLOADING=4,READY=5,ERROR=6;
@@ -79,5 +79,5 @@ with tempfile.TemporaryDirectory(prefix='tvos-ota-refresh-')as directory:
  for name,content in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(content)
  (root/'OtaRefreshHarness.java').write_text(harness)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UpdateRelease.java',*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/updates/UpdateRelease.java',*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',directory,'io.tvos.OtaRefreshHarness',directory],check=True)

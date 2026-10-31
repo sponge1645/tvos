@@ -5,7 +5,7 @@ import java.util.Locale;
 /** Display identity only; Android installation order continues to use versionCode. */
 public final class SoftwareBuild {
     private SoftwareBuild() { }
-    public static final int SEQUENCE = 119;
+    public static final int SEQUENCE = 120;
 
     public static String display(String version) {
         if (version == null || !version.matches("[0-9]+\\.[0-9]+(?:\\.[0-9]+)?")) return version;
