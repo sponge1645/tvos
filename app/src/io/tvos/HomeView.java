@@ -454,6 +454,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public Paint anchorPaint() { return lTabOn; }
             @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void moved() { click.move(); }
             @Override public void changed() {
                 layoutLight();
                 if (tab == category && !searchMode) {
@@ -477,6 +478,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public Paint anchorPaint() { return lTabOn; }
             @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void moved() { click.move(); }
             @Override public void changed() {
                 cardPage = cardIndex = 0;
                 updateCards(); retarget(false); heroDirty = true; wake();

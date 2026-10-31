@@ -35,6 +35,7 @@ final class HomeGenres {
         default String kind() { return "movie"; }
         RectF anchor();
         void opened();
+        default void moved() {}
         default Paint anchorPaint() { return null; }
         default void visibilityChanged() {}
         void changed();
@@ -123,6 +124,7 @@ final class HomeGenres {
         Selection(GenreCatalog.Genre genre, List<Recs.Pick> movies) { this.genre = genre; this.movies = movies; }
     }
     private UiRequest restoreRequest, restoreMoviesRequest;
+    private View soundFocus;
     private final View home;
     private final Context context;
     private final Handler handler;
@@ -261,6 +263,7 @@ final class HomeGenres {
         cancelHold();
         if (!host.eligible() || popup != null) return;
         host.opened();
+        soundFocus = null;
         openingRelease = true;
         float k = home.getWidth() / 1920f;
         MenuSurface root = new MenuSurface(context);
@@ -316,6 +319,7 @@ final class HomeGenres {
             if (genreRequest != null) genreRequest.cancel();
             genreRequest = null;
             if (popup == window) popup = null;
+            soundFocus = null;
             if (!window.returningAnchor) host.visibilityChanged();
         });
         RectF anchor = host.anchor();
@@ -501,8 +505,13 @@ final class HomeGenres {
         styleText(row, label, 34, k);
         row.setTextColor(Color.WHITE);
         row.setFocusable(true); row.setClickable(true);
+        row.setSoundEffectsEnabled(false);
         row.setOnKeyListener(this::initialRelease);
         row.setOnFocusChangeListener((v, focused) -> {
+            if (focused && soundFocus != row) {
+                if (soundFocus != null) host.moved();
+                soundFocus = row;
+            }
             GradientDrawable fill = new GradientDrawable();
             fill.setCornerRadius(34 * k);
             fill.setColor(focused ? Color.WHITE : Color.TRANSPARENT);
