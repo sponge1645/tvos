@@ -256,7 +256,7 @@ final class DockContinue {
             if (left >= 1880 * k) break;
             if (left + width <= 40 * k) continue;
             float scaleFocus = 1 + .05f * cardFocus[i];
-            float cx = left + width / 2, cy = top + height / 2 - 6 * k * cardFocus[i];
+            float cx = left + width / 2, cy = top + height / 2 - 20 * k - 6 * k * cardFocus[i];
             rect.set(cx - width * scaleFocus / 2, cy - height * scaleFocus / 2, cx + width * scaleFocus / 2, cy + height * scaleFocus / 2);
             float focus = Ui.clamp(cardFocus[i]);
             c.save(); c.translate(cx, cy); c.scale(scaleFocus, scaleFocus);
