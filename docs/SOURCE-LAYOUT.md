@@ -15,7 +15,7 @@ Java files recursively. Tests compile the actual package paths.
 - `io.tvos.settings`: independent settings text layout.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B128)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B129)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -26,4 +26,4 @@ The settings background is static; only active focus, scroll, title, page and mo
 animations request additional frames. General no longer opens system date/time
 settings; date visibility and the 12/24-hour preference remain independent.
 
-Home Screen mode in General gates recommendation navigation independently of saved category visibility/order and reads KinoPub, Seena and Lampa resume snapshots without changing the Watching source.
+Home Screen mode in General chooses service recommendation banners or KinoPub/Seena/Lampa resume cards only when every poster category is disabled. It never changes category visibility/order or the Watching source.

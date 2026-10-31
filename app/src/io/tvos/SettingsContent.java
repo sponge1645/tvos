@@ -49,7 +49,7 @@ final class SettingsContent {
         switch (screen) {
             case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language)};
             case MOVIE_SERVICE: return MovieService.labels(language);
-            case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_tmdb, language), AppStrings.get(R.string.home_continue_watching, language)};
+            case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_recommendations, language), AppStrings.get(R.string.home_continue_watching, language)};
             case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_navigation_clicks, language), AppStrings.get(R.string.settings_home_screen, language)};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
@@ -78,9 +78,11 @@ final class SettingsContent {
             case MEDIA: case MOVIE_SERVICE:
                 info = AppStrings.get(R.string.settings_help_default_service, language);
                 break;
+            case HOME_SCREEN: return AppStrings.get(R.string.settings_help_home_screen, language);
             case REGION: return AppStrings.get(R.string.settings_help_auto_region, language);
             case GENERAL:
                 if (focus == 3) info = AppStrings.get(R.string.settings_help_region, language);
+                else if (focus == 7) info = AppStrings.get(R.string.settings_help_home_screen, language);
                 break;
             case SCREENSAVER:
                 if (focus == 3) info = AppStrings.get(R.string.settings_help_weather_city, language);

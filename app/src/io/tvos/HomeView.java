@@ -421,7 +421,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         data.addListener(this);
         recs.addListener(this);
         watching.start();
-        if (Prefs.homeCategoryCount() == 0) DockBackdrop.requestPermission(activity);
+        if (Prefs.categoryCount() == 0) DockBackdrop.requestPermission(activity);
         updateDockBackdrop();
         data.refreshIfStale();
         recs.refreshIfStale();
@@ -576,7 +576,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             drawer.snap(0);
         }
         if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
-        if (Prefs.firstHomeCategory() >= 0 && tab != Prefs.firstHomeCategory()) selectTab(Prefs.firstHomeCategory());
+        if (Prefs.firstCategory() >= 0 && tab != Prefs.firstCategory()) selectTab(Prefs.firstCategory());
         updateCards();
         retarget(!animated);
         motionDirty = true;
@@ -627,11 +627,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private static boolean tabEnabled(int i) {
-        return Prefs.homeCategoryEnabled(i);
+        return Prefs.categoryEnabled(i);
     }
 
     private void syncVisibleTabs() {
-        int first = Prefs.firstHomeCategory();
+        int first = Prefs.firstCategory();
         if (!tabEnabled(tab) && first >= 0) selectTab(first);
         if (first < 0) cancelRouletteWork();
         if (topIndex < 5 && !tabEnabled(topIndex)) topIndex = first >= 0 ? tab : availableTopButton(5);
@@ -667,7 +667,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void updateDockBackdrop() {
         if (!running) return;
-        if (Prefs.homeCategoryCount() != 0 || searchMode) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
+        if (Prefs.categoryCount() != 0 || searchMode) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
         if (sheetOpen || drawerOpen || zone != Z_SHELF || shelfIndex < 0 || shelfIndex >= shelf.size()) return;
         HomeApps.Item item = shelf.get(shelfIndex);
         String pkg = item.kind == HomeApps.APP ? item.pkg
@@ -688,7 +688,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void showDockBackdrop(DockBackdrop.Artwork artwork) {
-        if (!running || Prefs.homeCategoryCount() != 0 || searchMode) return;
+        if (!running || Prefs.categoryCount() != 0 || searchMode) return;
         boolean animate = !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
         dockBanner.show(artwork, animate);
         heroDirty = true; heroLayer.invalidate();
@@ -826,7 +826,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean vpnMoving = vpnColor.step(dt);
         boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
         if (topMoving || vpnMoving) status.invalidate();
-        boolean bannerMoving = Prefs.homeCategoryCount() == 0 && !searchMode && dockBanner.tick(up);
+        boolean bannerMoving = Prefs.categoryCount() == 0 && !searchMode && dockBanner.tick(up);
         boolean heroMoving = topMoving | cardsMoving | bannerMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
         boolean gridMoving = step(gridFocus, dt) | scroll.step(dt);
@@ -844,7 +844,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // glass shows the background where it ended up.
         if (tilesMoving || tilesDirty) tiles.invalidate();
         if (statusDirty || bgFading) status.invalidate();
-        if (heroMoving || heroDirty || searchHeadingMoving || (bgFading && Prefs.homeCategoryCount() == 0)) heroLayer.invalidate();
+        if (heroMoving || heroDirty || searchHeadingMoving || (bgFading && Prefs.categoryCount() == 0)) heroLayer.invalidate();
         if (drawerItemsMoving || drawerDirty || bgFading) drawerLayer.invalidate();
         if (gridMoving || gridDirty) sheetLayer.invalidate();
         if (drawerMoving || bgFading) { sky.invalidate(); revealBackdrop.invalidate(); }
@@ -866,7 +866,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             // Short text needs only the normal clock tick. Long text wakes at its dwell deadline,
             // then keeps the existing 50 ms marquee cadence without polling during the wait.
             long delay = Math.min(posters.nextDelay(up), reveal.delay(up));
-            if (Prefs.homeCategoryCount() == 0 && !searchMode) delay = Math.min(delay, dockBanner.nextDelay(up));
+            if (Prefs.categoryCount() == 0 && !searchMode) delay = Math.min(delay, dockBanner.nextDelay(up));
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
     }
@@ -1641,7 +1641,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchResults.clear();
         cardPage = cardIndex = 0;
         zone = Z_TOP;
-        topIndex = Prefs.firstHomeCategory() >= 0 ? tab : availableTopButton(5);
+        topIndex = Prefs.firstCategory() >= 0 ? tab : availableTopButton(5);
         if (!topControlVisible(topIndex)) zone = Z_SHELF;
         layoutLight();
         updateCards();
@@ -1801,7 +1801,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
         if (labelPaint == null) return;
-        if (!searchMode && Prefs.firstHomeCategory() < 0) {
+        if (!searchMode && Prefs.firstCategory() < 0) {
             cards.clear();
             recs.setPosterWindow(java.util.Collections.emptyList());
             heroDirty = true;
@@ -1898,7 +1898,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         HomeHeaderRenderer.Frame heading = headerFrame();
         if (!picksOn()) {
             if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night(), noTopWidgets());
-            else if (!searchMode && Prefs.homeCategoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
+            else if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;
         }
         header.drawTabs(c, heading);
@@ -1936,8 +1936,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean picksOn() {
-        return (Recs.hasKey(getContext()) || (!searchMode && Prefs.homeCategoryEnabled(2)))
-                && (searchMode || Prefs.homeCategoryCount() > 0);
+        return (Recs.hasKey(getContext()) || (!searchMode && Prefs.categoryEnabled(2)))
+                && (searchMode || Prefs.categoryCount() > 0);
     }
 
     private void openNetworkSettings() {

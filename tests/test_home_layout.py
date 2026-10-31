@@ -16,7 +16,7 @@ public class HomeLayoutHarness {
  float drawerExtraHeight;float k=1,contentTop,contentBottom;int w=1920,h=1080,drawerInputs;boolean motionDirty,drawerDirty,heroDirty,statusDirty,largePostersWithoutWidgets,compact;
  Paint lTab=Ui.text(Ui.medium,30,0),lTabOn=Ui.text(Ui.semibold,30,0),lCardMeta=Ui.text(Ui.medium,25,0);String clockText="12:34";
  static class Cache {void clear(){}}final Cache appSurfaces=new Cache();static class Header {void clearFrame(){}}final Header header=new Header();
- static class Prefs {static boolean homeContinue(){return false;}static int[] order={0,1,2,3,5,4};static int mask=63;static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}}
+ static class Prefs {static int[] order={0,1,2,3,5,4};static int mask=63;static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}}
  boolean noTopWidgets(){return compact;}boolean tabEnabled(int id){return true;}boolean topButtonEnabled(int id){return (Prefs.mask&(1<<id))!=0;}
  String[] tabs(){return new String[]{"New","Movies","","Shows","Dice"};}
  HomeLayoutHarness(){for(int i=0;i<11;i++)topRects[i]=new RectF();for(int i=0;i<8;i++)cardRects[i]=new RectF();}

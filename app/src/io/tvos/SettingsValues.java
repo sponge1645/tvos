@@ -66,7 +66,7 @@ final class SettingsValues {
             v[4] = settings()[1];
             v[5] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
             v[6] = onOff(localPrefs().getBoolean("navigation_clicks", true));
-            v[7] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_tmdb);
+            v[7] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
 
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));
