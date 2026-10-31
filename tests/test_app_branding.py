@@ -26,6 +26,7 @@ final class HomeApps {
  static Intent launchIntent(PackageManager pm,String pkg){return new Intent(pkg);}
  static Item shortcut(int kind,String key,String label,String symbol){Item i=new Item();i.kind=kind;i.key=key;i.label=label;return i;}
  static class AppArtwork {
+ static Bitmap dockTile(Context c,String pkg){return null;}
  static Bitmap ownLogoCached(Context c,String key){return LOGOS.computeIfAbsent(key,k->{Bitmap b=new Bitmap(540,252);b.asset=k;return b;});}
  static Bitmap shelfLogo(Context c,String key,String pkg,String mode,boolean extract){return ownLogoCached(c,key);}
  static float ink(Bitmap b){return .3f;}
