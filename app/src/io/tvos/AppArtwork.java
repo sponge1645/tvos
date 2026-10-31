@@ -354,8 +354,10 @@ final class AppArtwork {
         return tile;
     }
 
-    /** Use the same bundled logos and vertical brand gradients as the home Dock in All Apps. */
+    /** Prefer the complete supplied Dock card; older brands retain their generated artwork. */
     static synchronized Bitmap brandedAllAppsTile(Context c, String pkg) {
+        Bitmap complete = dockTile(c, pkg);
+        if (complete != null) return complete;
         AppBranding.Style brand = AppBranding.forAllApps(pkg);
         if (brand == null) return appTile(c, null, pkg, 0);
         String logoKey = brand.logo;
@@ -454,6 +456,8 @@ final class AppArtwork {
 
     /** TV Settings favorite: settings.png centered over a top-to-bottom gray gradient. */
     static synchronized Bitmap tvSettingsFavoriteTile(Context c) {
+        Bitmap complete = dockTile(c, "tv-settings");
+        if (complete != null) return complete;
         final String key = "tv-settings-favorite-gradient";
         if (TILES.containsKey(key)) return TILES.get(key);
         Bitmap b = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888);

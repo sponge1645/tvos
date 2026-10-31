@@ -25,4 +25,6 @@
 или недоступные данные оставляют общий значок Wi-Fi; Ethernet и отсутствие сети
 сохраняют собственные значки. Это сила радиосигнала, а не измерение скорости сети.
 
-Complete Dock cards live in `app/assets/tiles/` (1000×600, 5:3). These eight supplied cards include their own background and logo. The app loader decodes them once at 500×300; existing rounded clipping, shadows and focus transforms render the whole card. Other brands and All Apps retain their current artwork.
+Complete Dock cards live in `app/assets/tiles/` (1000×600, 5:3). These eight supplied cards include their own background and logo. The app loader decodes them once at 500×300; existing rounded clipping, shadows and focus transforms render the whole card. The same cards are used in All Apps; other brands retain their current artwork.
+
+Navigation playback gain: 0.8 for focus movement and 1.0 for opening/back. System audio volume and the existing sound preference still apply.
