@@ -251,14 +251,21 @@ final class WatchingCatalog {
         int rank = 0;
         for (java.util.Map.Entry<Long, String> channel : channels.entrySet()) {
             List<Recs.Pick> channelPicks = new ArrayList<>();
+            int rows = 0, foreign = 0, missingTitle = 0, missingLink = 0, invalidLink = 0;
             try (Cursor cursor = context.getContentResolver().query(
                     Uri.parse("content://android.media.tv/preview_program?channel=" + channel.getKey()),
                     columns, null, null, "_id ASC")) {
-                if (cursor == null) continue;
+                if (cursor == null) {
+                    Log.w(TAG, "History channel=" + channel.getKey() + ": null cursor");
+                    continue;
+                }
                 while (cursor.moveToNext()) {
-                    if (!channel.getValue().equals(text(cursor, 1))) continue;
+                    rows++;
+                    if (!channel.getValue().equals(text(cursor, 1))) { foreign++; continue; }
+                    if (text(cursor, 3).isEmpty()) { missingTitle++; continue; }
+                    if (text(cursor, 5).isEmpty()) { missingLink++; continue; }
                     Recs.Pick pick = read(cursor, channel.getValue());
-                    if (pick == null) continue;
+                    if (pick == null) { invalidLink++; continue; }
                     // Preserve publisher insertion order; do not invent playback dates or remaining time.
                     pick.watchingUpdated = -1L - rank++;
                     pick.watchingRemaining = -1;
@@ -267,7 +274,9 @@ final class WatchingCatalog {
                 }
             }
             Log.i(TAG, "History channel=" + channel.getKey() + ", owner=" + channel.getValue()
-                    + ": " + WatchingItems.trace(channelPicks));
+                    + ": rows=" + rows + ", foreign=" + foreign + ", missingTitle=" + missingTitle
+                    + ", missingLink=" + missingLink + ", invalidLink=" + invalidLink
+                    + ", " + WatchingItems.trace(channelPicks));
         }
     }
 
