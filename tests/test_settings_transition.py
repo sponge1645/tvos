@@ -13,7 +13,7 @@ def extract(source,sig):
  while d:
   d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-constants=re.search(r'static final int (MAIN\s*=.*?);',Path('app/src/io/tvos/SettingsContent.java').read_text()).group(1)
+constants=re.search(r'static final int (MAIN\s*=.*?);',Path('app/src/io/tvos/settings/SettingsScreen.java').read_text()).group(1)
 header='''package io.tvos;
 public class SettingsTransitionHarness {
  static final int '''+constants+''';

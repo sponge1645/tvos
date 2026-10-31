@@ -25,7 +25,7 @@ sources={
 'android/graphics/Rect.java':'package android.graphics;public class Rect {public int right,bottom;public void set(int l,int t,int r,int b){right=r;bottom=b;}}',
 'android/graphics/Bitmap.java':'''package android.graphics;public class Bitmap {public enum Config{ARGB_8888}public static int allocations;public static boolean fail;public final int w,h;public boolean recycled;Bitmap(int w,int h){this.w=w;this.h=h;}public static Bitmap createBitmap(int w,int h,Config c){if(fail)throw new OutOfMemoryError("test");allocations++;return new Bitmap(w,h);}public void recycle(){recycled=true;}}''',
 'android/graphics/Canvas.java':'''package android.graphics;import java.util.*;public class Canvas {public static Canvas raster;public final List<Shader> shaders=new ArrayList<>();public final List<float[]> translations=new ArrayList<>(),scales=new ArrayList<>();public final Bitmap target;public Bitmap shown;public Rect destination;public Paint paint;public int depth,color;public Canvas(){target=null;}public Canvas(Bitmap b){target=b;raster=this;}public int save(){return ++depth;}public void restoreToCount(int n){depth=n-1;}public void translate(float x,float y){translations.add(new float[]{x,y});}public void scale(float x,float y){scales.add(new float[]{x,y});}public void drawRect(float l,float t,float r,float b,Paint p){shaders.add(p.shader);}public void drawColor(int c){color=c;}public void drawBitmap(Bitmap b,Rect src,Rect dst,Paint p){if(b.recycled)throw new AssertionError("recycled");shown=b;destination=dst;paint=p;}}''',
-'io/tvos/SettingsBackgroundHarness.java':'''package io.tvos;import android.graphics.*;
+'io/tvos/SettingsBackgroundHarness.java':'''package io.tvos;import io.tvos.settings.SettingsBackground;import android.graphics.*;
 public class SettingsBackgroundHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b,String why){check(Math.abs(a-b)<.02,why+" "+a+" != "+b);}
  static void verifyGlow(int i,int rgb,int[] alphas,float[] stops,float[] shape){RadialGradient g=(RadialGradient)Canvas.raster.shaders.get(i+1);check(g.colors.length==alphas.length,"approved opacity stop count");for(int j=0;j<alphas.length;j++){check((g.colors[j]&0xFFFFFF)==rgb,"approved glow color");check(Math.abs((g.colors[j]>>>24)-alphas[j])<=1,"approved SVG opacity profile");near(g.stops[j],stops[j],"approved SVG offsets");}float[] t=Canvas.raster.translations.get(i),s=Canvas.raster.scales.get(i);near(t[0],shape[0]/2,"glow center x");near(t[1],shape[1]/2,"glow center y");near(s[0],shape[2]/2,"ellipse radius x");near(s[1],shape[3]/2,"ellipse radius y");}
@@ -45,7 +45,7 @@ public class SettingsBackgroundHarness {
   System.out.println("PASS: native gradient recipes match approved SVGs, opacity/ellipses/colors, single-cache reuse, 4K cap, resize/lifecycle and bounded OOM recovery");
  }
 }'''}
-sources['io/tvos/SettingsBackground.java']=Path('app/src/io/tvos/SettingsBackground.java').read_text()
+sources['io/tvos/SettingsBackground.java']=Path('app/src/io/tvos/settings/SettingsBackground.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-settings-background-') as tmp:
  root=Path(tmp)
  for name,text in sources.items():

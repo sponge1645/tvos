@@ -8,7 +8,7 @@ stubs = {
 'android/graphics/Bitmap.java': '''package android.graphics;public class Bitmap{public enum Config{ARGB_8888}public static int maxPixels;int[] data;int w;public static Bitmap createBitmap(int w,int h,Config c){maxPixels=Math.max(maxPixels,w*h);Bitmap b=new Bitmap();b.w=w;b.data=new int[w*h];return b;}public void getPixels(int[] p,int o,int s,int x,int y,int w,int h){System.arraycopy(data,0,p,0,p.length);}public void setPixels(int[] p,int o,int s,int x,int y,int w,int h){System.arraycopy(p,0,data,0,p.length);}}''',
 'android/graphics/Canvas.java': '''package android.graphics;public class Canvas{public int depth,draws;public Canvas(){}public Canvas(Bitmap b){java.util.Arrays.fill(b.data,0xFF56789A);}public int save(){return depth++;}public void restoreToCount(int n){depth=n;}public void scale(float x,float y){}public void clipPath(Path p){}public void drawBitmap(Bitmap b,Object src,RectF r,Paint p){draws++;}}''',
 'android/util/Log.java': 'package android.util;public class Log{public static int w(String t,String m,Throwable e){return 0;}}',
-'io/tvos/BackdropHarness.java': '''package io.tvos;import android.graphics.*;import java.lang.reflect.*;import java.util.*;public class BackdropHarness{
+'io/tvos/BackdropHarness.java': '''package io.tvos;import io.tvos.settings.SettingsPopupBackdrop;import android.graphics.*;import java.lang.reflect.*;import java.util.*;public class BackdropHarness{
 static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
 public static void main(String[] args)throws Exception{
 SettingsPopupBackdrop b=new SettingsPopupBackdrop();int[] calls={0};SettingsPopupBackdrop.Source source=c->calls[0]++;
@@ -23,7 +23,7 @@ System.out.println("PASS: actual popup backdrop snapshot reuse, bounded 4K alloc
 }
 with tempfile.TemporaryDirectory(prefix='tvos-popup-backdrop-') as tmp:
  root=Path(tmp)
- stubs['io/tvos/SettingsPopupBackdrop.java']=Path('app/src/io/tvos/SettingsPopupBackdrop.java').read_text()
+ stubs['io/tvos/SettingsPopupBackdrop.java']=Path('app/src/io/tvos/settings/SettingsPopupBackdrop.java').read_text()
  for name,text in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)

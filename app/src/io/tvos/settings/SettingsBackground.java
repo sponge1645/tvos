@@ -1,4 +1,4 @@
-package io.tvos;
+package io.tvos.settings;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -9,7 +9,7 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 
 /** Approved SVG gradients rendered natively, with a bounded single-theme raster cache. */
-final class SettingsBackground {
+public final class SettingsBackground {
     private static final float[] STOPS = new float[49];
     static { for (int i = 0; i < STOPS.length; i++) STOPS[i] = i / 48f; }
 
@@ -42,13 +42,13 @@ final class SettingsBackground {
     private final Paint bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private final Rect destination = new Rect();
 
-    void clear() {
+    public void clear() {
         // Submitted GPU frames may still reference the old image.
         bitmap = null;
         cachedWidth = cachedHeight = 0;
     }
 
-    void draw(Canvas canvas, int width, int height, boolean light) {
+    public void draw(Canvas canvas, int width, int height, boolean light) {
         if (width <= 0 || height <= 0) return;
         if (cachedLight != light || cachedWidth != width || cachedHeight != height) {
             clear();

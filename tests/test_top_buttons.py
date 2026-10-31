@@ -11,7 +11,7 @@ prefs=Path('app/src/io/tvos/Prefs.java').read_text();settings=Path('app/src/io/t
 prefs_body='\n'.join(method(prefs,s) for s in ['    private static void put(String key, String value)','    private static void put(String key, boolean value)','    private static void readTopButtons(', '    static int[] topButtonOrder(', '    static boolean topButtonEnabled(', '    static int topButtonCount(', '    static int topButtonPosition(', '    static void setTopButtonEnabled(', '    static void setTopButtonOrder('])
 editor='\n'.join(method(settings,s) for s in ['        private String menuButtonLabel(', '        private void rebuildMenuButtonRows(', '        private void openMenuButtonEditor(', '        private void toggleMenuButton(', '        private void moveMenuButton('])
 nav='\n'.join(method(home,s) for s in ['    private boolean topButtonEnabled(', '    private boolean topControlVisible(', '    private int nextTopControl(', '    private int availableTopButton(', '    private int posterCornerTarget(', '    private void layoutTopActions('])
-header='import java.util.*;\n'+Path('app/src/io/tvos/HomeLayout.java').read_text().replace('package io.tvos;', '')+'''\n
+header='import java.util.*;import io.tvos.settings.SettingsOrderEditor;\n'+Path('app/src/io/tvos/HomeLayout.java').read_text().replace('package io.tvos;', '')+'''\n
 class Ui {static boolean ru;}
 class Prefs {
  static int version,topButtonVersion=-1,topButtonMask;static int[] topButtonOrderCache;
@@ -27,7 +27,7 @@ class Prefs {
 '''+prefs_body+'''
 }
 class Editor {
- SettingsOrderEditor buttonEditor=new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);int focus,screen;static final int MENU_BUTTONS=13;
+ SettingsOrderEditor buttonEditor=SettingsEditors.buttons();int focus,screen;static final int MENU_BUTTONS=13;
  String tr(String ru,String en){return en;}
 '''+editor+'''
  void open(){openMenuButtonEditor();}void toggle(){toggleMenuButton();}void move(int d){moveMenuButton(d);}
@@ -56,7 +56,7 @@ public class TopButtonsHarness {
    for(int id=0;id<6;id++)Prefs.setTopButtonEnabled(id,(mask&(1<<id))!=0);
    List<Integer> visible=new ArrayList<>();for(int id:order)if(Prefs.topButtonEnabled(id))visible.add(5+id);
    check(Prefs.topButtonCount()==visible.size(),"visible count");
-   SettingsOrderEditor model=new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);model.rebuild(-1);
+   SettingsOrderEditor model=SettingsEditors.buttons();model.rebuild(-1);
    List<Integer> grouped=new ArrayList<>();for(int id:order)if(Prefs.topButtonEnabled(id))grouped.add(id);for(int id:order)if(!Prefs.topButtonEnabled(id))grouped.add(id);
    check(snapshot(model).equals(grouped),"editor grouping for every order/mask");
    for(int i=0;i<visible.size();i++)check(Prefs.topButtonPosition(visible.get(i)-5)==i+1,"numbered positions");
@@ -97,7 +97,11 @@ public class TopButtonsHarness {
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'TopButtonsHarness.java';p.write_text(header)
- (Path(d)/'SettingsOrderEditor.java').write_text(Path('app/src/io/tvos/SettingsOrderEditor.java').read_text().replace('package io.tvos;',''))
+ (Path(d)/'SettingsOrderEditor.java').write_text(Path('app/src/io/tvos/settings/SettingsOrderEditor.java').read_text())
+
+ adapter=Path('app/src/io/tvos/SettingsEditors.java').read_text()
+ adapter_body=method(adapter,'    static SettingsOrderEditor categories(')+method(adapter,'    static SettingsOrderEditor buttons(')
+ (Path(d)/'SettingsEditors.java').write_text('import io.tvos.settings.SettingsOrderEditor;import java.util.List;final class SettingsEditors {'+adapter_body+'}')
  write_strings(Path(d),package=False)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'TopButtonsHarness'],check=True)

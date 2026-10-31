@@ -13,9 +13,9 @@ sources={
 'android/net/wifi/WifiManager.java':'package android.net.wifi;public class WifiManager {public WifiInfo info=new WifiInfo();public WifiInfo getConnectionInfo(){return info;}}',
 'io/tvos/Config.java':'package io.tvos;final class Config {static String CURRENCY="USD";}',
 'io/tvos/Prefs.java':'''package io.tvos;final class Prefs {static boolean home;static boolean homeContinue(){return home;}static String theme="auto",unit="auto",city="City";static boolean weather=true,random=true,h24;static String language(){return AppLanguage.current().code;}static String temperature(){return unit;}static String theme(){return theme;}static String city(){return city;}static boolean automaticRegion(){return false;}static String manualCity(){return city;}static boolean weather(){return weather;}static boolean randomMovie(){return random;}static boolean hour24(){return h24;}static boolean topButtonEnabled(int id){return id!=2;}static int topButtonPosition(int id){return id+1;}static final String[] KEYS={"netflix","youtube","prime","tcl","mi"};static String keyApp(String k){return (k.equals("tcl")||k.equals("mi"))?"":k;}}''',
-'io/tvos/SettingsOrderEditor.java':'package io.tvos;final class SettingsOrderEditor {int size(){return 2;}int get(int i){return i==0?3:2;}}',
+'io/tvos/settings/SettingsOrderEditor.java':'package io.tvos.settings;public final class SettingsOrderEditor {public int size(){return 2;}public int get(int i){return i==0?3:2;}}',
 'io/tvos/LocalNetwork.java':'''package io.tvos;final class LocalNetwork {static Info info;static class Info {boolean ethernet;String address="192.168.0.111";}static Info read(android.content.Context c){return info;}}''',
-'io/tvos/ValuesHarness.java':'''package io.tvos;import java.util.*;import android.app.Activity;import static io.tvos.SettingsContent.*;
+'io/tvos/ValuesHarness.java':'''package io.tvos;import java.util.*;import io.tvos.settings.SettingsOrderEditor;import android.app.Activity;import static io.tvos.settings.SettingsScreen.*;
 public class ValuesHarness {
  static void check(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
@@ -44,7 +44,7 @@ public class ValuesHarness {
    mappings=SettingsValues.keyValues(Collections.emptyList(),Collections.emptyList());check(mappings[4].equals(AppStrings.get(R.string.settings_not_configured)),"unmapped MI has no default app");
    for(String mapping:mappings)check(mapping.equals(ru?"Не настроено":"Not configured"),"empty catalog uses same status for all four buttons");
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B129)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
+   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B130)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,8)[6].equals("Home"),"SSID quotes removed");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,8);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");

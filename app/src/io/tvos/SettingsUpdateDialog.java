@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.settings.SettingsPopupBackdrop;
+
 import io.tvos.version.SoftwareBuild;
 
 import io.tvos.settings.UpdateDialogText;

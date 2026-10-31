@@ -11,7 +11,7 @@ def method(sig):
 assert 'screen == UPDATES ? updateDetailsText()' in method('        private void drawTileDescription(')
 assert 'SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size())' in source
 harness='''package io.tvos;
-import java.util.*;import static io.tvos.SettingsContent.*;
+import java.util.*;import static io.tvos.settings.SettingsScreen.*;
 public class ContentHarness {
  static class Ui {static boolean ru;}
  int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;static final int PICK_VISIBLE=10;

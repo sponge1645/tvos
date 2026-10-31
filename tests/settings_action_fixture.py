@@ -6,7 +6,7 @@ def method(signature, source=SOURCE):
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 HEADER='''package io.tvos;
-import java.util.*;import static io.tvos.SettingsContent.*;
+import java.util.*;import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsActions;
 public class CLASSNAME {
  static final List<String> events=new ArrayList<>();
  static void note(String s){events.add(s);}

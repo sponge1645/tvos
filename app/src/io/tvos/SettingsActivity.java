@@ -1,7 +1,12 @@
 // TVOS_WEATHER_FADE_V1
 package io.tvos;
 
-import static io.tvos.SettingsContent.*;
+import io.tvos.settings.SettingsActions;
+import io.tvos.settings.SettingsOrderEditor;
+import io.tvos.settings.SettingsDockEditor;
+import io.tvos.settings.SettingsBackground;
+
+import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
 
 import android.app.Activity;
@@ -111,7 +116,7 @@ public class SettingsActivity extends Activity {
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
         private final List<String> pickLabels = new ArrayList<>();
         // The shelf editor: the apps it can hold (selected ones first, in order) and the selection.
-        private final SettingsDockEditor dockEditor = new SettingsDockEditor();
+        private final SettingsDockEditor dockEditor = SettingsEditors.dock();
         private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private final Spring mainScroll = new Spring(0.30f, 1f, 0);
@@ -125,8 +130,8 @@ public class SettingsActivity extends Activity {
         private final TextPaint shelfMeasurePaint = new TextPaint();
         private String serviceValueSource, serviceValueShown;
         private float serviceValueWidth = -1, serviceValueSize = -1;
-        private final SettingsOrderEditor categoryEditor = new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);
-        private final SettingsOrderEditor buttonEditor = new SettingsOrderEditor(SettingsOrderEditor.Kind.MENU_BUTTONS);
+        private final SettingsOrderEditor categoryEditor = SettingsEditors.categories();
+        private final SettingsOrderEditor buttonEditor = SettingsEditors.buttons();
         private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private StaticLayout descriptionLayout;
         private String descriptionText;

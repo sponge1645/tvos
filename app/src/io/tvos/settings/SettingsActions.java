@@ -1,12 +1,12 @@
-package io.tvos;
+package io.tvos.settings;
 
-import static io.tvos.SettingsContent.*;
+import static io.tvos.settings.SettingsScreen.*;
 
 /** Settings input decisions. The view applies effects and keeps animation/lifecycle ownership. */
-final class SettingsActions {
+public final class SettingsActions {
     private SettingsActions() { }
 
-    enum Action {
+    public enum Action {
         NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
@@ -18,17 +18,17 @@ final class SettingsActions {
         HOME_SCREEN_MODE_SCREEN(HOME_SCREEN), ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
         REGION_SCREEN(REGION), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
 
-        final int targetScreen;
+        public final int targetScreen;
         Action() { targetScreen = -1; }
         Action(int screen) { targetScreen = screen; }
     }
 
-    enum Adjustment {
+    public enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
         AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL
     }
 
-    static boolean canAdjust(int screen, int row, int buttonCount) {
+    public static boolean canAdjust(int screen, int row, int buttonCount) {
         switch (screen) {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
             case MEDIA: return false;
@@ -42,7 +42,7 @@ final class SettingsActions {
         }
     }
 
-    static Adjustment adjustment(int screen, int row) {
+    public static Adjustment adjustment(int screen, int row) {
         switch (screen) {
             case HOME_SETTINGS: return Adjustment.HOME;
             case WEATHER: return Adjustment.WEATHER;
@@ -64,7 +64,7 @@ final class SettingsActions {
         }
     }
 
-    static Action activation(int screen, int row, int pickFor, boolean citySetting,
+    public static Action activation(int screen, int row, int pickFor, boolean citySetting,
                              int buttonCount, boolean vpnEnabled) {
         switch (screen) {
             case ABOUT: return Action.NAME;
@@ -108,12 +108,12 @@ final class SettingsActions {
         }
     }
 
-    static final class Target {
-        final int screen, row;
+    public static final class Target {
+        public final int screen, row;
         Target(int screen, int row) { this.screen = screen; this.row = row; }
     }
 
-    static Target back(int screen, int pickFor, int group, int buttonCount) {
+    public static Target back(int screen, int pickFor, int group, int buttonCount) {
         switch (screen) {
             case MAIN: return null;
             case PICKER: return pickFor == PICK_CITY ? new Target(REGION, 1)

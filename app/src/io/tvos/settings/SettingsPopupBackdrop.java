@@ -1,4 +1,4 @@
-package io.tvos;
+package io.tvos.settings;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -7,8 +7,8 @@ import android.graphics.Path;
 import android.graphics.RectF;
 
 /** One bounded, softly blurred settings snapshot per modal session, including older Android. */
-final class SettingsPopupBackdrop {
-    interface Source { void draw(Canvas canvas); }
+public final class SettingsPopupBackdrop {
+    public interface Source { void draw(Canvas canvas); }
     private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Path clip = new Path();
     private final RectF destination = new RectF();
@@ -16,11 +16,11 @@ final class SettingsPopupBackdrop {
     private int width, height;
     private boolean attempted, light;
 
-    boolean ready() { return bitmap != null; }
+    public boolean ready() { return bitmap != null; }
 
-    void clear() { bitmap = null; attempted = false; width = height = 0; }
+    public void clear() { bitmap = null; attempted = false; width = height = 0; }
 
-    void prepare(int w, int h, boolean theme, Source source) {
+    public void prepare(int w, int h, boolean theme, Source source) {
         if (width != w || height != h || light != theme) clear();
         if (attempted || source == null || w <= 0 || h <= 0) return;
         width = w; height = h; light = theme; attempted = true;
@@ -45,7 +45,7 @@ final class SettingsPopupBackdrop {
         }
     }
 
-    void draw(Canvas canvas, RectF panel, float radius) {
+    public void draw(Canvas canvas, RectF panel, float radius) {
         if (bitmap == null) return;
         int save = canvas.save();
         clip.reset(); clip.addRoundRect(panel, radius, radius, Path.Direction.CW);

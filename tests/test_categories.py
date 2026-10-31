@@ -25,7 +25,7 @@ editor_body=''.join(method(settings,s) for s in [
 nav_body=''.join(method(home,s) for s in [
  '    private boolean topControlVisible(', '    private int nextTopControl(', '    private static boolean tabEnabled(',
  '    private void syncVisibleTabs(', '    private int availableTopButton('])
-harness='''import java.util.*;
+harness='''import java.util.*;import io.tvos.settings.SettingsOrderEditor;
 class Ui {static boolean ru;}
 class Prefs {
  static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}
@@ -44,7 +44,7 @@ class Prefs {
 ''' +prefs_body+'''
 }
 class CategoryEditor {
- final SettingsOrderEditor categoryEditor=new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);int focus,screen;static final int CATEGORY_EDIT=20;
+ final SettingsOrderEditor categoryEditor=SettingsEditors.categories();int focus,screen;static final int CATEGORY_EDIT=20;
  String tr(String ru,String en){return en;}
 ''' +editor_body+'''
  void open(){openCategoryEditor();}void toggle(){toggleCategory();}void move(int d){moveCategory(d);}
@@ -72,7 +72,7 @@ public class CategoriesHarness {
    for(int id:new int[]{0,1,3,2,4})Prefs.setCategoryEnabled(id,(mask&(1<<id))!=0);
    List<Integer> visible=new ArrayList<>();for(int id:order)if((mask&(1<<id))!=0)visible.add(id);
    check(Prefs.categoryCount()==visible.size(),"enabled count independent of category IDs");
-   SettingsOrderEditor model=new SettingsOrderEditor(SettingsOrderEditor.Kind.CATEGORIES);model.rebuild(-1);
+   SettingsOrderEditor model=SettingsEditors.categories();model.rebuild(-1);
    List<Integer> grouped=new ArrayList<>();for(int id:order)if(Prefs.categoryEnabled(id))grouped.add(id);for(int id:order)if(!Prefs.categoryEnabled(id))grouped.add(id);
    check(snapshot(model).equals(grouped),"editor grouping for every order/mask");
    check(Prefs.firstCategory()==(visible.isEmpty()?-1:visible.get(0)),"first enabled follows configured order");
@@ -130,7 +130,11 @@ public class CategoriesHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-categories-') as directory:
     root=Path(directory);p=root/'CategoriesHarness.java';p.write_text(harness)
-    (root/'SettingsOrderEditor.java').write_text(Path('app/src/io/tvos/SettingsOrderEditor.java').read_text().replace('package io.tvos;',''))
+    (root/'SettingsOrderEditor.java').write_text(Path('app/src/io/tvos/settings/SettingsOrderEditor.java').read_text())
+
+    adapter=Path('app/src/io/tvos/SettingsEditors.java').read_text()
+    adapter_body=method(adapter,'    static SettingsOrderEditor categories(')+method(adapter,'    static SettingsOrderEditor buttons(')
+    (root/'SettingsEditors.java').write_text('import io.tvos.settings.SettingsOrderEditor;import java.util.List;final class SettingsEditors {'+adapter_body+'}')
     write_strings(root,package=False)
     subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
     subprocess.run(['java','-cp',directory,'CategoriesHarness'],check=True)

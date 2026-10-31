@@ -14,7 +14,7 @@ def method(signature):
 body=''.join(method(s) for s in ['        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels(', '        private String[] menuButtonLabels(', '        private String menuButtonLabel('])
 header=r'''package io.tvos;
 import java.util.*;
-import static io.tvos.SettingsContent.*;
+import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsActions;
 public class SettingsHarness {
  static class Ui {static boolean ru;}
  static class Prefs {static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
@@ -72,7 +72,7 @@ tests=r'''
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-settings-test-') as directory:
     root=Path(directory);(root/'SettingsHarness.java').write_text(header+body+tests)
-    (root/'SettingsActions.java').write_text(Path('app/src/io/tvos/SettingsActions.java').read_text())
+    (root/'SettingsActions.java').write_text(Path('app/src/io/tvos/settings/SettingsActions.java').read_text())
     (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     write_strings(root)

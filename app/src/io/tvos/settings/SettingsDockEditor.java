@@ -1,22 +1,31 @@
-package io.tvos;
+package io.tvos.settings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Dock selection and candidate ordering; the view owns the scroll window and focused row. */
-final class SettingsDockEditor {
+public final class SettingsDockEditor {
+    private final int maximum;
+    private final Consumer<List<String>> save;
+
+    public SettingsDockEditor(int maximum, Consumer<List<String>> save) {
+        this.maximum = maximum;
+        this.save = save;
+    }
+
     private final List<String[]> rows = new ArrayList<>();
     private final List<String> order = new ArrayList<>();
 
-    void open(List<String> selected, List<String[]> candidates) {
+    public void open(List<String> selected, List<String[]> candidates) {
         order.clear();
         order.addAll(selected);
         rebuild(candidates);
     }
 
-    int size() { return rows.size(); }
-    String[] get(int row) { return rows.get(row); }
-    int position(String pkg) { return order.indexOf(pkg); }
+    public int size() { return rows.size(); }
+    public String[] get(int row) { return rows.get(row); }
+    public int position(String pkg) { return order.indexOf(pkg); }
 
     /** Selected apps first, in Dock order, then the remaining candidates in source order. */
     private void rebuild(List<String[]> candidates) {
@@ -28,16 +37,16 @@ final class SettingsDockEditor {
     }
 
     /** Return the new absolute candidate row, or -1 when the selection did not change. */
-    int toggle(int row) {
+    public int toggle(int row) {
         if (row < 0 || row >= rows.size()) return -1;
         String pkg = rows.get(row)[0];
         if (order.contains(pkg)) order.remove(pkg);
-        else if (order.size() < HomeApps.MAX_SHELF) order.add(pkg);
+        else if (order.size() < maximum) order.add(pkg);
         else return -1;
         return changed(pkg);
     }
 
-    int move(int row, int direction) {
+    public int move(int row, int direction) {
         if (row < 0 || row >= rows.size()) return -1;
         String pkg = rows.get(row)[0];
         int at = order.indexOf(pkg), to = at + direction;
@@ -49,7 +58,7 @@ final class SettingsDockEditor {
 
     private int changed(String pkg) {
         rebuild(new ArrayList<>(rows));
-        Prefs.setShelf(order);
+        save.accept(order);
         for (int i = 0; i < rows.size(); i++) if (rows.get(i)[0].equals(pkg)) return i;
         return -1;
     }

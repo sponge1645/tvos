@@ -1,8 +1,10 @@
 package io.tvos;
 
+import io.tvos.settings.SettingsOrderEditor;
+
 import io.tvos.version.SoftwareBuild;
 
-import static io.tvos.SettingsContent.*;
+import static io.tvos.settings.SettingsScreen.*;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
