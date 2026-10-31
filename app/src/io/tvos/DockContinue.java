@@ -247,13 +247,13 @@ final class DockContinue {
         float height = Math.min(410 * k, Math.max(180 * k, bottom - areaTop - 100 * k));
         float width = height * 16 / 9;
         float top = areaTop + (bottom - areaTop - height - 90 * k) / 2;
-        c.save(); c.clipRect(40 * k, headingBaseline + 15 * k, 1880 * k, bottom);
+        c.save(); c.clipRect(40 * k, headingBaseline + 15 * k, 1920 * k, bottom);
         boolean fadingImage = false;
         int first = Math.max(0, (int) Math.floor(scroll));
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             Recs.Pick p = items.get(i);
             float left = 60 * k + (i - scroll) * (width + 45 * k);
-            if (left >= 1880 * k) break;
+            if (left >= 1920 * k) break;
             if (left + width <= 40 * k) continue;
             float scaleFocus = 1 + .05f * cardFocus[i];
             float cx = left + width / 2, cy = top + height / 2 - 20 * k - 6 * k * cardFocus[i];
