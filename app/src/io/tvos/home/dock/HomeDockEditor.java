@@ -1,44 +1,47 @@
-package io.tvos;
+package io.tvos.home.dock;
 
 import android.os.Handler;
 import android.view.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Long-press input and Dock order transaction. The host owns tile geometry, focus and animation. */
-final class HomeDockEditor {
-    interface Host {
+public final class HomeDockEditor<T> {
+    public interface Host<T> {
         boolean eligible();
-        List<HomeApps.Item> items();
+        List<T> items();
         int index();
         void begin();
         void move(int from, int to);
-        void finish(List<HomeApps.Item> restore);
+        void finish(List<T> restore);
         void saved();
         void canceled();
     }
 
-    static final long HOLD_MS = 500L;
+    public static final long HOLD_MS = 500L;
     private final Handler handler;
-    private final Host host;
+    private final Host<T> host;
+    private final Consumer<List<T>> persist;
     private boolean editing, armed, dropArmed, backDown;
-    private List<HomeApps.Item> before;
+    private List<T> before;
     private final Runnable hold = this::begin;
 
-    HomeDockEditor(Handler handler, Host host) {
+    public HomeDockEditor(Handler handler, Host<T> host, Consumer<List<T>> persist) {
         this.handler = handler;
         this.host = host;
+        this.persist = persist;
     }
 
-    boolean editing() { return editing; }
+    public boolean editing() { return editing; }
 
-    void arm() {
+    public void arm() {
         cancelHold();
         armed = !editing && host.eligible();
         if (armed) handler.postDelayed(hold, HOLD_MS);
     }
 
-    void cancelHold() {
+    public void cancelHold() {
         handler.removeCallbacks(hold);
         armed = false;
     }
@@ -52,7 +55,7 @@ final class HomeDockEditor {
         host.begin();
     }
 
-    boolean onKey(KeyEvent event) {
+    public boolean onKey(KeyEvent event) {
         if (!editing) return false;
         boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
         switch (event.getKeyCode()) {
@@ -85,30 +88,25 @@ final class HomeDockEditor {
         }
     }
 
-    void move(int direction) {
+    public void move(int direction) {
         if (!editing) return;
         int from = host.index(), to = from + direction;
         if (to >= 0 && to < host.items().size()) host.move(from, to);
     }
 
-    void finish(boolean save) {
+    public void finish(boolean save) {
         if (!editing) return;
         editing = false;
         host.finish(save ? null : before);
         if (save) {
-            List<String> packages = new ArrayList<>();
-            for (HomeApps.Item item : host.items()) {
-                if ("tv-settings".equals(item.key)) packages.add("io.tvos.virtual.tvsettings");
-                else if (item.pkg != null) packages.add(item.pkg);
-            }
-            Prefs.setShelf(packages);
+            persist.accept(host.items());
             host.saved();
         }
         dropArmed = backDown = false;
         before = null;
     }
 
-    void pause() {
+    public void pause() {
         cancelHold();
         finish(false);
     }

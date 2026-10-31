@@ -1,16 +1,12 @@
 package io.tvos;
 
+import io.tvos.home.dock.ResumeRowRenderer;
+
 import android.content.Context;
 import android.animation.ValueAnimator;
 import android.view.animation.DecelerateInterpolator;
 import android.graphics.Bitmap;
-import android.graphics.BlurMaskFilter;
-import android.graphics.LinearGradient;
-import android.graphics.Shader;
 import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -42,23 +38,14 @@ final class DockContinue {
     private float scroll;
     private ValueAnimator slide, entrance, focusAnimation;
     private final float[] cardFocus = new float[10];
-    private final Paint headingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float opacity = 1;
     private final Map<String, Long> imageAppeared = new HashMap<>();
     private final Runnable frame = () -> changedFrame();
     private final Context context;
-    private final android.text.TextPaint titlePaint = new android.text.TextPaint();
-    private final Paint metaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean visible, focused, pressed;
-    private final RectF rect = new RectF(), imageRect = new RectF();
-    private final Path clip = new Path();
     private final Shadows shadows = new Shadows();
-    private final RectF shadowRect = new RectF();
-    private final Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG), rim = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private LinearGradient focusSheen, focusRim;
-    private float shadowScale = -1, focusWidth = -1, focusHeight = -1;
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final ResumeRowRenderer renderer = new ResumeRowRenderer(shadows::draw);
+    private final ResumeRowRenderer.Frame drawFrame = new ResumeRowRenderer.Frame();
 
     DockContinue(Context context, Runnable changed) {
         this(context, changed, IO);
@@ -68,7 +55,6 @@ final class DockContinue {
         this.context = context.getApplicationContext();
         this.changed = changed;
         this.worker = worker;
-        titlePaint.setAntiAlias(true);
         images = new PosterCache(context, () -> main.post(changed));
     }
 
@@ -228,49 +214,22 @@ final class DockContinue {
         return false;
     }
 
-    void draw(Canvas c, float k, float bottom, float night, boolean noWidgets) {
+    void draw(Canvas c, float k, float bottom, float night) {
         if (!visible || opacity <= .001f) return;
-        int layer = opacity < .999f ? c.saveLayerAlpha(0, 0, 1920 * k, bottom, Math.round(255 * opacity)) : c.save();
-        titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(36 * k); titlePaint.setColor(ActionSurface.ink(night, 0));
-        metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(26 * k); metaPaint.setColor(ActionSurface.ink(night, 0));
-        Paint title = titlePaint, meta = metaPaint;
-        headingPaint.setTypeface(Ui.displayBold); headingPaint.setTextSize(54 * k); headingPaint.setColor(ActionSurface.ink(night, 0));
-        float headingBaseline = Math.max(170 * k, bottom - 550 * k);
-        c.drawText(AppStrings.get(R.string.home_continue_watching), 60 * k, headingBaseline - 20 * k, headingPaint);
-        if (items.isEmpty()) { c.drawText(AppStrings.get(R.string.home_watching_empty), 60 * k, headingBaseline + 65 * k, meta); c.restoreToCount(layer); return; }
-        if (shadowScale != k) {
-            shadowScale = k;
-            shadow.setMaskFilter(new BlurMaskFilter(30 * k, BlurMaskFilter.Blur.NORMAL));
-        }
-        float areaTop = headingBaseline + 40 * k;
-        float height = Math.min(410 * k, Math.max(180 * k, bottom - areaTop - 100 * k));
-        float width = height * 16 / 9;
-        float top = areaTop + (bottom - areaTop - height - 90 * k) / 2;
-        c.save(); c.clipRect(40 * k, headingBaseline + 15 * k, 1920 * k, bottom);
+        drawFrame.scale = k; drawFrame.bottom = bottom; drawFrame.night = night; drawFrame.opacity = opacity;
+        drawFrame.ink = ActionSurface.ink(night, 0);
+        drawFrame.titleFont = Ui.semibold; drawFrame.metaFont = Ui.medium; drawFrame.headingFont = Ui.displayBold;
+        drawFrame.heading = AppStrings.get(R.string.home_continue_watching);
+        drawFrame.emptyMessage = AppStrings.get(R.string.home_watching_empty); drawFrame.empty = items.isEmpty();
+        if (!renderer.begin(c, drawFrame)) return;
         boolean fadingImage = false;
         int first = Math.max(0, (int) Math.floor(scroll));
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
-            Recs.Pick p = items.get(i);
-            float left = 60 * k + (i - scroll) * (width + 45 * k);
-            if (left >= 1920 * k) break;
-            if (left + width <= 40 * k) continue;
-            float scaleFocus = 1 + .05f * cardFocus[i];
-            float cx = left + width / 2, cy = top + height / 2 - 20 * k - 6 * k * cardFocus[i];
-            rect.set(cx - width * scaleFocus / 2, cy - height * scaleFocus / 2, cx + width * scaleFocus / 2, cy + height * scaleFocus / 2);
-            float focus = Ui.clamp(cardFocus[i]);
-            c.save(); c.translate(cx, cy); c.scale(scaleFocus, scaleFocus);
-            shadowRect.set(-width / 2, -height / 2, width / 2, height / 2);
-            shadowRect.offset(0, (10 + 14 * focus) * k);
-            float restAlpha = .14f + (.32f - .14f) * night;
-            float focusAlpha = .2f + (.28f - .2f) * night;
-            shadow.setColor(Ui.alpha(0xFF000000, restAlpha + focusAlpha * focus));
-            shadows.draw(c, shadowRect, 28 * k, 30 * k, shadow);
-            c.restore();
-            paint.setAlpha(255);
-            paint.setColor(0xFF343A3D); paint.setStyle(Paint.Style.FILL);
-            c.drawRoundRect(rect, 28 * k, 28 * k, paint);
-            String url = paths.get(p.watchingKey);
+            if (!renderer.visible(i - scroll)) continue;
+            Recs.Pick pick = items.get(i);
+            String url = paths.get(pick.watchingKey);
             Bitmap image = url == null || url.isEmpty() ? null : images.poster(url);
+            int alpha = 255;
             if (image != null) {
                 long now = SystemClock.uptimeMillis();
                 Long appeared = imageAppeared.get(url);
@@ -278,36 +237,11 @@ final class DockContinue {
                 float progress = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 240f);
                 fadingImage |= progress < 1;
-                paint.setAlpha(Math.round(255 * progress * progress * (3 - 2 * progress)));
-                clip.reset(); clip.addRoundRect(rect, 28 * k, 28 * k, Path.Direction.CW);
-                c.save(); c.clipPath(clip);
-                float scale = Math.max(rect.width() / image.getWidth(), rect.height() / image.getHeight());
-                float w = image.getWidth() * scale, h = image.getHeight() * scale;
-                imageRect.set(rect.centerX() - w / 2, rect.centerY() - h / 2, rect.centerX() + w / 2, rect.centerY() + h / 2);
-                c.drawBitmap(image, null, imageRect, paint); c.restore(); paint.setAlpha(255);
+                alpha = Math.round(255 * progress * progress * (3 - 2 * progress));
             }
-            if (focus > .01f) {
-                if (focusSheen == null || focusWidth != width || focusHeight != height) {
-                    focusWidth = width; focusHeight = height;
-                    focusSheen = new LinearGradient(-width / 2, -height / 2, 0, height / 2,
-                            0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
-                    focusRim = new LinearGradient(0, -height / 2, 0, height / 2,
-                            0xE6FFFFFF, 0x59FFFFFF, Shader.TileMode.CLAMP);
-                }
-                c.save(); c.translate(cx, cy); c.scale(scaleFocus, scaleFocus);
-                shadowRect.set(-width / 2, -height / 2, width / 2, height / 2);
-                sheen.setShader(focusSheen); sheen.setAlpha(Math.round(255 * focus));
-                c.drawRoundRect(shadowRect, 28 * k, 28 * k, sheen);
-                rim.setStyle(Paint.Style.STROKE); rim.setShader(focusRim);
-                rim.setAlpha(Math.round(255 * focus)); rim.setStrokeWidth(2.5f * k / scaleFocus);
-                c.drawRoundRect(shadowRect, 28 * k, 28 * k, rim);
-                c.restore();
-            }
-            String label = android.text.TextUtils.ellipsize(p.title, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
-            c.drawText(label, left, top + height + 37 * k, title);
-            c.drawText(WatchingText.caption(p), left, top + height + 70 * k, meta);
+            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.caption(pick), image, alpha);
         }
-        c.restore(); c.restoreToCount(layer);
+        renderer.end(c);
         if (fadingImage) { main.removeCallbacks(frame); main.postDelayed(frame, 16); }
     }
 }

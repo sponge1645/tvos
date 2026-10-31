@@ -8,8 +8,8 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
   (base/'build.sh').write_text('#!/bin/sh\n');(base/'release.sh').write_text('#!/bin/sh\n')
  (source/'tools/apply-source.sh').write_text(Path('tools/apply-source.sh').read_text())
  (source/'app/src/io/tvos/HomeView.java').write_text('new source')
- moved=[('settings',name) for name in ['SettingsActions','SettingsOrderEditor','SettingsDockEditor','SettingsBackground','SettingsPopupBackdrop']]+[('home',name) for name in ['HomeLayout','HomeReveal']]
- for folder in ['settings','home']:(source/('app/src/io/tvos/'+folder)).mkdir()
+ moved=[('settings',name) for name in ['SettingsActions','SettingsOrderEditor','SettingsDockEditor','SettingsBackground','SettingsPopupBackdrop']]+[('home',name) for name in ['HomeLayout','HomeReveal']]+[('home/dock','HomeDockEditor')]
+ for folder in ['settings','home','home/dock']:(source/('app/src/io/tvos/'+folder)).mkdir(parents=True,exist_ok=True)
  for folder,name in moved:(source/('app/src/io/tvos/'+folder+'/'+name+'.java')).write_text('new '+name)
  retired=['app/src/io/tvos/'+name+'.java' for folder,name in moved]+['app/assets/fonts/sf_display_regular.otf','app/assets/avatars/robot.webp','app/src/io/tvos/Russian.java','app/src/io/tvos/Glyphs.java','app/res/drawable/coin_btc.xml','app/res/drawable/coin_eth.xml','app/res/drawable/coin_sol.xml','app/res/drawable/coin_usdt.xml','app/assets/symbols/bitcoin.svg','app/assets/symbols/bitcoin.png','app/assets/settings/light.webp','app/assets/settings/dark.webp','app/src/io/tvos/ScreensaverWindow.java']
  for name in retired:

@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.home.dock.HomeDockEditor;
+
 import io.tvos.home.HomeLayout;
 import io.tvos.home.HomeFocusPolicy;
 import io.tvos.home.HomeReveal;
@@ -107,7 +109,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final RouletteController rouletteWork;
     private final RouletteRenderer rouletteRenderer;
     private final MovieAppLauncher movieApps;
-    private final HomeDockEditor dockEditor;
+    private final HomeDockEditor<HomeApps.Item> dockEditor;
 
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
     private final WatchingCatalog watching;
@@ -327,7 +329,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public int epoch() { return workEpoch; }
             @Override public void toast(String text) { showToast(text); }
         });
-        dockEditor = new HomeDockEditor(handler, new HomeDockEditor.Host() {
+        dockEditor = new HomeDockEditor<>(handler, new HomeDockEditor.Host<HomeApps.Item>() {
             @Override public boolean eligible() { return okDown && !sheetOpen && zone == Z_SHELF && !shelf.isEmpty(); }
             @Override public List<HomeApps.Item> items() { return shelf; }
             @Override public int index() { return shelfIndex; }
@@ -336,7 +338,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void finish(List<HomeApps.Item> restore) { finishDockTiles(restore); }
             @Override public void saved() { click.open(); }
             @Override public void canceled() { click.move(); }
-        });
+        }, items -> Prefs.setShelf(HomeApps.shelfOrder(items)));
         click = new Click(a);
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
         setFocusable(true);
@@ -1864,7 +1866,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
         if (!picksOn()) {
-            if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night(), noTopWidgets());
+            if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night());
             else if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;
         }

@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.home.dock.HomeDockEditor;
+
 import android.animation.ValueAnimator;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;

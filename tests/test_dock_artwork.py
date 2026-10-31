@@ -4,6 +4,7 @@ import subprocess,tempfile
 from home_renderers_fixture import files
 from settings_strings_fixture import write
 f=files()
+f['io/tvos/home/dock/CaptionTransition.java']=Path('app/src/io/tvos/home/dock/CaptionTransition.java').read_text()
 f['android/text/TextPaint.java']=f['android/text/TextPaint.java'].replace('public TextPaint(){}','public TextPaint(){}public TextPaint(int flags){super(flags);}')
 f['io/tvos/DockBackdrop.java']='''package io.tvos;import android.graphics.Bitmap;class DockBackdrop {static class Artwork {final Backdrop background;final Bitmap logo;final String title;Artwork(Backdrop b,String t,Bitmap l){background=b;title=t;logo=l;}}}'''
 f['io/tvos/AppLog.java']='package io.tvos;class AppLog {static void w(String s){}}'

@@ -171,7 +171,17 @@ final class HomeApps {
     }
 
     /** The shelf's packages in order: the user's list (Settings > Shelf), or the built-in one. */
-    // tvOS unified Android Settings dock entry: migrate the old virtual favorite.
+    /** Stable persisted identities for a reordered Dock, including the virtual Settings entry. */
+    static List<String> shelfOrder(List<Item> items) {
+        List<String> packages = new ArrayList<>();
+        for (Item item : items) {
+            if ("tv-settings".equals(item.key)) packages.add(TV_SETTINGS_FAVORITE);
+            else if (item.pkg != null) packages.add(item.pkg);
+        }
+        return packages;
+    }
+
+    // Migrate the old virtual Settings favorite to one portable system action.
     static List<String> shelfPackages(Context c) {
         List<String> custom = Prefs.shelf();
         List<String> out = new ArrayList<>();

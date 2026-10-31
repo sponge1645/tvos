@@ -14,14 +14,21 @@ keys='''package android.view;public class KeyEvent {
  int key,action,repeat;boolean canceled;public KeyEvent(int key,int action,int repeat,boolean canceled){this.key=key;this.action=action;this.repeat=repeat;this.canceled=canceled;}
  public int getKeyCode(){return key;}public int getAction(){return action;}public int getRepeatCount(){return repeat;}public boolean isCanceled(){return canceled;}
 }'''
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.home.dock.HomeDockEditor;
 import java.util.*;import android.os.Handler;import android.view.KeyEvent;
-class HomeApps {static class Item {String pkg,key;Item(String p,String k){pkg=p;key=k;}}}
+class HomeApps {static final String TV_SETTINGS_FAVORITE="io.tvos.virtual.tvsettings";    static List<String> shelfOrder(List<Item> items) {
+        List<String> packages = new ArrayList<>();
+        for (Item item : items) {
+            if ("tv-settings".equals(item.key)) packages.add(TV_SETTINGS_FAVORITE);
+            else if (item.pkg != null) packages.add(item.pkg);
+        }
+        return packages;
+    }static class Item {String pkg,key;Item(String p,String k){pkg=p;key=k;}}}
 class Prefs {static int writes;static List<String> stored;static void setShelf(List<String> p){writes++;stored=new ArrayList<>(p);}}
-public class DockHarness implements HomeDockEditor.Host {
+public class DockHarness implements HomeDockEditor.Host<HomeApps.Item> {
  static class Spring {float value,target;}static class LinearGradient {}static class RectF {float left;RectF(float x){left=x;}}
  static class Click {void move(){}}final Click click=new Click();
- final Handler handler=new Handler();final HomeDockEditor editor=new HomeDockEditor(handler,this);
+ final Handler handler=new Handler();final HomeDockEditor<HomeApps.Item> editor=new HomeDockEditor<>(handler,this,items->Prefs.setShelf(HomeApps.shelfOrder(items)));
  final HomeApps.Item a=new HomeApps.Item("a","a"),b=new HomeApps.Item("b","b"),settings=new HomeApps.Item(null,"tv-settings");
  List<HomeApps.Item> shelf=new ArrayList<>(Arrays.asList(a,b,settings));
  Spring[] tileFocus={new Spring(),new Spring(),new Spring()},dockSlide={new Spring(),new Spring(),new Spring()};
@@ -66,7 +73,7 @@ public class DockHarness implements HomeDockEditor.Host {
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-dock-editor-') as tmp:
  root=Path(tmp)
- for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/HomeDockEditor.java':Path('app/src/io/tvos/HomeDockEditor.java').read_text(),'io/tvos/DockHarness.java':harness}.items():
+ for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/home/dock/HomeDockEditor.java':Path('app/src/io/tvos/home/dock/HomeDockEditor.java').read_text(),'io/tvos/DockHarness.java':harness}.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.DockHarness'],check=True)

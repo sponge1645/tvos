@@ -6,9 +6,16 @@ home=Path('app/src/io/tvos/HomeView.java').read_text()
 methods='\n'.join(block(home,sig) for sig in ['    private void focusSound(', '    private boolean vpnFocused(', '    private void openVpnOnHold(', '    boolean onKey(', '    private void move(', '    private boolean moveLight(', '    private void back(', '    private void beginSearch(', '    private void closeSearch(', '    private void cancelRouletteWork(', '    private boolean topControlVisible(', '    private boolean topButtonEnabled(', '    private int nextTopControl(', '    private int availableTopButton(', '    private static boolean tabEnabled(', '    private int posterCornerTarget(', '    private static int nearest(RectF[] rects, int count, float x)'])
 handler='''package android.os;import java.util.*;public class Handler {long now;final Map<Runnable,Long> pending=new LinkedHashMap<>();public void postDelayed(Runnable r,long ms){pending.put(r,now+ms);}public void removeCallbacks(Runnable r){pending.remove(r);}public void advance(long ms){now+=ms;for(Runnable r:new ArrayList<>(pending.keySet()))if(pending.get(r)<=now){pending.remove(r);r.run();}}}'''
 keys='''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_NUMPAD_ENTER=160,KEYCODE_BACK=4;final int action,key,repeat;public KeyEvent(int action,int key,int repeat){this.action=action;this.key=key;this.repeat=repeat;}public int getAction(){return action;}public int getKeyCode(){return key;}public int getRepeatCount(){return repeat;}public boolean isCanceled(){return false;}}'''
-harness='''package io.tvos;import io.tvos.home.HomeFocusPolicy;
+harness='''package io.tvos;import io.tvos.home.dock.HomeDockEditor;import io.tvos.home.HomeFocusPolicy;
 import java.util.*;import android.os.Handler;import android.view.KeyEvent;
-class HomeApps {static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
+class HomeApps {static final String TV_SETTINGS_FAVORITE="io.tvos.virtual.tvsettings";    static List<String> shelfOrder(List<Item> items) {
+        List<String> packages = new ArrayList<>();
+        for (Item item : items) {
+            if ("tv-settings".equals(item.key)) packages.add(TV_SETTINGS_FAVORITE);
+            else if (item.pkg != null) packages.add(item.pkg);
+        }
+        return packages;
+    }static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
 class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
 public class RemoteNavigationHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
  boolean dockContinueKey(KeyEvent e){return false;}
@@ -27,11 +34,11 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
  static class Accessibility {boolean talkBack(){return false;}}final Accessibility accessibility=new Accessibility();
  static class Genres {void cancelHold(){}void arm(){}void released(){}}final Genres genres=new Genres(),tvGenres=new Genres(),watchingMenu=new Genres();
  List<Object> currentCatalog(){return searchMode?searchResults:recs.catalog(TAB_KIND[tab]);}
- final Handler handler=new Handler();final HomeDockEditor dockEditor=new HomeDockEditor(handler,new HomeDockEditor.Host(){
+ final Handler handler=new Handler();final HomeDockEditor<HomeApps.Item> dockEditor=new HomeDockEditor<>(handler,new HomeDockEditor.Host<HomeApps.Item>(){
   public boolean eligible(){return okDown&&!sheetOpen&&zone==Z_SHELF&&!shelf.isEmpty();}public List<HomeApps.Item> items(){return shelf;}public int index(){return shelfIndex;}public void begin(){}
   public void move(int a,int b){Collections.swap(shelf,a,b);shelfIndex=b;}
   public void finish(List<HomeApps.Item> before){if(before!=null){HomeApps.Item selected=shelf.get(shelfIndex);shelf=before;shelfIndex=shelf.indexOf(selected);}}public void saved(){}public void canceled(){}
- });
+ },items->Prefs.setShelf(HomeApps.shelfOrder(items)));
  RemoteNavigationHarness(int n){for(int i=0;i<11;i++)topRects[i]=new RectF(i*100);for(int i=0;i<n;i++)shelf.add(new HomeApps.Item(i));tileRects=new RectF[n];for(int i=0;i<n;i++)tileRects[i]=new RectF(120+i*240);drawerItems.add(new HomeApps.Item(99));updateCards();}
  boolean picksOn(){return enabled;}void wake(){}void moveGrid(int dx,int dy){}void openDrawer(){drawerOpen=true;zone=Z_DRAWER;}void closeDrawer(){drawerOpen=false;zone=Z_SHELF;}
  List<Integer> widgets(){return Collections.emptyList();}void retarget(boolean snap){retargets++;}void closeSheet(){sheetOpen=false;}void layoutLight(){}void setSearchInputOpen(boolean open){}void cancelSearchWork(){}void selectTab(int id){tab=id;}
@@ -67,7 +74,7 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
 with tempfile.TemporaryDirectory(prefix='tvos-home-remote-') as tmp:
  root=Path(tmp)
  (root/'HomeFocusPolicy.java').write_text(Path('app/src/io/tvos/home/HomeFocusPolicy.java').read_text())
- for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/HomeDockEditor.java':Path('app/src/io/tvos/HomeDockEditor.java').read_text(),'io/tvos/RemoteNavigationHarness.java':harness}.items():
+ for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/home/dock/HomeDockEditor.java':Path('app/src/io/tvos/home/dock/HomeDockEditor.java').read_text(),'io/tvos/RemoteNavigationHarness.java':harness}.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.RemoteNavigationHarness'],check=True)
