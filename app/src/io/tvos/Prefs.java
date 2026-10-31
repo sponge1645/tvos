@@ -22,7 +22,7 @@ final class Prefs {
 
     /** Remote keys we handle, with the app each opens until the user picks another. Codes read from the TCL's log. */
     static final int KEY_NETFLIX = 4062, KEY_YOUTUBE = 190, KEY_PRIME = 4099, KEY_TCL_CHANNEL = 4020;
-    // Stable preference identity only: the MI hardware event has not been mapped yet.
+    // Stable preference identity; Xiaomi RC scan code 400 maps here independently of Android key code.
     static final int KEY_MI = -10001;
     static final int[] KEYS = {KEY_NETFLIX, KEY_YOUTUBE, KEY_PRIME, KEY_TCL_CHANNEL, KEY_MI};
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">tvOS</string>
-    <string name="remote_key_service">Lets the app buttons on the remote (Netflix, YouTube, Prime Video, TCL Channel) open the apps you picked in tvOS, from any app. It only reads those buttons.</string>
+    <string name="remote_key_service">Lets the app buttons on the remote (Netflix, YouTube, Prime Video, TCL Channel, MI) open the apps you picked in tvOS, from any app. It only reads those buttons.</string>
 
     <string name="region_vpn_paused">VPN is paused while determining your region. TV traffic uses the direct connection.</string>
     <string name="region_vpn_restored">VPN connection restored.</string>
