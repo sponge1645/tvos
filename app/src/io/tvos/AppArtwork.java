@@ -39,6 +39,25 @@ final class AppArtwork {
         });
     }
 
+    /** Complete Dock artwork, decoded once on the app loader rather than during drawing. */
+    static synchronized Bitmap dockTile(Context c, String pkg) {
+        AppBranding.Style style = AppBranding.get(pkg);
+        if (style == null || style.logo == null) return null;
+        String key = "dock-tile:" + style.logo;
+        if (TILES.containsKey(key)) return TILES.get(key);
+        Bitmap tile = null;
+        try (InputStream in = c.getAssets().open("tiles/" + style.logo + ".webp")) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 2;
+            tile = BitmapFactory.decodeStream(in, null, options);
+            if (tile != null) tile.setHasMipMap(true);
+        } catch (IOException ignored) {
+            // Brands without complete artwork retain their existing logo treatment.
+        }
+        TILES.put(key, tile);
+        return tile;
+    }
+
     // MARK: - Colored logos (shelf)
 
     /** Bump when the way logos are lifted changes (the ones saved on disk are redone). */

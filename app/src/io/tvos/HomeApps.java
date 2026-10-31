@@ -107,7 +107,7 @@ final class HomeApps {
             if (items.size() >= MAX_SHELF) break;
             if (TV_SETTINGS_FAVORITE.equals(pkg)) {
                 Item settings = shortcut(ANDROID_SETTINGS, "tv-settings", AppStrings.get(R.string.settings_tv_settings), "tv_settings");
-                // Use the bundled settings.png artwork on the requested gray gradient.
+                // Complete artwork takes precedence over the generated logo surface.
                 settings.logo = AppArtwork.ownLogoCached(c, "settings");
                 if (settings.logo != null) {
                     settings.logoInk = AppArtwork.ink(settings.logo);
@@ -115,6 +115,8 @@ final class HomeApps {
                 } else {
                     settings.tile = AppArtwork.tvSettingsFavoriteTile(c);
                 }
+                Bitmap complete = AppArtwork.dockTile(c, "tv-settings");
+                if (complete != null) { settings.tile = complete; settings.logo = null; }
                 items.add(settings);
                 continue;
             }
@@ -125,6 +127,14 @@ final class HomeApps {
             Item it = new Item();
             it.kind = APP;
             it.pkg = pkg;
+            Bitmap complete = AppArtwork.dockTile(c, pkg);
+            if (complete != null) {
+                it.key = d == null ? pkg : d[0];
+                it.label = d == null ? (ri != null ? String.valueOf(ri.loadLabel(pm)) : pkg) : d[1];
+                it.tile = complete;
+                items.add(it);
+                continue;
+            }
             if (d == null) {
                 // An app picked in Settings > Shelf that isn't in SHELF: its own name and TV art.
                 it.key = pkg;

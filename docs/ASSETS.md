@@ -24,3 +24,5 @@
 неактивных частей. Пороги: ниже −85 dBm, от −85, от −70, от −55. Неизвестные
 или недоступные данные оставляют общий значок Wi-Fi; Ethernet и отсутствие сети
 сохраняют собственные значки. Это сила радиосигнала, а не измерение скорости сети.
+
+Complete Dock cards live in `app/assets/tiles/` (1000×600, 5:3). These eight supplied cards include their own background and logo. The app loader decodes them once at 500×300; existing rounded clipping, shadows and focus transforms render the whole card. Other brands and All Apps retain their current artwork.
