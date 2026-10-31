@@ -147,7 +147,7 @@ final class WatchingCatalog {
     }
 
     private void requestSeenaRefresh() {
-        if (active && Prefs.categoryEnabled(2) && ("all".equals(source()) || "seena".equals(source()))
+        if (active && (Prefs.homeContinue() || (Prefs.categoryEnabled(2) && ("all".equals(source()) || "seena".equals(source()))))
                 && installedSource("seena")) SeenaChannelRefresh.request(context);
     }
 

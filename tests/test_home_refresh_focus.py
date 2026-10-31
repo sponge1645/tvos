@@ -6,7 +6,7 @@ home=Path('app/src/io/tvos/HomeView.java').read_text()
 source='''package io.tvos;import java.util.*;
 public class RefreshTest {
  static final int Z_CARDS=5,Z_SHELF=1;int zone=Z_CARDS,cardPage,cardIndex=4,tab=2;boolean searchMode,running=true,heroDirty;Object labelPaint=new Object();
- static class Prefs {static int firstCategory(){return 2;}}
+ static class Prefs {static boolean homeContinue(){return false;}static int firstHomeCategory(){return firstCategory();}static int firstCategory(){return 2;}}
  static class Recs {static class Pick {int id=1;String watchingKey="history";}void setPosterWindow(List<Pick> p){}void poster(Pick p){}void requestDuration(Pick p){}Backdrop backdrop(Pick p){return null;}}
  static class Backdrop {}static class Background {void show(Backdrop b){}}
  Recs recs=new Recs();Background background=new Background();List<Recs.Pick> catalog=new ArrayList<>(),cards=new ArrayList<>();

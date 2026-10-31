@@ -8,7 +8,7 @@ def method(sig):
  return source[a:i]
 header='''import java.util.*;
 public class SearchFocusHarness {static class RandomPoster {boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
- static class Prefs {static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}}
+ static class Prefs {static boolean homeContinue(){return false;}static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}}
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;
  int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,shelfIndex,actions=63;
  boolean searchMode=true,enabled=true;int retargets,clicks;

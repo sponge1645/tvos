@@ -267,7 +267,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case REGION: case ACCESSIBILITY: case TOP_PANEL: {
+                case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case REGION: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -318,7 +318,7 @@ public class SettingsActivity extends Activity {
 
         private RectF rowBox(int row) {
             float top, height;
-            if (screen == MAIN || screen == MEDIA || screen == MOVIE_SERVICE || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == REGION || screen == ABOUT || screen == SCREENSAVER) {
+            if (screen == MAIN || screen == MEDIA || screen == HOME_SCREEN || screen == MOVIE_SERVICE || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == REGION || screen == ABOUT || screen == SCREENSAVER) {
                 top = LIST_TOP + row * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
                         + (screen == ABOUT ? (row == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET);
                 height = ROW_H;
@@ -444,10 +444,11 @@ public class SettingsActivity extends Activity {
         private int rowCount() {
             switch (screen) {
                 case MAIN: return 10;
-                case MEDIA: return 2;
+                case MEDIA: return 1;
+                case HOME_SCREEN: return 2;
                 case MOVIE_SERVICE: return MovieService.count();
                 case APPS_DOWNLOADS: return 7;
-                case GENERAL: return 7;
+                case GENERAL: return 8;
                 case SCREENSAVER: return 5;
                 case WIDGETS: return 2;
                 case WEATHER: return 2;
@@ -693,6 +694,7 @@ public class SettingsActivity extends Activity {
                 case MEDIA: case GENERAL: case SCREENSAVER: case REMOTE_KEYS: case ACCESSIBILITY: case APPS_DOWNLOADS:
                 case SHELF_EDIT: case TOP_PANEL: case SYSTEM:
                     return MAIN;
+                case HOME_SCREEN: return GENERAL;
                 case MOVIE_SERVICE: return MEDIA;
                 case ABOUT: return GENERAL;
                 case HOME_CHOICE: return SYSTEM;
@@ -710,7 +712,7 @@ public class SettingsActivity extends Activity {
 
         private void drawScreenContent(Canvas c) {
             switch (screen) {
-                case MAIN: case MEDIA: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
+                case MAIN: case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
                 case ACCESSIBILITY: case APPS_DOWNLOADS: case REGION: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
@@ -763,9 +765,9 @@ public class SettingsActivity extends Activity {
         private boolean menuChevronVisible(int row) {
             switch (screen) {
                 case MEDIA: return row == 0;
-                case GENERAL: return row == 0 || row == 3;
+                case GENERAL: return row == 0 || row == 3 || row == 7;
                 case SCREENSAVER: case ACCESSIBILITY: case WEATHER: case DATE_TIME:
-                case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
+                case HOME_SCREEN: case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
                 case SYSTEM: return row != 3;
                 case REGION: return row == 1 && !Prefs.automaticRegion();
                 default: return true;
@@ -1153,7 +1155,6 @@ public class SettingsActivity extends Activity {
 
         private void adjustMenu(int dir) {
             switch (SettingsActions.adjustment(screen, focus)) {
-                case DOCK_CONTINUE: setLocalFlag(DockContinue.KEY, !localFlag(DockContinue.KEY)); return;
                 case HOME: adjust(dir); return;
                 case WEATHER: toggleWeather(focus == 0); return;
                 case DATE: toggleDateTime(); return;
@@ -1444,7 +1445,7 @@ public class SettingsActivity extends Activity {
             Context c = getContext();
             if (action.targetScreen >= 0) {
                 screen = action.targetScreen;
-                focus = screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
+                focus = screen == HOME_SCREEN ? (Prefs.homeContinue() ? 1 : 0) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
                 case HOME_MODE:
                     if (!busy()) {
@@ -1453,6 +1454,10 @@ public class SettingsActivity extends Activity {
                     }
                     invalidate();
                     return;
+                case SELECT_HOME_SCREEN:
+                    Prefs.setHomeContinue(focus == 1);
+                    screen = GENERAL; focus = 7;
+                    break;
                 case SELECT_MOVIE_SERVICE:
                     localPrefs().edit().putString(MovieService.KEY, MovieService.id(focus)).apply();
                     screen = MEDIA; focus = 0;

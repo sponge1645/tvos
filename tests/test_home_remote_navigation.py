@@ -9,7 +9,7 @@ keys='''package android.view;public class KeyEvent {public static final int ACTI
 harness='''package io.tvos;
 import java.util.*;import android.os.Handler;import android.view.KeyEvent;
 class HomeApps {static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
-class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
+class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstHomeCategory(){return firstCategory();}static int firstCategory(){return 0;}static boolean homeCategoryEnabled(int id){return categoryEnabled(id);}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
 public class RemoteNavigationHarness {
  boolean dockContinueKey(KeyEvent e){return false;}
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();

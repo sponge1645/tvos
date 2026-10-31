@@ -7,7 +7,7 @@ final class SettingsActions {
     private SettingsActions() { }
 
     enum Action {
-        NONE, NAME, HOME_MODE, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
+        NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
@@ -15,7 +15,7 @@ final class SettingsActions {
         MEDIA_SCREEN(MEDIA), MOVIE_SERVICE_SCREEN(MOVIE_SERVICE), GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
         ACCESSIBILITY_SCREEN(ACCESSIBILITY), DOWNLOADS_SCREEN(APPS_DOWNLOADS),
         TOP_PANEL_SCREEN(TOP_PANEL), WIDGETS_SCREEN(WIDGETS), SYSTEM_SCREEN(SYSTEM),
-        ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
+        HOME_SCREEN_MODE_SCREEN(HOME_SCREEN), ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
         REGION_SCREEN(REGION), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
 
         final int targetScreen;
@@ -25,13 +25,13 @@ final class SettingsActions {
 
     enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        DOCK_CONTINUE, AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL
+        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL
     }
 
     static boolean canAdjust(int screen, int row, int buttonCount) {
         switch (screen) {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
-            case MEDIA: return row == 1;
+            case MEDIA: return false;
             case GENERAL: return row == 1 || row == 2 || row == 4 || row == 5 || row == 6;
             case SCREENSAVER: return row >= 0 && row < 4;
             case UPDATES: return row == 1;
@@ -44,7 +44,6 @@ final class SettingsActions {
 
     static Adjustment adjustment(int screen, int row) {
         switch (screen) {
-            case MEDIA: return row == 1 ? Adjustment.DOCK_CONTINUE : Adjustment.NONE;
             case HOME_SETTINGS: return Adjustment.HOME;
             case WEATHER: return Adjustment.WEATHER;
             case DATE_TIME: return Adjustment.DATE;
@@ -89,10 +88,11 @@ final class SettingsActions {
                     case 9: return Action.SYSTEM_SCREEN;
                     default: return Action.NONE;
                 }
-            case MEDIA: return row == 1 ? Action.MENU_ADJUST : Action.MOVIE_SERVICE_SCREEN;
+            case MEDIA: return row == 0 ? Action.MOVIE_SERVICE_SCREEN : Action.NONE;
+            case HOME_SCREEN: return Action.SELECT_HOME_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
-            case GENERAL: return row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
+            case GENERAL: return row == 7 ? Action.HOME_SCREEN_MODE_SCREEN : row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
             case UPDATES: return row == 0 ? Action.CHECK_UPDATE : row == 1 ? Action.AUTO_UPDATE : Action.NONE;
             case MENU_BUTTONS: return row == buttonCount ? (vpnEnabled ? Action.VPN_PICKER : Action.NONE) : Action.MENU_BUTTON;
@@ -122,6 +122,7 @@ final class SettingsActions {
             case MOVIE_SERVICE: return new Target(MEDIA, 0);
             case HOME_CHOICE: return new Target(SYSTEM, 2);
             case SCREENSAVER: return new Target(MAIN, 2);
+            case HOME_SCREEN: return new Target(GENERAL, 7);
             case ABOUT: return new Target(GENERAL, 0);
             case REMOTE_KEYS: return new Target(MAIN, 4);
             case MENU_BUTTONS: return new Target(TOP_PANEL, 1);

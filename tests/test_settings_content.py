@@ -22,8 +22,8 @@ public class ContentHarness {
 '''+method('        private String screenTitle()')+method('        private String[] menuLabels()')+method('        private int rowCount()')+method('        private boolean menuChevronVisible(')+method('        private int parentScreen(')+'''
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
-  int[] screens={MAIN,MEDIA,MOVIE_SERVICE,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,REGION,SCREENSAVER,ABOUT};
-  int[] rows={10,2,5,7,2,2,1,2,4,2,3,7,3,2,5,8};
+  int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,REGION,SCREENSAVER,ABOUT};
+  int[] rows={10,1,5,2,8,2,2,1,2,4,2,3,7,3,2,5,8};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -33,8 +33,8 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
-   for(int page:new int[]{SCREENSAVER,WEATHER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
-   h.screen=GENERAL;for(int row=0;row<7;row++)check(h.menuChevronVisible(row)==(row==0||row==3),"only General destinations have chevrons");
+   for(int page:new int[]{HOME_SCREEN,SCREENSAVER,WEATHER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
+   h.screen=GENERAL;for(int row=0;row<8;row++)check(h.menuChevronVisible(row)==(row==0||row==3||row==7),"only General destinations have chevrons");
    h.screen=REGION;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
    h.screen=ACCESSIBILITY;check(!h.menuChevronVisible(2),"TV Settings action has no ghost launcher chevron");

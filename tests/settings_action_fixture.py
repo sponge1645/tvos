@@ -27,7 +27,7 @@ public class CLASSNAME {
  static class HomeActivity {}static class Settings {static final String ACTION_DATE_SETTINGS="date",ACTION_SETTINGS="settings";}
  static class Activity {void startActivity(Intent i){note("start:"+i.action+":"+i.flags);}void finish(){note("finish");}void showPreview(){note("preview");}}
  final Activity activity=new Activity();
- static class Prefs {
+ static class Prefs {static boolean homeContinue(){return home;}static boolean home;static void setHomeContinue(boolean v){home=v;}
   static String theme="auto",language="en",unit="auto";static boolean h24,auto;static boolean automaticRegion(){return auto;}
   static String theme(){return theme;}static String language(){return language;}static String temperature(){return unit;}static boolean hour24(){return h24;}
   static void setTheme(String v){theme=v;note("theme:"+v);}static void setLanguage(String v){language=v;note("language:"+v);}static void setTemperature(String v){unit=v;note("unit:"+v);}static void setHour24(boolean v){h24=v;note("hour24:"+v);}

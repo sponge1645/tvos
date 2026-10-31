@@ -68,6 +68,19 @@ final class Prefs {
         version++;
     }
 
+    static boolean homeContinue() {
+        if (app == null) return false;
+        return "continue".equals(sp().getString("home_screen_mode",
+                sp().getBoolean("dock_continue", false) ? "continue" : "tmdb"));
+    }
+    static void setHomeContinue(boolean enabled) {
+        put("home_screen_mode", enabled ? "continue" : "tmdb");
+        if (!enabled && categoryCount() == 0) setCategoryEnabled(0, true);
+    }
+    static int homeCategoryCount() { return homeContinue() ? 0 : categoryCount(); }
+    static int firstHomeCategory() { return homeContinue() ? -1 : firstCategory(); }
+    static boolean homeCategoryEnabled(int id) { return !homeContinue() && categoryEnabled(id); }
+
     // MARK: - Language and units
 
     /** Supported codes and fallback behavior come from the shared language catalog. */

@@ -54,7 +54,8 @@ final class SettingsValues {
         java.util.Arrays.fill(v, "");
         if (screen == MEDIA) {
             v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
-            v[1] = onOff(localFlag(DockContinue.KEY));
+        } else if (screen == HOME_SCREEN) {
+            v[Prefs.homeContinue() ? 1 : 0] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == MOVIE_SERVICE) {
             v[MovieService.index(localPrefs().getString(MovieService.KEY, ""))] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == GENERAL) {
@@ -65,6 +66,7 @@ final class SettingsValues {
             v[4] = settings()[1];
             v[5] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
             v[6] = onOff(localPrefs().getBoolean("navigation_clicks", true));
+            v[7] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_tmdb);
 
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));

@@ -27,7 +27,7 @@ nav_body=''.join(method(home,s) for s in [
  '    private void syncVisibleTabs(', '    private int availableTopButton('])
 harness='''import java.util.*;
 class Ui {static boolean ru;}
-class Prefs {
+class Prefs {static boolean homeCategoryEnabled(int i){return categoryEnabled(i);}static int firstHomeCategory(){return firstCategory();}static int homeCategoryCount(){return categoryCount();}
  static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}
  static boolean topButtonEnabled(int id){throw new AssertionError("wrong preference domain");}static int topButtonCount(){throw new AssertionError("wrong preference domain");}static void setTopButtonEnabled(int id,boolean on){throw new AssertionError("wrong preference domain");}static void setTopButtonOrder(List<Integer> ids){throw new AssertionError("wrong preference domain");}
  static int version;private static int categoryVersion=-1,categoryMask;private static int[] categoryOrderCache;

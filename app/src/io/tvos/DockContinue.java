@@ -28,7 +28,6 @@ import java.util.function.Consumer;
 
 /** Optional Dock resume row. Provider links remain owned by WatchingCatalog. */
 final class DockContinue {
-    static final String KEY = "dock_continue";
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable changed;

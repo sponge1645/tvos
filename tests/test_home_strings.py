@@ -20,7 +20,7 @@ import java.util.*;
 public class HomeStringsHarness {
  static class Ui {static boolean ru;static String language="en";static Locale locale(){return ru?new Locale("ru","RU"):Locale.US;}
   static String time(long at){return at==1?"06:00":"18:00";}}
- static class Prefs {static int version;static String city="";static String city(){return city;}}
+ static class Prefs {static boolean homeContinue(){return false;}static int version;static String city="";static String city(){return city;}}
  static class NetworkStatus {static final int WIFI=1,ETHERNET=2;int current;int state(){return current;}}
  static class HomeData {
   Weather weather=new Weather();
