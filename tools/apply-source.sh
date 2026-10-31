@@ -49,6 +49,11 @@ for RETIRED_FILE in \
   app/res/drawable/coin_sol.xml app/res/drawable/coin_usdt.xml \
   app/assets/symbols/bitcoin.svg app/assets/symbols/bitcoin.png \
   app/assets/settings/light.webp app/assets/settings/dark.webp \
+  app/src/io/tvos/SettingsActions.java \
+  app/src/io/tvos/SettingsOrderEditor.java \
+  app/src/io/tvos/SettingsDockEditor.java \
+  app/src/io/tvos/SettingsBackground.java \
+  app/src/io/tvos/SettingsPopupBackdrop.java \
   app/src/io/tvos/ScreensaverWindow.java; do
   rm -f -- "$TARGET/$RETIRED_FILE"
 done
