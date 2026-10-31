@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.home.HomeLayout;
+
 import io.tvos.artwork.RatingStyle;
 
 import android.graphics.Bitmap;

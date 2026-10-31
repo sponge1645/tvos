@@ -25,7 +25,7 @@ editor_body=''.join(method(settings,s) for s in [
 nav_body=''.join(method(home,s) for s in [
  '    private boolean topControlVisible(', '    private int nextTopControl(', '    private static boolean tabEnabled(',
  '    private void syncVisibleTabs(', '    private int availableTopButton('])
-harness='''import java.util.*;import io.tvos.settings.SettingsOrderEditor;
+harness='''import java.util.*;import io.tvos.home.HomeFocusPolicy;import io.tvos.settings.SettingsOrderEditor;
 class Ui {static boolean ru;}
 class Prefs {
  static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}
@@ -49,7 +49,7 @@ class CategoryEditor {
 ''' +editor_body+'''
  void open(){openCategoryEditor();}void toggle(){toggleCategory();}void move(int d){moveCategory(d);}
 }
-class HomeNavigation {
+class HomeNavigation {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
  boolean searchMode;int actions=63,tab,topIndex,zone,cancels;
  static final int Z_TOP=1,Z_CARDS=2,Z_SHELF=3;
  void selectTab(int id){tab=id;}void cancelRouletteWork(){cancels++;}

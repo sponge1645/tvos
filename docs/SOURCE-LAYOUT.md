@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B130)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B131)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -32,3 +32,11 @@ animations request additional frames. General no longer opens system date/time
 settings; date visibility and the 12/24-hour preference remain independent.
 
 Home Screen mode in General chooses service recommendation banners or KinoPub/Seena/Lampa resume cards only when every poster category is disabled. It never changes category visibility/order or the Watching source.
+
+- `io.tvos.home`: shared layout constants/math, top-control focus policy and
+  the one-shot dream-return timeline. These helpers have no Android, preferences
+  or renderer dependencies. HomeView caches policy callbacks once, shares menu
+  host behavior and delegates nearest-card lookup to one implementation. The
+  obsolete ready-only label Paint, write-only timestamps and zero-delay reveal
+  scheduling were removed. Source application removes backed-up root copies of
+  relocated Home classes.

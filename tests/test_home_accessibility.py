@@ -18,9 +18,9 @@ files={
  'io/tvos/Prefs.java':'''package io.tvos;class Prefs {static String city="";static String city(){return city;}static int[] categories={3,0,4},buttons={5,4,3};static int[] categoryOrder(){return categories;}static int[] topButtonOrder(){return buttons;}static int categoryPosition(int id){for(int i=0;i<categories.length;i++)if(categories[i]==id)return i+1;return 0;}static int categoryCount(){return categories.length;}}''',
  'io/tvos/HomeData.java':'''package io.tvos;import java.util.*;class HomeData {Weather weather=new Weather();static class Weather {double temp=10,max=20,min=5;int code;boolean isDay=true;long sunrise=1,sunset=2;List<Long> hours=Arrays.asList(9L);List<Double> hourTemp=Arrays.asList(11.0);}static String degrees(double n){return (int)n+"°";}static String hour(long n){return "09:00";}static String condition(int c,boolean d){return "Clear";}}''',
  'io/tvos/Ui.java':'package io.tvos;class Ui {static String time(long n){return n==1?"06:00":"18:00";}}',
- 'io/tvos/RouletteRenderer.java':'package io.tvos;import android.graphics.RectF;class RouletteRenderer {'+block(Path('app/src/io/tvos/RouletteRenderer.java').read_text(),'    static void buttonBounds(').replace('(MARGIN + CONTENT_R)','(80 + 1840)')+'}',
+ 'io/tvos/RouletteRenderer.java':'package io.tvos;import io.tvos.home.HomeLayout;import android.graphics.RectF;class RouletteRenderer {'+block(Path('app/src/io/tvos/RouletteRenderer.java').read_text(),'    static void buttonBounds(').replace('(MARGIN + CONTENT_R)','(80 + 1840)')+'}',
  'io/tvos/HomeAccessibility.java':source,
- 'io/tvos/HomeLayout.java':Path('app/src/io/tvos/HomeLayout.java').read_text(),
+ 'io/tvos/home/HomeLayout.java':Path('app/src/io/tvos/home/HomeLayout.java').read_text(),
  'io/tvos/AccessibilityHarness.java':'''package io.tvos;
 import java.util.*;import android.graphics.*;import android.content.Context;
 import static io.tvos.HomeAccessibility.*;

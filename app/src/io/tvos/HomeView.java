@@ -1,5 +1,8 @@
 package io.tvos;
 
+import io.tvos.home.HomeLayout;
+import io.tvos.home.HomeFocusPolicy;
+import io.tvos.home.HomeReveal;
 import io.tvos.watching.WatchingSources;
 
 import android.app.Activity;
@@ -51,7 +54,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float GRID_W = HomeAccessibility.GRID_W, GRID_H = HomeAccessibility.GRID_H,
             GRID_GAP = HomeAccessibility.GRID_GAP, GRID_ROW = HomeAccessibility.GRID_ROW,
             GRID_TOP = HomeAccessibility.GRID_TOP;
-    private static final int SMOKE = 0xFF111113, INK = 0xFF1C1C1E, WHITE = 0xFFF5F5F7;
+    private static final int SMOKE = 0xFF111113, WHITE = 0xFFF5F5F7;
     /** Search glass shadow radius shared with the cached Shadows renderer. */
     private static final float SHADOW_BLUR = 26;
     private static final int SKY = 0, HERO = 1, STATUS = 2, PLATTER = 3, TILES = 4, DRAWER = 5, SHEET = 6, TOAST = 7, SEARCH_GLASS = 8;
@@ -90,9 +93,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Layer revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, searchGlassLayer;
     private int zone = Z_SHELF;
 
-    // At the top: tabs (0 to 2) and icon-only buttons (3 to 5); the three cards
+    // Category and action IDs remain stable while their visual order is configurable.
     private int tab, topIndex, cardIndex;
-    private final RectF searchGlassBounds = new RectF();
+    private final RectF searchGlassBounds = new RectF(), searchShadowBounds = new RectF();
     private boolean searchGlassVisible;
     private final HomeSearchInput searchInput;
     private boolean searchMode;
@@ -123,7 +126,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final RectF[] cardRects = new RectF[8];
     private final List<HomeApps.Item> lightButtons = new ArrayList<>();
     private final NetworkStatus networkStatus;
-    private Paint labelPaint;
     private Paint lTab, lTabOn, lCardTitle, lCardMeta, lDate;
     private float contentTop, contentBottom;
     private final HomeReveal reveal = new HomeReveal();
@@ -164,7 +166,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // Frames
     private boolean running, tilesDirty, statusDirty, heroDirty, drawerDirty, gridDirty, motionDirty = true;
     private boolean drawerWasMoving, idle;
-    private long lastNanos, resumedAt, lastStep;
+    private long lastNanos;
     private int w, h;
     private float k = 1;
     private String clockText = "", dateText = "";
@@ -234,7 +236,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
 
         @Override protected void onDraw(Canvas c) {
-            if (labelPaint == null) return;
+            if (lTab == null) return;
             c.translate(-getLeft(), -getTop());
             // The layer may be shifted (bottom drawer): the glass reads the background from where it really is. The
             // drawer and the top buttons are always drawn as if resting in place (they are only visible there and are
@@ -415,9 +417,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // SettingsActivity runs separately; the old button rectangles remain cached.
         // Repack the visible top actions immediately after returning from settings.
         layoutLight();
-        resumedAt = SystemClock.uptimeMillis();
         lastNanos = 0;
-        lastStep = 0;
         data.addListener(this);
         recs.addListener(this);
         watching.start();
@@ -443,12 +443,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchWork.resume(searchQuery);
     }
 
-    private HomeGenres createGenres(int category) {
-        return new HomeGenres(this, handler, recs.genres(), new HomeGenres.Host() {
+    private HomeGenres.Host menuHost(int category) {
+        return new HomeGenres.Host() {
             @Override public String kind() { return category == 3 ? "tv" : "movie"; }
             @Override public boolean eligible() {
                 return running && okDown && tab == category && !searchMode && !sheetOpen && !drawerOpen
-                        && !dockEditor.editing() && (zone == Z_TOP && topIndex == category);
+                        && !dockEditor.editing() && zone == Z_TOP && topIndex == category;
             }
             @Override public RectF anchor() { return topRects[category]; }
             @Override public Paint anchorPaint() { return lTabOn; }
@@ -456,35 +456,25 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
             @Override public void moved() { click.move(); }
             @Override public void changed() {
-                layoutLight();
-                if (tab == category && !searchMode) {
+                if (category != 2) layoutLight();
+                if (category == 2 || (tab == category && !searchMode)) {
                     cardPage = cardIndex = 0;
                     updateCards(); retarget(false);
                 }
-                heroDirty = statusDirty = true;
+                heroDirty = true;
+                if (category != 2) statusDirty = true;
                 wake();
             }
             @Override public void message(String text) { showToast(text); }
-        });
+        };
+    }
+
+    private HomeGenres createGenres(int category) {
+        return new HomeGenres(this, handler, recs.genres(), menuHost(category));
     }
 
     private HomeGenres createWatchingMenu() {
-        return new HomeGenres(this, handler, new HomeGenres.Host() {
-            @Override public boolean eligible() {
-                return running && okDown && tab == 2 && !searchMode && !sheetOpen && !drawerOpen
-                        && !dockEditor.editing() && zone == Z_TOP && topIndex == 2;
-            }
-            @Override public RectF anchor() { return topRects[2]; }
-            @Override public Paint anchorPaint() { return lTabOn; }
-            @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
-            @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
-            @Override public void moved() { click.move(); }
-            @Override public void changed() {
-                cardPage = cardIndex = 0;
-                updateCards(); retarget(false); heroDirty = true; wake();
-            }
-            @Override public void message(String text) { showToast(text); }
-        }, new HomeGenres.Choices() {
+        return new HomeGenres(this, handler, menuHost(2), new HomeGenres.Choices() {
             @Override public String label() { return AppStrings.get(R.string.home_tab_watching); }
             @Override public String heading() { return AppStrings.get(R.string.home_watching_services); }
             @Override public List<HomeGenres.Choice> items() {
@@ -591,6 +581,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", AppStrings.get(R.string.home_settings), "settings"));
     }
 
+    private final java.util.function.IntPredicate visibleTop = this::topControlVisible;
+    private final java.util.function.IntPredicate enabledTop = this::topButtonEnabled;
+    private final java.util.function.IntSupplier topFallback = () -> picksOn() ? tab : 0;
+
     private boolean topButtonEnabled(int index) { return Prefs.topButtonEnabled(index); }
     private boolean topControlVisible(int id) {
         return id < 5 ? !searchMode && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
@@ -598,32 +592,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Tabs and actions follow their saved visual order, independently of stable IDs. */
     private int nextTopControl(int current, int direction) {
-        int previous = -1;
-        int[] categories = Prefs.categoryOrder(), buttons = Prefs.topButtonOrder();
-        for (int position = 0; position < categories.length + buttons.length; position++) {
-            int id = position < categories.length ? categories[position] : 5 + buttons[position - categories.length];
-            if (!topControlVisible(id)) continue;
-            if (id == current && direction < 0) return previous < 0 ? current : previous;
-            if (previous == current && direction > 0) return id;
-            previous = id;
-        }
-        return current;
+        return HomeFocusPolicy.next(current, direction, Prefs.categoryOrder(), Prefs.topButtonOrder(), visibleTop);
     }
 
     private int availableTopButton(int preferred) {
-        if (preferred < 5 || (preferred <= 10 && topButtonEnabled(preferred - 5))) return preferred;
-        for (int id : Prefs.topButtonOrder()) if (topButtonEnabled(id)) return 5 + id;
-        return picksOn() ? tab : 0;
+        return HomeFocusPolicy.available(preferred, Prefs.topButtonOrder(), enabledTop, topFallback);
     }
 
     /** Poster shortcuts use the first/last visible action in the saved layout. */
     private int posterCornerTarget(boolean rightmost) {
-        int first = -1, last = -1;
-        for (int id : Prefs.topButtonOrder()) if (topButtonEnabled(id)) {
-            if (first < 0) first = 5 + id;
-            last = 5 + id;
-        }
-        return last >= 0 ? (rightmost ? last : first) : picksOn() ? tab : 0;
+        return HomeFocusPolicy.corner(rightmost, Prefs.topButtonOrder(), enabledTop, topFallback);
     }
 
     private static boolean tabEnabled(int i) {
@@ -784,8 +762,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.resize(k);
         appSurfaces.resize(k);
         notices.resize(k, w);
-        labelPaint = Ui.text(Ui.medium, 25 * k, 0xC7FFFFFF);
-        labelPaint.setLetterSpacing(0.1f);
         lTab = Ui.text(Ui.medium, 30 * k, L_DIM);
         lTabOn = Ui.text(Ui.semibold, 30 * k, L_INK);
         lCardTitle = Ui.text(Ui.semibold, 31 * k, L_INK);
@@ -865,7 +841,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         else {
             // Short text needs only the normal clock tick. Long text wakes at its dwell deadline,
             // then keeps the existing 50 ms marquee cadence without polling during the wait.
-            long delay = Math.min(posters.nextDelay(up), reveal.delay(up));
+            long delay = posters.nextDelay(up);
             if (Prefs.categoryCount() == 0 && !searchMode) delay = Math.min(delay, dockBanner.nextDelay(up));
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
@@ -928,7 +904,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean updateClock() {
         long now = System.currentTimeMillis();
         long minute = now / 60_000;
-        if (minute == clockMinute || labelPaint == null) return false;
+        if (minute == clockMinute || lTab == null) return false;
         clockMinute = minute;
         clockText = Ui.clock(now);
         dateText = Ui.date(now);
@@ -1407,16 +1383,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private static int nearest(RectF[] rects, float x) {
-        int best = 0;
-        float bestDistance = Float.MAX_VALUE;
-        for (int i = 0; i < rects.length; i++) {
-            float d = Math.abs(rects[i].centerX() - x);
-            if (d < bestDistance) {
-                bestDistance = d;
-                best = i;
-            }
-        }
-        return best;
+        return nearest(rects, rects.length, x);
     }
 
     private void moveGrid(int dx, int dy) {
@@ -1525,10 +1492,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!searchGlassVisible || searchGlassBounds.isEmpty()) return;
         applyTone();
         float radius = searchGlassBounds.height() / 2f;
-        RectF shadowRect = new RectF(searchGlassBounds);
-        shadowRect.offset(0, 9 * k);
+        searchShadowBounds.set(searchGlassBounds);
+        searchShadowBounds.offset(0, 9 * k);
         shadow.setColor(tone(0x1F000000, 0x52000000));
-        shadows.draw(c, shadowRect, radius, SHADOW_BLUR * k, shadow);
+        shadows.draw(c, searchShadowBounds, radius, SHADOW_BLUR * k, shadow);
         scene.liquid(c, searchGlassBounds, radius, tone(0xFFFFFFFF, SMOKE),
                 tone(0.42f, 0.12f), tone(0.03f, 0.08f),
                 tone(30, 34) * k, tone(22, 28) * k, tone(0.65f, 0.95f), 1);
@@ -1800,7 +1767,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
-        if (labelPaint == null) return;
+        if (lTab == null) return;
         if (!searchMode && Prefs.firstCategory() < 0) {
             cards.clear();
             recs.setPosterWindow(java.util.Collections.emptyList());

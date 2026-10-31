@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.home.HomeLayout;
+
 import android.content.Context;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;

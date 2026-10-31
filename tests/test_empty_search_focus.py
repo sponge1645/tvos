@@ -6,8 +6,8 @@ def method(sig):
  a=source.index(sig);b=source.index('{',a);d=1;i=b+1
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-header='''import java.util.*;
-public class SearchFocusHarness {static class RandomPoster {boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
+header='''import java.util.*;import io.tvos.home.HomeFocusPolicy;
+public class SearchFocusHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;static class RandomPoster {boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static class Prefs {static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}}
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;
  int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,shelfIndex,actions=63;
@@ -55,6 +55,7 @@ tests='''
  }
 }'''
 with tempfile.TemporaryDirectory() as d:
+ (Path(d)/'HomeFocusPolicy.java').write_text(Path('app/src/io/tvos/home/HomeFocusPolicy.java').read_text())
  p=Path(d)/'SearchFocusHarness.java';p.write_text(header+method('    private void focusSound(')+method('    private boolean moveLight(')+method('    private int availableTopButton(')+method('    private static int nearest(RectF[] rects, int count, float x)')+tests)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',d,str(p)],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).glob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'SearchFocusHarness'],check=True)

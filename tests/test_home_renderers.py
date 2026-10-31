@@ -4,7 +4,7 @@ import subprocess,tempfile
 from settings_strings_fixture import write as write_strings
 from home_renderers_fixture import files
 from tmdb_metadata_fixture import block
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.home.HomeLayout;
 import android.graphics.*;import android.os.*;import android.content.*;import java.util.*;import org.json.*;
 public class HomeRenderHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}

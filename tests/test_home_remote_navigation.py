@@ -6,11 +6,11 @@ home=Path('app/src/io/tvos/HomeView.java').read_text()
 methods='\n'.join(block(home,sig) for sig in ['    private void focusSound(', '    private boolean vpnFocused(', '    private void openVpnOnHold(', '    boolean onKey(', '    private void move(', '    private boolean moveLight(', '    private void back(', '    private void beginSearch(', '    private void closeSearch(', '    private void cancelRouletteWork(', '    private boolean topControlVisible(', '    private boolean topButtonEnabled(', '    private int nextTopControl(', '    private int availableTopButton(', '    private static boolean tabEnabled(', '    private int posterCornerTarget(', '    private static int nearest(RectF[] rects, int count, float x)'])
 handler='''package android.os;import java.util.*;public class Handler {long now;final Map<Runnable,Long> pending=new LinkedHashMap<>();public void postDelayed(Runnable r,long ms){pending.put(r,now+ms);}public void removeCallbacks(Runnable r){pending.remove(r);}public void advance(long ms){now+=ms;for(Runnable r:new ArrayList<>(pending.keySet()))if(pending.get(r)<=now){pending.remove(r);r.run();}}}'''
 keys='''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_NUMPAD_ENTER=160,KEYCODE_BACK=4;final int action,key,repeat;public KeyEvent(int action,int key,int repeat){this.action=action;this.key=key;this.repeat=repeat;}public int getAction(){return action;}public int getKeyCode(){return key;}public int getRepeatCount(){return repeat;}public boolean isCanceled(){return false;}}'''
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.home.HomeFocusPolicy;
 import java.util.*;import android.os.Handler;import android.view.KeyEvent;
 class HomeApps {static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
 class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
-public class RemoteNavigationHarness {
+public class RemoteNavigationHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
  boolean dockContinueKey(KeyEvent e){return false;}
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static final int Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
@@ -66,6 +66,7 @@ public class RemoteNavigationHarness {
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-home-remote-') as tmp:
  root=Path(tmp)
+ (root/'HomeFocusPolicy.java').write_text(Path('app/src/io/tvos/home/HomeFocusPolicy.java').read_text())
  for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/HomeDockEditor.java':Path('app/src/io/tvos/HomeDockEditor.java').read_text(),'io/tvos/RemoteNavigationHarness.java':harness}.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)

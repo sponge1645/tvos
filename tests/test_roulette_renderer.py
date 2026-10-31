@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from settings_strings_fixture import write as write_strings
 from roulette_graphics_fixture import files
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.home.HomeLayout;
 import android.graphics.*;import android.os.SystemClock;import java.util.*;
 public class RouletteRenderHarness {
  final RouletteController work=new RouletteController();final Recs recs=new Recs();final Scene scene=new Scene();final Shadows shadows=new Shadows();final ActionSurface actions=new ActionSurface(scene,shadows);

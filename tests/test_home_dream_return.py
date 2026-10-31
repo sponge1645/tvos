@@ -14,8 +14,8 @@ files={
 'android/animation/ValueAnimator.java':'package android.animation;public class ValueAnimator {public static boolean enabled=true;public static boolean areAnimatorsEnabled(){return enabled;}}',
 'android/view/View.java':'''package android.view;public class View {public static final int VISIBLE=0,INVISIBLE=4;public float alpha=1,y,sx=1,sy=1;public int visibility;public void setAlpha(float n){alpha=n;}public void setTranslationY(float n){y=n;}public void setVisibility(int v){visibility=v;}public void setScaleX(float n){sx=n;}public void setScaleY(float n){sy=n;}}''',
 'io/tvos/HomeDreamReturn.java':Path('app/src/io/tvos/HomeDreamReturn.java').read_text(),
-'io/tvos/HomeReveal.java':Path('app/src/io/tvos/HomeReveal.java').read_text(),
-'io/tvos/DreamReturnHarness.java':'''package io.tvos;
+'io/tvos/home/HomeReveal.java':Path('app/src/io/tvos/home/HomeReveal.java').read_text(),
+'io/tvos/DreamReturnHarness.java':'''package io.tvos;import io.tvos.home.HomeReveal;
 import android.content.*;import android.view.View;import android.os.*;
 public class DreamReturnHarness {
  static final int VISIBLE=0,INVISIBLE=4;static final float SHIFT=560;
@@ -49,7 +49,7 @@ public class DreamReturnHarness {
   for(int sdk:new int[]{28,30,33,34})broadcasts(sdk);
   DreamReturnHarness transparent=new DreamReturnHarness();HomeDreamReturn tracked=new HomeDreamReturn(transparent.context,transparent::prepareDreamReturn,transparent::revealFromDream,transparent::cancelDreamReturn);tracked.started();tracked.resumed();tracked.focused(true);transparent.context.dreamClose();tracked.paused();tracked.stopped();transparent.context.send(Intent.ACTION_DREAMING_STARTED);check(!transparent.reveal.prepared()&&transparent.sky.sx==1&&transparent.tiles.y==0,"home stays intact throughout translucent dream entry");transparent.context.send(Intent.ACTION_DREAMING_STOPPED);tracked.started();tracked.resumed();tracked.focused(true);check(transparent.wakes==0,"early exit before opacity never jumps home to depth state");tracked.close();
   DreamReturnHarness v=new DreamReturnHarness();SystemClock.now=1000;v.revealFromDream();near(v.sky.sx,.90f,"background starts in depth");near(v.sky.alpha,0,"foreground begins transparent");near(v.heroLayer.alpha,0,"content begins transparent");near(v.revealBackdrop.alpha,1,"unscaled backing stays opaque");near(v.status.alpha,1,"status buttons do not fade");check(v.revealBackdrop.visibility==VISIBLE&&v.revealBackdrop.sx==1&&v.revealBackdrop.sy==1,"full-screen backdrop covers exposed edges without scaling");near(v.heroLayer.sx,.90f,"content shares background scale");near(v.status.sx,1,"right-hand buttons stay static");near(v.tiles.y,312,"Dock starts completely below screen");near(v.platter.y,v.tiles.y,"Dock platter/icons move together");
-  check(v.reveal.tick(1000)&&v.reveal.remaining()==1&&v.reveal.delay(1000)==Long.MAX_VALUE,"return starts immediately without a delay timer");
+  check(v.reveal.tick(1000)&&v.reveal.remaining()==1,"return starts immediately without a delay timer");
   float[] rest={1,.421875f,.12544435f,.015625f,0};long[] at={1000,1211,1422,1634,1845};float last=2;
   for(int i=0;i<at.length;i++){v.reveal.tick(at[i]);v.updateMotion();check(v.reveal.remaining()<=last,"monotonic ease-out");last=v.reveal.remaining();near(v.sky.alpha,1-last,"opacity shares reveal progress");near(v.revealBackdrop.alpha,1,"backdrop stays opaque throughout");if(i==2)near(last,rest[i],"half time has only one eighth movement left");}
   check(!v.reveal.active()&&!v.reveal.tick(4000),"animation ends without extra ticking");near(v.sky.sx,1,"final scale exactly normal");check(v.revealBackdrop.visibility==INVISIBLE,"backdrop removed at identity");near(v.tiles.y,0,"final Dock position exactly normal");

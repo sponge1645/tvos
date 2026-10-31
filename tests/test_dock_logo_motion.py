@@ -7,7 +7,7 @@ source=Path('app/src/io/tvos/HomeAppsRenderer.java').read_text()
 a=source.index('    private void drawLogo(');b=source.index('{',a);depth=1;end=b+1
 while depth:depth+=(source[end]=='{')-(source[end]=='}');end+=1
 wrapper=source[a:end].replace('frame.tileRects','tileRects')
-harness='''package io.tvos;import android.graphics.*;
+harness='''package io.tvos;import io.tvos.home.HomeLayout;import android.graphics.*;
 public class DockLogoHarness {
  static final float FOCUS_GROW=.2f;private final DockLogoRenderer dockLogos=new DockLogoRenderer();private RectF[] tileRects=new RectF[0];
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
@@ -60,7 +60,7 @@ public class DockLogoHarness {
 files=dict(GRAPHICS)
 files['io/tvos/HomeApps.java']='package io.tvos;final class HomeApps {static class Item {String key,pkg;android.graphics.Bitmap logo,logoDark;float logoInk,logoScale;}}'
 files['io/tvos/DockLogoHarness.java']=harness
-for name in ('Spring','AppBranding','DockLogoRenderer','HomeLayout'):files[f'io/tvos/{name}.java']=Path('app/src/io/tvos/'+('artwork/' if name == 'AppBranding' else '')+name+'.java').read_text()
+for name in ('Spring','AppBranding','DockLogoRenderer','HomeLayout'):files[f'io/tvos/{name}.java']=Path('app/src/io/tvos/'+('artwork/' if name == 'AppBranding' else 'home/' if name=='HomeLayout' else '')+name+'.java').read_text()
 with tempfile.TemporaryDirectory() as directory:
  root=Path(directory)
  for name,text in files.items():

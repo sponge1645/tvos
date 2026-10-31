@@ -49,6 +49,8 @@ for RETIRED_FILE in \
   app/res/drawable/coin_sol.xml app/res/drawable/coin_usdt.xml \
   app/assets/symbols/bitcoin.svg app/assets/symbols/bitcoin.png \
   app/assets/settings/light.webp app/assets/settings/dark.webp \
+  app/src/io/tvos/HomeLayout.java \
+  app/src/io/tvos/HomeReveal.java \
   app/src/io/tvos/SettingsActions.java \
   app/src/io/tvos/SettingsOrderEditor.java \
   app/src/io/tvos/SettingsDockEditor.java \

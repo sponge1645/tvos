@@ -6,7 +6,7 @@ from home_renderers_fixture import files
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
 methods='\n'.join(block(home,sig) for sig in ['    private void layoutShelf(', '    private void layoutDrawer(', '    private void layoutLight(', '    private void layoutTopActions('])
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.home.HomeLayout;
 import android.graphics.*;import java.util.*;
 public class HomeLayoutHarness {
  static final float MARGIN=HomeLayout.EDGE,CONTENT_R=HomeLayout.RIGHT,SHELF_PAD=HomeLayout.DOCK_PAD,TILE_GAP=HomeLayout.DOCK_GAP;
