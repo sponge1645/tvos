@@ -1,5 +1,9 @@
 package io.tvos;
 
+import io.tvos.version.SoftwareBuild;
+
+import io.tvos.settings.UpdateDialogText;
+
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -77,7 +81,7 @@ final class SettingsUpdateDialog {
 
     static String versionName(Context c) {
         try {
-            return "tvOS " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+            return "tvOS " + SoftwareBuild.display(c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName);
         } catch (android.content.pm.PackageManager.NameNotFoundException e) {
             return "tvOS";
         }
@@ -228,19 +232,20 @@ final class SettingsUpdateDialog {
         if (fading) c.saveLayerAlpha(left-70*k, top-70*k, right+70*k, bottom+70*k, Math.round(255*alpha));
         RectF panel = popupPanel;
         panel.set(left, top, right, bottom);
-        // Theme tint overlays the same softly blurred settings snapshot.
+        // Match the lower weather card: white day glass and smoked night glass.
         p.clearShadowLayer();
         p.setAlpha(255);
         p.setStyle(Paint.Style.FILL);
         p.setShader(null);
         if (!reduceTransparency) backdrop.draw(c, panel, 60*k);
-        int panelTint = light ? 0xFFC4D5EB : 0xFF1E2425;
-        p.setColor(reduceTransparency || !backdrop.ready() ? panelTint : (panelTint & 0x00FFFFFF) | 0xB3000000);
+        int panelTint = light ? 0xFFFFFFFF : 0xFF111113;
+        p.setColor(reduceTransparency || !backdrop.ready() ? panelTint
+                : (panelTint & 0x00FFFFFF) | (light ? 0xB8000000 : 0x66000000));
         c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(1.2f*k);
-        p.setColor(light ? 0x55FFFFFF : 0x24FFFFFF);
+        p.setStrokeWidth(1.5f*k);
+        p.setColor(0x33FFFFFF);
         c.drawRoundRect(panel, 60*k, 60*k, p);
         p.setStyle(Paint.Style.FILL);
         Paint heading = popupHeading;
@@ -259,7 +264,7 @@ final class SettingsUpdateDialog {
             RectF b = popupButton;
             b.set(left+25*k, buttonTop+i*84*k, right-25*k, buttonTop+(i*84+72)*k);
             boolean selected = i == updatePopupFocus || buttons.length == 1;
-            // Apple TV-style buttons: static fills, no shadows or per-frame focus animation.
+            // Dialog buttons: static fills, no shadows or per-frame focus animation.
             p.clearShadowLayer();
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);

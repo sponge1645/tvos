@@ -13,7 +13,7 @@ import android.os.PersistableBundle;
  * the switch finishes, even with the screen showing something else.
  */
 public class ModeJob extends JobService {
-    static final String APPLY = "apply", VERIFY = "verify", REVERT = "revert", MEMORY = "memory", REMOTE = "remote";
+    static final String APPLY = "apply", VERIFY = "verify", REVERT = "revert", MEMORY = "memory", REMOTE = "remote", VPN_RESTORE = "vpn_restore";
 
     @Override public boolean onStartJob(JobParameters params) {
         PersistableBundle extras = params.getExtras();
@@ -27,6 +27,7 @@ public class ModeJob extends JobService {
                     case VERIFY: HomeMode.verifyNow(app); break;
                     case REVERT: HomeMode.revertHomeNow(app); break;
                     case MEMORY: HomeMode.measureMemoryNow(app, mode); break;
+                    case VPN_RESTORE: RegionVpnRecovery.recover(app); break;
                     case REMOTE: HomeMode.ensureRemoteServiceNow(app); break;
                     default: break;
                 }
@@ -34,12 +35,23 @@ public class ModeJob extends JobService {
                 AppLog.w("job " + action + " failed: " + t);
             }
             jobFinished(params, false);
-        }, "free-my-tv-" + action).start();
+        }, "tvos-" + action).start();
         return true;
     }
 
     @Override public boolean onStopJob(JobParameters params) {
-        return false;
+        return VPN_RESTORE.equals(params.getExtras().getString("action", ""));
+    }
+
+    static boolean scheduleRestore(Context c, long delayMs) {
+        JobScheduler scheduler = c.getSystemService(JobScheduler.class);
+        if (scheduler == null) return false;
+        PersistableBundle extras = new PersistableBundle();
+        extras.putString("action", VPN_RESTORE);
+        JobInfo job = new JobInfo.Builder(1901, new ComponentName(c, ModeJob.class))
+                .setExtras(extras).setPersisted(true).setMinimumLatency(delayMs)
+                .setOverrideDeadline(delayMs + 2000).build();
+        return scheduler.schedule(job) == JobScheduler.RESULT_SUCCESS;
     }
 
     /** Schedules a job (one pending per action: a new request replaces the old one). */

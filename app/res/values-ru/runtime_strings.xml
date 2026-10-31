@@ -234,4 +234,5 @@
   <string name="runtime_country_gb" formatted="false">Великобритания</string>
   <string name="runtime_country_za" formatted="false">ЮАР</string>
   <string name="runtime_country_kr" formatted="false">Южная Корея</string>
+    <string name="home_continue_watching">Продолжить просмотр</string>
 </resources>

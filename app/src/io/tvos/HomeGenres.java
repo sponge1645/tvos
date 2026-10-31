@@ -35,8 +35,22 @@ final class HomeGenres {
         default String kind() { return "movie"; }
         RectF anchor();
         void opened();
+        default void moved() {}
+        default Paint anchorPaint() { return null; }
+        default void visibilityChanged() {}
         void changed();
         void message(String text);
+    }
+    static final class Choice {
+        final String id, label;
+        Choice(String id, String label) { this.id = id; this.label = label; }
+    }
+    interface Choices {
+        String label();
+        String heading();
+        List<Choice> items();
+        String selected();
+        void select(String id);
     }
     // All labels share one text column; the checkmark occupies its own fixed gutter.
     private static final float TEXT_LEFT = 54, CHECK_LEFT = 22;
@@ -110,23 +124,53 @@ final class HomeGenres {
         Selection(GenreCatalog.Genre genre, List<Recs.Pick> movies) { this.genre = genre; this.movies = movies; }
     }
     private UiRequest restoreRequest, restoreMoviesRequest;
+    private View soundFocus;
     private final View home;
     private final Context context;
     private final Handler handler;
     private final GenreCatalog catalog;
     private final Host host;
+    private final Choices choices;
     private final Runnable hold = this::show;
     private final int[] location = new int[2];
+    private final class MenuSurface extends LinearLayout {
+        MenuPopup window;
+        final Paint caption;
+        final String label;
+        MenuSurface(Context context) {
+            super(context);
+            Paint source = host.anchorPaint();
+            caption = source == null ? null : new Paint(source);
+            label = HomeGenres.this.label();
+        }
+        @Override protected void dispatchDraw(Canvas canvas) {
+            super.dispatchDraw(canvas);
+            if (window == null || caption == null || window.reduced) return;
+            float opacity = Math.max(0, 1 - window.progress * 3);
+            if (opacity == 0) return;
+            caption.setColor(0xFF1D1D1F);
+            caption.setAlpha(Math.round(255 * opacity));
+            RectF start = window.start;
+            canvas.drawText(label, start.centerX() - caption.measureText(label) / 2,
+                    start.centerY() + Ui.halfCap(caption), caption);
+        }
+    }
     private final class MenuPopup extends PopupWindow {
-        final View root;
+        final MenuSurface root;
+        final RectF start = new RectF();
+        final GradientDrawable panel;
+        final int[] colors = new int[2];
+        final float radius;
         final Rect clip = new Rect();
         final boolean reduced;
         float originX, originY, progress;
-        boolean closing, opening;
+        boolean closing, opening, returningAnchor;
+        ViewTreeObserver.OnPreDrawListener handoff;
         Runnable afterOpen;
-        MenuPopup(View root, int width, boolean reduced, float radius) {
+        MenuPopup(MenuSurface root, GradientDrawable panel, int width, boolean reduced, float radius) {
             super(root, width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
-            this.root = root; this.reduced = reduced;
+            this.root = root; this.reduced = reduced; this.panel = panel; this.radius = radius;
+            root.window = this;
             root.setClipToOutline(true);
             root.setOutlineProvider(new ViewOutlineProvider() {
                 @Override public void getOutline(View view, Outline outline) {
@@ -148,10 +192,17 @@ final class HomeGenres {
     private boolean openingRelease;
 
     HomeGenres(View home, Handler handler, GenreCatalog catalog, Host host) {
+        this(home, handler, catalog, host, null);
+    }
+    HomeGenres(View home, Handler handler, Host host, Choices choices) {
+        this(home, handler, null, host, choices);
+    }
+    private HomeGenres(View home, Handler handler, GenreCatalog catalog, Host host, Choices choices) {
         this.home = home; this.context = home.getContext(); this.handler = handler;
-        this.catalog = catalog; this.host = host;
+        this.catalog = catalog; this.host = host; this.choices = choices;
     }
     void resume() {
+        if (choices != null) return;
         cancelRestore();
         Selection saved = selections.get(host.kind());
         if (saved == null) return;
@@ -180,8 +231,10 @@ final class HomeGenres {
         if (restoreMoviesRequest != null) restoreMoviesRequest.cancel();
         restoreRequest = restoreMoviesRequest = null;
     }
+    boolean visible() { return popup != null; }
+    boolean hidesAnchor() { return popup != null && !popup.returningAnchor; }
     int selectedId() { return selected == null ? 0 : selected.id; }
-    String label() { return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
+    String label() { if (choices != null) return choices.label(); return selected == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : selected.name; }
     List<Recs.Pick> movies() { return movies; } // null means the ordinary Movies catalog.
     void arm() {
         cancelHold();
@@ -210,9 +263,10 @@ final class HomeGenres {
         cancelHold();
         if (!host.eligible() || popup != null) return;
         host.opened();
+        soundFocus = null;
         openingRelease = true;
         float k = home.getWidth() / 1920f;
-        LinearLayout root = new LinearLayout(context);
+        MenuSurface root = new MenuSurface(context);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = Math.round(14 * k);
         root.setPadding(pad, pad, pad, pad);
@@ -223,8 +277,9 @@ final class HomeGenres {
         root.setBackground(panel);
         root.setFocusableInTouchMode(true);
         root.setOnKeyListener(this::initialRelease);
-        row(root, null, k); // Pinned reset, outside the scrolling genre list.
-        heading(root, AppStrings.get(R.string.home_genre), k);
+        if (choices == null) row(root, null, k); // Pinned reset, outside the scrolling genre list.
+        heading(root, choices == null ? AppStrings.get(R.string.home_genre) : choices.heading(), k);
+        List<Choice> localItems = choices == null ? null : choices.items();
         GenreScroll scroll = new GenreScroll(context, k);
         scroll.setFillViewport(true);
         scroll.setSmoothScrollingEnabled(true);
@@ -232,15 +287,20 @@ final class HomeGenres {
         LinearLayout list = new LinearLayout(context);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list, new ScrollView.LayoutParams(-1, -2));
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, VISIBLE_GENRES * Math.round(68 * k)));
-        for (int i = 0; i < VISIBLE_GENRES; i++) {
+        int visibleRows = localItems == null ? VISIBLE_GENRES : Math.min(VISIBLE_GENRES, localItems.size());
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, visibleRows * Math.round(68 * k)));
+        if (localItems != null) {
+            for (Choice item : localItems) choiceRow(list, item, k);
+            choiceRow(root, new Choice("all", AppStrings.get(R.string.home_watching_all)), k);
+        }
+        for (int i = 0; localItems == null && i < VISIBLE_GENRES; i++) {
             TextView placeholder = text(i == 0 ? AppStrings.get(R.string.home_genre_loading) : "", 26, k);
             placeholder.setTextColor(0xFF999999);
             list.addView(placeholder, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
         }
         boolean reduced = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                 || !ValueAnimator.areAnimatorsEnabled();
-        MenuPopup window = new MenuPopup(root, Math.round(420 * k), reduced, 44 * k);
+        MenuPopup window = new MenuPopup(root, panel, Math.round(420 * k), reduced, 44 * k);
         popup = window;
         window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         window.setOutsideTouchable(true);
@@ -251,21 +311,31 @@ final class HomeGenres {
         window.setOnDismissListener(() -> {
             if (popup != window) return;
             cancelAnimation();
+            if (window.handoff != null) {
+                home.getViewTreeObserver().removeOnPreDrawListener(window.handoff);
+                window.handoff = null;
+            }
             window.afterOpen = null;
             if (genreRequest != null) genreRequest.cancel();
             genreRequest = null;
             if (popup == window) popup = null;
+            soundFocus = null;
+            if (!window.returningAnchor) host.visibilityChanged();
         });
         RectF anchor = host.anchor();
         home.getLocationOnScreen(location);
-        int x = location[0] + Math.round(Math.max(40 * k, Math.min(home.getWidth() - 460 * k, anchor.left)) - 5 * k);
-        int y = location[1] + Math.round(Math.max(40 * k, anchor.top - 44 * k));
-        // Anchor the reveal at the leftmost point of the original Movies capsule.
+        float growX = anchor.width() * .025f, growY = anchor.height() * .025f;
+        int x = location[0] + Math.round(Math.max(40 * k, Math.min(home.getWidth() - 460 * k, anchor.left - growX)));
+        int y = location[1] + Math.round(Math.max(40 * k, anchor.top - growY));
+        // Start at the focused capsule bounds and expand down/right.
         window.originX = anchor.left + location[0] - x;
         window.originY = anchor.centerY() + location[1] - y;
+        window.start.set(anchor.left - growX + location[0] - x, anchor.top - growY + location[1] - y,
+                anchor.right + growX + location[0] - x, anchor.bottom + growY + location[1] - y);
         root.setPivotX(window.originX); root.setPivotY(window.originY);
         applyReveal(window, reduced ? 1 : 0); // Never expose a full-size first window frame.
         window.showAtLocation(home, Gravity.TOP | Gravity.LEFT, x, y);
+        host.visibilityChanged();
         root.requestFocus();
         if (!reduced) root.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override public boolean onPreDraw() {
@@ -275,6 +345,18 @@ final class HomeGenres {
                 return true;
             }
         });
+        if (localItems != null) {
+            Runnable focus = () -> {
+                View target = root.getChildAt(root.getChildCount() - 1);
+                for (int i = 0; i < localItems.size(); i++) {
+                    if (localItems.get(i).id.equals(choices.selected())) target = list.getChildAt(i);
+                }
+                target.requestFocus();
+                scroll.showPosition();
+            };
+            if (reduced) focus.run(); else window.afterOpen = focus;
+            return;
+        }
         genreRequest = catalog.genres(host.kind(), AppLanguage.current(), choices -> {
             if (popup != window) return;
             Runnable content = () -> {
@@ -308,15 +390,31 @@ final class HomeGenres {
         float p = Math.max(0, Math.min(1, fraction));
         window.progress = p;
         View root = window.root;
-        root.setAlpha(p);
-        float scale = .96f + .04f * p;
-        root.setScaleX(scale); root.setScaleY(scale);
-        if (p < 1) {
-            window.clip.set(Math.round(window.originX * (1 - p)), Math.round(window.originY * (1 - p)),
-                    Math.round(window.originX + (root.getWidth() - window.originX) * p),
-                    Math.round(window.originY + (root.getHeight() - window.originY) * p));
-        }
+        root.setAlpha(1);
+        root.setScaleX(1); root.setScaleY(1);
+        float content = window.reduced ? 1 : Math.max(0, (p - .2f) / .8f);
+        for (int i = 0; i < window.root.getChildCount(); i++) window.root.getChildAt(i).setAlpha(content);
+        RectF start = window.start;
+        window.clip.set(Math.round(start.left * (1 - p)), Math.round(start.top * (1 - p)),
+                Math.round(start.right + (root.getWidth() - start.right) * p),
+                Math.round(start.bottom + (root.getHeight() - start.bottom) * p));
+        float corner = start.height() / 2 + (window.radius - start.height() / 2) * p;
+        window.panel.setCornerRadius(corner);
+        window.colors[0] = blendPanel(0xFFFFFFFF, 0xF52A2B2D, p);
+        window.colors[1] = blendPanel(0xFFFFFFFF, 0xF5161718, p);
+        window.panel.setColors(window.colors);
+        window.panel.setStroke(Math.max(1, Math.round(home.getWidth() / 1920f)),
+                Math.round(80 * p) << 24 | 0xFFFFFF);
+        root.invalidate();
         root.invalidateOutline();
+    }
+    private static int blendPanel(int from, int to, float p) {
+        int result = 0;
+        for (int shift = 0; shift <= 24; shift += 8) {
+            int a = (from >>> shift) & 255, b = (to >>> shift) & 255;
+            result |= Math.round(a + (b - a) * p) << shift;
+        }
+        return result;
     }
     private void closeMenu(MenuPopup window) {
         if (popup != window || window.closing) return;
@@ -341,7 +439,7 @@ final class HomeGenres {
                 if (animation != animator || popup != window) return;
                 animation = null;
                 window.opening = false;
-                if (!opening) { window.dismissNow(); return; }
+                if (!opening) { returnAnchor(window); return; }
                 applyReveal(window, 1);
                 Runnable content = window.afterOpen;
                 window.afterOpen = null;
@@ -351,6 +449,24 @@ final class HomeGenres {
             }
         });
         animator.start();
+    }
+
+    private void returnAnchor(MenuPopup window) {
+        // Keep the collapsed capsule until Home has drawn its replacement. Dismissing
+        // this separate window first can expose one frame of the cached, hidden tab.
+        window.returningAnchor = true;
+        window.handoff = new ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                home.getViewTreeObserver().removeOnPreDrawListener(this);
+                window.handoff = null;
+                window.root.postOnAnimation(() -> {
+                    if (popup == window && window.returningAnchor) window.dismissNow();
+                });
+                return true;
+            }
+        };
+        home.getViewTreeObserver().addOnPreDrawListener(window.handoff);
+        host.visibilityChanged();
     }
 
     private TextView text(String label, float size, float k) {
@@ -374,19 +490,35 @@ final class HomeGenres {
     private void row(LinearLayout root, GenreCatalog.Genre genre, float k) {
         boolean checked = genre == null ? selected == null : selected != null && genre.id == selected.id;
         String label = genre == null ? AppStrings.get("tv".equals(host.kind()) ? R.string.home_tab_shows : R.string.home_tab_movies) : genre.name;
+        actionRow(root, label, checked, k, () -> choose(genre));
+    }
+    private void choiceRow(LinearLayout root, Choice item, float k) {
+        actionRow(root, item.label, item.id.equals(choices.selected()), k, () -> {
+            if (popup == null || popup.closing) return;
+            popup.dismiss();
+            choices.select(item.id);
+            host.changed();
+        });
+    }
+    private void actionRow(LinearLayout root, String label, boolean checked, float k, Runnable action) {
         TextView row = new MenuRow(context, checked, k);
         styleText(row, label, 34, k);
         row.setTextColor(Color.WHITE);
         row.setFocusable(true); row.setClickable(true);
+        row.setSoundEffectsEnabled(false);
         row.setOnKeyListener(this::initialRelease);
         row.setOnFocusChangeListener((v, focused) -> {
+            if (focused && soundFocus != row) {
+                if (soundFocus != null) host.moved();
+                soundFocus = row;
+            }
             GradientDrawable fill = new GradientDrawable();
             fill.setCornerRadius(34 * k);
             fill.setColor(focused ? Color.WHITE : Color.TRANSPARENT);
             row.setBackground(fill);
             row.setTextColor(focused ? Color.BLACK : Color.WHITE);
         });
-        row.setOnClickListener(v -> choose(genre));
+        row.setOnClickListener(v -> action.run());
         root.addView(row, new LinearLayout.LayoutParams(-1, Math.round(68 * k)));
     }
     private void choose(GenreCatalog.Genre genre) {

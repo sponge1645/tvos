@@ -1,10 +1,10 @@
-package io.tvos;
+package io.tvos.version;
 
 /** Numeric release names only. Unknown formats are never treated as an installed version match. */
-final class AppVersions {
+public final class AppVersions {
     private AppVersions() {}
 
-    static Integer compare(String left, String right) {
+    public static Integer compare(String left, String right) {
         int[] a = numeric(left), b = numeric(right);
         if (a == null || b == null) return null;
         for (int i = 0; i < a.length; i++) {

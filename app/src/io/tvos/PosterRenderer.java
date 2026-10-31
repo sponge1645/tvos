@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.RatingStyle;
+
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
@@ -126,6 +128,11 @@ final class PosterRenderer {
             questionPaint.setTextSize(100 * k);
             questionPaint.setTextAlign(Paint.Align.CENTER);
             c.drawText("?", cell.centerX(), cell.centerY() - (questionPaint.ascent() + questionPaint.descent()) / 2, questionPaint);
+            return;
+        }
+        if (p.watchingKey != null) {
+            drawCardMarquee(c, p.meta, lCardMeta, base.left,
+                    base.bottom + HomeLayout.POSTER_META_BASELINE * k, bw, i);
             return;
         }
         PosterText.Entry text = posterText.get(p);

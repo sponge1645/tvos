@@ -17,7 +17,16 @@ final class RemoteKeys {
         return "TCL".equalsIgnoreCase(Build.MANUFACTURER)
                 || "TCL".equalsIgnoreCase(Build.BRAND)
                 || "CHiQ".equalsIgnoreCase(Build.BRAND)
-                || "CHiQ".equalsIgnoreCase(Build.MANUFACTURER);
+                || "CHiQ".equalsIgnoreCase(Build.MANUFACTURER)
+                || hasXiaomiRemote();
+    }
+
+    private static boolean hasXiaomiRemote() {
+        for (int id : InputDevice.getDeviceIds()) {
+            InputDevice device = InputDevice.getDevice(id);
+            if (device != null && "Xiaomi RC".equalsIgnoreCase(device.getName())) return true;
+        }
+        return false;
     }
 
     static boolean onKey(Context c, KeyEvent e) {
@@ -31,13 +40,16 @@ final class RemoteKeys {
         int code = e.getKeyCode();
         int scan = e.getScanCode();
         boolean chiq = false;
-        if (code == 265 && scan == 161) { key = Prefs.KEY_NETFLIX; chiq = true; }
+        InputDevice device = e.getDevice();
+        if (scan == 400 && device != null && "Xiaomi RC".equalsIgnoreCase(device.getName())) {
+            key = Prefs.KEY_MI;
+        } else if (code == 265 && scan == 161) { key = Prefs.KEY_NETFLIX; chiq = true; }
         else if (code == 247 && scan == 96) { key = Prefs.KEY_YOUTUBE; chiq = true; }
         else if (code == 249 && scan == 500) { key = Prefs.KEY_PRIME; chiq = true; }
         else if ("TCL".equalsIgnoreCase(Build.MANUFACTURER) || "TCL".equalsIgnoreCase(Build.BRAND)) {
             key = code == KEY_YOUTUBE_TCL ? Prefs.KEY_YOUTUBE : code;
             boolean recognized = false;
-            for (int candidate : Prefs.KEYS) if (candidate == key) recognized = true;
+            for (int candidate : Prefs.KEYS) if (candidate >= 0 && candidate == key) recognized = true;
             if (!recognized) return false;
         } else return false;
 

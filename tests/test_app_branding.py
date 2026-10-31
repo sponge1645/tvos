@@ -10,7 +10,7 @@ def method(signature, source=source):
     while depth:depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[a:end]
 
-home='''package io.tvos;import android.graphics.*;import java.util.*;
+home='''package io.tvos;import io.tvos.artwork.AppBranding;import android.graphics.*;import java.util.*;
 final class HomeApps {
  static final int APP=0,ANDROID_SETTINGS=5,TILE_W=384,TILE_H=216,MAX_SHELF=8;
  static final String TV_SETTINGS_FAVORITE="virtual.settings";
@@ -26,6 +26,7 @@ final class HomeApps {
  static Intent launchIntent(PackageManager pm,String pkg){return new Intent(pkg);}
  static Item shortcut(int kind,String key,String label,String symbol){Item i=new Item();i.kind=kind;i.key=key;i.label=label;return i;}
  static class AppArtwork {
+ static Bitmap dockTile(Context c,String pkg){return null;}
  static Bitmap ownLogoCached(Context c,String key){return LOGOS.computeIfAbsent(key,k->{Bitmap b=new Bitmap(540,252);b.asset=k;return b;});}
  static Bitmap shelfLogo(Context c,String key,String pkg,String mode,boolean extract){return ownLogoCached(c,key);}
  static float ink(Bitmap b){return .3f;}
@@ -38,13 +39,13 @@ final class HomeApps {
 }
 '''
 
-harness='''package io.tvos;import java.util.*;import android.graphics.*;
+harness='''package io.tvos;import io.tvos.artwork.AppBranding;import java.util.*;import android.graphics.*;
 public class BrandingHarness {
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static void close(float a,float b){check(Math.abs(a-b)<.0001f,a+" != "+b);}
  public static void main(String[] args){
-  String[] keys={"com.android.vending","com.yandex.devices.appstore","netflix","youtube","io.gh.reisxd.tizentube.cobalt","watch.kino","com.seena.app","top.rootu.lampa","tv-settings","com.applemusicktv","com.android.tv.settings","io.github.jqssun.airplay","llc.itdev.incy","globoplay","prime","disney","max","appletv"};
-  int[][] expected={{0xFF52ABEF,0xFF2D6AD4,0},{0xFF52ABEF,0xFF2D6AD4,0},{0xFF0A0A0A,0xFF000000,0},{0xFF1C1C1E,0xFF09090A,0},{-1,-1,0},{-1,-1,0},{0xFF007AFF,0xFF007AFF,0},{0xFF313130,0xFF161613,0},{0xFFA5A6AB,0xFF656368,0},{0xFFEB576D,0xFFEA333C,0},{0xFFA5A6AB,0xFF656368,0},{0xFFF79E1F,0xFFFF6933,0},{0xFF024824,0xFF0B1B11,0},{0xFFFF8A1F,0xFFFF2D5A,1},{0xFF2AA8FF,0xFF0A68D4,1},{0xFF173584,0xFF08143F,0},{0xFF5C30E8,0xFF221684,0},{0xFF1C1C1E,0xFF000000,0}};
+  String[] keys={"com.android.vending","com.yandex.devices.appstore","netflix","youtube","io.gh.reisxd.tizentube.cobalt","watch.kino","com.seena.app","top.rootu.lampa","tv-settings","com.applemusicktv","com.android.tv.settings","io.github.jqssun.airplay","llc.itdev.incy","globoplay","prime","disney","max"};
+  int[][] expected={{0xFF52ABEF,0xFF2D6AD4,0},{0xFF52ABEF,0xFF2D6AD4,0},{0xFF0A0A0A,0xFF000000,0},{0xFF1C1C1E,0xFF09090A,0},{-1,-1,0},{-1,-1,0},{0xFF007AFF,0xFF007AFF,0},{0xFF313130,0xFF161613,0},{0xFFA5A6AB,0xFF656368,0},{0xFF313130,0xFF161613,0},{0xFFA5A6AB,0xFF656368,0},{0xFFF79E1F,0xFFFF6933,0},{0xFF024824,0xFF0B1B11,0},{0xFFFF8A1F,0xFFFF2D5A,1},{0xFF2AA8FF,0xFF0A68D4,1},{0xFF173584,0xFF08143F,0},{0xFF5C30E8,0xFF221684,0},{0xFF1C1C1E,0xFF000000,0}};
   for(int i=0;i<keys.length;i++){AppBranding.Style s=AppBranding.get(keys[i]);check(s!=null&&s.top==expected[i][0]&&s.bottom==expected[i][1]&&s.mode==expected[i][2],"baseline styling "+keys[i]);}
   check(AppBranding.get("watch.kino")==AppBranding.get("watch.kino.mod"),"same immutable KinoPub style");
   check(AppBranding.get("watch.kino.mod.other")==null&&AppBranding.get("unknown.app")==null,"exact visual alias only");
@@ -79,7 +80,7 @@ public class BrandingHarness {
 files=dict(GRAPHICS)
 files['io/tvos/HomeApps.java']=home
 files['io/tvos/BrandingHarness.java']=harness
-files['io/tvos/AppBranding.java']=Path('app/src/io/tvos/AppBranding.java').read_text()
+files['io/tvos/AppBranding.java']=Path('app/src/io/tvos/artwork/AppBranding.java').read_text()
 files.update(string_sources())
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)

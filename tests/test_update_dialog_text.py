@@ -1,7 +1,7 @@
 """Run the production bounded wrapper on words, blank lines and supplementary Unicode."""
 from pathlib import Path
 import tempfile,subprocess
-harness='''package io.tvos;import java.util.*;public class TextHarness{
+harness='''package io.tvos;import io.tvos.settings.UpdateDialogText;import java.util.*;public class TextHarness{
 static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
 public static void main(String[] args){
 java.util.function.ToDoubleFunction<String> measure=s->s.codePointCount(0,s.length())*10;
@@ -13,6 +13,6 @@ System.out.println("PASS: actual update text wrapping, words/paragraphs, unbroke
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-update-text-') as tmp:
  root=Path(tmp)
- for name,text in [('UpdateDialogText.java',Path('app/src/io/tvos/UpdateDialogText.java').read_text()),('TextHarness.java',harness)]: (root/name).write_text(text)
+ for name,text in [('UpdateDialogText.java',Path('app/src/io/tvos/settings/UpdateDialogText.java').read_text()),('TextHarness.java',harness)]: (root/name).write_text(text)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.glob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.TextHarness'],check=True)

@@ -2,12 +2,12 @@ package io.tvos;
 
 import android.util.Log;
 
-/** The app's log (adb logcat -s FreeMyTV). Never logs keys. */
+/** The app's log (adb logcat -s tvOS). Never logs keys. */
 final class AppLog {
     private AppLog() {}
 
     static void w(String message) {
-        Log.i("FreeMyTV", message);
+        Log.i("tvOS", message);
     }
     /** Diagnose unexpected code/platform faults without logging response bodies, URLs or keys. */
     static void unexpected(String operation, RuntimeException failure) {
@@ -19,6 +19,6 @@ final class AppLog {
             for (int i = 0; i < Math.min(16, frames.length); i++)
                 message.append("\n  at ").append(frames[i]);
         }
-        Log.e("FreeMyTV", message.toString());
+        Log.e("tvOS", message.toString());
     }
 }

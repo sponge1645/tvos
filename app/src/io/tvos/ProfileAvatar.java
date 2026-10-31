@@ -10,7 +10,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import java.io.InputStream;
 
-/** Small offline Apple emoji images; gradients are drawn separately at any size. */
+/** Small offline avatar images; gradients are drawn separately at any size. */
 final class ProfileAvatar {
     static final int COUNT = 18, PAGE_SIZE = 9;
     private static final String KEY = "profile_avatar_v2";

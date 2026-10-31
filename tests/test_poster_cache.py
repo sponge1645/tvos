@@ -2,7 +2,9 @@
 from pathlib import Path
 import subprocess,tempfile
 sources={
-'android/content/Context.java':'''package android.content;public class Context {final java.io.File dir;public Context(java.io.File d){dir=d;}public Context getApplicationContext(){return this;}public java.io.File getCacheDir(){return dir;}}''',
+'android/content/ContentResolver.java':'package android.content;public class ContentResolver {public java.io.InputStream openInputStream(android.net.Uri u){return new java.io.ByteArrayInputStream(new byte[]{1});}}',
+'android/net/Uri.java':'package android.net;public class Uri {public static Uri parse(String s){return new Uri();}}',
+'android/content/Context.java':'''package android.content;public class Context {final java.io.File dir;public Context(java.io.File d){dir=d;}public Context getApplicationContext(){return this;}public java.io.File getCacheDir(){return dir;}public ContentResolver getContentResolver(){return new ContentResolver();}}''',
 'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {public int getAllocationByteCount(){return 1024*1024;}}',
 'android/graphics/BitmapFactory.java':'''package android.graphics;public class BitmapFactory {public static Runnable afterDecode;public static class Options {public int inSampleSize;}public static Bitmap decodeFile(String p,Options o){if(o.inSampleSize!=2)throw new AssertionError("sampling changed");if(new java.io.File(p).getName().startsWith("oom"))throw new OutOfMemoryError("test decode");if(afterDecode!=null)afterDecode.run();return new java.io.File(p).getName().startsWith("bad")?null:new Bitmap();}}''',
 'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long now;public static long elapsedRealtime(){return now;}}',
@@ -30,6 +32,10 @@ tests='''
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  public static void main(String[] args)throws Exception {
   URL.setURLStreamHandlerFactory(protocol->new URLStreamHandler(){protected URLConnection openConnection(URL url){return new Fake(url);}});
+  check(PosterCache.imageUrl("https://cdn.example/poster.jpg?x=1").equals("https://cdn.example/poster.jpg?x=1"),"external poster URL is not prefixed with TMDB");
+  check(PosterCache.imageUrl("/poster.jpg").equals("https://image.tmdb.org/t/p/w500/poster.jpg"),"TMDB paths unchanged");
+  check(PosterCache.cacheName("https://cdn.example/p?x=1").matches("external-[0-9a-f]{64}"),"external filenames bounded and safe");
+  check(!PosterCache.cacheName("https://cdn.example/p?x=1").equals(PosterCache.cacheName("https://cdn.example/p?x=2")),"full URL identity includes query");
   PosterHarness h=new PosterHarness(new File(args[0]));
   for(int i=0;i<100;i++){String p="/p"+i;h.fixture(p);h.poster(new Pick(p));}
   check(h.posterPending.size()==24,"pending queue cap");
@@ -39,6 +45,8 @@ tests='''
   check(!h.posters.containsKey("/p0") && h.posters.containsKey("/p23"),"LRU order");
   check(h.posterPending.isEmpty() && h.notices==24,"completion cleanup");
   h.poster(new Pick("/p23"));check(h.posterIo.queue.isEmpty(),"RAM hit does not enqueue");
+  h.poster(new Pick("content://provider/poster/42"));h.posterIo.drain();check(h.posters.containsKey("content://provider/poster/42"),"provider poster loaded through ContentResolver");
+  h.poster(new Pick("android.resource://provider/drawable/poster"));h.posterIo.drain();check(h.posters.containsKey("android.resource://provider/drawable/poster"),"resource poster loaded through ContentResolver");
   h.poster(new Pick("/p0"));h.posterIo.drain();check(h.posters.containsKey("/p0"),"evicted poster reloads from disk");
   h.fixture("/bad1");h.poster(new Pick("/bad1"));h.posterIo.drain();
   check(h.posterFailures.containsKey("/bad1") && h.posterPending.isEmpty(),"failed decode records retry deadline");

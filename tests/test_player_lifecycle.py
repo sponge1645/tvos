@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
       void setDataSource(Object o,String s){}void prepareAsync(){}void reset(){}void release(){released=true;}
      }
      Handler handler=new Handler();MediaPlayer player;Runnable prepareTimeout,fadeOut;final Runnable retryPlayback=this::playNext;
-     boolean running=true,surfaceReady=true,preparing,appleMode=true,exiting,entered;int entrances;Object fallback;
+     boolean running=true,surfaceReady=true,preparing,aerialMode=true,exiting,entered;int entrances;Object fallback;
      int generation,index,failures;List<String> urls=new ArrayList<>(Arrays.asList("one","two","three"));Map<String,String> locations=new HashMap<>();
      Surface surface=new Surface();View videoFade=new View(),aerialLocation=new View(),aerialWeather=new View();
      void fadeEntrance(){entered=true;entrances++;}Object getContext(){return this;}boolean showAerialLocation(){return true;}String aerialPlace(String s){return "";}void updateAerialWeather(){}void showFallback(){releasePlayer();fallback=new Object();}

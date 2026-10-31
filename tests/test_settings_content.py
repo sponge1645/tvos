@@ -16,14 +16,14 @@ public class ContentHarness {
  static class Ui {static boolean ru;}
  int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;static final int PICK_VISIBLE=10;
  final List<Integer> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),dockEditor=new ArrayList<>();final List<String> pickLabels=new ArrayList<>();
- static class Prefs {static final String[] KEYS=new String[4];}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
+ static class Prefs {static final String[] KEYS=new String[4];static boolean automaticRegion(){return false;}}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
  String[] menuButtonLabels(){String[] rows=new String[dynamicRows+1];Arrays.fill(rows,"dynamic");rows[dynamicRows]="VPN";return rows;}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''+method('        private String screenTitle()')+method('        private String[] menuLabels()')+method('        private int rowCount()')+method('        private boolean menuChevronVisible(')+method('        private int parentScreen(')+'''
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
-  int[] screens={MAIN,MEDIA,MOVIE_SERVICE,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,VPN_SETTINGS,SCREENSAVER,ABOUT};
-  int[] rows={11,1,5,8,2,2,1,2,4,2,2,7,3,2,5,8};
+  int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,REGION,SCREENSAVER,ABOUT};
+  int[] rows={10,1,5,2,8,2,2,1,2,4,2,3,7,3,2,5,8};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -33,6 +33,9 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
+   for(int page:new int[]{HOME_SCREEN,SCREENSAVER,WEATHER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
+   h.screen=GENERAL;for(int row=0;row<8;row++)check(h.menuChevronVisible(row)==(row==0||row==3||row==7),"only General destinations have chevrons");
+   h.screen=REGION;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
    h.screen=ACCESSIBILITY;check(!h.menuChevronVisible(2),"TV Settings action has no ghost launcher chevron");
    h.screen=MAIN;check(h.menuLabels()[2].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
@@ -47,7 +50,7 @@ public class ContentHarness {
    }
    check(SettingsContent.description(APPS_DOWNLOADS,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"no stale description beyond downloads");
    h.screen=PICKER;h.pickFor=PICK_CITY;check(h.screenTitle().equals(russian?"Регион":"Region"),"city picker title");
-   h.pickFor=PICK_VPN;check(h.screenTitle().equals("VPN"),"VPN picker title");
+   h.pickFor=PICK_VPN;check(h.screenTitle().equals(russian?"VPN-служба":"VPN"),"VPN picker title");
    h.pickFor=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
    check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(PICKER,0,PICK_CITY,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"same weather region explanation");
    check(SettingsContent.description(GENERAL,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");

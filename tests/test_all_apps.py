@@ -7,10 +7,12 @@ def method(sig):
  a=source.index(sig);b=source.index('{',a);d=1;i=b+1
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-body='\n'.join(method(s) for s in ['    static List<Item> others(', '    private static String settingsPackage(', '    private static void addAllAppsPackage(', '    private static List<ResolveInfo> launcherActivities('])
+body='\n'.join(method(s) for s in ['    static List<String> shelfPackages(', '    static List<String[]> shelfCandidates(', '    static List<Item> others(', '    private static String settingsPackage(', '    private static void addAllAppsPackage(', '    private static List<ResolveInfo> launcherActivities('])
 header='''import java.util.*;
 class HomeApps {
- static final int APP=0,ANDROID_SETTINGS=5;
+ static final int APP=0,ANDROID_SETTINGS=5,MAX_SHELF=8;
+ static final String TV_SETTINGS_FAVORITE="io.tvos.virtual.tvsettings";
+ static class Prefs {static List<String> selected;static List<String> shelf(){return selected;}}
  static final String[][] SHELF={{"youtube","YouTube","com.google.android.youtube.tv"},{"netflix","Netflix","com.netflix.ninja"}};
  static final Set<String> HIDDEN=new HashSet<>(Arrays.asList("hidden.promo"));
  static final Map<String,Object> TILES=new HashMap<>();
@@ -64,6 +66,13 @@ tests='''
   list=others(c);check(list.stream().noneMatch(i->i.kind==ANDROID_SETTINGS),"no dead Settings action without handler");
   c.pm.settings="vendor.settings";add(c,"vendor.settings","Vendor Settings",false);list=others(c);
   check(count(list,"vendor.settings")==1,"vendor settings package supported");
+  c.pm.installed.get("vendor.settings").launchable=false;
+  check(shelfCandidates(c).stream().anyMatch(row->row[0].equals(TV_SETTINGS_FAVORITE)),"Dock offers Settings without launcher entry");
+  c.pm.tv.add(new ResolveInfo("vendor.settings","Vendor Settings"));
+  check(shelfCandidates(c).stream().noneMatch(row->row[0].equals("vendor.settings")),"Dock deduplicates vendor Settings launcher");
+  Prefs.selected=Arrays.asList("com.android.tv.settings","vendor.settings",TV_SETTINGS_FAVORITE);
+  check(shelfPackages(c).equals(Arrays.asList(TV_SETTINGS_FAVORITE)),"existing standard and vendor selections migrate to stable system action");
+  Prefs.selected=null;check(shelfPackages(c).contains(TV_SETTINGS_FAVORITE),"default Dock uses portable Settings action");
   System.out.println("PASS: Dock apps, source apps, known package fallback, disabled packages, Settings action fallback/vendor handler, deduplication and sorting");
  }
 }'''

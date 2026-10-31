@@ -10,8 +10,10 @@ import java.util.List;
 /** Header date/weather, tabs, search heading, clock/profile and action buttons. */
 final class HomeHeaderRenderer {
     static final class Frame {
-        float k, night, headingOpacity;
+        float k, night, headingOpacity, vpnTint;
         int tab, networkState;
+        int wifiLevel = -1;
+        int hiddenTab = -1;
         boolean showDate, weatherTop, searchMode, largePostersWithoutWidgets;
         String clockText, dateText, searchQuery;
         String[] tabs;
@@ -20,7 +22,7 @@ final class HomeHeaderRenderer {
         List<HomeApps.Item> lightButtons;
         Paint lDate, lTab, lTabOn;
     }
-    private static final float MARGIN = HomeLayout.EDGE, L_BUTTON_CY = HomeLayout.HEADER_CY, L_TABBAR_TOP = HomeLayout.TAB_TOP, SHADOW_BLUR = 26;
+    private static final float MARGIN = HomeLayout.EDGE, L_TABBAR_TOP = HomeLayout.TAB_TOP, SHADOW_BLUR = 26;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7;
     private final Context context;
     private final HomeData data;
@@ -30,9 +32,9 @@ final class HomeHeaderRenderer {
     private int profileAvatarIndex = -1;
     private Frame frame;
     private final Paint headerDateScratch = new Paint(), headerWeatherScratch = new Paint(), searchHeadingScratch = new Paint();
-    private final Paint.FontMetrics headerMetricsScratch = new Paint.FontMetrics(), clockMetricsScratch = new Paint.FontMetrics();
+    private final Paint.FontMetrics clockMetricsScratch = new Paint.FontMetrics();
     private final Paint clockCapsuleScratch = new Paint(Paint.ANTI_ALIAS_FLAG), shadow = new Paint(Paint.ANTI_ALIAS_FLAG), fill = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final RectF avatarShouldersScratch = new RectF(), cell = new RectF(), tmp = new RectF();
+    private final RectF avatarShouldersScratch = new RectF(), cell = new RectF(), tmp = new RectF(), widgetsCapsule = new RectF();
 
     HomeHeaderRenderer(Context context, HomeData data, ActionSurface actionSurface, Shadows shadows) {
         this.context = context; this.data = data; this.actionSurface = actionSurface; this.shadows = shadows;
@@ -58,33 +60,38 @@ final class HomeHeaderRenderer {
 
     void drawDateWeather(Canvas c, Frame frame) {
         this.frame = frame;
-        final float x = MARGIN * frame.k;
-        final float cy = L_BUTTON_CY * frame.k;
+        HomeData.Weather wx = data.weather;
+        boolean weather = frame.weatherTop && !Double.isNaN(wx.temp);
+        String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
+        if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
+        if (date.isEmpty() && !weather) return;
+        float k = frame.k, pad = 20 * k, gap = !date.isEmpty() && weather ? 16 * k : 0;
+        float cy = HomeLayout.HEADER_CY * k;
         Paint datePaint = headerDateScratch;
         datePaint.set(frame.lDate);
-        datePaint.setTextSize(29 * frame.k);
-        datePaint.setColor(tone(L_INK, WHITE));
-        Paint.FontMetrics fm = headerMetricsScratch;
-        datePaint.getFontMetrics(fm);
-        float baseline = cy - (fm.ascent + fm.descent) / 2f;
-        float nextX = x;
-        if (frame.showDate) {
-            String date = frame.dateText;
-            if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
-            c.drawText(date, x - Ui.leftBearing(datePaint, date), baseline, datePaint);
-            nextX = x + datePaint.measureText(date) + 30 * frame.k;
-        }
-        HomeData.Weather wx = data.weather;
-        if (!frame.weatherTop || Double.isNaN(wx.temp)) return;
+        datePaint.setTextSize(29 * k);
+        datePaint.setColor(ActionSurface.ink(frame.night, 0));
         Paint weatherPaint = headerWeatherScratch;
-        weatherPaint.set(datePaint);
-        weatherPaint.setTextSize(27 * frame.k);
-        String symbol = Symbols.weather(wx.code, wx.isDay);
-        float iconSize = 28 * frame.k;
-        float sw = Symbols.width(context, symbol, iconSize);
-        Symbols.draw(context, c, symbol, nextX + sw / 2f - 3f,
-                cy, iconSize, weatherPaint.getColor());
-        c.drawText(HomeData.degrees(wx.temp), nextX + sw + 10 * frame.k, baseline, weatherPaint);
+        weatherPaint.set(datePaint); weatherPaint.setTextSize(27 * k);
+        String temperature = weather ? HomeData.degrees(wx.temp) : "";
+        String symbol = weather ? Symbols.weather(wx.code, wx.isDay) : "";
+        float iconSize = 28 * k, sw = weather ? Symbols.width(context, symbol, iconSize) : 0;
+        float dateWidth = datePaint.measureText(date);
+        float weatherWidth = weather ? sw + 8 * k + weatherPaint.measureText(temperature) : 0;
+        float left = MARGIN * k;
+        widgetsCapsule.set(left, HomeLayout.TOP * k, left + 2 * pad + dateWidth + gap + weatherWidth,
+                (HomeLayout.TOP + HomeLayout.BUTTON) * k);
+        // Canvas-only decoration: it adds no focus target, click handler or accessibility action.
+        actionSurface.draw(c, widgetsCapsule, 0, frame.night, k);
+        float x = left + pad;
+        if (!date.isEmpty()) {
+            c.drawText(date, x - Ui.leftBearing(datePaint, date), cy + Ui.halfCap(datePaint), datePaint);
+            x += dateWidth + gap;
+        }
+        if (weather) {
+            Symbols.draw(context, c, symbol, x + sw / 2, cy, iconSize, weatherPaint.getColor());
+            c.drawText(temperature, x + sw + 8 * k, cy + Ui.halfCap(weatherPaint), weatherPaint);
+        }
     }
 
     private float drawActionSurface(Canvas c, RectF bounds, float focus) {
@@ -139,7 +146,7 @@ final class HomeHeaderRenderer {
         if (Prefs.topButtonEnabled(5)) {
             float networkFocus = Ui.clamp(frame.topFocus[10].value);
             float networkScale = drawActionSurface(c, frame.topRects[10], networkFocus);
-            String networkSymbol = frame.networkState == NetworkStatus.WIFI ? "wifi"
+            String networkSymbol = frame.networkState == NetworkStatus.WIFI ? (frame.wifiLevel < 0 ? "wifi" : "wifi_" + frame.wifiLevel)
                     : frame.networkState == NetworkStatus.ETHERNET ? "ethernet" : "nonetwork";
             Symbols.draw(context, c, networkSymbol, cell.centerX(), cell.centerY(),
                     30 * unit * networkScale, blend(tone(L_INK, 0xEBFFFFFF), L_INK, networkFocus));
@@ -151,7 +158,8 @@ final class HomeHeaderRenderer {
             float s = drawActionSurface(c, r, f);
             Symbols.draw(context, c, frame.lightButtons.get(i).symbol, cell.centerX(), cell.centerY(),
                     27f * 1.15f * unit * s,
-                    blend(tone(L_INK, 0xEBFFFFFF), L_INK, f));
+                    blend(blend(tone(L_INK, 0xEBFFFFFF), L_INK, f), 0xFF618FEF,
+                            "vpn".equals(frame.lightButtons.get(i).key) ? frame.vpnTint : 0));
 
         }
     }
@@ -162,7 +170,7 @@ final class HomeHeaderRenderer {
         // the white pill with a shadow and grows a little (the tvOS focus).
         float focus = Ui.clamp(frame.topFocus[frame.tab].value);
         for (int i = 0; i < 5 && !frame.searchMode; i++) {
-            if (!Prefs.categoryEnabled(i)) continue;
+            if (!Prefs.categoryEnabled(i) || i == frame.hiddenTab) continue;
             RectF r = frame.topRects[i];
             if (i == frame.tab && focus > 0.01f) {
                 float s = 1 + 0.05f * focus;

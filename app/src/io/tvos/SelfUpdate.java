@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.updates.UpdateRelease;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;

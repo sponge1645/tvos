@@ -1,4 +1,4 @@
-package io.tvos;
+package io.tvos.artwork;
 
 import android.graphics.LinearGradient;
 import android.graphics.Shader;
@@ -6,13 +6,13 @@ import android.graphics.Typeface;
 import java.util.Arrays;
 
 /** UI-thread preparation shared by poster rating badges; one gradient per visible card slot. */
-final class RatingStyle {
+public final class RatingStyle {
     private final LinearGradient[] gradients;
     private final float[] left, top, bottom;
     private final int[] colors;
     private Typeface source, bold;
 
-    RatingStyle(int slots) {
+    public RatingStyle(int slots) {
         gradients = new LinearGradient[slots];
         left = new float[slots];
         top = new float[slots];
@@ -20,7 +20,7 @@ final class RatingStyle {
         colors = new int[slots];
     }
 
-    Typeface bold(Typeface base) {
+    public Typeface bold(Typeface base) {
         if (bold == null || source != base) {
             source = base;
             bold = Typeface.create(base, Typeface.BOLD);
@@ -28,7 +28,7 @@ final class RatingStyle {
         return bold;
     }
 
-    LinearGradient sheen(int slot, float x, float y0, float y1, int color) {
+    public LinearGradient sheen(int slot, float x, float y0, float y1, int color) {
         if (gradients[slot] == null || left[slot] != x || top[slot] != y0
                 || bottom[slot] != y1 || colors[slot] != color) {
             gradients[slot] = new LinearGradient(x, y0, x, y1, color, 0x00FFFFFF, Shader.TileMode.CLAMP);
@@ -40,7 +40,7 @@ final class RatingStyle {
         return gradients[slot];
     }
 
-    void clear() {
+    public void clear() {
         Arrays.fill(gradients, null);
         source = null;
         bold = null;

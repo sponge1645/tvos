@@ -15,7 +15,7 @@ def method(signature):
         cursor += 1
     return source[start:cursor]
 
-header = r'''package io.tvos;
+header = r'''package io.tvos;import io.tvos.updates.UpdateRelease;
 import java.util.*;import java.io.*;
 public class UpdatePolicyHarness {
  static class Signature {String value;Signature(String v){value=v;}public boolean equals(Object o){return o instanceof Signature && value.equals(((Signature)o).value);}public int hashCode(){return value.hashCode();}}
@@ -100,5 +100,5 @@ with tempfile.TemporaryDirectory(prefix='tvos-update-policy-') as directory:
     (root / 'UpdatePolicyHarness.java').write_text(header + ' private static final int SIGNER_FLAGS=PackageManager.GET_SIGNING_CERTIFICATES|PackageManager.GET_SIGNATURES;\n' + method('    private void verifyApk(') + method('    private static Signature[] currentSigners(') + method('    private static boolean compatibleSigners(') + method('    private static Signature[] signingHistory(') + method('    private static boolean sameRelease(') + method('    private static String hex(') + tests)
     write_strings(root)
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/UpdateRelease.java', *map(str,root.rglob('*.java'))], check=True)
+    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/updates/UpdateRelease.java', *map(str,root.rglob('*.java'))], check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.UpdatePolicyHarness'], check=True)

@@ -49,7 +49,7 @@ def key_certificate(keystore, alias, password_file):
     return hashlib.sha256(result.stdout).hexdigest()
 
 
-def initialize(root, directory, legacy, legacy_password='freemytv', expected=LEGACY_SHA256):
+def initialize(root, directory, legacy, legacy_password, expected=LEGACY_SHA256, legacy_alias='legacy'):
     root, directory, legacy = root.resolve(), directory.resolve(), legacy.resolve()
     config = root / 'signing.local.json'
     if config.exists() or directory.exists():
@@ -65,7 +65,7 @@ def initialize(root, directory, legacy, legacy_password='freemytv', expected=LEG
         shutil.copyfile(legacy, old_key)
         os.chmod(old_key, 0o600)
         private_file(stage / 'legacy-password.txt', legacy_password + '\n')
-        old_hash = key_certificate(old_key, 'freemytv', stage / 'legacy-password.txt')
+        old_hash = key_certificate(old_key, legacy_alias, stage / 'legacy-password.txt')
         if old_hash != expected:
             raise ValueError('Old certificate does not match the reviewed tvOS 1.0.x certificate. No key was replaced.')
         private_file(stage / 'release-password.txt', secrets.token_urlsafe(32) + '\n')
@@ -75,17 +75,17 @@ def initialize(root, directory, legacy, legacy_password='freemytv', expected=LEG
              '-dname', 'CN=tvOS Release,OU=tvOS'])
         os.chmod(stage / 'tvos-release.p12', 0o600)
         run([apksigner, 'rotate', '--out', stage / 'tvos.lineage',
-             '--old-signer', '--ks', old_key, '--ks-key-alias', 'freemytv', '--ks-pass', 'file:' + str(stage / 'legacy-password.txt'),
+             '--old-signer', '--ks', old_key, '--ks-key-alias', legacy_alias, '--ks-pass', 'file:' + str(stage / 'legacy-password.txt'),
              '--new-signer', '--ks', stage / 'tvos-release.p12', '--ks-key-alias', 'tvos-release',
              '--ks-pass', 'file:' + str(stage / 'release-password.txt')])
         new_hash = key_certificate(stage / 'tvos-release.p12', 'tvos-release', stage / 'release-password.txt')
         private_file(stage / 'certificates.json', json.dumps({'legacy_sha256': old_hash, 'release_sha256': new_hash,
                                                              'rotation_min_sdk': 28}, indent=2) + '\n')
         stage.rename(directory)
-    private_file(config, json.dumps({'directory': str(directory)}, indent=2) + '\n')
+    private_file(config, json.dumps({'directory': str(directory), 'legacy_alias': legacy_alias}, indent=2) + '\n')
     print('Signing configuration created. Back up the signing directory securely:', directory)
     print('New public certificate SHA-256:', new_hash)
-    if legacy == root / 'freemytv.keystore':
+    if legacy == root / 'legacy.keystore':
         legacy.rename(directory / 'legacy-original.keystore')
         os.chmod(directory / 'legacy-original.keystore', 0o600)
         print('Original project key moved into the protected signing directory.')
@@ -117,9 +117,9 @@ def sign(root, bt, source, output, mode=None):
         if mode == 'legacy':
             if version != '1.0.4':
                 raise ValueError('Legacy signing is reserved for the 1.0.4 bridge.')
-            if key_certificate(directory / 'legacy.keystore', 'freemytv', directory / 'legacy-password.txt') != LEGACY_SHA256:
+            if key_certificate(directory / 'legacy.keystore', json.loads(config.read_text()).get('legacy_alias', 'legacy'), directory / 'legacy-password.txt') != LEGACY_SHA256:
                 raise ValueError('Legacy certificate does not match released tvOS.')
-            args += ['--ks', directory / 'legacy.keystore', '--ks-key-alias', 'freemytv',
+            args += ['--ks', directory / 'legacy.keystore', '--ks-key-alias', json.loads(config.read_text()).get('legacy_alias', 'legacy'),
                      '--ks-pass', 'file:' + str(directory / 'legacy-password.txt')]
         else:
             if version == '1.0.4':
@@ -141,8 +141,9 @@ if __name__ == '__main__':
     sub = parser.add_subparsers(dest='command', required=True)
     init = sub.add_parser('init')
     init.add_argument('--directory', type=Path, default=Path.home() / '.local/share/tvos-signing')
-    init.add_argument('--legacy-keystore', type=Path, default=ROOT / 'freemytv.keystore')
-    init.add_argument('--legacy-password-file', type=Path)
+    init.add_argument('--legacy-keystore', type=Path, default=ROOT / 'legacy.keystore')
+    init.add_argument('--legacy-password-file', type=Path, required=True)
+    init.add_argument('--legacy-alias', default='legacy')
     signing = sub.add_parser('sign')
     signing.add_argument('build_tools', type=Path)
     signing.add_argument('input', type=Path)
@@ -150,8 +151,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     try:
         if args.command == 'init':
-            password = args.legacy_password_file.read_text().splitlines()[0] if args.legacy_password_file else 'freemytv'
-            initialize(ROOT, args.directory, args.legacy_keystore, password)
+            password = args.legacy_password_file.read_text().splitlines()[0]
+            initialize(ROOT, args.directory, args.legacy_keystore, password, legacy_alias=args.legacy_alias)
         else:
             sign(ROOT, args.build_tools, args.input, args.output)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:

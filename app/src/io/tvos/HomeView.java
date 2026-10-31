@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.watching.WatchingSources;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;
@@ -25,7 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The home screen, styled after the Apple TV app with the macOS 27 glass:
+ * The home screen, with translucent panels:
  *  - at the top left, the "For You" title and the tabs (Explore, Movies, Shows); at the top right, icon-only glass
  *    buttons (Live TV, HDMI Inputs, Settings), with the focused one's name below it.
  *  - three cards with the titles recommended for right now in the selected tab (Recs, from TMDB); the background is
@@ -71,7 +73,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeBackground background = new HomeBackground(scene, this::backgroundChanged);
     private final HomeData data;
     private final HomeWidgets widgets;
-    private final HomeGenres genres, tvGenres;
+    private final HomeGenres genres, tvGenres, watchingMenu;
     private final RandomPoster randomPoster = new RandomPoster();
     private final HomeHeaderRenderer header;
     private final HomeHeaderRenderer.Frame headingFrame = new HomeHeaderRenderer.Frame();
@@ -105,6 +107,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeDockEditor dockEditor;
 
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
+    private final WatchingCatalog watching;
+    private final DockBackdrop dockBackdrop;
+    private final DockBanner dockBanner = new DockBanner();
+    private int backdropDockIndex = -1, backdropDirection;
+    private String backdropFocus;
+    private final DockContinue dockContinue;
     private List<Recs.Pick> cards = new ArrayList<>();
     private int cardPage = 0; // five portrait posters per page
     private boolean largePostersWithoutWidgets = false;
@@ -161,7 +169,44 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private float k = 1;
     private String clockText = "", dateText = "";
     private long clockMinute = -1;
-    private boolean okDown, backDown;
+    private boolean okDown, backDown, vpnPress, vpnBusy;
+    private final Spring vpnColor = new Spring(.35f, 1f, 0);
+    private final Runnable vpnHold = this::openVpnOnHold;
+
+    private boolean vpnFocused() {
+        return running && !sheetOpen && !drawerOpen && zone == Z_TOP
+                && topIndex == 7 && topButtonEnabled(2);
+    }
+    private void openVpnOnHold() {
+        if (!okDown || !vpnPress || !vpnFocused()) return;
+        okDown = false;
+        openVpnApp();
+    }
+    private void openVpnApp() {
+        String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
+        if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app)); return; }
+        Intent launch = HomeApps.launchIntent(activity.getPackageManager(), pkg);
+        if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found)); return; }
+        if (!AppLaunch.start(activity, launch, "VPN launch")) showToast(AppStrings.get(R.string.home_could_not_open_vpn));
+    }
+    private void toggleVpn() {
+        String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
+        if (!VpnControl.PACKAGE.equals(pkg)) { openVpnApp(); return; }
+        if (vpnBusy) return;
+        vpnBusy = true;
+        int epoch = workEpoch;
+        Context context = activity.getApplicationContext();
+        LOADER.execute(() -> {
+            boolean failed = false;
+            try { VpnControl.toggle(context); }
+            catch (java.io.IOException | RuntimeException e) { AppLog.w("VPN toggle failed: " + e.getClass().getSimpleName()); failed = true; }
+            final boolean error = failed;
+            handler.post(() -> {
+                vpnBusy = false;
+                if (error && running && epoch == workEpoch) showToast(AppStrings.get(R.string.home_vpn_toggle_failed));
+            });
+        });
+    }
     private void beginDockEdit() {
         dockLiftIndex = shelfIndex;
         dockWiggleAt = SystemClock.uptimeMillis();
@@ -198,7 +243,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             switch (kind) {
                 case SKY: background.draw(c, drawer.value); break;
                 case HERO: drawLightTop(c); break;
-                case STATUS: header.drawButtons(c, headerFrame()); break;
+                case STATUS: {
+                    HomeHeaderRenderer.Frame topFrame = headerFrame();
+                    header.drawDateWeather(c, topFrame);
+                    header.drawButtons(c, topFrame);
+                    break;
+                }
                 case PLATTER: appSurfaces.drawPlatter(c, appFrame()); break;
                 case TILES: appSurfaces.drawTiles(c, appFrame()); break;
                 case DRAWER: appSurfaces.drawDrawer(c, appFrame()); break;
@@ -247,6 +297,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         appSurfaces = new HomeAppsRenderer(a, scene, shadows, widgets, images);
         recs = Recs.get(a);
         posters = new PosterRenderer(recs, shadows, images, cardRects.length);
+        dockBackdrop = new DockBackdrop(activity, this::showDockBackdrop);
+        dockContinue = new DockContinue(activity, this::dockContinueChanged);
+        watching = new WatchingCatalog(activity, () -> {
+            if (running) updateDockBackdrop();
+            if (running && tab == 2 && !searchMode) {
+                updateCards();
+                logWatchingCards();
+                wake();
+            }
+        });
         searchWork = new SearchController(handler, recs, () -> running && searchMode,
                 this::acceptSearchResults);
         rouletteWork = new RouletteController(handler, recs, () -> running,
@@ -303,6 +363,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         });
         genres = createGenres(1);
         tvGenres = createGenres(3);
+        watchingMenu = createWatchingMenu();
         // Hardware layers on the GPU: only the one that changed is redrawn; moving, fading and scaling stay cheap.
         // Not on Android 9 to 11: on older GPUs (a Mi Box 3's Mali-450) redrawing and compositing a big layer on every
         // frame cost more than drawing straight to the screen (measured: focus on the picks 33 → 12 ms a frame, the
@@ -346,8 +407,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.resume();
         if (running) return;
         running = true;
-        genres.resume(); tvGenres.resume();
-        if (topButtonEnabled(5)) networkStatus.start();
+        genres.resume(); tvGenres.resume(); watchingMenu.resume();
+        if (topButtonEnabled(5) || topButtonEnabled(2)) networkStatus.start();
+        vpnColor.snap(networkStatus.vpn() ? 1 : 0);
         background.checkNight(data.isNight(System.currentTimeMillis()), false);
         syncVisibleTabs();
         // SettingsActivity runs separately; the old button rectangles remain cached.
@@ -358,6 +420,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lastStep = 0;
         data.addListener(this);
         recs.addListener(this);
+        watching.start();
+        if (Prefs.categoryCount() == 0) DockBackdrop.requestPermission(activity);
+        updateDockBackdrop();
         data.refreshIfStale();
         recs.refreshIfStale();
         if (tvInputs != null) tvInputs.registerCallback(inputCallback, handler);
@@ -386,7 +451,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         && !dockEditor.editing() && (zone == Z_TOP && topIndex == category);
             }
             @Override public RectF anchor() { return topRects[category]; }
+            @Override public Paint anchorPaint() { return lTabOn; }
+            @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
             @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void moved() { click.move(); }
             @Override public void changed() {
                 layoutLight();
                 if (tab == category && !searchMode) {
@@ -397,6 +465,35 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 wake();
             }
             @Override public void message(String text) { showToast(text); }
+        });
+    }
+
+    private HomeGenres createWatchingMenu() {
+        return new HomeGenres(this, handler, new HomeGenres.Host() {
+            @Override public boolean eligible() {
+                return running && okDown && tab == 2 && !searchMode && !sheetOpen && !drawerOpen
+                        && !dockEditor.editing() && zone == Z_TOP && topIndex == 2;
+            }
+            @Override public RectF anchor() { return topRects[2]; }
+            @Override public Paint anchorPaint() { return lTabOn; }
+            @Override public void visibilityChanged() { heroDirty = true; heroLayer.invalidate(); wake(); }
+            @Override public void opened() { okDown = false; dockEditor.cancelHold(); click.open(); }
+            @Override public void moved() { click.move(); }
+            @Override public void changed() {
+                cardPage = cardIndex = 0;
+                updateCards(); retarget(false); heroDirty = true; wake();
+            }
+            @Override public void message(String text) { showToast(text); }
+        }, new HomeGenres.Choices() {
+            @Override public String label() { return AppStrings.get(R.string.home_tab_watching); }
+            @Override public String heading() { return AppStrings.get(R.string.home_watching_services); }
+            @Override public List<HomeGenres.Choice> items() {
+                List<HomeGenres.Choice> items = new ArrayList<>();
+                for (String source : watching.sources()) items.add(new HomeGenres.Choice(source, watching.sourceLabel(source)));
+                return items;
+            }
+            @Override public String selected() { return watching.source(); }
+            @Override public void select(String source) { watching.selectSource(source); }
         });
     }
 
@@ -427,20 +524,25 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!running) return;
         running = false;
         randomPoster.clear();
-        genres.pause(); tvGenres.pause();
+        genres.pause(); tvGenres.pause(); watchingMenu.pause();
         if (!reveal.prepared()) reveal.cancel();
         updateMotion();
         networkStatus.stop();
+        handler.removeCallbacks(vpnHold); vpnPress = false;
         workEpoch++;
         searchWork.pause(searchMode);
         cancelRouletteWork();
         dockEditor.pause();
-        okDown = false;
+        okDown = backDown = false;
         Choreographer.getInstance().removeFrameCallback(this);
         handler.removeCallbacks(tick);
         handler.removeCallbacks(reloadSoon);
         data.removeListener(this);
         recs.removeListener(this);
+        watching.stop();
+        dockBackdrop.pause();
+        dockContinue.hide();
+        backdropDockIndex = -1; backdropDirection = 0; backdropFocus = null;
         recs.setPosterWindow(java.util.Collections.emptyList());
         rouletteWork.invalidatePosters();
         images.clear();
@@ -542,7 +644,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         AppLanguage language = AppLanguage.current();
         String[] labels = tabLabels.get(language);
         if (labels == null) {
-            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), "", AppStrings.get(R.string.home_tab_shows, language), "🎲"};
+            labels = new String[] {AppStrings.get(R.string.home_tab_new, language), AppStrings.get(R.string.home_tab_movies, language), AppStrings.get(R.string.home_tab_watching, language), AppStrings.get(R.string.home_tab_shows, language), "🎲"};
             tabLabels.put(language, labels);
         }
         labels[1] = genres.label();
@@ -557,6 +659,49 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         heroDirty = statusDirty = drawerDirty = true;
         platter.invalidate();
     }
+
+    private void dockContinueChanged() {
+        heroDirty = true;
+        if (running) { heroLayer.invalidate(); wake(); }
+    }
+
+    private void updateDockBackdrop() {
+        if (!running) return;
+        if (Prefs.categoryCount() != 0 || searchMode) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
+        if (sheetOpen || drawerOpen || zone != Z_SHELF || shelfIndex < 0 || shelfIndex >= shelf.size()) return;
+        HomeApps.Item item = shelf.get(shelfIndex);
+        String pkg = item.kind == HomeApps.APP ? item.pkg
+                : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
+        String source = WatchingSources.id(pkg);
+        if (Prefs.homeContinue() && ("kinopub".equals(source) || "seena".equals(source) || "lampa".equals(source))) {
+            dockBackdrop.focus(null);
+            dockContinue.show(watching.forSource(source));
+            return;
+        }
+        dockContinue.hide();
+        int direction = backdropDockIndex < 0 ? 0 : Integer.compare(shelfIndex, backdropDockIndex);
+        backdropDockIndex = shelfIndex;
+        if (pkg != null) {
+            if (!pkg.equals(backdropFocus)) { backdropDirection = direction; backdropFocus = pkg; }
+            dockBackdrop.focus(pkg);
+        }
+    }
+
+    private void showDockBackdrop(DockBackdrop.Artwork artwork) {
+        if (!running || Prefs.categoryCount() != 0 || searchMode) return;
+        boolean animate = !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
+        dockBanner.show(artwork, animate);
+        heroDirty = true; heroLayer.invalidate();
+        background.show(artwork == null ? null : artwork.background, animate, backdropDirection);
+        wake();
+    }
+
+    private void logWatchingCards() {
+        android.util.Log.i("tvOS-WatchNext", "Home source=" + watching.source()
+                + ", page=" + cardPage + ": " + WatchingItems.trace(cards));
+    }
+
+    void refreshWatching() { watching.refresh(); dockBackdrop.pause(); updateDockBackdrop(); }
 
     @Override public void onRecs() {
         wake();
@@ -575,7 +720,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         measure(revealBackdrop, width, height);
         measure(sky, width, height);
         measure(heroLayer, width, Math.round(HomeLayout.CARDS_LAYER_HEIGHT * kk));
-        measure(status, Math.round(1160 * kk), Math.round(240 * kk));
+        measure(status, width, Math.round(240 * kk));
         // Sized to what they draw (the glass and its shadow; the grown tiles and their shadows): smaller layers are
         // cheaper for the GPU to composite on every frame of the drawer animation.
         measure(platter, width, Math.round((HomeLayout.HEIGHT - HomeLayout.DOCK_LAYER_TOP) * kk));
@@ -676,9 +821,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (dockMoving) tilesDirty = true;
         boolean tilesMoving = step(tileFocus, dt) | dockMoving;
         boolean searchHeadingMoving = tickSearchHeading(dt);
+        vpnColor.target = networkStatus.vpn() ? 1 : 0;
+        if (reducedDreamMotion()) vpnColor.snap(vpnColor.target);
+        boolean vpnMoving = vpnColor.step(dt);
         boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
-        if (topMoving) status.invalidate();
-        boolean heroMoving = topMoving | cardsMoving;
+        if (topMoving || vpnMoving) status.invalidate();
+        boolean bannerMoving = Prefs.categoryCount() == 0 && !searchMode && dockBanner.tick(up);
+        boolean heroMoving = topMoving | cardsMoving | bannerMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
         boolean gridMoving = step(gridFocus, dt) | scroll.step(dt);
         boolean drawerMoving = drawer.step(dt);
@@ -695,7 +844,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // glass shows the background where it ended up.
         if (tilesMoving || tilesDirty) tiles.invalidate();
         if (statusDirty || bgFading) status.invalidate();
-        if (heroMoving || heroDirty || searchHeadingMoving) heroLayer.invalidate();
+        if (heroMoving || heroDirty || searchHeadingMoving || (bgFading && Prefs.categoryCount() == 0)) heroLayer.invalidate();
         if (drawerItemsMoving || drawerDirty || bgFading) drawerLayer.invalidate();
         if (gridMoving || gridDirty) sheetLayer.invalidate();
         if (drawerMoving || bgFading) { sky.invalidate(); revealBackdrop.invalidate(); }
@@ -710,13 +859,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // Busy: something is moving, or the sheet or the drawer is open.
         boolean busy = tilesMoving || heroMoving || drawerItemsMoving || gridMoving || drawerMoving
                 || sheetMoving || toastFading || bgFading || nightMoving || searchHeadingMoving
-                || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
+                || vpnMoving || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
         idle = !busy;
         if (busy) Choreographer.getInstance().postFrameCallback(this);
         else {
             // Short text needs only the normal clock tick. Long text wakes at its dwell deadline,
             // then keeps the existing 50 ms marquee cadence without polling during the wait.
             long delay = Math.min(posters.nextDelay(up), reveal.delay(up));
+            if (Prefs.categoryCount() == 0 && !searchMode) delay = Math.min(delay, dockBanner.nextDelay(up));
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
     }
@@ -973,6 +1123,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Sets the springs' targets from the current focus (snap: no animation). */
     private void retarget(boolean snap) {
+        updateDockBackdrop();
         // Only the group whose focus changed is redrawn (moving along the shelf doesn't redraw the hero or capsule).
         boolean tilesChanged = aim(tileFocus, !sheetOpen && zone == Z_SHELF ? shelfIndex : -1, snap);
         boolean drawerChanged = aim(drawerFocus, !sheetOpen && zone == Z_DRAWER ? drawerIndex : -1, snap);
@@ -1069,12 +1220,22 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // MARK: - Keys: only the arrows, OK and Back (system keys pass through to the system)
 
+    private boolean dockContinueKey(KeyEvent e) {
+        if (!dockEditor.editing() && !sheetOpen && !drawerOpen && !searchMode && dockContinue.key(e, zone == Z_SHELF,
+                () -> { zone = Z_TOP; topIndex = availableTopButton(5); retarget(false); },
+                pick -> { if (!watching.open(pick)) showToast(AppStrings.get(R.string.home_watching_open_failed)); })) {
+            okDown = false; dockEditor.cancelHold(); return true;
+        }
+        return false;
+    }
+
     boolean onKey(KeyEvent e) {
         wake();
+        if (dockContinueKey(e)) return true;
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         int genreKey = e.getKeyCode();
         if (genreKey != KeyEvent.KEYCODE_DPAD_CENTER && genreKey != KeyEvent.KEYCODE_ENTER
-                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); }
+                && genreKey != KeyEvent.KEYCODE_NUMPAD_ENTER) { genres.cancelHold(); tvGenres.cancelHold(); watchingMenu.cancelHold(); handler.removeCallbacks(vpnHold); }
         if (dockEditor.editing()) {
             boolean handled = dockEditor.onKey(e);
             if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER
@@ -1102,13 +1263,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (down) {
                     if (e.getRepeatCount() == 0) {
                         okDown = true;
+                        vpnPress = vpnFocused();
+                        if (vpnPress) handler.postDelayed(vpnHold, HomeDockEditor.HOLD_MS);
                         dockEditor.arm();
-                        genres.arm(); tvGenres.arm();
+                        genres.arm(); tvGenres.arm(); watchingMenu.arm();
                     }
                 } else {
+                    handler.removeCallbacks(vpnHold);
                     dockEditor.cancelHold();
-                    genres.released(); tvGenres.released();
-                    if (okDown && !e.isCanceled() && spoken.keyClick()) activate();
+                    genres.released(); tvGenres.released(); watchingMenu.released();
+                    if (okDown && !e.isCanceled() && (!vpnPress || vpnFocused()) && spoken.keyClick()) activate();
+                    vpnPress = false;
                     okDown = false;
                 }
                 return true;
@@ -1169,7 +1334,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void back() {
         if (rouletteWork.spinning()) cancelRouletteWork();
-        if (dockEditor.editing()) { dockEditor.finish(false); click.move(); return; }
+        if (dockEditor.editing()) { dockEditor.finish(false); click.back(); return; }
         if (sheetOpen) {
             closeSheet();
         } else if (searchMode) {
@@ -1183,7 +1348,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } else {
             return;
         }
-        click.move();
+        click.back();
+    }
+
+    private void focusSound() {
+        if (zone == Z_SHELF) click.app(); else click.move();
     }
 
     private void move(int dx, int dy) {
@@ -1234,7 +1403,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
         }
         retarget(false);
-        click.move();
+        focusSound();
     }
 
     private static int nearest(RectF[] rects, float x) {
@@ -1317,6 +1486,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         tab == 0 ? baseCatalog() : null,
                         () -> { updateCards(); wake(); },
                         () -> { showToast(AppStrings.get(R.string.home_genre_failed)); updateCards(); wake(); });
+            } else if (p.watchingKey != null) {
+                if (!watching.open(p)) showToast(AppStrings.get(R.string.home_watching_open_failed));
             } else movieApps.choose(p);
             return;
         } else {
@@ -1330,12 +1501,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             return;
         }
         if (it.kind == HomeApps.INPUTS && "vpn".equals(it.key)) {
-            String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
-            if (pkg.isEmpty()) { showToast(AppStrings.get(R.string.home_vpn_choose_app)); return; }
-            Intent launch = HomeApps.launchIntent(activity.getPackageManager(), pkg);
-            if (launch == null) { showToast(AppStrings.get(R.string.home_vpn_app_not_found)); return; }
-            if (!AppLaunch.start(activity, launch, "VPN launch"))
-                showToast(AppStrings.get(R.string.home_could_not_open_vpn));
+            toggleVpn();
             return;
         }
         if (it.kind == HomeApps.INPUTS) {
@@ -1538,7 +1704,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         zone = group;
         retarget(false);
-        click.move();
+        if (group == Z_SHELF) click.app(); else click.move();
     }
 
     private List<Integer> widgets() {
@@ -1615,6 +1781,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private List<Recs.Pick> baseCatalog() {
+        if (tab == 2) return watching.picks();
         if (tab == 1 && genres.movies() != null) return genres.movies();
         if (tab == 3 && tvGenres.movies() != null) return tvGenres.movies();
         return recs.catalog(TAB_KIND[tab]);
@@ -1623,6 +1790,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private List<Recs.Pick> currentCatalog() {
         if (searchMode) return searchResults;
         if (tab == 4) return java.util.Collections.emptyList();
+        if (tab == 2) return watching.picks();
         List<Recs.Pick> base = baseCatalog();
         List<Recs.Pick> all = new ArrayList<>(base.subList(0, Math.min(24, base.size())));
         if (tab != 4 && !all.isEmpty())
@@ -1658,10 +1826,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!samePicks(list, cards)) {
             cards = list;
             cardIndex = Math.min(cardIndex, Math.max(0, list.size() - 1));
-            if (zone == Z_CARDS && list.isEmpty() && !searchMode) {
-                zone = Z_SHELF;
-                retarget(false);
-            }
+            if (zone == Z_CARDS && list.isEmpty() && !searchMode) zone = Z_SHELF;
+            // A refresh can shrink the focused page without any directional key event.
+            retarget(false);
         }
         // Current page first, then the next two and previous page. Drop work from the old window.
         int ahead = Math.min(all.size(), from + perPage * 3);
@@ -1670,7 +1837,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.setPosterWindow(running ? posterWindow : java.util.Collections.emptyList());
         if (running) for (Recs.Pick pick : posterWindow) recs.poster(pick);
         if (running) {
-            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0) recs.requestDuration(pick);
+            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0 && pick.watchingKey == null) recs.requestDuration(pick);
             Backdrop b = cards.isEmpty() || cards.get(0).id <= 0 ? null : recs.backdrop(cards.get(0));
             if (cards.isEmpty() || b != null) background.show(b);
         }
@@ -1686,6 +1853,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         randomPoster.clear();
         tab = index;
+        if (tab == 2) watching.requestPermission(activity);
         layoutLight();
         cardPage = 0;
         cardIndex = 0;
@@ -1728,13 +1896,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         posters.begin(k, background.night(), tab, cardPage, searchMode, zone == Z_CARDS && !sheetOpen,
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
-        header.drawDateWeather(c, heading);
-        if (!picksOn()) return;
+        if (!picksOn()) {
+            if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night(), noTopWidgets());
+            else if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
+            return;
+        }
         header.drawTabs(c, heading);
         if (tab == 4 && !searchMode) {
             rouletteRenderer.draw(c, k, background.night(), lCardTitle, rouletteButtonFocus.value,
                     zone == Z_CARDS && !sheetOpen ? cardFocus[0].value : 0f, contentTop, contentBottom);
             return;
+        }
+        if (tab == 2 && !searchMode && cards.isEmpty()) {
+            c.drawText(watching.emptyText(), MARGIN * k, contentTop + 55 * k, lCardMeta);
         }
         int top = -1;
         for (int i = 0; i < cards.size(); i++) if (cardFocus[i].value > 0.02f && (top < 0 || cardFocus[i].value > cardFocus[top].value)) top = i;
@@ -1742,7 +1916,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (top >= 0) posters.draw(c, cards.get(top), cardRects[top], cardFocus[top].value, top);
     }
 
-    /** Date and weather share one line, centered vertically with right-side controls. */
+    /** Date and weather use the same top inset as the right-side controls. */
     private boolean showHeaderPart(String key) {
         return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean(key, true);
     }
@@ -1750,7 +1924,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private HomeHeaderRenderer.Frame headerFrame() {
         applyTone();
         headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = searchHeadingOpacity.value;
-        headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.tabs = tabs();
+        headingFrame.vpnTint = Ui.clamp(vpnColor.value);
+        headingFrame.hiddenTab = genres.hidesAnchor() ? 1 : tvGenres.hidesAnchor() ? 3 : watchingMenu.hidesAnchor() ? 2 : -1;
+        headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.wifiLevel = networkStatus.wifiLevel(); headingFrame.tabs = tabs();
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = searchQuery;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
         headingFrame.lDate = lDate; headingFrame.lTab = lTab; headingFrame.lTabOn = lTabOn;
@@ -1760,7 +1936,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean picksOn() {
-        return Recs.hasKey(getContext()) && (searchMode || Prefs.categoryCount() > 0);
+        return (Recs.hasKey(getContext()) || (!searchMode && Prefs.categoryEnabled(2)))
+                && (searchMode || Prefs.categoryCount() > 0);
     }
 
     private void openNetworkSettings() {
@@ -1832,7 +2009,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     int next = nextTopControl(topIndex, dx);
                     if (next == topIndex) return true;
                     topIndex = next;
-                    if (topIndex < 5) selectTab(topIndex);   // like Apple TV tabs: focusing a tab selects it
+                    if (topIndex < 5) selectTab(topIndex);   // category tabs: focusing a tab selects it
                 } else if (dy > 0) {
                     if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
                         zone = Z_SHELF;
@@ -1849,7 +2026,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
         retarget(false);
-        click.move();
+        focusSound();
         return true;
     }
 

@@ -16,7 +16,6 @@
     <string name="settings_appearance" formatted="false">Appearance</string>
     <string name="settings_language" formatted="false">Language</string>
     <string name="settings_region" formatted="false">Region</string>
-    <string name="settings_date_time" formatted="false">Date &amp; Time</string>
     <string name="settings_temperature" formatted="false">Temperature</string>
     <string name="settings_time_format" formatted="false">Time Format</string>
     <string name="settings_navigation_clicks" formatted="false">Navigation Clicks</string>
@@ -83,7 +82,6 @@
     <string name="settings_of_2" formatted="false">" of 2"</string>
     <string name="settings_selected" formatted="false">, selected</string>
     <string name="settings_of" formatted="false">" of "</string>
-    <string name="settings_vpn_app" formatted="false">VPN App</string>
     <string name="settings_position" formatted="false">"Position "</string>
     <string name="settings_off" formatted="false">Off</string>
     <string name="settings_on_the_shelf_place" formatted="false">"on the shelf, place "</string>
@@ -190,4 +188,11 @@
     <string name="settings_ask_every_time" formatted="false">Ask Every Time</string>
     <string name="settings_service_selected" formatted="false">Selected</string>
     <string name="settings_help_default_service" formatted="false">Open movies and shows using the selected service.</string>
+    <string name="settings_manual" formatted="false">Manually</string>
+    <string name="settings_help_auto_region" formatted="false">Automatically determine the weather city using the connection outside VPN. If unavailable, keep the last saved location.</string>
+    <string name="settings_mi_button" formatted="false">MI Button</string>
+    <string name="settings_could_not_open_tv_settings" formatted="false">Could not open TV settings</string>
+    <string name="settings_home_screen" formatted="false">Home Screen</string>
+    <string name="settings_home_recommendations" formatted="false">Recommendations</string>
+    <string name="settings_help_home_screen" formatted="false">Used when all Home categories are turned off. Choose service recommendations or selectable Continue Watching cards.</string>
 </resources>

@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.AppBranding;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -37,6 +39,25 @@ final class AppArtwork {
             String pkg = key.startsWith("allapps-brand:") ? key.substring("allapps-brand:".length()) : key;
             return pkg.contains(".") && !seen.contains(pkg);
         });
+    }
+
+    /** Complete Dock artwork, decoded once on the app loader rather than during drawing. */
+    static synchronized Bitmap dockTile(Context c, String pkg) {
+        AppBranding.Style style = AppBranding.get(pkg);
+        if (style == null || style.logo == null) return null;
+        String key = "dock-tile:" + style.logo;
+        if (TILES.containsKey(key)) return TILES.get(key);
+        Bitmap tile = null;
+        try (InputStream in = c.getAssets().open("tiles/" + style.logo + ".webp")) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 2;
+            tile = BitmapFactory.decodeStream(in, null, options);
+            if (tile != null) tile.setHasMipMap(true);
+        } catch (IOException ignored) {
+            // Brands without complete artwork retain their existing logo treatment.
+        }
+        TILES.put(key, tile);
+        return tile;
     }
 
     // MARK: - Colored logos (shelf)
@@ -335,8 +356,10 @@ final class AppArtwork {
         return tile;
     }
 
-    /** Use the same bundled logos and vertical brand gradients as the home Dock in All Apps. */
+    /** Prefer the complete supplied Dock card; older brands retain their generated artwork. */
     static synchronized Bitmap brandedAllAppsTile(Context c, String pkg) {
+        Bitmap complete = dockTile(c, pkg);
+        if (complete != null) return complete;
         AppBranding.Style brand = AppBranding.forAllApps(pkg);
         if (brand == null) return appTile(c, null, pkg, 0);
         String logoKey = brand.logo;
@@ -411,7 +434,7 @@ final class AppArtwork {
         int size = Math.round(TILE_H * 0.56f);
         float left = (TILE_W - size) / 2f, top = (TILE_H - size) / 2f;
         if (icon instanceof AdaptiveIconDrawable) {
-            // Adaptive icon: the layers clipped to a squircle, like an Apple icon.
+            // Adaptive icon: the layers clipped to a squircle, with rounded corners.
             AdaptiveIconDrawable a = (AdaptiveIconDrawable) icon;
             Path clip = new Path();
             clip.addRoundRect(new RectF(left, top, left + size, top + size), size * 0.2237f, size * 0.2237f, Path.Direction.CW);
@@ -435,6 +458,8 @@ final class AppArtwork {
 
     /** TV Settings favorite: settings.png centered over a top-to-bottom gray gradient. */
     static synchronized Bitmap tvSettingsFavoriteTile(Context c) {
+        Bitmap complete = dockTile(c, "tv-settings");
+        if (complete != null) return complete;
         final String key = "tv-settings-favorite-gradient";
         if (TILES.containsKey(key)) return TILES.get(key);
         Bitmap b = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888);
@@ -508,10 +533,11 @@ final class AppArtwork {
     }
 
     private static Bitmap ownLogo(Context c, String key) {
+        String asset = "logos/" + key + ("music".equals(key) ? ".webp" : ".png");
         try {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
-            try (InputStream in = c.getAssets().open("logos/" + key + ".png")) {
+            try (InputStream in = c.getAssets().open(asset)) {
                 BitmapFactory.decodeStream(in, null, bounds);
             }
             BitmapFactory.Options opts = new BitmapFactory.Options();
@@ -519,7 +545,7 @@ final class AppArtwork {
             int largest = Math.max(bounds.outWidth, bounds.outHeight);
             while (largest / (opts.inSampleSize * 2) >= 640) opts.inSampleSize *= 2;
             Bitmap b;
-            try (InputStream in = c.getAssets().open("logos/" + key + ".png")) {
+            try (InputStream in = c.getAssets().open(asset)) {
                 b = BitmapFactory.decodeStream(in, null, opts);
             }
             if (b == null) return null;

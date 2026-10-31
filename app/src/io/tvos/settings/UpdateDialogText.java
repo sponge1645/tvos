@@ -1,14 +1,14 @@
-package io.tvos;
+package io.tvos.settings;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.ToDoubleFunction;
 
 /** Bounded paragraph wrapping, including unbroken errors and supplementary Unicode characters. */
-final class UpdateDialogText {
+public final class UpdateDialogText {
     private UpdateDialogText() { }
 
-    static String[] wrap(String[] paragraphs, float width, int limit, ToDoubleFunction<String> measure) {
+    public static String[] wrap(String[] paragraphs, float width, int limit, ToDoubleFunction<String> measure) {
         List<String> lines = new ArrayList<>();
         for (String paragraph : paragraphs) {
             String[] blocks = paragraph.split("\\n", -1);

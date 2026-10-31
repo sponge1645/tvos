@@ -10,18 +10,20 @@ import android.os.SystemClock;
 
 /** Background images, glass pixels, crossfade and day/night transitions. No view or focus ownership. */
 final class HomeBackground {
-    private static final long FADE_MS = 800, NIGHT_MS = 2000;
+    private static final long FADE_MS = 400, PAN_MS = 400, NIGHT_MS = 2000;
     private final Scene scene;
     private final Runnable changed;
     private boolean nightTarget, nightPair;
     private float night, nightFrom;
     private long nightAt, bgFadeAt;
     private Backdrop bgFrom, bgTo;
+    private int panDirection;
+    private float fromPan;
     private final int[] glassNight = new int[Backdrop.GW * Backdrop.GH], frostNight = new int[Backdrop.FW * Backdrop.FH];
     private final int[] neutralGlassPx = new int[Backdrop.GW * Backdrop.GH], neutralFrostPx = new int[Backdrop.FW * Backdrop.FH];
     private final int[] frostMix = new int[Backdrop.FW * Backdrop.FH];
     private Shader nightGradient, lightGradient;
-    private final RectF screen = new RectF();
+    private final RectF screen = new RectF(), imageBounds = new RectF();
     private int h;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint imagePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
@@ -39,12 +41,33 @@ final class HomeBackground {
         return t * t * (3 - 2 * t);
     }
 
+    private static float panRemaining(long start, long up) {
+        float remaining = 1 - Ui.clamp((up - start) / (float) PAN_MS);
+        return remaining * remaining * remaining;
+    }
+
+    void show(Backdrop b, boolean animate, int direction) {
+        if (b == bgTo) return; // Caption enrichment must not restart the image transition.
+        show(b, animate);
+        panDirection = animate ? Integer.signum(direction) : 0;
+    }
+
+    void show(Backdrop b, boolean animate) {
+        show(b);
+        if (!animate) { bgFrom = null; bgFadeAt = 0; nightChanged(); }
+    }
+
     void show(Backdrop b) {
         if (b == bgTo) return;
         long up = SystemClock.uptimeMillis();
 
         // In the middle of another swap, start from whichever is more visible.
-        if (bgFadeAt == 0 || fadeEase(bgFadeAt, up) >= 0.5f) bgFrom = bgTo;
+        if (bgFadeAt == 0 || fadeEase(bgFadeAt, up) >= 0.5f) {
+            bgFrom = bgTo;
+            float remaining = bgFadeAt == 0 ? 0 : panRemaining(bgFadeAt, up);
+            fromPan = panDirection * remaining;
+        }
+        panDirection = 0;
         bgTo = b;
         bgFadeAt = up;
         nightPair = false;
@@ -204,12 +227,30 @@ final class HomeBackground {
             fill.setColorFilter(null);
         }
         imagePaint.setColorFilter(v);
-        if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1);
-        if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1);
+        if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1, fromPan);
+        float remaining = fading && panDirection != 0 ? panRemaining(bgFadeAt, up) : 0;
+        if (bgTo != null) drawLightImage(c, bgTo, fading ? e : 1, panDirection * remaining);
         imagePaint.setColorFilter(null);
     }
 
-    private void drawLightImage(Canvas c, Backdrop b, float alpha) {
+    private void drawLightImage(Canvas c, Backdrop b, float alpha, float pan) {
+        if (b.image != null && b.lightImage == null) {
+            if (alpha <= .004f) return;
+            float cover = Math.max(screen.width() / b.image.getWidth(), screen.height() / b.image.getHeight());
+            float width = b.image.getWidth() * cover, height = b.image.getHeight() * cover;
+            float drift = screen.width() * (32f / 1920);
+            // Keep a fixed crop throughout the transition and at rest; never animate scale.
+            boolean panoramic = (width - screen.width()) / 2 >= drift;
+            float scale = panoramic ? 1 : 1.04f;
+            width *= scale; height *= scale;
+            float margin = Math.max(0, (width - screen.width()) / 2);
+            float dx = (panoramic ? margin * .5f : drift) * pan;
+            imageBounds.set(screen.centerX() - width / 2 + dx, screen.centerY() - height / 2,
+                    screen.centerX() + width / 2 + dx, screen.centerY() + height / 2);
+            imagePaint.setAlpha(Math.round(255 * Math.min(1, alpha)));
+            c.drawBitmap(b.image, null, imageBounds, imagePaint);
+            return;
+        }
         if (night < 0.999f || b.nightImage == null) drawImage(c, b.lightImage, alpha);
         if (night > 0.001f) drawImage(c, b.nightImage, alpha * night);
     }

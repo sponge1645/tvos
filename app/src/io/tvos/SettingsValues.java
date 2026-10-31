@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.version.SoftwareBuild;
+
 import static io.tvos.SettingsContent.*;
 import android.app.Activity;
 import android.content.Context;
@@ -28,6 +30,20 @@ final class SettingsValues {
         this.cityStatus = cityStatus;
     }
 
+    String vpnApp() {
+        String pkg = localPrefs().getString("vpn_app", "");
+        if (pkg.isEmpty()) return AppStrings.get(R.string.settings_not_configured);
+        String language = AppLanguage.current().code;
+        if (pkg.equals(vpnPackage) && language.equals(vpnLanguage)) return vpnLabel;
+        try { vpnLabel = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
+        catch (android.content.pm.PackageManager.NameNotFoundException | SecurityException e) { vpnLabel = AppStrings.get(R.string.settings_not_found); }
+        vpnPackage = pkg; vpnLanguage = language;
+        return vpnLabel;
+    }
+
+    private String vpnPackage, vpnLanguage, vpnLabel;
+    void clearAppCache() { vpnPackage = vpnLanguage = vpnLabel = null; }
+
     private SharedPreferences localPrefs() { return activity.getSharedPreferences("settings", Context.MODE_PRIVATE); }
     private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
 
@@ -38,6 +54,8 @@ final class SettingsValues {
         java.util.Arrays.fill(v, "");
         if (screen == MEDIA) {
             v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
+        } else if (screen == HOME_SCREEN) {
+            v[Prefs.homeContinue() ? 1 : 0] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == MOVIE_SERVICE) {
             v[MovieService.index(localPrefs().getString(MovieService.KEY, ""))] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == GENERAL) {
@@ -45,10 +63,10 @@ final class SettingsValues {
             v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
             v[2] = settings()[0];
             v[3] = Prefs.city();
-            v[4] = "";
-            v[5] = settings()[1];
-            v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
-            v[7] = onOff(localPrefs().getBoolean("navigation_clicks", true));
+            v[4] = settings()[1];
+            v[5] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
+            v[6] = onOff(localPrefs().getBoolean("navigation_clicks", true));
+            v[7] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
 
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));
@@ -57,11 +75,9 @@ final class SettingsValues {
             v[1] = onOff(localFlag("reduce_motion"));
         } else if (screen == SYSTEM) {
             v[2] = freeActive.getAsBoolean() ? "tvOS" : AppStrings.get(R.string.settings_built_in);
-        } else if (screen == VPN_SETTINGS) {
-            v[0] = onOff(Prefs.topButtonEnabled(2));
-            String vpn = localPrefs().getString("vpn_app", "");
-            if (vpn.isEmpty()) v[1] = AppStrings.get(R.string.settings_not_selected);
-            else { try { v[1] = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(vpn, 0))); } catch (Exception ignored) { v[1] = AppStrings.get(R.string.settings_not_found); } }
+        } else if (screen == REGION) {
+            v[0] = onOff(Prefs.automaticRegion());
+            v[1] = !cityStatus.get().isEmpty() ? cityStatus.get() : Prefs.manualCity();
         } else if (screen == MENU_BUTTONS) {
             for (int i = 0; i < buttonEditor.size(); i++) {
                 int id = buttonEditor.get(i);
@@ -69,7 +85,7 @@ final class SettingsValues {
             }
         } else if (screen == SCREENSAVER) {
             String src = localPrefs().getString("video_dream_source", "google");
-            v[0] = "apple".equals(src) ? "Apple" : "na".equals(src) ? "National Geographic" : "Google";
+            v[0] = "apple".equals(src) ? "Aerial" : "na".equals(src) ? "National Geographic" : "Google";
             v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
             v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
@@ -88,8 +104,8 @@ final class SettingsValues {
                 if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
             } catch (Exception ignored) {}
             try {
-                v[2] = activity.getPackageManager()
-                        .getPackageInfo(activity.getPackageName(), 0).versionName;
+                v[2] = SoftwareBuild.display(activity.getPackageManager()
+                        .getPackageInfo(activity.getPackageName(), 0).versionName);
             } catch (Exception e) { v[2] = "—"; }
             v[3] = "Android " + android.os.Build.VERSION.RELEASE;
             android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
@@ -155,7 +171,7 @@ final class SettingsValues {
 
     static String[] keyLabels() {
         return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button)};
+                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button)};
     }
 
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {

@@ -98,7 +98,7 @@ public final class AppDownloads {
                 ApkTransfer.checkCancelled(cancelled::get);
                 // Re-read: the installed version may have changed while downloading.
                 installed = ApkTrust.installed(context.getPackageManager(), app.packageName);
-                if (installed == null && source.sha256 == null)
+                if (installed == null && ApkTrust.requiresInstalledApp(app, source))
                     throw new IOException(AppStrings.get(R.string.runtime_app_was_removed_during_download_retry_with_the_reviewed_installat));
                 PackageInfo archive = ApkTrust.verify(context.getPackageManager(), temporary, app, installed);
                 if (installed != null && installed.getLongVersionCode() >= archive.getLongVersionCode()) {

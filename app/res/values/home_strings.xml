@@ -54,4 +54,14 @@
     <string name="home_genre_failed" formatted="false">"Could not load this selection. Try again."</string>
     <string name="home_random_series" formatted="false">Random Series</string>
     <string name="home_default_service_unavailable" formatted="false">The selected service is unavailable. Choose another app.</string>
+    <string name="home_vpn_toggle_failed" formatted="false">Could not switch VPN. Check the app and ADB connection.</string>
+    <string name="home_tab_watching" formatted="false">"Watching"</string>
+    <string name="home_watching_remaining" formatted="false">"%1$d min left"</string>
+    <string name="home_watching_episode" formatted="false">"S%1$s / E%2$s"</string>
+    <string name="home_watching_empty" formatted="false">"Open Continue Watching in the selected service to update this list."</string>
+    <string name="home_watching_permission" formatted="false">"Allow TV listings access to show Continue Watching."</string>
+    <string name="home_watching_failed" formatted="false">"Could not load Continue Watching."</string>
+    <string name="home_watching_open_failed" formatted="false">"Could not open this title in its app."</string>
+    <string name="home_watching_services" formatted="false">"Services"</string>
+    <string name="home_watching_all" formatted="false">"All"</string>
 </resources>

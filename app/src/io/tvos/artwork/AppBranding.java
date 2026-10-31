@@ -1,16 +1,16 @@
-package io.tvos;
+package io.tvos.artwork;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /** Presentation only. Package aliases here never rewrite launch targets, preferences or APK trust. */
-final class AppBranding {
+public final class AppBranding {
     private AppBranding() {}
 
-    static final class Style {
-        final int top, bottom, mode;
-        final String logo;
-        final float logoScale, dockBoost, allAppsBoost;
+    public static final class Style {
+        public final int top, bottom, mode;
+        public final String logo;
+        public final float logoScale, dockBoost, allAppsBoost;
         Style(int top, int bottom, int mode, String logo, float logoScale, float dockBoost, float allAppsBoost) {
             this.top = top; this.bottom = bottom; this.mode = mode; this.logo = logo;
             this.logoScale = logoScale; this.dockBoost = dockBoost; this.allAppsBoost = allAppsBoost;
@@ -28,7 +28,7 @@ final class AppBranding {
         add("com.seena.app", 0xFF007AFF, 0xFF007AFF, "seena", 1f, 1f, 1f);
         add("top.rootu.lampa", 0xFF313130, 0xFF161613, "lampa", 1f, 1f, 1f);
         add("tv-settings", 0xFFA5A6AB, 0xFF656368, "settings", 2f, 1.6632f, 1f);
-        add("com.applemusicktv", 0xFFEB576D, 0xFFEA333C, "music", 1f, 1f, 1.25f);
+        add("com.applemusicktv", 0xFF313130, 0xFF161613, "music", 1f, 1f, 1.25f);
         add("com.android.tv.settings", 0xFFA5A6AB, 0xFF656368, "settings", 2.4f, 1f, 1f);
         add("io.github.jqssun.airplay", 0xFFF79E1F, 0xFFFF6933, "airplay", 1f, 1f, 1f);
         add("llc.itdev.incy", 0xFF024824, 0xFF0B1B11, "incy", 1f, 1f, 1f);
@@ -36,7 +36,6 @@ final class AppBranding {
         add("prime", 0xFF2AA8FF, 0xFF0A68D4, 1);
         add("disney", 0xFF173584, 0xFF08143F, 0);
         add("max", 0xFF5C30E8, 0xFF221684, 0);
-        add("appletv", 0xFF1C1C1E, 0xFF000000, 0);
     }
 
     private static void add(String key, int top, int bottom, int mode) {
@@ -47,22 +46,22 @@ final class AppBranding {
         STYLES.put(key, new Style(top, bottom, 0, logo, logoScale, dockBoost, allAppsBoost));
     }
 
-    static Style get(String key) {
+    public static Style get(String key) {
         return STYLES.get("watch.kino.mod".equals(key) ? "watch.kino" : key);
     }
 
-    static Style forPackage(String pkg) {
+    public static Style forPackage(String pkg) {
         Style style = get(pkg);
         return style != null && style.logo != null ? style : null;
     }
 
-    static Style forAllApps(String pkg) {
+    public static Style forAllApps(String pkg) {
         // System Settings keeps its existing dedicated system-action card.
         if ("com.android.tv.settings".equals(pkg) || "tv-settings".equals(pkg)) return null;
         return forPackage(pkg);
     }
 
-    static float dockBoost(String pkg, String key) {
+    public static float dockBoost(String pkg, String key) {
         if ("com.android.vending".equals(pkg) || "com.yandex.devices.appstore".equals(pkg)) return 1.2f;
         if ("com.android.tv.settings".equals(pkg)) return 1.4553f;
         if ("com.applemusicktv".equals(pkg)) return 1.25f;

@@ -22,7 +22,9 @@ final class Prefs {
 
     /** Remote keys we handle, with the app each opens until the user picks another. Codes read from the TCL's log. */
     static final int KEY_NETFLIX = 4062, KEY_YOUTUBE = 190, KEY_PRIME = 4099, KEY_TCL_CHANNEL = 4020;
-    static final int[] KEYS = {KEY_NETFLIX, KEY_YOUTUBE, KEY_PRIME, KEY_TCL_CHANNEL};
+    // Stable preference identity; Xiaomi RC scan code 400 maps here independently of Android key code.
+    static final int KEY_MI = -10001;
+    static final int[] KEYS = {KEY_NETFLIX, KEY_YOUTUBE, KEY_PRIME, KEY_TCL_CHANNEL, KEY_MI};
 
     /** Bumped by every change: screens compare it to know when to redraw. */
     static volatile int version;
@@ -64,6 +66,15 @@ final class Prefs {
     private static void put(String key, boolean value) {
         sp().edit().putBoolean(key, value).apply();
         version++;
+    }
+
+    static boolean homeContinue() {
+        if (app == null) return false;
+        return "continue".equals(sp().getString("home_screen_mode",
+                sp().getBoolean("dock_continue", false) ? "continue" : "recommendations"));
+    }
+    static void setHomeContinue(boolean enabled) {
+        put("home_screen_mode", enabled ? "continue" : "recommendations");
     }
 
     // MARK: - Language and units
@@ -148,35 +159,73 @@ final class Prefs {
         return true;
     }
 
+    static boolean automaticRegion() { return sp().getBoolean("region_auto", false); }
+    static long regionGeneration() { return sp().getLong("region_generation", 0); }
+    static String manualCity() {
+        if (!automaticRegion()) return city();
+        String localized = sp().getString("region_manual_city_name_" + language(), "");
+        return localized.isEmpty() ? sp().getString("region_manual_city", Config.CITY) : localized;
+    }
+    static void setAutomaticRegion(boolean enabled) {
+        if (enabled == automaticRegion()) return;
+        SharedPreferences.Editor editor = sp().edit();
+        String[] keys = {"city", "latitude", "longitude", "city_names_place", "city_name_ru", "city_name_en"};
+        if (enabled) {
+            for (String key : keys) {
+                String fallback = key.equals("city") ? Config.CITY : key.equals("latitude") ? Config.LATITUDE
+                        : key.equals("longitude") ? Config.LONGITUDE : "";
+                editor.putString("region_manual_" + key, sp().getString(key, fallback));
+            }
+            editor.putLong("region_manual_city_id", cityId());
+        } else {
+            for (String key : keys) editor.putString(key, sp().getString("region_manual_" + key, ""));
+            editor.putLong("city_id", sp().getLong("region_manual_city_id", 0));
+        }
+        editor.putBoolean("region_auto", enabled).putLong("region_generation", regionGeneration() + 1).apply();
+        version++;
+        HomeData.get(app).settingsChanged();
+    }
+    static boolean applyAutomaticCity(String name, String lat, String lon, String language, long generation) {
+        if (!automaticRegion() || generation != regionGeneration()) return false;
+        if (!cityRaw().equals(name) || !latitude().equals(lat) || !longitude().equals(lon)) {
+            setCity(name, lat, lon, 0, language);
+            HomeData.get(app).settingsChanged();
+        }
+        return true;
+    }
+
     // MARK: - Weather
 
     static boolean weather() { return sp().getBoolean("weather", true); }
     static void setWeather(boolean on) { put("weather", on); }
 
     // Home screen recommendation sections (enabled by default).
+    static String watchingSource() { return sp().getString("watching_source", "all"); }
+    static void setWatchingSource(String source) { put("watching_source", source); }
+
     static boolean randomMovie() { return sp().getBoolean("showRandomMovie", true); }
     static void setRandomMovie(boolean on) { put("showRandomMovie", on); }
 
-    // Keep persisted IDs stable: New=0, Movies=1, Shows=3, Random Movie=4; ID 2 is retired.
+    // Keep existing IDs stable; Watching uses the vacant ID 2 with its own preference key.
     private static int categoryVersion = -1, categoryMask;
     private static int[] categoryOrderCache;
 
     private static void readCategories() {
         if (categoryOrderCache != null && categoryVersion == version) return;
-        int[] order = new int[4];
+        int[] order = new int[5];
         boolean[] seen = new boolean[5];
         int count = 0;
-        for (String value : sp().getString("category_order", "0,1,3,4").split(",")) {
+        for (String value : sp().getString("category_order", "0,1,3,2,4").split(",")) {
             try {
                 int id = Integer.parseInt(value);
-                if (id >= 0 && id < 5 && id != 2 && !seen[id]) { order[count++] = id; seen[id] = true; }
+                if (id >= 0 && id < 5 && !seen[id]) { order[count++] = id; seen[id] = true; }
             } catch (NumberFormatException ignored) { }
         }
-        for (int id = 0; id < 5; id++) if (id != 2 && !seen[id]) order[count++] = id;
+        for (int id = 0; id < 5; id++) if (!seen[id]) order[count++] = id;
         categoryMask = 0;
         for (int id = 0; id < 5; id++) {
-            boolean enabled = id != 2 && (id == 4 ? randomMovie()
-                    : sp().getBoolean("category_" + id, true));
+            boolean enabled = id == 4 ? randomMovie()
+                    : sp().getBoolean(id == 2 ? "category_watching" : "category_" + id, true);
             if (enabled) categoryMask |= 1 << id;
         }
         categoryOrderCache = order;
@@ -203,17 +252,17 @@ final class Prefs {
     }
 
     static void setCategoryEnabled(int id, boolean enabled) {
-        if (id < 0 || id >= 5 || id == 2) throw new IllegalArgumentException("Invalid category");
+        if (id < 0 || id >= 5) throw new IllegalArgumentException("Invalid category");
         if (id == 4) setRandomMovie(enabled);
-        else put("category_" + id, enabled);
+        else put(id == 2 ? "category_watching" : "category_" + id, enabled);
     }
 
     static void setCategoryOrder(List<Integer> order) {
-        if (order.size() != 4) throw new IllegalArgumentException("Incomplete categories");
+        if (order.size() != 5) throw new IllegalArgumentException("Incomplete categories");
         boolean[] seen = new boolean[5];
         StringBuilder value = new StringBuilder();
         for (Integer id : order) {
-            if (id == null || id < 0 || id >= 5 || id == 2 || seen[id]) throw new IllegalArgumentException("Invalid category order");
+            if (id == null || id < 0 || id >= 5 || seen[id]) throw new IllegalArgumentException("Invalid category order");
             seen[id] = true;
             if (value.length() > 0) value.append(',');
             value.append(id);

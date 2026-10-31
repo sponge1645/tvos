@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.AppBranding;
+
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
@@ -69,7 +71,6 @@ final class HomeApps {
         {"prime", "Prime Video", "com.amazon.amazonvideo.livingroom", "1A98FF", "tint", "0.96"},
         {"disney", "Disney+", "com.disney.disneyplus", "1838C8", "", "1"},
         {"max", "Max", "com.wbd.stream", "6C3BE0", "", "1.32"},
-        {"appletv", "Apple TV", "com.apple.atve.androidtv.appletv", "B8BCC6", "", "1.1"},
         {"hulu", "Hulu", "com.hulu.livingroomplus", "1CE783", "", "1"},
         {"paramount", "Paramount+", "com.cbs.ott", "0064FF", "", "1"},
         {"peacock", "Peacock", "com.peacocktv.peacockandroid", "6E55DC", "", "1"},
@@ -108,7 +109,8 @@ final class HomeApps {
             if (items.size() >= MAX_SHELF) break;
             if (TV_SETTINGS_FAVORITE.equals(pkg)) {
                 Item settings = shortcut(ANDROID_SETTINGS, "tv-settings", AppStrings.get(R.string.settings_tv_settings), "tv_settings");
-                // Use the bundled settings.png artwork on the requested gray gradient.
+                settings.pkg = "com.android.tv.settings";
+                // Complete artwork takes precedence over the generated logo surface.
                 settings.logo = AppArtwork.ownLogoCached(c, "settings");
                 if (settings.logo != null) {
                     settings.logoInk = AppArtwork.ink(settings.logo);
@@ -116,6 +118,8 @@ final class HomeApps {
                 } else {
                     settings.tile = AppArtwork.tvSettingsFavoriteTile(c);
                 }
+                Bitmap complete = AppArtwork.dockTile(c, "tv-settings");
+                if (complete != null) { settings.tile = complete; settings.logo = null; }
                 items.add(settings);
                 continue;
             }
@@ -126,6 +130,14 @@ final class HomeApps {
             Item it = new Item();
             it.kind = APP;
             it.pkg = pkg;
+            Bitmap complete = AppArtwork.dockTile(c, pkg);
+            if (complete != null) {
+                it.key = d == null ? pkg : d[0];
+                it.label = d == null ? (ri != null ? String.valueOf(ri.loadLabel(pm)) : pkg) : d[1];
+                it.tile = complete;
+                items.add(it);
+                continue;
+            }
             if (d == null) {
                 // An app picked in Settings > Shelf that isn't in SHELF: its own name and TV art.
                 it.key = pkg;
@@ -164,9 +176,10 @@ final class HomeApps {
         List<String> custom = Prefs.shelf();
         List<String> out = new ArrayList<>();
         PackageManager pm = c.getPackageManager();
+        String systemSettings = settingsPackage(pm);
         if (custom != null) {
             for (String pkg : custom) {
-                if (TV_SETTINGS_FAVORITE.equals(pkg)) pkg = "com.android.tv.settings";
+                if ("com.android.tv.settings".equals(pkg) || pkg.equals(systemSettings)) pkg = TV_SETTINGS_FAVORITE;
                 if (!out.contains(pkg)) out.add(pkg);
             }
         } else {
@@ -174,7 +187,7 @@ final class HomeApps {
                 if (out.size() >= MAX_SHELF - 1) break;
                 if (launchIntent(pm, d[2]) != null) out.add(d[2]);
             }
-            out.add("com.android.tv.settings");
+            out.add(TV_SETTINGS_FAVORITE);
         }
         return out;
     }
@@ -184,6 +197,12 @@ final class HomeApps {
         PackageManager pm = c.getPackageManager();
         List<String[]> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        // Settings may have no launcher entry and may use a manufacturer-specific package.
+        out.add(new String[] {TV_SETTINGS_FAVORITE, AppStrings.get(R.string.settings_tv_settings)});
+        seen.add(TV_SETTINGS_FAVORITE);
+        seen.add("com.android.tv.settings");
+        String systemSettings = settingsPackage(pm);
+        if (systemSettings != null) seen.add(systemSettings);
         for (String[] d : SHELF) if (launchIntent(pm, d[2]) != null && seen.add(d[2])) out.add(new String[] {d[2], d[1]});
         List<String[]> more = new ArrayList<>();
         for (ResolveInfo ri : launcherActivities(pm)) {
@@ -335,8 +354,9 @@ final class HomeApps {
 
     /** Words in a device's name, by the icon they pick: a game console, a streaming box, a sound system, a TV box. */
     private static final String[][] DEVICE_WORDS = {
+        {"apple_tv_device", "apple tv", "appletv", "apple-tv", "apple_tv"},
         {"gamepad", "playstation", "ps5", "ps4", "ps3", "xbox", "nintendo", "switch", "steam deck", "console", "game", "игровая приставка", "игровая консоль"},
-        {"play", "apple tv", "chromecast", "fire tv", "firetv", "roku", "shield", "mi box", "tv box", "tvbox", "stick", "streaming", "google tv", "android tv"},
+        {"play", "chromecast", "fire tv", "firetv", "roku", "shield", "mi box", "tv box", "tvbox", "stick", "streaming", "google tv", "android tv"},
         {"speaker", "soundbar", "sound bar", "receiver", "denon", "yamaha", "marantz", "onkyo", "bose", "sonos", "jbl", "audio", "home theater"},
         {"tv", "cable", "set-top", "decoder", "decodificador", "tuner", "sky", "claro", "vivo"},
     };

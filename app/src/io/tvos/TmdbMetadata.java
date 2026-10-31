@@ -23,7 +23,6 @@ final class TmdbMetadata {
         {"peacock", "peacock", "com.peacocktv.peacockandroid"},
         {"globoplay", "globoplay", "com.globo.globotv"},
         {"max", "max", "com.wbd.stream"},
-        {"apple tv", "appletv", "com.apple.atve.androidtv.appletv"},
     };
     private static final Map<String, String> SERVICE_NAME = new HashMap<>();
     static {
@@ -35,7 +34,6 @@ final class TmdbMetadata {
         SERVICE_NAME.put("peacock", "Peacock");
         SERVICE_NAME.put("globoplay", "Globoplay");
         SERVICE_NAME.put("max", "Max");
-        SERVICE_NAME.put("appletv", "Apple TV");
     }
     static String serviceName(Pick p) {
         return p == null || p.app == null ? "" : SERVICE_NAME.get(p.app);

@@ -15,7 +15,7 @@ def method(signature):
     return source[start:end]
 
 body = ''.join(method(s) for s in [
-    '    private void move(', '    private void back(', '    private void cancelRouletteWork(',
+    '    private void focusSound(', '    private void move(', '    private void back(', '    private void cancelRouletteWork(',
     '    private void spinRoulette(', '    private void finishRoulette(',
     '    private void loadRoulette(',
 ])
@@ -72,7 +72,7 @@ public class RouletteFocusHarness {
  static class Hero {boolean button;} Hero hero;
  List<HomeApps.Item> shelf=new ArrayList<>(),statusItems=new ArrayList<>(),drawerItems=new ArrayList<>();
  RectF[] statusRects={new RectF()},tileRects={new RectF()};LinearGradient[] tileShaders;
- static class Target {void move(){}void invalidate(){}}Target click=new Target(),platter=new Target();
+ static class Target {void app(){}void back(){}void move(){}void invalidate(){}}Target click=new Target(),platter=new Target();
  static class Ui {static boolean ru=false;}
  final android.os.Handler handler=new android.os.Handler();
  final Recs recs=new Recs();

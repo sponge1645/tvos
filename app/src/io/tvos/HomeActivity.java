@@ -31,6 +31,7 @@ public class HomeActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        RegionVpnRecovery.request(this);
         Watchdog.install(this);
         ChiqBootGuard.homeCreated(this);
         if (Watchdog.crashedTooOften(this)) {
@@ -70,6 +71,7 @@ public class HomeActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        runWatchNextProbe(getIntent());
         if (prefsVersion != Prefs.version) {
             prefsVersion = Prefs.version;
             HomeData.get(this).settingsChanged();
@@ -96,6 +98,7 @@ public class HomeActivity extends Activity {
     /** Home button pressed on the home screen: back to the entry state (focus on the first app, sheet closed). */
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (runWatchNextProbe(intent)) return;
         if (intent.getBooleanExtra("io.tvos.RESTART_HOME", false)) {
             setIntent(intent);
             HomeData.get(this).settingsChanged();
@@ -103,6 +106,18 @@ public class HomeActivity extends Activity {
             return;
         }
         if (home != null) home.reset(true);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == WatchingCatalog.PERMISSION_REQUEST && home != null) home.refreshWatching();
+    }
+
+    private boolean runWatchNextProbe(Intent intent) {
+        if (intent == null || !intent.getBooleanExtra("io.tvos.PROBE_WATCH_NEXT", false)) return false;
+        intent.removeExtra("io.tvos.PROBE_WATCH_NEXT");
+        WatchNextProbe.run(getApplicationContext());
+        return true;
     }
 
     @Override protected void onDestroy() {

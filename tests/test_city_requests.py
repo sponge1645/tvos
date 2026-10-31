@@ -18,7 +18,8 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
     header='''package io.tvos;
     import java.util.*;import java.util.concurrent.*;import android.os.Handler;
     public class CityHarness {
-     static final int GENERAL=1,HOME_SETTINGS=2,PICK_CITY=0;
+     static final int GENERAL=1,HOME_SETTINGS=2,REGION=23,PICK_CITY=0;
+     static class Prefs {static boolean automatic;static boolean automaticRegion(){return automatic;}}
      static class Ui {static boolean ru;static String tr(String p,String e){return e;} }
      static class Choreographer {static Choreographer getInstance(){return new Choreographer();}void removeFrameCallback(Object o){} }
      static class Spoken {void focusMoved(){} }
@@ -28,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
  Object getContext(){return this;}
  static final ThreadPoolExecutor CITY_IO=executor();
  static ThreadPoolExecutor executor(){try{java.lang.reflect.Field f=SettingsCitySearch.class.getDeclaredField("IO");f.setAccessible(true);return (ThreadPoolExecutor)f.get(null);}catch(Exception e){throw new AssertionError(e);}}
-     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean running=true;
+     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean regionWasOpen;boolean running=true,okDown=true,backDown=true;static class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}final AppLoader appLoader=new AppLoader();
  final SettingsCitySearch citySearch=new SettingsCitySearch(handler,()->running,()->screen,this::showCityResults,this::invalidate);
      List<String[]> cities=new ArrayList<>();Runnable poll=()->{};
      void invalidate(){}static class Background {void clear(){}}final Background background=new Background();void openPicker(int id){pickers++;}
@@ -41,6 +42,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
       try {
        h.citySearch.search("old");h.flush();h.pause();h.handler.drain();check(h.pickers==0,"paused settings suppress city callback");
        check(h.updateDialog.paused,"pause delegates update listener lifecycle");
+       check(!h.okDown&&!h.backDown&&h.appLoader.cancelled,"pause clears held keys and app lookup");
        check(h.rowShadows.cleared && h.descriptionLayout==null && h.descriptionText==null,"pause drops shadow and description caches");
        h.running=true;h.citySearch.search("different-screen");h.flush();h.screen=99;h.handler.drain();check(h.pickers==0 && h.citySearch.status().isEmpty(),"navigation suppresses picker");
        h.screen=GENERAL;CountDownLatch gate=new CountDownLatch(1),entered=new CountDownLatch(1);
@@ -52,6 +54,8 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
        h.citySearch.search("error");h.flush();h.handler.drain();check(h.citySearch.status().contains("offline"),"failure status exposed");
        h.pause();check(h.handler.delayed.isEmpty()&&h.citySearch.status().isEmpty(),"pause cancels status timer");
        h.running=true;h.citySearch.search(" ");h.flush();h.handler.drain();check(h.pickers==1,"blank query is no-op");
+       h.screen=REGION;h.citySearch.search("region-city");h.flush();h.handler.drain();check(h.pickers==2&&h.cities.get(0)[0].equals("region-city"),"new Region submenu displays real search results");
+       h.citySearch.search("stale-manual");h.flush();Prefs.automatic=true;h.handler.drain();check(h.pickers==2,"enabling automatic region rejects a pending manual result");Prefs.automatic=false;
        System.out.println("PASS: paused city callback, navigation guard, cancelled city queue, latest city delivery");
       } finally {CITY_IO.shutdownNow();}
      }

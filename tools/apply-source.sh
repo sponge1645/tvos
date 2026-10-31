@@ -2,7 +2,7 @@
 # Apply this source snapshot to an existing local project while preserving personal config and signing key.
 set -euo pipefail
 SOURCE="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET="${1:-$HOME/free-my-tv/free-my-tv}"
+TARGET="${1:-$HOME/tvOS/project}"
 [ -f "$TARGET/build.sh" ] && [ -d "$TARGET/app/src/io/tvos" ] || { echo 'Existing tvOS project not found.'; exit 1; }
 [ "$SOURCE" != "$(cd "$TARGET" && pwd)" ] || { echo 'Source and target are identical.'; exit 1; }
 BACKUP="$TARGET/patch-backups/github-updater-$(date +%Y%m%d-%H%M%S)"
@@ -18,6 +18,7 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  app/res/raw/apple_root_ca.cer \
   tools/test-ota-from-1.0.1.sh tests/test_ota_test_script.py \
   app/assets/avatars/cat_face.webp \
   app/assets/avatars/clapper_board.webp \
@@ -57,4 +58,4 @@ for FONT_FILE in InterVariable.ttf sf_text_regular.otf sf_text_medium.otf sf_tex
 done
 chmod +x "$TARGET/build.sh" "$TARGET/release.sh"
 echo "Source applied. Backup: $BACKUP"
-echo 'Existing config.properties and freemytv.keystore preserved.'
+echo 'Existing configuration and signing files preserved.'
