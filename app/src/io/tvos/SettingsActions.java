@@ -9,7 +9,7 @@ final class SettingsActions {
     enum Action {
         NONE, NAME, HOME_MODE, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
-        DATE_SETTINGS, MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
+        MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
         MEDIA_SCREEN(MEDIA), MOVIE_SERVICE_SCREEN(MOVIE_SERVICE), GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
@@ -32,7 +32,7 @@ final class SettingsActions {
         switch (screen) {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
             case MEDIA: return row == 1;
-            case GENERAL: return row == 1 || row == 2 || row == 5 || row == 6 || row == 7;
+            case GENERAL: return row == 1 || row == 2 || row == 4 || row == 5 || row == 6;
             case SCREENSAVER: return row >= 0 && row < 4;
             case UPDATES: return row == 1;
             case ACCESSIBILITY: return row < 2;
@@ -92,7 +92,7 @@ final class SettingsActions {
             case MEDIA: return row == 1 ? Action.MENU_ADJUST : Action.MOVIE_SERVICE_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
-            case GENERAL: return row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : row == 4 ? Action.DATE_SETTINGS : Action.MENU_ADJUST;
+            case GENERAL: return row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
             case UPDATES: return row == 0 ? Action.CHECK_UPDATE : row == 1 ? Action.AUTO_UPDATE : Action.NONE;
             case MENU_BUTTONS: return row == buttonCount ? (vpnEnabled ? Action.VPN_PICKER : Action.NONE) : Action.MENU_BUTTON;

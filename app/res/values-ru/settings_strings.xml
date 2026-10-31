@@ -16,7 +16,6 @@
     <string name="settings_appearance" formatted="false">Оформление</string>
     <string name="settings_language" formatted="false">Язык</string>
     <string name="settings_region" formatted="false">Регион</string>
-    <string name="settings_date_time" formatted="false">Дата и время</string>
     <string name="settings_temperature" formatted="false">Температура</string>
     <string name="settings_time_format" formatted="false">Формат времени</string>
     <string name="settings_navigation_clicks" formatted="false">Щелчки при навигации</string>
@@ -199,4 +198,5 @@
     <string name="settings_dock_continue">Продолжить просмотр над Dock</string>
     <string name="settings_help_dock_continue">Широкие карточки KinoPub при выборе приложения в Dock. Работает, когда категории главного экрана отключены. Выключите, чтобы вернуть баннер.</string>
     <string name="settings_mi_button" formatted="false">Кнопка MI</string>
+    <string name="settings_could_not_open_tv_settings" formatted="false">Не удалось открыть настройки телевизора</string>
 </resources>

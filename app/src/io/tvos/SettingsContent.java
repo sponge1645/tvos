@@ -48,7 +48,7 @@ final class SettingsContent {
         switch (screen) {
             case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language), AppStrings.get(R.string.settings_dock_continue, language)};
             case MOVIE_SERVICE: return MovieService.labels(language);
-            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_date_time, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_navigation_clicks, language)};
+            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_navigation_clicks, language)};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language), AppStrings.get(R.string.settings_show_in_bottom_menu, language)};

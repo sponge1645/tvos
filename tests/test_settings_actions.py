@@ -49,6 +49,10 @@ public class ActionsTest {
   v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.pickFor==PICK_VPN,"enabled VPN opens package picker");
   v=create(REGION,0);v.activate();check(ActionView.Prefs.auto,"auto region toggles on");v.focus=1;v.activate();check(!ActionView.events.contains("ask-city"),"manual city disabled in auto mode");v.focus=0;v.activate();v.focus=1;v.activate();check(ActionView.events.contains("ask-city"),"manual city enabled when auto is off");
   v=create(GENERAL,3);v.activate();check(v.screen==REGION,"General opens Region submenu");v=create(TOP_PANEL,2);v.activate();check(v.screen==WIDGETS,"widgets moved into Menu Bar");
+  v=create(GENERAL,4);v.activate();check(ActionView.events.contains("unit:C"),"temperature follows removed date row");
+  v=create(GENERAL,5);v.activate();check(ActionView.events.contains("hour24:true"),"time format follows removed date row");
+  v=create(GENERAL,6);v.activate();check(ActionView.events.contains("flag:navigation_clicks:false"),"click toggle follows removed date row");
+  v=create(ACCESSIBILITY,2);v.activate();check(ActionView.events.contains("tv-settings"),"system settings uses safe launcher helper");
   check(SettingsActions.back(MAIN,0,GENERAL,6)==null,"Back from root remains activity-owned");
   System.out.println("PASS: settings action policy, activation effects/order, Back targets, live VPN footer, focus reset, launcher/preview/update/reset behavior");
  }

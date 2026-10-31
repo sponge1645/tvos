@@ -62,10 +62,9 @@ final class SettingsValues {
             v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
             v[2] = settings()[0];
             v[3] = Prefs.city();
-            v[4] = "";
-            v[5] = settings()[1];
-            v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
-            v[7] = onOff(localPrefs().getBoolean("navigation_clicks", true));
+            v[4] = settings()[1];
+            v[5] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
+            v[6] = onOff(localPrefs().getBoolean("navigation_clicks", true));
 
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));

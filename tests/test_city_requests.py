@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
  Object getContext(){return this;}
  static final ThreadPoolExecutor CITY_IO=executor();
  static ThreadPoolExecutor executor(){try{java.lang.reflect.Field f=SettingsCitySearch.class.getDeclaredField("IO");f.setAccessible(true);return (ThreadPoolExecutor)f.get(null);}catch(Exception e){throw new AssertionError(e);}}
-     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean regionWasOpen;boolean running=true;
+     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean regionWasOpen;boolean running=true,okDown=true,backDown=true;static class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}final AppLoader appLoader=new AppLoader();
  final SettingsCitySearch citySearch=new SettingsCitySearch(handler,()->running,()->screen,this::showCityResults,this::invalidate);
      List<String[]> cities=new ArrayList<>();Runnable poll=()->{};
      void invalidate(){}static class Background {void clear(){}}final Background background=new Background();void openPicker(int id){pickers++;}
@@ -42,6 +42,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
       try {
        h.citySearch.search("old");h.flush();h.pause();h.handler.drain();check(h.pickers==0,"paused settings suppress city callback");
        check(h.updateDialog.paused,"pause delegates update listener lifecycle");
+       check(!h.okDown&&!h.backDown&&h.appLoader.cancelled,"pause clears held keys and app lookup");
        check(h.rowShadows.cleared && h.descriptionLayout==null && h.descriptionText==null,"pause drops shadow and description caches");
        h.running=true;h.citySearch.search("different-screen");h.flush();h.screen=99;h.handler.drain();check(h.pickers==0 && h.citySearch.status().isEmpty(),"navigation suppresses picker");
        h.screen=GENERAL;CountDownLatch gate=new CountDownLatch(1),entered=new CountDownLatch(1);

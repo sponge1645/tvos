@@ -533,7 +533,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         searchWork.pause(searchMode);
         cancelRouletteWork();
         dockEditor.pause();
-        okDown = false;
+        okDown = backDown = false;
         Choreographer.getInstance().removeFrameCallback(this);
         handler.removeCallbacks(tick);
         handler.removeCallbacks(reloadSoon);
@@ -1826,10 +1826,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!samePicks(list, cards)) {
             cards = list;
             cardIndex = Math.min(cardIndex, Math.max(0, list.size() - 1));
-            if (zone == Z_CARDS && list.isEmpty() && !searchMode) {
-                zone = Z_SHELF;
-                retarget(false);
-            }
+            if (zone == Z_CARDS && list.isEmpty() && !searchMode) zone = Z_SHELF;
+            // A refresh can shrink the focused page without any directional key event.
+            retarget(false);
         }
         // Current page first, then the next two and previous page. Drop work from the old window.
         int ahead = Math.min(all.size(), from + perPage * 3);

@@ -25,9 +25,9 @@ public class ValuesHarness {
    check(v.menu(MEDIA,2)[0].equals(ru?"Спрашивать каждый раз":"Ask Every Time"),"default service initially asks every time");
    check(v.menu(MEDIA,2)[1].equals(AppStrings.get(R.string.settings_off)),"Dock resume row defaults off");a.prefs.data.put(DockContinue.KEY,true);check(v.menu(MEDIA,2)[1].equals(AppStrings.get(R.string.settings_on)),"Dock resume row setting value");a.prefs.data.remove(DockContinue.KEY);
    a.prefs.data.put(MovieService.KEY,"seena");check(v.menu(MEDIA,2)[0].equals("Seena")&&v.menu(MOVIE_SERVICE,5)[3].equals(ru?"Выбрано":"Selected"),"service value and accessible selected state");a.prefs.data.remove(MovieService.KEY);
-   String[] general=v.menu(GENERAL,8);check(general.length==8&&general[0].isEmpty()&&general[3].equals("City"),"general ordering");
+   String[] general=v.menu(GENERAL,7);check(general.length==7&&general[0].isEmpty()&&general[3].equals("City"),"general ordering");
    check(general[2].equals(AppLanguage.current().nativeName)&&general[1].equals(ru?"Авто":"Automatic"),"live language and theme");
-   Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,8);check(general[5].equals("°C")&&general[6].equals(ru?"24 ч":"24 h"),"units/hour");
+   Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,7);check(general[4].equals("°C")&&general[5].equals(ru?"24 ч":"24 h"),"units/hour");
    Prefs.unit="auto";Prefs.theme="auto";Prefs.h24=false;
    free[0]=true;check(v.menu(SYSTEM,4)[2].equals("tvOS"),"current launcher callback");
    check(v.menu(ACCESSIBILITY,3)[2].isEmpty(),"TV Settings action has no misplaced launcher value");
@@ -44,7 +44,7 @@ public class ValuesHarness {
    mappings=SettingsValues.keyValues(Collections.emptyList(),Collections.emptyList());check(mappings[4].equals(AppStrings.get(R.string.settings_not_configured)),"unmapped MI has no default app");
    for(String mapping:mappings)check(mapping.equals(ru?"Не настроено":"Not configured"),"empty catalog uses same status for all four buttons");
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B126)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
+   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B127)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,8)[6].equals("Home"),"SSID quotes removed");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,8);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");

@@ -14,6 +14,7 @@ public class CLASSNAME {
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,pickScroll,returnFocus,selectedSetting,buttonCount=6;
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;long pendingAt;
+ final AppLoader appLoader=new AppLoader();class AppLoader {void cancel(){}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
  static class Ui {static boolean ru;}
@@ -53,7 +54,7 @@ public class CLASSNAME {
  int settingIndex(){return selectedSetting;}boolean busy(){return busyFlag;}boolean freeActive(){return freeFlag;}boolean vpnTopEnabled(){return vpnFlag;}
  void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
  void toggleCategory(){note("category");}void toggleShelfApp(){note("shelf-toggle");}void adjust(int d){note("adjust:"+d);}
- void launchAirPlay(){note("airplay");}void loadApps(){note("load-apps");}
+ void launchAirPlay(){note("airplay");}void loadApps(Runnable ready){note("load-apps");ready.run();}void openTvSettings(){note("tv-settings");}
  void openPicker(int p){pickFor=p;screen=PICKER;focus=0;note("picker:"+p);}
  void openShelfEditor(){screen=SHELF_EDIT;focus=0;note("shelf-editor");}
  void setLocalFlag(String key,boolean value){store.flags.put(key,value);note("flag:"+key+":"+value);invalidate();}
