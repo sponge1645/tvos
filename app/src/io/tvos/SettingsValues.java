@@ -170,7 +170,7 @@ final class SettingsValues {
 
     static String[] keyLabels() {
         return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button)};
+                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button)};
     }
 
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {

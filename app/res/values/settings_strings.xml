@@ -193,4 +193,5 @@
     <string name="settings_help_auto_region" formatted="false">Automatically determine the weather city using the connection outside VPN. If unavailable, keep the last saved location.</string>
     <string name="settings_dock_continue">Continue Watching above Dock</string>
     <string name="settings_help_dock_continue">Wide KinoPub cards when focused in Dock. Available when Home categories are disabled. Turn off to restore the banner.</string>
+    <string name="settings_mi_button" formatted="false">MI Button</string>
 </resources>

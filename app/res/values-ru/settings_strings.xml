@@ -198,4 +198,5 @@
     <string name="settings_help_auto_region" formatted="false">Автоматически определять город для погоды через подключение вне VPN. Если это невозможно, сохраняется последнее местоположение.</string>
     <string name="settings_dock_continue">Продолжить просмотр над Dock</string>
     <string name="settings_help_dock_continue">Широкие карточки KinoPub при выборе приложения в Dock. Работает, когда категории главного экрана отключены. Выключите, чтобы вернуть баннер.</string>
+    <string name="settings_mi_button" formatted="false">Кнопка MI</string>
 </resources>

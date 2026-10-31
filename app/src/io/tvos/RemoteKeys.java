@@ -37,7 +37,7 @@ final class RemoteKeys {
         else if ("TCL".equalsIgnoreCase(Build.MANUFACTURER) || "TCL".equalsIgnoreCase(Build.BRAND)) {
             key = code == KEY_YOUTUBE_TCL ? Prefs.KEY_YOUTUBE : code;
             boolean recognized = false;
-            for (int candidate : Prefs.KEYS) if (candidate == key) recognized = true;
+            for (int candidate : Prefs.KEYS) if (candidate >= 0 && candidate == key) recognized = true;
             if (!recognized) return false;
         } else return false;
 
