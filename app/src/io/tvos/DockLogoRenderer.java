@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.AppBranding;
+
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;

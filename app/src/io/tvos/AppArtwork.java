@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.AppBranding;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;

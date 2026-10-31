@@ -42,5 +42,5 @@ def files():
  f['org/json/JSONException.java']='package org.json;public class JSONException extends Exception {public JSONException(String s){super(s);}}'
  f['io/tvos/HomeMode.java']='''package io.tvos;class HomeMode {static org.json.JSONObject state=new org.json.JSONObject();static org.json.JSONObject state(android.content.Context c){return state;}}'''
  for name in ['HomeBackground','HomeNotices','RoundedImages','PosterRenderer','HomeAppsRenderer','HomeHeaderRenderer','PosterText','RatingStyle','Spring','AppBranding','NoticeText','ResourceFailure']:
-  f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
+  f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+('artwork/' if name in ['AppBranding','RatingStyle'] else '')+name+'.java').read_text()
  return f

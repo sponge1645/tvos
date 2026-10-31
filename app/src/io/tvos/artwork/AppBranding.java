@@ -1,16 +1,16 @@
-package io.tvos;
+package io.tvos.artwork;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /** Presentation only. Package aliases here never rewrite launch targets, preferences or APK trust. */
-final class AppBranding {
+public final class AppBranding {
     private AppBranding() {}
 
-    static final class Style {
-        final int top, bottom, mode;
-        final String logo;
-        final float logoScale, dockBoost, allAppsBoost;
+    public static final class Style {
+        public final int top, bottom, mode;
+        public final String logo;
+        public final float logoScale, dockBoost, allAppsBoost;
         Style(int top, int bottom, int mode, String logo, float logoScale, float dockBoost, float allAppsBoost) {
             this.top = top; this.bottom = bottom; this.mode = mode; this.logo = logo;
             this.logoScale = logoScale; this.dockBoost = dockBoost; this.allAppsBoost = allAppsBoost;
@@ -46,22 +46,22 @@ final class AppBranding {
         STYLES.put(key, new Style(top, bottom, 0, logo, logoScale, dockBoost, allAppsBoost));
     }
 
-    static Style get(String key) {
+    public static Style get(String key) {
         return STYLES.get("watch.kino.mod".equals(key) ? "watch.kino" : key);
     }
 
-    static Style forPackage(String pkg) {
+    public static Style forPackage(String pkg) {
         Style style = get(pkg);
         return style != null && style.logo != null ? style : null;
     }
 
-    static Style forAllApps(String pkg) {
+    public static Style forAllApps(String pkg) {
         // System Settings keeps its existing dedicated system-action card.
         if ("com.android.tv.settings".equals(pkg) || "tv-settings".equals(pkg)) return null;
         return forPackage(pkg);
     }
 
-    static float dockBoost(String pkg, String key) {
+    public static float dockBoost(String pkg, String key) {
         if ("com.android.vending".equals(pkg) || "com.yandex.devices.appstore".equals(pkg)) return 1.2f;
         if ("com.android.tv.settings".equals(pkg)) return 1.4553f;
         if ("com.applemusicktv".equals(pkg)) return 1.25f;

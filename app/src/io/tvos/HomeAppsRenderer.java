@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.AppBranding;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;

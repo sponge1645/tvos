@@ -22,8 +22,8 @@ fixtures={
  public Typeface(){source=null;style=0;}private Typeface(Typeface base,int s){source=base;style=s;}
  public static Typeface create(Typeface base,int style){calls++;return new Typeface(base,style);}
 }''',
-'io/tvos/RatingStyle.java':Path('app/src/io/tvos/RatingStyle.java').read_text(),
-'io/tvos/RatingStyleHarness.java':'''package io.tvos;
+'io/tvos/RatingStyle.java':Path('app/src/io/tvos/artwork/RatingStyle.java').read_text(),
+'io/tvos/RatingStyleHarness.java':'''package io.tvos;import io.tvos.artwork.RatingStyle;
 import android.graphics.*;
 public class RatingStyleHarness {
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}

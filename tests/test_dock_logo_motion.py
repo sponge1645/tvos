@@ -60,7 +60,7 @@ public class DockLogoHarness {
 files=dict(GRAPHICS)
 files['io/tvos/HomeApps.java']='package io.tvos;final class HomeApps {static class Item {String key,pkg;android.graphics.Bitmap logo,logoDark;float logoInk,logoScale;}}'
 files['io/tvos/DockLogoHarness.java']=harness
-for name in ('Spring','AppBranding','DockLogoRenderer','HomeLayout'):files[f'io/tvos/{name}.java']=Path(f'app/src/io/tvos/{name}.java').read_text()
+for name in ('Spring','AppBranding','DockLogoRenderer','HomeLayout'):files[f'io/tvos/{name}.java']=Path('app/src/io/tvos/'+('artwork/' if name == 'AppBranding' else '')+name+'.java').read_text()
 with tempfile.TemporaryDirectory() as directory:
  root=Path(directory)
  for name,text in files.items():

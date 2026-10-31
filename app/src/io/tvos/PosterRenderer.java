@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.RatingStyle;
+
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;

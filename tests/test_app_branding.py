@@ -10,7 +10,7 @@ def method(signature, source=source):
     while depth:depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[a:end]
 
-home='''package io.tvos;import android.graphics.*;import java.util.*;
+home='''package io.tvos;import io.tvos.artwork.AppBranding;import android.graphics.*;import java.util.*;
 final class HomeApps {
  static final int APP=0,ANDROID_SETTINGS=5,TILE_W=384,TILE_H=216,MAX_SHELF=8;
  static final String TV_SETTINGS_FAVORITE="virtual.settings";
@@ -39,7 +39,7 @@ final class HomeApps {
 }
 '''
 
-harness='''package io.tvos;import java.util.*;import android.graphics.*;
+harness='''package io.tvos;import io.tvos.artwork.AppBranding;import java.util.*;import android.graphics.*;
 public class BrandingHarness {
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static void close(float a,float b){check(Math.abs(a-b)<.0001f,a+" != "+b);}
@@ -80,7 +80,7 @@ public class BrandingHarness {
 files=dict(GRAPHICS)
 files['io/tvos/HomeApps.java']=home
 files['io/tvos/BrandingHarness.java']=harness
-files['io/tvos/AppBranding.java']=Path('app/src/io/tvos/AppBranding.java').read_text()
+files['io/tvos/AppBranding.java']=Path('app/src/io/tvos/artwork/AppBranding.java').read_text()
 files.update(string_sources())
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
