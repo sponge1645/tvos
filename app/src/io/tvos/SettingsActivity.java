@@ -9,6 +9,7 @@ import io.tvos.settings.SettingsTextRenderer;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
 import io.tvos.settings.SettingsListViewport;
+import io.tvos.settings.SettingsTransitions;
 
 import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
@@ -94,9 +95,8 @@ public class SettingsActivity extends Activity {
     void showPreview() { preview.show(); }
 
     static final class SettingsView extends View {
-        private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
         private static final int PICK_VISIBLE = 10;
-        private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
+        private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62;
         private static final int INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
@@ -131,20 +131,14 @@ public class SettingsActivity extends Activity {
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private JSONObject state = new JSONObject();
         private int screen = MAIN, focus, settingsGroup = GENERAL, returnFocus = 0;
-        // Shared, short-lived Canvas transition for all settings submenus.
-        private static final long MENU_TRANSITION_MS = 280;
-        private int drawnScreen = -1, transitionFrom = -1;
-        private long transitionStarted, focusReadyAt;
-        private String pageTitleShown, pageTitlePrevious;
-        private long pageTitleStarted;
+        private final SettingsTransitions transitions = new SettingsTransitions();
+        private final java.util.function.IntUnaryOperator transitionParent = this::parentScreen;
+        private final SettingsTransitions.ScreenPainter transitionPainter = this::drawTransitionScreen;
         private String updateInstalledVersion, updateCheckShown;
         private long updateCheckAt = Long.MIN_VALUE;
         private AppLanguage updateCheckLanguage;
         private final SettingsListViewport listViewport = new SettingsListViewport();
-        private final SettingsListViewport.Content listContent = c -> {
-            if (transitionFrom != -1) drawMenuTransition(c);
-            else drawScreenContent(c);
-        };
+        private final SettingsListViewport.Content listContent = this::drawMenuTransition;
 
         private boolean running, okDown, backDown, wasBusy;
         private boolean lightAppearance;
@@ -417,7 +411,7 @@ public class SettingsActivity extends Activity {
 
         private boolean needsFocusFrame(long now) {
             if (!running || updateDialog.visible()) return false;
-            if (now < focusReadyAt) return true;
+            if (!transitions.focusReady(now)) return true;
             for (Spring spring : pop) if (!spring.settled()) return true;
             return false;
         }
@@ -427,22 +421,14 @@ public class SettingsActivity extends Activity {
             pageTitle.setColor(lightSettings() ? 0xFF738190 : 0xFF5A676D);
             drawPageTitle(c, SystemClock.uptimeMillis());
             logoRenderer.draw(c, k, lightSettings(), Ui.displaySemibold);
-            drawListViewport(c);
+            listViewport.draw(c, listContent);
             drawTileDescription(c);
         }
 
         /** Reset inherited selection before drawing either page of a menu transition. */
         private void syncMenuTransition(long now) {
-            if (drawnScreen == screen) return;
-            boolean reduceMotion = localFlag("reduce_motion");
-            boolean previous = drawnScreen >= 0;
-            transitionFrom = previous && !reduceMotion && !updateDialog.visible()
-                    && (parentScreen(screen) == drawnScreen || parentScreen(drawnScreen) == screen)
-                    ? drawnScreen : -1;
-            transitionStarted = now;
-            focusReadyAt = now + (previous && !reduceMotion ? MENU_TRANSITION_MS : 0);
-            drawnScreen = screen;
-            for (Spring spring : pop) spring.snap(0);
+            if (transitions.sync(screen, now, localFlag("reduce_motion"), updateDialog.visible(), transitionParent))
+                for (Spring spring : pop) spring.snap(0);
         }
 
         private void stepMainScroll(float dt) {
@@ -453,7 +439,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void stepRowFocus(float dt, long now) {
-            boolean ready = now >= focusReadyAt;
+            boolean ready = transitions.focusReady(now);
             boolean reduceMotion = localFlag("reduce_motion");
             for (int i = 0; i < pop.length; i++) {
                 pop[i].target = ready && (screen != ABOUT || i == 0)
@@ -465,33 +451,8 @@ public class SettingsActivity extends Activity {
 
         /** Crossfade only the lettering; the background keeps its original brightness. */
         private void drawPageTitle(Canvas c, long now) {
-            String next = screenTitle();
-            if (pageTitleShown == null) pageTitleShown = next;
-            if (!next.equals(pageTitleShown)) {
-                pageTitlePrevious = pageTitleShown;
-                pageTitleShown = next;
-                pageTitleStarted = now;
-            }
-            float t = localFlag("reduce_motion") ? 1f : Math.min(1f,
-                    (now - pageTitleStarted) / (float) MENU_TRANSITION_MS);
-            if (pageTitlePrevious == null || t >= 1f) {
-                pageTitlePrevious = null;
-                textRenderer.drawTracked(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
-                return;
-            }
-            float eased = t * t * (3f - 2f * t);
-            int alpha = pageTitle.getAlpha();
-            pageTitle.setAlpha(Math.round(alpha * (1f - eased)));
-            textRenderer.drawTracked(c, pageTitlePrevious, w / 2f, 111 * k, pageTitle, 0.02f);
-            pageTitle.setAlpha(Math.round(alpha * eased));
-            textRenderer.drawTracked(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
-            pageTitle.setAlpha(alpha);
-            postInvalidateDelayed(16);
-        }
-
-        /** Fade the list into the untouched background at both vertical viewport edges. */
-        private void drawListViewport(Canvas c) {
-            listViewport.draw(c, listContent);
+            if (transitions.drawTitle(c, screenTitle(), now, localFlag("reduce_motion"),
+                    w / 2f, 111 * k, pageTitle, textRenderer)) postInvalidateDelayed(16);
         }
 
         /** Resolve once per frame so every surface uses the launcher's same sunrise/sunset policy. */
@@ -606,39 +567,15 @@ public class SettingsActivity extends Activity {
 
         /** Animate the right-hand list separately from the title crossfade and fixed background/logo. */
         private void drawMenuTransition(Canvas c) {
-            float t = Math.min(1f, (SystemClock.uptimeMillis() - transitionStarted)
-                    / (float) MENU_TRANSITION_MS);
-            if (t >= 1f) {
-                transitionFrom = -1;
-                drawScreenContent(c);
-                return;
-            }
-            float eased = t * t * (3f - 2f * t);
-            boolean forward = parentScreen(screen) == transitionFrom;
-            float direction = forward ? -1f : 1f;
-            int target = screen;
-            int previous = transitionFrom;
-            // Clip to list area to avoid painting across the fixed tvOS logo.
-            c.save();
-            c.clipRect(960 * k, 140 * k, w, h);
-            c.save();
-            c.translate(direction * 105f * k * eased, 0);
-            int oldLayer = c.saveLayerAlpha(960 * k, 140 * k, w, h,
-                    Math.max(0, Math.min(255, Math.round(255 * (1f - eased)))));
-            screen = previous;
-            drawScreenContent(c);
-            screen = target;
-            c.restoreToCount(oldLayer);
-            c.restore();
-            c.save();
-            c.translate(-direction * 90f * k * (1f - eased), 0);
-            int newLayer = c.saveLayerAlpha(960 * k, 140 * k, w, h,
-                    Math.max(0, Math.min(255, Math.round(255 * eased))));
-            drawScreenContent(c);
-            c.restoreToCount(newLayer);
-            c.restore();
-            c.restore();
-            postInvalidateDelayed(16);
+            if (transitions.drawList(c, screen, SystemClock.uptimeMillis(), k, w, h,
+                    transitionParent, transitionPainter)) postInvalidateDelayed(16);
+        }
+
+        private void drawTransitionScreen(Canvas c, int page) {
+            int current = screen;
+            screen = page;
+            try { drawScreenContent(c); }
+            finally { screen = current; }
         }
 
         private boolean menuChevronVisible(int row) {

@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B137)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B138)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -71,3 +71,12 @@ VPN recovery records each started attempt in the existing durable marker under t
 shared process/file lock. Five attempts are allowed across restarts; only attempts
 one through four schedule a silent retry. Exhaustion removes the intent and emits
 one localized manual-recovery notice. Legacy one-byte markers start at zero.
+
+`settings/SettingsTransitions` owns menu/title transition state and focus delay.
+The caller supplies screen-parent policy, a screen painter, localized title,
+geometry, time and accessibility options. It retains navigation, focus springs
+and frame scheduling. There is no duplicate transition state in SettingsActivity;
+callbacks are allocated once. The existing parent-dependent direction, 280ms
+smoothstep, title-only crossfade and fixed background/logo geometry are preserved.
+Four obsolete list geometry constants and the viewport forwarding method were
+removed after checking source, resources, reflection and tooling references.
