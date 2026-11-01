@@ -16,6 +16,7 @@ def extract(source,sig):
  return source[a:i]
 constants=re.search(r'static final int (MAIN\s*=.*?);',Path('app/src/io/tvos/settings/SettingsScreen.java').read_text()).group(1)
 header='''package io.tvos;
+import io.tvos.settings.SettingsScreen;
 public class SettingsTransitionHarness {
  static final int '''+constants+''';
  static final int PICK_CITY=0,PICK_VPN=-1;static final long MENU_TRANSITION_MS=280;

@@ -114,28 +114,19 @@ public final class SettingsActions {
     }
 
     public static Target back(int screen, int pickFor, int group, int buttonCount) {
+        int parent = SettingsScreen.parent(screen, group, pickFor);
         switch (screen) {
             case MAIN: return null;
-            case PICKER: return pickFor == PICK_CITY ? new Target(REGION, 1)
-                    : pickFor == PICK_VPN ? new Target(MENU_BUTTONS, buttonCount) : new Target(REMOTE_KEYS, pickFor - 1);
-            case MEDIA: return new Target(MAIN, 1);
-            case MOVIE_SERVICE: return new Target(MEDIA, 0);
-            case HOME_CHOICE: return new Target(SYSTEM, 2);
-            case SCREENSAVER: return new Target(MAIN, 2);
-            case HOME_SCREEN: return new Target(GENERAL, 7);
-            case ABOUT: return new Target(GENERAL, 0);
-            case REMOTE_KEYS: return new Target(MAIN, 4);
-            case MENU_BUTTONS: return new Target(TOP_PANEL, 1);
-            case CATEGORY_EDIT: return new Target(TOP_PANEL, 0);
-            case REGION: return new Target(GENERAL, 3);
-            case WIDGETS: return new Target(TOP_PANEL, 2);
-            case UPDATES: return new Target(SYSTEM, 0);
-            case HOME_SETTINGS: return new Target(group == SYSTEM ? TOP_PANEL : group, 0);
-            case RESET: return new Target(SYSTEM, 1);
-            case WEATHER: return new Target(WIDGETS, 0);
-            case DATE_TIME: return new Target(WIDGETS, 1);
-            case SHELF_EDIT: return new Target(MAIN, 7);
-            case APPS_DOWNLOADS: return new Target(MAIN, 6);
+            case PICKER: return new Target(parent, pickFor == PICK_CITY ? 1
+                    : pickFor == PICK_VPN ? buttonCount : pickFor - 1);
+            case MOVIE_SERVICE: case ABOUT: case CATEGORY_EDIT: case UPDATES:
+            case HOME_SETTINGS: case WEATHER: return new Target(parent, 0);
+            case MEDIA: case MENU_BUTTONS: case RESET: case DATE_TIME: return new Target(parent, 1);
+            case HOME_CHOICE: case SCREENSAVER: case WIDGETS: return new Target(parent, 2);
+            case HOME_SCREEN: case SHELF_EDIT: return new Target(parent, 7);
+            case REMOTE_KEYS: return new Target(parent, 4);
+            case REGION: return new Target(parent, 3);
+            case APPS_DOWNLOADS: return new Target(parent, 6);
             default: return new Target(MAIN, screen == GENERAL ? 0 : screen == ACCESSIBILITY ? 5 : screen == TOP_PANEL ? 8 : screen == SYSTEM ? 9 : 0);
         }
     }

@@ -2,6 +2,7 @@
 package io.tvos;
 
 import io.tvos.settings.SettingsActions;
+import io.tvos.settings.SettingsScreen;
 import io.tvos.settings.SettingsOrderEditor;
 import io.tvos.settings.SettingsDockEditor;
 import io.tvos.settings.SettingsBackground;
@@ -30,7 +31,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
-import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -158,8 +158,6 @@ public class SettingsActivity extends Activity {
             }
         };
         private boolean lightAppearance;
-        private StaticLayout errorLayout;   // the last error, wrapped (rebuilt only when it changes)
-        private String errorShown;
         private final Spoken spoken;
         private long lastNanos, pendingAt;
         private int w, h;
@@ -363,27 +361,12 @@ public class SettingsActivity extends Activity {
         }
 
         private int rowCount() {
+            int fixed = SettingsScreen.fixedRows(screen);
+            if (fixed >= 0) return fixed;
             switch (screen) {
-                case MAIN: return 10;
-                case MEDIA: return 1;
-                case HOME_SCREEN: return 2;
                 case MOVIE_SERVICE: return MovieService.count();
-                case APPS_DOWNLOADS: return 7;
-                case GENERAL: return 8;
-                case SCREENSAVER: return 5;
-                case WIDGETS: return 2;
-                case WEATHER: return 2;
-                case DATE_TIME: return 1;
-                case SYSTEM: return 4;
-                case RESET: return 2;
-                case TOP_PANEL: return 3;
                 case CATEGORY_EDIT: return categoryEditor.size();
-                case ACCESSIBILITY: return 3;
-                case REGION: return 2;
                 case MENU_BUTTONS: return buttonEditor.size() + 1;
-                case UPDATES: return 2;
-                case ABOUT: return 8;
-                case HOME_CHOICE: return 2;
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
                 case PICKER: return listWindow.visibleRows(pickLabels.size());
                 case SHELF_EDIT: return listWindow.visibleRows(dockEditor.size());
@@ -533,24 +516,7 @@ public class SettingsActivity extends Activity {
 
         /** Parent hierarchy also determines animation direction. No per-screen animation code. */
         private int parentScreen(int child) {
-            switch (child) {
-                case MEDIA: case GENERAL: case SCREENSAVER: case REMOTE_KEYS: case ACCESSIBILITY: case APPS_DOWNLOADS:
-                case SHELF_EDIT: case TOP_PANEL: case SYSTEM:
-                    return MAIN;
-                case HOME_SCREEN: return GENERAL;
-                case MOVIE_SERVICE: return MEDIA;
-                case ABOUT: return GENERAL;
-                case HOME_CHOICE: return SYSTEM;
-                case MENU_BUTTONS: case CATEGORY_EDIT: return TOP_PANEL;
-                case REGION: return GENERAL;
-                case WIDGETS: return TOP_PANEL;
-                case WEATHER: case DATE_TIME: return WIDGETS;
-                case UPDATES: case RESET: return SYSTEM;
-                case HOME_SETTINGS: return settingsGroup == SYSTEM ? TOP_PANEL : settingsGroup;
-                case PICKER: return pickFor == PICK_CITY ? REGION
-                        : pickFor == PICK_VPN ? MENU_BUTTONS : REMOTE_KEYS;
-                default: return -1;
-            }
+            return SettingsScreen.parent(child, settingsGroup, pickFor);
         }
 
         private void drawScreenContent(Canvas c) {
@@ -582,15 +548,7 @@ public class SettingsActivity extends Activity {
         }
 
         private boolean menuChevronVisible(int row) {
-            switch (screen) {
-                case MEDIA: return row == 0;
-                case GENERAL: return row == 0 || row == 3 || row == 7;
-                case SCREENSAVER: case ACCESSIBILITY: case WEATHER: case DATE_TIME:
-                case HOME_SCREEN: case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
-                case SYSTEM: return row != 3;
-                case REGION: return row == 1 && !Prefs.automaticRegion();
-                default: return true;
-            }
+            return SettingsScreen.hasChevron(screen, row, screen == REGION && Prefs.automaticRegion());
         }
 
         private void drawMenu(Canvas c) {

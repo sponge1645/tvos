@@ -20,12 +20,25 @@ public class ActionsTest {
    if(row==4)check(ActionView.events.indexOf("remote-service")<ActionView.events.indexOf("load-apps"),"remote permission setup precedes app load");
   }
   int[][] back={{HOME_SCREEN,GENERAL,7},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{REGION,GENERAL,3},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,WIDGETS,0},{DATE_TIME,WIDGETS,1},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
-  for(int[] route:back){ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
+  for(int[] route:back){check(io.tvos.settings.SettingsScreen.parent(route[0],GENERAL,0)==route[1],"animation parent agrees with Back destination");ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
    ActionView v=create(PICKER,0);v.pickFor=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
    check(v.screen==MENU_BUTTONS&&v.focus==count,"VPN picker returns directly to Buttons footer");
    check(!SettingsActions.canAdjust(MENU_BUTTONS,count,count),"VPN footer is not arrow-adjustable");
   }
+  for(int group:new int[]{-1,MAIN,GENERAL,SYSTEM,TOP_PANEL}){
+   int expected=group==SYSTEM?TOP_PANEL:group;
+   check(io.tvos.settings.SettingsScreen.parent(HOME_SETTINGS,group,0)==expected,"legacy settings parent");
+   SettingsActions.Target target=SettingsActions.back(HOME_SETTINGS,0,group,6);check(target.screen==expected&&target.row==0,"legacy Back keeps group and row");
+  }
+  for(int picker:new int[]{PICK_CITY,PICK_VPN,1,2,3,4,9}){
+   int expected=picker==PICK_CITY?REGION:picker==PICK_VPN?MENU_BUTTONS:REMOTE_KEYS;
+   int row=picker==PICK_CITY?1:picker==PICK_VPN?6:picker-1;
+   check(io.tvos.settings.SettingsScreen.parent(PICKER,GENERAL,picker)==expected,"picker animation parent");
+   SettingsActions.Target target=SettingsActions.back(PICKER,picker,GENERAL,6);check(target.screen==expected&&target.row==row,"picker Back focus");
+  }
+  check(io.tvos.settings.SettingsScreen.parent(MAIN,GENERAL,0)==-1&&io.tvos.settings.SettingsScreen.parent(999,GENERAL,0)==-1,"root and unknown have no animation parent");
+  check(SettingsActions.back(999,0,GENERAL,6).screen==MAIN&&SettingsActions.back(999,0,GENERAL,6).row==0,"unknown Back fallback retained");
   ActionView service=create(MEDIA,0);service.activate();check(service.screen==MOVIE_SERVICE,"service row opens choices");
   service=create(MOVIE_SERVICE,3);service.activate();check(service.screen==MEDIA&&service.focus==0&&ActionView.events.contains("movie_service:seena"),"service selection saves stable identity and returns to parent");service.activate();check(service.screen==MOVIE_SERVICE&&service.focus==3,"reopening focuses the saved service");
   ActionView v=create(PICKER,2);v.pickFor=PICK_CITY;v.activate();

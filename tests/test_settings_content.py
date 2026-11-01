@@ -11,12 +11,12 @@ def method(sig):
 assert 'screen == UPDATES ? updateDetailsText()' in method('        private void drawTileDescription(')
 assert 'SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size())' in source
 harness='''package io.tvos;
-import java.util.*;import static io.tvos.settings.SettingsScreen.*;
+import java.util.*;import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsScreen;
 public class ContentHarness {
  static class Ui {static boolean ru;}
  int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  final List<Integer> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),dockEditor=new ArrayList<>();final List<String> pickLabels=new ArrayList<>();
- static class Prefs {static final String[] KEYS=new String[4];static boolean automaticRegion(){return false;}}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
+ static class Prefs {static final String[] KEYS=new String[4];static boolean automatic;static boolean automaticRegion(){return automatic;}}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
  String[] menuButtonLabels(){String[] rows=new String[dynamicRows+1];Arrays.fill(rows,"dynamic");rows[dynamicRows]="VPN";return rows;}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
 '''+method('        private String screenTitle()')+method('        private String[] menuLabels()')+method('        private int rowCount()')+method('        private boolean menuChevronVisible(')+method('        private int parentScreen(')+'''
@@ -29,6 +29,7 @@ public class ContentHarness {
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
    for(int i=0;i<screens.length;i++){
     h.screen=screens[i];String[] labels=h.menuLabels();check(labels.length==rows[i]&&h.rowCount()==rows[i],"menu labels and actual focus row count for "+h.screen);
+    check(io.tvos.settings.SettingsScreen.fixedRows(h.screen)==(h.screen==MOVIE_SERVICE?-1:rows[i]),"fixed rows owned by screen metadata");
     for(String label:labels)check(label!=null&&!label.isEmpty(),"nonempty label");
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
@@ -36,6 +37,7 @@ public class ContentHarness {
    for(int page:new int[]{HOME_SCREEN,SCREENSAVER,WEATHER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
    h.screen=GENERAL;for(int row=0;row<8;row++)check(h.menuChevronVisible(row)==(row==0||row==3||row==7),"only General destinations have chevrons");
    h.screen=REGION;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
+   Prefs.automatic=true;check(!h.menuChevronVisible(1),"automatic region hides manual picker arrow");Prefs.automatic=false;
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
    h.screen=ACCESSIBILITY;check(!h.menuChevronVisible(2),"TV Settings action has no ghost launcher chevron");
    h.screen=MAIN;check(h.menuLabels()[2].equals(russian?"Заставка":"Screen Saver"),"current language read at call time");
@@ -67,6 +69,11 @@ public class ContentHarness {
    check(SettingsContent.description(MAIN,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");
    check(SettingsContent.description(MAIN,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("Dock"),"Dock description");
   }
+  for(int page:new int[]{MOVIE_SERVICE,CATEGORY_EDIT,MENU_BUTTONS,HOME_SETTINGS,PICKER,SHELF_EDIT,REMOTE_KEYS,999})check(io.tvos.settings.SettingsScreen.fixedRows(page)==-1,"dynamic rows remain adapter-owned");
+  h.screen=999;check(h.rowCount()==4,"unknown row-count fallback retained");
+  h.screen=PICKER;for(int i=0;i<15;i++)h.pickLabels.add("app");check(h.rowCount()==10,"live picker count retains capacity");h.pickLabels.clear();check(h.rowCount()==0,"empty picker has no rows");
+  h.screen=CATEGORY_EDIT;h.categoryEditor.add(1);check(h.rowCount()==1,"live category count remains dynamic");
+  h.screen=MENU_BUTTONS;h.buttonEditor.add(1);check(h.rowCount()==2,"live buttons retain VPN footer");
   System.out.println("PASS: settings titles, row order/count, RU/EN descriptions, dynamic menu/VPN rows, live language and stable IDs");
  }
 }

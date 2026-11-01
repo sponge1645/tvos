@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B140)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B141)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -95,3 +95,10 @@ Back; they carry no launcher data or lifecycle access. The Activity retains scre
 policy, click sounds, TalkBack gating and update-dialog dispatch. Pause resets the
 input component; no duplicate held-key flags remain. Horizontal row routing uses
 one invalidation after an actual edit, preserving repeat and release behavior.
+
+`settings/SettingsScreen` now also owns parent hierarchy, fixed row counts and
+menu chevron policy. SettingsActions uses that same hierarchy for Back targets;
+return-row rules and unknown/legacy fallbacks are preserved. SettingsActivity
+supplies live app/editor counts and the automatic-region flag without duplicating
+screen structure. Removed unused errorLayout/errorShown fields and their obsolete
+StaticLayout import after checking source, resources, reflection and tooling.
