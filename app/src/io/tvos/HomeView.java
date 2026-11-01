@@ -1,5 +1,6 @@
 package io.tvos;
 
+import io.tvos.artwork.RoundedImages;
 import io.tvos.home.dock.HomeDockEditor;
 
 import io.tvos.home.HomeLayout;
@@ -74,7 +75,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private final Activity activity;
     private final Scene scene = new Scene();
-    private final RoundedImages images = new RoundedImages();
+    private final RoundedImages images = new RoundedImages(Ui.LEGACY);
     private final HomeBackground background = new HomeBackground(scene, this::backgroundChanged);
     private final HomeData data;
     private final HomeWidgets widgets;

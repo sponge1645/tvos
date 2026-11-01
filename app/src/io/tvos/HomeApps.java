@@ -170,7 +170,6 @@ final class HomeApps {
         return null;
     }
 
-    /** The shelf's packages in order: the user's list (Settings > Shelf), or the built-in one. */
     /** Stable persisted identities for a reordered Dock, including the virtual Settings entry. */
     static List<String> shelfOrder(List<Item> items) {
         List<String> packages = new ArrayList<>();
@@ -181,6 +180,7 @@ final class HomeApps {
         return packages;
     }
 
+    /** The shelf packages in user order, or the built-in selection. */
     // Migrate the old virtual Settings favorite to one portable system action.
     static List<String> shelfPackages(Context c) {
         List<String> custom = Prefs.shelf();

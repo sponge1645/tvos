@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B132)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B133)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -49,3 +49,11 @@ Home Screen mode in General chooses service recommendation banners or KinoPub/Se
   DockBanner adapts artwork into the independent caption timeline. The unused
   resume-row noWidgets argument was removed. Relocated editor sources are removed
   after backup when applying snapshots.
+
+The artwork package now owns PosterCache, RoundedImages and the ImagePainter
+boundary. Cache warnings are injected; rounded drawing receives the owning
+platform's fixed legacy policy. Shared image code does not depend on Ui,
+RouletteRenderer, Recs or AppLog. HTTPS and content/resource streams use one
+bounded/cancellable copy routine, retaining existing cache paths, limits,
+atomic promotion, retry timing and stale-window checks. Regression coverage
+includes provider oversize/null streams and cancellation during copying.

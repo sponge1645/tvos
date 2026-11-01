@@ -1,5 +1,6 @@
 package io.tvos;
 
+import io.tvos.artwork.PosterCache;
 import io.tvos.home.dock.ResumeRowRenderer;
 
 import android.content.Context;
@@ -55,7 +56,7 @@ final class DockContinue {
         this.context = context.getApplicationContext();
         this.changed = changed;
         this.worker = worker;
-        images = new PosterCache(context, () -> main.post(changed));
+        images = new PosterCache(context, () -> main.post(changed), AppLog::w);
     }
 
     private void changedFrame() { if (visible) changed.run(); }

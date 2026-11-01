@@ -1,5 +1,6 @@
 package io.tvos;
 
+import io.tvos.artwork.ImagePainter;
 import io.tvos.home.HomeLayout;
 
 import android.graphics.Bitmap;
@@ -16,7 +17,6 @@ import android.text.TextPaint;
 
 /** Random-movie strip drawing and reusable graphics scratch; spin state stays in RouletteController. */
 final class RouletteRenderer {
-    interface Images { void draw(Canvas canvas, Bitmap bitmap, RectF bounds, float radius); }
     private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT, DEEP_BLUR = 30;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7, SMOKE = 0xFF111113;
     private final RouletteController rouletteWork;
@@ -24,7 +24,7 @@ final class RouletteRenderer {
     private final Scene scene;
     private final Shadows shadows;
     private final ActionSurface actionSurface;
-    private final Images images;
+    private final ImagePainter images;
     private final Paint shadowDeep = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint ellipsizeScratch = new TextPaint();
@@ -47,7 +47,7 @@ final class RouletteRenderer {
     private final Paint rouletteTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     RouletteRenderer(RouletteController work, Recs recs, Scene scene, Shadows shadows,
-            ActionSurface actionSurface, Images images) {
+            ActionSurface actionSurface, ImagePainter images) {
         rouletteWork = work;
         this.recs = recs;
         this.scene = scene;

@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.PosterCache;
+
 import io.tvos.watching.WatchingSources;
 
 import android.app.Activity;

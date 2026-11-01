@@ -4,7 +4,9 @@ import subprocess,tempfile
 from settings_strings_fixture import write as write_strings
 from home_renderers_fixture import files
 from tmdb_metadata_fixture import block
-harness='''package io.tvos;import io.tvos.home.HomeLayout;
+rounded=Path('app/src/io/tvos/artwork/RoundedImages.java').read_text()
+assert 'Ui.' not in rounded and 'RouletteRenderer' not in rounded and 'implements ImagePainter' in rounded
+harness='''package io.tvos;import io.tvos.artwork.RoundedImages;import io.tvos.home.HomeLayout;
 import android.graphics.*;import android.os.*;import android.content.*;import java.util.*;import org.json.*;
 public class HomeRenderHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
@@ -42,14 +44,14 @@ public class HomeRenderHarness {
   int count=LinearGradient.allocations;b.resize(1280,720);b.draw(new Canvas(),0);check(LinearGradient.allocations==count+2,"gradients rebuilt for resize");
  }
  static void images()throws Exception{
-  RoundedImages images=new RoundedImages();Bitmap bitmap=new Bitmap(1);RectF rect=new RectF(10,20,110,170);Ui.LEGACY=false;Canvas c=new Canvas();images.draw(c,bitmap,rect,12);check(entries(c,"bitmap").size()==1&&c.depth==0,"modern clipped bitmap path");
-  Ui.LEGACY=true;c=new Canvas();images.draw(c,bitmap,rect,12);int count=BitmapShader.created;check(entries(c,"round").size()==1,"legacy shader path");images.draw(new Canvas(),bitmap,rect,12);check(BitmapShader.created==count,"shader reused");images.clear();images.draw(new Canvas(),bitmap,rect,12);check(BitmapShader.created==count+1,"pause releases shader cache");
+  RoundedImages images=new RoundedImages(false);Bitmap bitmap=new Bitmap(1);RectF rect=new RectF(10,20,110,170);Ui.LEGACY=false;Canvas c=new Canvas();images.draw(c,bitmap,rect,12);check(entries(c,"bitmap").size()==1&&c.depth==0,"modern clipped bitmap path");
+  Ui.LEGACY=true;images=new RoundedImages(true);c=new Canvas();images.draw(c,bitmap,rect,12);int count=BitmapShader.created;check(entries(c,"round").size()==1,"legacy shader path");images.draw(new Canvas(),bitmap,rect,12);check(BitmapShader.created==count,"shader reused");images.clear();images.draw(new Canvas(),bitmap,rect,12);check(BitmapShader.created==count+1,"pause releases shader cache");
   check(((Map<?,?>)field(images,"imageShaders")).size()==1,"one live bitmap entry");Ui.LEGACY=false;
-  RectF dock=new RectF(0,0,250,150);c=new Canvas();images.drawCropped(c,bitmap,dock,22);Canvas.Entry crop=entries(c,"bitmap").get(0);near((crop.r-crop.l)/(crop.b-crop.t),2f/3,"modern Dock crop keeps source image aspect");near((crop.l+crop.r)/2,125,"crop horizontal center");near((crop.t+crop.b)/2,75,"crop vertical center");check(c.depth==0,"crop clip restored");
-  Ui.LEGACY=true;c=new Canvas();images.drawCropped(c,bitmap,dock,22);BitmapShader shader=(BitmapShader)entries(c,"round").get(0).shader;near(shader.matrix.sx,shader.matrix.sy,"legacy Dock crop keeps equal scale on both axes");Ui.LEGACY=false;
+  RectF dock=new RectF(0,0,250,150);images=new RoundedImages(false);c=new Canvas();images.drawCropped(c,bitmap,dock,22);Canvas.Entry crop=entries(c,"bitmap").get(0);near((crop.r-crop.l)/(crop.b-crop.t),2f/3,"modern Dock crop keeps source image aspect");near((crop.l+crop.r)/2,125,"crop horizontal center");near((crop.t+crop.b)/2,75,"crop vertical center");check(c.depth==0,"crop clip restored");
+  Ui.LEGACY=true;images=new RoundedImages(true);c=new Canvas();images.drawCropped(c,bitmap,dock,22);BitmapShader shader=(BitmapShader)entries(c,"round").get(0).shader;near(shader.matrix.sx,shader.matrix.sy,"legacy Dock crop keeps equal scale on both axes");Ui.LEGACY=false;
  }
  static void posters()throws Exception{
-  Recs recs=new Recs();PosterRenderer p=new PosterRenderer(recs,new Shadows(),new RoundedImages(),8);Paint title=paint(31),meta=paint(25);RectF base=new RectF(80,262,318,619);Recs.Pick pick=new Recs.Pick();pick.id=42;pick.title="A very long title that should scroll across the card";pick.kind="movie";pick.movieOrigin="2024, US";pick.duration="120 min";pick.meta="Drama";pick.rating=8;
+  Recs recs=new Recs();PosterRenderer p=new PosterRenderer(recs,new Shadows(),new RoundedImages(Ui.LEGACY),8);Paint title=paint(31),meta=paint(25);RectF base=new RectF(80,262,318,619);Recs.Pick pick=new Recs.Pick();pick.id=42;pick.title="A very long title that should scroll across the card";pick.kind="movie";pick.movieOrigin="2024, US";pick.duration="120 min";pick.meta="Drama";pick.rating=8;
   p.focus(0,0,1,100);p.begin(1,0,1,0,false,true,title,meta);SystemClock.now=100;Canvas c=new Canvas();p.draw(c,pick,base,1,0);check(entries(c,"bitmap").size()==1&&c.depth==0,"poster and balanced layer");text(c,"8.0");check(!p.marqueeActive(1099)&&p.nextDelay(100)==1000,"one-second marquee dwell");
   SystemClock.now=1600;p.begin(1,0,1,0,false,true,title,meta);c=new Canvas();p.draw(c,pick,base,1,0);check(p.marqueeActive(1600)&&p.nextDelay(1600)==50,"marquee wakes at existing cadence");check(entries(c,"rect").stream().anyMatch(e->e.mode!=null),"letter edge mask");
   p.focus(-1,0,1,1700);p.begin(1,1,1,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(!p.marqueeActive(9999)&&p.nextDelay(9999)==1000,"losing focus stops marquee");
@@ -65,13 +67,13 @@ public class HomeRenderHarness {
   HomeApps.Item input=new HomeApps.Item("HDMI");input.kind=HomeApps.INPUT;input.connected=false;f.drawerItems=Arrays.asList(input);f.drawerInputs=1;f.drawerRects=new RectF[]{new RectF(80,540,250,666)};f.drawerFocus=new Spring[]{new Spring(.3f,1,0)};f.weatherBottom=true;f.others=Arrays.asList(a,b);f.gridFocus=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,1)};f.sheetOpen=true;f.gridIndex=1;return f;
  }
  static void apps()throws Exception{
-  HomeWidgets weather=new HomeWidgets();HomeAppsRenderer a=new HomeAppsRenderer(new Context(),new Scene(),new Shadows(),weather,new RoundedImages());a.resize(1);HomeAppsRenderer.Frame f=appsFrame();Canvas c=new Canvas();a.drawTiles(c,f);check(entries(c,"logo").size()==2&&entries(c,"logo").get(1).text.equals("com.seena.app"),"focused Dock item drawn last");check(entries(c,"path").size()==4&&c.depth==0,"two highlight strokes per tile");
+  HomeWidgets weather=new HomeWidgets();HomeAppsRenderer a=new HomeAppsRenderer(new Context(),new Scene(),new Shadows(),weather,new RoundedImages(Ui.LEGACY));a.resize(1);HomeAppsRenderer.Frame f=appsFrame();Canvas c=new Canvas();a.drawTiles(c,f);check(entries(c,"logo").size()==2&&entries(c,"logo").get(1).text.equals("com.seena.app"),"focused Dock item drawn last");check(entries(c,"path").size()==4&&c.depth==0,"two highlight strokes per tile");
   near(entries(c,"round").get(0).radius,30,"resting Dock tile radius");
   Object[] gradients=(Object[])field(a,"tileShaders");Object first=gradients[0],second=gradients[1];a.swapDock(0,1,2);check(gradients[1]==first,"gradient follows Dock item");a.restoreDock(f.shelf,Arrays.asList(f.shelf.get(1),f.shelf.get(0)));check(((Object[])field(a,"tileShaders"))[0]==first,"rollback restores gradient identity");
   c=new Canvas();a.drawPlatter(c,f);check(entries(c,"glass").size()==1,"Dock platter glass");c=new Canvas();a.drawDrawer(c,f);check(weather.draws==1&&entries(c,"symbol").get(0).color==0xFF8E8E93,"disconnected input dim and weather drawn");
   c=new Canvas();a.drawSheet(c,f);text(c,"All Apps");check(entries(c,"bitmap").size()==2&&!f.focusedCell.isEmpty(),"app sheet geometry and focused launch rect");
   near(entries(c,"shadow").get(0).radius,32.4f,"focused All Apps radius scales with tile");
-  Ui.LEGACY=true;c=new Canvas();a.drawSheet(c,f);List<Canvas.Entry> appImages=new ArrayList<>();for(Canvas.Entry entry:entries(c,"round"))if(entry.shader instanceof BitmapShader)appImages.add(entry);near(appImages.get(0).radius,30,"resting All Apps image radius");near(appImages.get(1).radius,32.4f,"focused All Apps image radius");Ui.LEGACY=false;
+  Ui.LEGACY=true;HomeAppsRenderer legacyApps=new HomeAppsRenderer(new Context(),new Scene(),new Shadows(),weather,new RoundedImages(true));legacyApps.resize(1);c=new Canvas();legacyApps.drawSheet(c,f);List<Canvas.Entry> appImages=new ArrayList<>();for(Canvas.Entry entry:entries(c,"round"))if(entry.shader instanceof BitmapShader)appImages.add(entry);near(appImages.get(0).radius,30,"resting All Apps image radius");near(appImages.get(1).radius,32.4f,"focused All Apps image radius");Ui.LEGACY=false;
   f.dockLift=1;f.dockLiftIndex=0;f.dockWiggleAt=0;SystemClock.now=100;c=new Canvas();a.drawTiles(c,f);check(entries(c,"rotate").size()==1&&entries(c,"logo").get(1).text.equals("watch.kino"),"lifted Dock item draws last with wiggle");
   a.invalidateLabels();a.resize(.5f);a.clear();check(field(a,"frame")==null,"renderer releases borrowed frame");a.invalidateDock();check(((Object[])field(a,"tileShaders")).length==0,"list reload invalidates Dock gradients");
  }

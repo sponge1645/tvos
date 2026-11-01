@@ -1,4 +1,4 @@
-package io.tvos;
+package io.tvos.artwork;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
@@ -12,19 +12,22 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /** Shared rounded bitmap rendering, preserving the shader path for Android 9–11. */
-final class RoundedImages implements RouletteRenderer.Images {
+public final class RoundedImages implements ImagePainter {
+    private final boolean legacy;
+    public RoundedImages(boolean legacy) { this.legacy = legacy; }
+
     private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Map<Bitmap, java.lang.ref.WeakReference<BitmapShader>> imageShaders = new WeakHashMap<>();
     private final Matrix imageMatrix = new Matrix();
     private final Paint imageFill = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Path clip = new Path();
     private final RectF cropBox = new RectF();
-    void clear() { imageShaders.clear(); }
+    public void clear() { imageShaders.clear(); }
 
     @Override public void draw(Canvas c, Bitmap image, RectF cell, float r) { draw(c, image, cell, r, false); }
 
     /** Preserve a banner's artwork proportions inside the taller Dock tile, using a centered crop. */
-    void drawCropped(Canvas c, Bitmap image, RectF cell, float r) { draw(c, image, cell, r, true); }
+    public void drawCropped(Canvas c, Bitmap image, RectF cell, float r) { draw(c, image, cell, r, true); }
 
     private void draw(Canvas c, Bitmap image, RectF cell, float r, boolean crop) {
         RectF destination = cell;
@@ -35,7 +38,7 @@ final class RoundedImages implements RouletteRenderer.Images {
                     cell.centerX() + width / 2, cell.centerY() + height / 2);
             destination = cropBox;
         }
-        if (!Ui.LEGACY) {
+        if (!legacy) {
             clip.reset();
             clip.addRoundRect(cell, r, r, Path.Direction.CW);
             c.save();

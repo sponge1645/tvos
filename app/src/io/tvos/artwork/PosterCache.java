@@ -1,4 +1,4 @@
-package io.tvos;
+package io.tvos.artwork;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -14,22 +14,25 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.concurrent.Executors;
 
 /** Poster download/decode and bounded RAM/disk caches; no catalog, Pick or UI state. */
-final class PosterCache {
+public final class PosterCache {
     private final Context context;
     private final Runnable changed;
     private final Executor posterIo;
+    private final Consumer<String> warning;
 
-    PosterCache(Context context, Runnable changed) {
-        this(context, changed, Executors.newSingleThreadExecutor());
+    public PosterCache(Context context, Runnable changed, Consumer<String> warning) {
+        this(context, changed, Executors.newSingleThreadExecutor(), warning);
     }
 
-    PosterCache(Context context, Runnable changed, Executor worker) {
+    public PosterCache(Context context, Runnable changed, Executor worker, Consumer<String> warning) {
         this.context = context.getApplicationContext();
         this.changed = changed;
         this.posterIo = worker;
+        this.warning = warning;
     }
 
     private final Map<String, Bitmap> posters = new LinkedHashMap<>(48, 0.75f, true);
@@ -48,13 +51,13 @@ final class PosterCache {
     // Used only by the single poster worker.
     private boolean posterCacheChecked;
 
-    static String imageUrl(String path) {
+    public static String imageUrl(String path) {
         if (path.startsWith("https://")) return path;
         if (!path.startsWith("/") || path.startsWith("//")) throw new IllegalArgumentException("Invalid poster path");
         return "https://image.tmdb.org/t/p/w500" + path;
     }
 
-    static String cacheName(String path) {
+    public static String cacheName(String path) {
         if (path.startsWith("/")) return path.replace("/", "");
         try {
             byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
@@ -68,7 +71,7 @@ final class PosterCache {
     }
 
     /** Retain only visible/prefetched paths; disk copies remain when browsing back. */
-    void setWindow(java.util.Set<String> wanted) {
+    public void setWindow(java.util.Set<String> wanted) {
         synchronized (posters) {
             if (wanted.equals(posterWindow)) return;
             posterWindow = new java.util.HashSet<>(wanted);
@@ -87,7 +90,7 @@ final class PosterCache {
     }
 
     /** Small RAM LRU for immediate draws; downloaded posters persist on disk up to 200 MiB. */
-    Bitmap poster(String path) {
+    public Bitmap poster(String path) {
         if (path == null || path.isEmpty()) return null;
         synchronized (posters) {
             Bitmap ready = posters.get(path);
@@ -110,18 +113,8 @@ final class PosterCache {
                 if (!f.isFile() || f.length() == 0) {
                     tmp = new File(f.getPath() + ".part");
                     if (path.startsWith("content://") || path.startsWith("android.resource://")) {
-                        try (InputStream in = context.getContentResolver().openInputStream(android.net.Uri.parse(path));
-                                FileOutputStream out = new FileOutputStream(tmp)) {
-                            if (in == null) throw new IOException("Poster provider returned no stream");
-                            byte[] buf = new byte[16384];
-                            long received = 0;
-                            int n;
-                            while ((n = in.read(buf)) != -1) {
-                                if (!posterWanted(path)) { abandoned = true; return; }
-                                received += n;
-                                if (received > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
-                                out.write(buf, 0, n);
-                            }
+                        try (InputStream in = context.getContentResolver().openInputStream(android.net.Uri.parse(path))) {
+                            if (!copyPoster(in, tmp, path, -1)) { abandoned = true; return; }
                         }
                     } else {
                         HttpURLConnection c = (HttpURLConnection) new URL(imageUrl(path)).openConnection();
@@ -130,18 +123,9 @@ final class PosterCache {
                         try {
                             long expected = c.getContentLengthLong();
                             if (expected > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
-                            long received = 0;
-                            try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
-                                byte[] buf = new byte[16384];
-                                int n;
-                                while ((n = in.read(buf)) != -1) {
-                                    if (!posterWanted(path)) { abandoned = true; return; }
-                                    received += n;
-                                    if (received > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
-                                    out.write(buf, 0, n);
-                                }
+                            try (InputStream in = c.getInputStream()) {
+                                if (!copyPoster(in, tmp, path, expected)) { abandoned = true; return; }
                             }
-                            if (expected >= 0 && received != expected) throw new IOException("Incomplete poster download");
                         } finally { c.disconnect(); }
                     }
                     if (!tmp.renameTo(f)) throw new IOException("Poster cache write failed");
@@ -177,7 +161,7 @@ final class PosterCache {
                     changed.run();
                 }
             } catch (IOException | IllegalArgumentException | SecurityException | OutOfMemoryError e) {
-                AppLog.w("poster: " + e.getMessage());
+                warning.accept("poster: " + e.getMessage());
             } finally {
                 if (tmp != null && tmp.exists()) tmp.delete();
                 synchronized (posters) {
@@ -193,6 +177,24 @@ final class PosterCache {
             }
         });
         return null;
+    }
+
+    /** False means the caller's image window changed; partial files are cleaned up by the worker. */
+    private boolean copyPoster(InputStream in, File file, String path, long expected) throws IOException {
+        if (in == null) throw new IOException("Poster provider returned no stream");
+        long received = 0;
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            byte[] buffer = new byte[16384];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                if (!posterWanted(path)) return false;
+                received += count;
+                if (received > POSTER_FILE_MAX_BYTES) throw new IOException("Poster exceeds size limit");
+                out.write(buffer, 0, count);
+            }
+        }
+        if (expected >= 0 && received != expected) throw new IOException("Incomplete poster download");
+        return true;
     }
 
     /** Evict least recently used poster files only after the disk cache exceeds 200 MiB. */

@@ -1,5 +1,6 @@
 package io.tvos;
 
+import io.tvos.artwork.RoundedImages;
 import io.tvos.home.HomeLayout;
 
 import io.tvos.artwork.AppBranding;

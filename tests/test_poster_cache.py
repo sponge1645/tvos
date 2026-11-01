@@ -2,23 +2,22 @@
 from pathlib import Path
 import subprocess,tempfile
 sources={
-'android/content/ContentResolver.java':'package android.content;public class ContentResolver {public java.io.InputStream openInputStream(android.net.Uri u){return new java.io.ByteArrayInputStream(new byte[]{1});}}',
+'android/content/ContentResolver.java':'''package android.content;public class ContentResolver {public static byte[] body={1};public static boolean missing;public static Runnable afterRead;public java.io.InputStream openInputStream(android.net.Uri u){if(missing)return null;return new java.io.ByteArrayInputStream(body){@Override public synchronized int read(byte[] b,int off,int len){int n=super.read(b,off,len);Runnable r=afterRead;if(r!=null)r.run();return n;}};}}''',
 'android/net/Uri.java':'package android.net;public class Uri {public static Uri parse(String s){return new Uri();}}',
 'android/content/Context.java':'''package android.content;public class Context {final java.io.File dir;public Context(java.io.File d){dir=d;}public Context getApplicationContext(){return this;}public java.io.File getCacheDir(){return dir;}public ContentResolver getContentResolver(){return new ContentResolver();}}''',
 'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {public int getAllocationByteCount(){return 1024*1024;}}',
 'android/graphics/BitmapFactory.java':'''package android.graphics;public class BitmapFactory {public static Runnable afterDecode;public static class Options {public int inSampleSize;}public static Bitmap decodeFile(String p,Options o){if(o.inSampleSize!=2)throw new AssertionError("sampling changed");if(new java.io.File(p).getName().startsWith("oom"))throw new OutOfMemoryError("test decode");if(afterDecode!=null)afterDecode.run();return new java.io.File(p).getName().startsWith("bad")?null:new Bitmap();}}''',
 'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long now;public static long elapsedRealtime(){return now;}}',
-'io/tvos/AppLog.java':'package io.tvos;final class AppLog {static void w(String s){}}'
 }
-harness='''package io.tvos;
+harness='''package io.tvos;import io.tvos.artwork.PosterCache;
 import java.io.*;import java.util.*;import java.nio.file.*;import java.net.*;import java.util.concurrent.Executor;import android.content.Context;import android.graphics.*;import android.os.SystemClock;
 public class PosterHarness {
  static class Pick {String poster;Pick(String p){poster=p;}}
  static class Worker implements Executor {ArrayDeque<Runnable> queue=new ArrayDeque<>();public void execute(Runnable r){queue.add(r);}void drain(){while(!queue.isEmpty())queue.remove().run();}}
  static class Fake extends HttpURLConnection {static byte[] body={1};static long declared=1;static int disconnects;Fake(URL u){super(u);}public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){disconnects++;}public long getContentLengthLong(){return declared;}public InputStream getInputStream(){return new ByteArrayInputStream(body);}}
- final Context context;final Worker posterIo=new Worker();final PosterCache cache;int notices;
+ final Context context;final Worker posterIo=new Worker();final PosterCache cache;int notices;final List<String> warnings=new ArrayList<>();
  final Map<String,Bitmap> posters;final Set<String> posterPending;final Map<String,Long> posterFailures;
- PosterHarness(File dir)throws Exception {context=new Context(dir);cache=new PosterCache(context,()->notices++,posterIo);posters=field("posters");posterPending=field("posterPending");posterFailures=field("posterFailures");}
+ PosterHarness(File dir)throws Exception {context=new Context(dir);cache=new PosterCache(context,()->notices++,posterIo,warnings::add);posters=field("posters");posterPending=field("posterPending");posterFailures=field("posterFailures");}
  @SuppressWarnings("unchecked") <T>T field(String name)throws Exception {java.lang.reflect.Field f=PosterCache.class.getDeclaredField(name);f.setAccessible(true);return (T)f.get(cache);}
  long ram()throws Exception{return this.<Long>field("posterRamBytes");}
  Bitmap poster(Pick p){return cache.poster(p==null?null:p.poster);}
@@ -87,16 +86,26 @@ tests='''
    h.setPosterWindow(Collections.singletonList(new Pick(path)));h.poster(new Pick(path));h.posterIo.drain();
    check(h.posterFailures.containsKey(path)&&!new File(cacheDir,path.substring(1)).exists()&&!new File(cacheDir,path.substring(1)+".part").exists(),"failed download is bounded and leaves no cache/temp: "+path);
   }
+  String provider="content://provider/oversized";
+  android.content.ContentResolver.body=new byte[8*1024*1024+1];h.setPosterWindow(Collections.singletonList(new Pick(provider)));h.poster(new Pick(provider));h.posterIo.drain();
+  check(h.posterFailures.containsKey(provider)&&!new File(cacheDir,PosterCache.cacheName(provider)).exists(),"provider stream obeys same size limit as HTTPS");
+  provider="content://provider/missing";android.content.ContentResolver.missing=true;h.setPosterWindow(Collections.singletonList(new Pick(provider)));h.poster(new Pick(provider));h.posterIo.drain();android.content.ContentResolver.missing=false;
+  check(h.posterFailures.containsKey(provider)&&!h.warnings.isEmpty(),"null provider stream reports through injected warning sink");
+  provider="content://provider/cancelled";android.content.ContentResolver.body=new byte[]{1,2,3};h.setPosterWindow(Collections.singletonList(new Pick(provider)));
+  android.content.ContentResolver.afterRead=()->{h.setPosterWindow(Collections.emptyList());android.content.ContentResolver.afterRead=null;};h.poster(new Pick(provider));h.posterIo.drain();
+  check(!h.posterFailures.containsKey(provider)&&h.posterPending.isEmpty()&&!new File(cacheDir,PosterCache.cacheName(provider)+".part").exists(),"provider cancellation cleans partial file without poisoning retries");
+  h.setPosterWindow(Collections.singletonList(new Pick(provider)));h.poster(new Pick(provider));h.posterIo.drain();check(h.posters.containsKey(provider),"cancelled provider image retries immediately when visible again");
+  android.content.ContentResolver.body=new byte[]{1};
   Fake.body=new byte[]{1};Fake.declared=1;
   File old=new File(cacheDir,"old-large");try(RandomAccessFile f=new RandomAccessFile(old,"rw")){f.setLength(201L*1024*1024);}old.setLastModified(1);
   h.setPosterWindow(Collections.singletonList(new Pick("/new-download")));h.poster(new Pick("/new-download"));h.posterIo.drain();check(!old.exists(),"new download prunes least recently used disk cache beyond 200 MiB");
-  System.out.println("PASS: pending bound, deduplication, RAM LRU, disk reload, retry deadline, bounded failure history");
+  System.out.println("PASS: pending bound, deduplication, RAM LRU, disk reload, retry deadline, bounded failure history, shared provider limits/null/cancellation");
  }
 }
 '''
 
 sources['io/tvos/PosterHarness.java']=harness+tests
-sources['io/tvos/PosterCache.java']=Path('app/src/io/tvos/PosterCache.java').read_text()
+sources['io/tvos/artwork/PosterCache.java']=Path('app/src/io/tvos/artwork/PosterCache.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-poster-cache-') as tmp:
  root=Path(tmp)
  for name,content in sources.items():

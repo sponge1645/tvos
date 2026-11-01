@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.artwork.PosterCache;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Handler;
@@ -97,7 +99,7 @@ final class Recs {
 
     private Recs(Context c) {
         context = c;
-        posterCache = new PosterCache(c, this::notifyListeners);
+        posterCache = new PosterCache(c, this::notifyListeners, AppLog::w);
         backdropCache = new BackdropCache(c, io, this::notifyListeners, () -> newPicks);
         catalogBuilder = new CatalogBuilder(this::get);
         genreCatalog = new GenreCatalog(this::get, requestIo, main);

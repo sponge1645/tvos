@@ -1,5 +1,6 @@
 package io.tvos;
 
+import io.tvos.artwork.ImagePainter;
 import io.tvos.home.HomeLayout;
 
 import io.tvos.artwork.RatingStyle;
@@ -23,7 +24,7 @@ final class PosterRenderer {
     private final int capacity;
     private final Recs recs;
     private final Shadows shadows;
-    private final RoundedImages images;
+    private final ImagePainter images;
     private final RectF cell = new RectF(), tmp = new RectF();
     private final Paint shadowDeep = new Paint(Paint.ANTI_ALIAS_FLAG), fill = new Paint(Paint.ANTI_ALIAS_FLAG),
             sheen = new Paint(Paint.ANTI_ALIAS_FLAG), rim = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -49,7 +50,7 @@ final class PosterRenderer {
     private final Paint marqueeMaskScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PorterDuffXfermode textEdgeMode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
 
-    PosterRenderer(Recs recs, Shadows shadows, RoundedImages images, int capacity) {
+    PosterRenderer(Recs recs, Shadows shadows, ImagePainter images, int capacity) {
         this.recs = recs; this.shadows = shadows; this.images = images; this.capacity = capacity;
         ratingStyle = new RatingStyle(capacity);
         rim.setStyle(Paint.Style.STROKE);
