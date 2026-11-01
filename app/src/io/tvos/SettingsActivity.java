@@ -5,6 +5,8 @@ import io.tvos.settings.SettingsActions;
 import io.tvos.settings.SettingsOrderEditor;
 import io.tvos.settings.SettingsDockEditor;
 import io.tvos.settings.SettingsBackground;
+import io.tvos.settings.SettingsTextRenderer;
+import io.tvos.settings.SettingsLogoRenderer;
 
 import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
@@ -19,7 +21,6 @@ import android.graphics.LinearGradient;
 import android.graphics.Shader;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Matrix;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
@@ -101,7 +102,7 @@ public class SettingsActivity extends Activity {
         private static final int PICK_VISIBLE = 10;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
         private static final float SETTINGS_SHADOW_BLUR = 40, SETTINGS_SHADOW_DROP = 15, SETTINGS_SHADOW_OPACITY = 0.40f;
-        private static final int AMBER = 0xFFFFC266, INK = 0xFF1C1C1E;
+        private static final int INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
         private Click tvosClick; // TVOS_AERIAL_CONTROLS_V1: same sound as HomeView
@@ -122,9 +123,8 @@ public class SettingsActivity extends Activity {
         private final Spring mainScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
         private final RectF tmp = new RectF(), rowRect = new RectF(), focusBox = new RectF();
-        private final RectF logoBounds = new RectF();
-        private final Paint.FontMetrics logoMetrics = new Paint.FontMetrics();
-        private final Paint trackedGlyphPaint = new Paint();
+        private final SettingsTextRenderer textRenderer = new SettingsTextRenderer();
+        private final SettingsLogoRenderer logoRenderer = new SettingsLogoRenderer();
         private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path arrowPath = new Path();
         private final TextPaint shelfMeasurePaint = new TextPaint();
@@ -132,15 +132,6 @@ public class SettingsActivity extends Activity {
         private float serviceValueWidth = -1, serviceValueSize = -1;
         private final SettingsOrderEditor categoryEditor = SettingsEditors.categories();
         private final SettingsOrderEditor buttonEditor = SettingsEditors.buttons();
-        private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        private StaticLayout descriptionLayout;
-        private String descriptionText;
-        private int descriptionWidth;
-        private final Matrix logoMatrix = new Matrix();
-        private final Path logoCutout = new Path();
-        private final Shader darkLogoGradient = new LinearGradient(0, 1, 1, 0,
-                0xFF51595B, 0xFF55646B, Shader.TileMode.CLAMP);
-        private float logoScale = -1;
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
         // Saves ~75% of background bitmap RAM and texture upload bandwidth.
         private final SettingsBackground background = new SettingsBackground();
@@ -170,40 +161,9 @@ public class SettingsActivity extends Activity {
         private long lastNanos, pendingAt;
         private int w, h;
         private float k = 1;
-        private Paint title, subtitle, rowLabel, rowValue, rowSub, warn, spinner, white, shadow;
+        private Paint rowLabel, rowValue, white, shadow;
 
-        // Пробная отрисовка с дополнительным межбуквенным интервалом.
-        private void drawTrackedText(Canvas canvas, String text,
-                                     float x, float y, Paint paint,
-                                     float tracking) {
-            if (text == null || text.isEmpty()) return;
-
-            float spacing = paint.getTextSize() * tracking;
-            int count = text.codePointCount(0, text.length());
-
-            float width = paint.measureText(text)
-                    + spacing * Math.max(0, count - 1);
-
-            float cursor = x;
-            if (paint.getTextAlign() == Paint.Align.CENTER) {
-                cursor -= width / 2f;
-            } else if (paint.getTextAlign() == Paint.Align.RIGHT) {
-                cursor -= width;
-            }
-
-            Paint glyphPaint = trackedGlyphPaint;
-            glyphPaint.set(paint);
-            glyphPaint.setTextAlign(Paint.Align.LEFT);
-
-            for (int i = 0; i < text.length();) {
-                int next = text.offsetByCodePoints(i, 1);
-                canvas.drawText(text, i, next, cursor, y, glyphPaint);
-                cursor += glyphPaint.measureText(text, i, next) + spacing;
-                i = next;
-            }
-        }
-
-        private Paint pageTitle, logoInk, logoTile, capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private Paint pageTitle, capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         private boolean regionWasOpen;
         private final Runnable poll = new Runnable() {
@@ -365,8 +325,7 @@ public class SettingsActivity extends Activity {
             handler.removeCallbacks(poll);
             background.clear(); // Free cached bitmap when settings are hidden.
             rowShadows.clear();
-            descriptionLayout = null;
-            descriptionText = null;
+            textRenderer.clear();
         }
 
         @Override protected void onAttachedToWindow() {
@@ -388,8 +347,7 @@ public class SettingsActivity extends Activity {
             h = height;
             k = w / 1920f;
             rowShadows.clear();
-            descriptionLayout = null;
-            descriptionText = null;
+            textRenderer.clear();
             arrowPaint.setColor(0xFFA1A3A1);
             arrowPaint.setStyle(Paint.Style.STROKE);
             arrowPaint.setStrokeWidth(ABOUT_ARROW_STROKE * k);
@@ -407,29 +365,15 @@ public class SettingsActivity extends Activity {
                     new float[] {0f, topStop, bottomStop, 1f}, Shader.TileMode.CLAMP));
             background.clear();
             updateDialog.resize(k);
-            title = Ui.text(Ui.displaySemibold, 50 * k, 0xFFFFFFFF);
-            title.setTextAlign(Paint.Align.CENTER);
-            subtitle = Ui.text(Ui.regular, 28 * k, 0x99FFFFFF);
-            subtitle.setTextAlign(Paint.Align.CENTER);
             rowLabel = Ui.text(Ui.displaySemibold, 36 * k, 0xF2FFFFFF);
             rowValue = Ui.text(Ui.displayRegular, 36 * k, 0x8CFFFFFF);
             rowValue.setTextAlign(Paint.Align.RIGHT);
-            rowSub = Ui.text(Ui.regular, 27 * k, 0x8CFFFFFF);
-            warn = Ui.text(Ui.regular, 27 * k, AMBER);
-            spinner = new Paint(Paint.ANTI_ALIAS_FLAG);
-            spinner.setStyle(Paint.Style.STROKE);
-            spinner.setStrokeCap(Paint.Cap.ROUND);
-            spinner.setStrokeWidth(3.5f * k);
             white = new Paint(Paint.ANTI_ALIAS_FLAG);
             white.setColor(0xFFF5F5F7);
             shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
             shadow.setMaskFilter(new BlurMaskFilter(SETTINGS_SHADOW_BLUR * k, BlurMaskFilter.Blur.NORMAL));
             pageTitle = Ui.text(Ui.displayBold, 56 * k, 0x99FFFFFF);
             pageTitle.setTextAlign(Paint.Align.CENTER);
-            logoInk = Ui.text(Ui.displaySemibold, 58 * k, 0xFF173344);
-            logoInk.setTextAlign(Paint.Align.CENTER);
-            logoTile = new Paint(Paint.ANTI_ALIAS_FLAG);
-            logoTile.setColor(0xFF8897AC);
         }
 
         private boolean busy() {
@@ -507,33 +451,9 @@ public class SettingsActivity extends Activity {
             background.draw(c, w, h, lightSettings());
             pageTitle.setColor(lightSettings() ? 0xFF738190 : 0xFF5A676D);
             drawPageTitle(c, SystemClock.uptimeMillis());
-            drawSettingsLogo(c);
+            logoRenderer.draw(c, k, lightSettings(), Ui.displaySemibold);
             drawListViewport(c);
             drawTileDescription(c);
-        }
-
-        /** The wordmark is a real cutout: the existing background remains visible through it. */
-        private void drawSettingsLogo(Canvas c) {
-            if (logoScale != k) {
-                logoScale = k;
-                logoBounds.set(254 * k, 236 * k, 790 * k, 772 * k);
-                logoInk.setTextSize(58 * k);
-                float width = logoInk.measureText("tvOS");
-                if (width > 0f) logoInk.setTextSize(logoInk.getTextSize() * logoBounds.width() / (2f * width));
-                logoInk.getFontMetrics(logoMetrics);
-                float baseline = logoBounds.centerY() - (logoMetrics.ascent + logoMetrics.descent) / 2f;
-                logoCutout.reset();
-                logoInk.getTextPath("tvOS", 0, 4, logoBounds.centerX(), baseline, logoCutout);
-                logoMatrix.setScale(logoBounds.width(), logoBounds.height());
-                logoMatrix.postTranslate(logoBounds.left, logoBounds.top);
-                darkLogoGradient.setLocalMatrix(logoMatrix);
-            }
-            logoTile.setColor(0xFF8897AC);
-            logoTile.setShader(lightSettings() ? null : darkLogoGradient);
-            c.save();
-            c.clipOutPath(logoCutout);
-            c.drawRoundRect(logoBounds, 116 * k, 116 * k, logoTile);
-            c.restore();
         }
 
         /** Reset inherited selection before drawing either page of a menu transition. */
@@ -581,15 +501,15 @@ public class SettingsActivity extends Activity {
                     (now - pageTitleStarted) / (float) MENU_TRANSITION_MS);
             if (pageTitlePrevious == null || t >= 1f) {
                 pageTitlePrevious = null;
-                drawTrackedText(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
+                textRenderer.drawTracked(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
                 return;
             }
             float eased = t * t * (3f - 2f * t);
             int alpha = pageTitle.getAlpha();
             pageTitle.setAlpha(Math.round(alpha * (1f - eased)));
-            drawTrackedText(c, pageTitlePrevious, w / 2f, 111 * k, pageTitle, 0.02f);
+            textRenderer.drawTracked(c, pageTitlePrevious, w / 2f, 111 * k, pageTitle, 0.02f);
             pageTitle.setAlpha(Math.round(alpha * eased));
-            drawTrackedText(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
+            textRenderer.drawTracked(c, pageTitleShown, w / 2f, 111 * k, pageTitle, 0.02f);
             pageTitle.setAlpha(alpha);
             postInvalidateDelayed(16);
         }
@@ -797,7 +717,7 @@ public class SettingsActivity extends Activity {
                 }
                 rowLabel.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : blend(normalInk(), INK, f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                textRenderer.drawTracked(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 float right = rowRect.right - 30 * k;
                 if (screen != ABOUT || i == 0) {
                     if (screen == UPDATES && i == 0 && updateProgress.busy()) {
@@ -812,12 +732,12 @@ public class SettingsActivity extends Activity {
                                     blend(normalInk(), INK, f));
                     } else {
                         rowValue.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : valueInk(f));
-                        drawTrackedText(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
+                        textRenderer.drawTracked(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
                                 rowRect.right - (menuChevronVisible(i) ? 61 : 13) * k, base, rowValue, 0.02f);
                     }
                 } else {
                     rowValue.setColor(valueInk(f));
-                    drawTrackedText(c, values[i], right + 20 * k, base, rowValue, 0.02f);
+                    textRenderer.drawTracked(c, values[i], right + 20 * k, base, rowValue, 0.02f);
                 }
             }
         }
@@ -886,7 +806,7 @@ public class SettingsActivity extends Activity {
                 setApprovedRowRect(i);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                drawTrackedText(c, options[i], rowRect.left + rowRect.width() * 0.10f + 10 * k,
+                textRenderer.drawTracked(c, options[i], rowRect.left + rowRect.width() * 0.10f + 10 * k,
                         rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel, 0.02f);
                 if (i == current) {
                     float cw = Symbols.width(getContext(), "check", 26 * k);
@@ -897,8 +817,6 @@ public class SettingsActivity extends Activity {
         }
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
-        // Preserve existing StaticLayout wrapping/metrics pending a separately verified migration.
-        @SuppressWarnings("deprecation")
         private void drawTileDescription(Canvas c) {
             String info = screen == UPDATES ? updateDetailsText()
                     : SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size());
@@ -907,20 +825,7 @@ public class SettingsActivity extends Activity {
                 return;
             }
             if (info == null) return;
-            descriptionPaint.setColor(lightSettings() ? 0xB33A5761 : 0xFF888D90);
-            int width = Math.round(740 * k);
-            if (descriptionLayout == null || !info.equals(descriptionText) || width != descriptionWidth) {
-                descriptionPaint.setTypeface(Ui.displaySemibold);
-                descriptionPaint.setTextSize(30 * k);
-                descriptionLayout = new StaticLayout(info, descriptionPaint, width,
-                        android.text.Layout.Alignment.ALIGN_CENTER, 1.18f, 0, false);
-                descriptionText = info;
-                descriptionWidth = width;
-            }
-            c.save();
-            c.translate(152 * k, 837 * k);
-            descriptionLayout.draw(c);
-            c.restore();
+            textRenderer.drawDescription(c, info, k, lightSettings(), Ui.displaySemibold);
         }
 
         private String updateDetailsText() {
@@ -1138,11 +1043,11 @@ public class SettingsActivity extends Activity {
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 boolean vpnApp = row == buttonEditor.size();
                 int id = vpnApp ? -1 : buttonEditor.get(row);
-                drawTrackedText(c, vpnApp ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
+                textRenderer.drawTracked(c, vpnApp ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
                         rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                if (vpnApp) drawTrackedText(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
+                if (vpnApp) textRenderer.drawTracked(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
                         rowRect.right - 61 * k, base, rowValue, 0.02f);
-                if (!vpnApp) drawTrackedText(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
+                if (!vpnApp) textRenderer.drawTracked(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
                         rowRect.right - 13 * k, base, rowValue, 0.02f);
                 if (vpnApp && !disabled) drawApprovedChevron(c);
             }
@@ -1292,9 +1197,9 @@ public class SettingsActivity extends Activity {
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                drawTrackedText(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
+                textRenderer.drawTracked(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
                         base, rowLabel, 0.02f);
-                drawTrackedText(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off),
+                textRenderer.drawTracked(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off),
                         rowRect.right - 13 * k, base, rowValue, 0.02f);
             }
         }
@@ -1340,8 +1245,8 @@ public class SettingsActivity extends Activity {
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                drawTrackedText(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                drawTrackedText(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect.right - 13 * k, base, rowValue, 0.02f);
+                textRenderer.drawTracked(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                textRenderer.drawTracked(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect.right - 13 * k, base, rowValue, 0.02f);
             }
         }
 
@@ -1410,7 +1315,7 @@ public class SettingsActivity extends Activity {
                         }
                     } while (end > 0);
                 }
-                drawTrackedText(c, label, labelX, rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel, 0.02f);
+                textRenderer.drawTracked(c, label, labelX, rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel, 0.02f);
                 if (at == pickCurrent) {
                     float cw = Symbols.width(getContext(), "check", 26 * k);
                     Symbols.draw(getContext(), c, "check", rowRect.right - 30 * k - cw / 2, rowRect.centerY(), 26 * k, blend(0xFFFFFFFF, INK, f));
@@ -1430,9 +1335,9 @@ public class SettingsActivity extends Activity {
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                drawTrackedText(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                textRenderer.drawTracked(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
                 boolean transition = keys || (settingsGroup != SYSTEM && i == CITY_ROW);
-                drawTrackedText(c, values[i], rowRect.right - (transition ? 61 : 13) * k, base, rowValue, 0.02f);
+                textRenderer.drawTracked(c, values[i], rowRect.right - (transition ? 61 : 13) * k, base, rowValue, 0.02f);
                 if (transition) drawApprovedChevron(c);
             }
 

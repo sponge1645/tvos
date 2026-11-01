@@ -32,7 +32,7 @@ public class UpdateProgressHarness {
  }
 }'''
 view=Path('app/src/io/tvos/SettingsActivity.java').read_text()
-assert 'descriptionPaint.setTypeface(Ui.displaySemibold)' in view and 'descriptionPaint.setTextSize(30 * k)' in view
+assert 'textRenderer.drawDescription(c, info, k, lightSettings(), Ui.displaySemibold)' in view
 assert 'screen == UPDATES && updateProgress.active()' in view and 'screen == UPDATES && i == 0 && updateProgress.busy()' in view
 with tempfile.TemporaryDirectory(prefix='tvos-update-progress-') as tmp:
  root=Path(tmp);write(root)

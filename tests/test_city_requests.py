@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
      static class Spoken {void focusMoved(){} }
      static class Dialog {boolean paused;void pause(){paused=true;}}final Dialog updateDialog=new Dialog();
      static class Shadows {boolean cleared;void clear(){cleared=true;}}
-     Shadows rowShadows=new Shadows();Object descriptionLayout=new Object();String descriptionText="cached";
+     Shadows rowShadows=new Shadows();static class TextRenderer {boolean cleared;void clear(){cleared=true;}}final TextRenderer textRenderer=new TextRenderer();
  Object getContext(){return this;}
  static final ThreadPoolExecutor CITY_IO=executor();
  static ThreadPoolExecutor executor(){try{java.lang.reflect.Field f=SettingsCitySearch.class.getDeclaredField("IO");f.setAccessible(true);return (ThreadPoolExecutor)f.get(null);}catch(Exception e){throw new AssertionError(e);}}
@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
        h.citySearch.search("old");h.flush();h.pause();h.handler.drain();check(h.pickers==0,"paused settings suppress city callback");
        check(h.updateDialog.paused,"pause delegates update listener lifecycle");
        check(!h.okDown&&!h.backDown&&h.appLoader.cancelled,"pause clears held keys and app lookup");
-       check(h.rowShadows.cleared && h.descriptionLayout==null && h.descriptionText==null,"pause drops shadow and description caches");
+       check(h.rowShadows.cleared && h.textRenderer.cleared,"pause drops shadow and description caches");
        h.running=true;h.citySearch.search("different-screen");h.flush();h.screen=99;h.handler.drain();check(h.pickers==0 && h.citySearch.status().isEmpty(),"navigation suppresses picker");
        h.screen=GENERAL;CountDownLatch gate=new CountDownLatch(1),entered=new CountDownLatch(1);
        CITY_IO.execute(()->{entered.countDown();try{gate.await(3,TimeUnit.SECONDS);}catch(Exception e){throw new RuntimeException(e);}});entered.await(3,TimeUnit.SECONDS);
