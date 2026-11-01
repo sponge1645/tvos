@@ -5,5 +5,5 @@
 
     <string name="region_vpn_paused">VPN is paused while determining your region. TV traffic uses the direct connection.</string>
     <string name="region_vpn_restored">VPN connection restored.</string>
-    <string name="region_vpn_restore_failed">Could not restore VPN. Open your VPN app; tvOS will retry.</string>
+    <string name="region_vpn_restore_failed">Could not turn on VPN. Turn it on manually.</string>
 </resources>

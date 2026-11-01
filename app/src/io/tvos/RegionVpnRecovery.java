@@ -27,9 +27,9 @@ final class RegionVpnRecovery {
             if (journal.restore(() -> {
                 if (!control.connected()) { control.toggle(); await(control, true); }
             })) notice(R.string.region_vpn_restored);
-        } catch (IOException e) {
-            ModeJob.scheduleRestore(context, 30_000);
-            notice(R.string.region_vpn_restore_failed);
+        } catch (VpnRestoreJournal.RestoreFailure e) {
+            if (e.exhausted) notice(R.string.region_vpn_restore_failed);
+            else ModeJob.scheduleRestore(context, 30_000);
             throw e;
         }
     }

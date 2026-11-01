@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B136)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B137)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -66,3 +66,8 @@ Settings rows: `settings/SettingsRowRenderer` owns capsule/focus geometry, reusa
 resize-dependent edge mask. Its content callback receives only Canvas; screen
 selection and transition state remain in SettingsActivity. The callback is retained
 once by the view, with no per-frame callback or mask allocation.
+
+VPN recovery records each started attempt in the existing durable marker under the
+shared process/file lock. Five attempts are allowed across restarts; only attempts
+one through four schedule a silent retry. Exhaustion removes the intent and emits
+one localized manual-recovery notice. Legacy one-byte markers start at zero.
