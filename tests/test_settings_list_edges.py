@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import subprocess
 import tempfile
+from settings_list_renderer_fixture import geometry_sources
 
 source = Path('app/src/io/tvos/SettingsActivity.java').read_text()
 
@@ -20,7 +21,7 @@ body = ''.join(method(s) for s in [
     '        private void setScrollingRowRect(',
     '        private void setApprovedRowRect(',
 ])
-harness = '''package io.tvos;
+harness = '''package io.tvos;import android.graphics.RectF;import io.tvos.settings.SettingsListRenderer;
 public class ListEdgesHarness {
  final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  static final int PICK_VISIBLE=10, MAIN=0;
@@ -28,12 +29,7 @@ public class ListEdgesHarness {
  boolean localFlag(String key){return reduced;}void postInvalidateOnAnimation(){invalidations++;}
  static final float LIST_TOP=186, ROW_H=62, ABOUT_ROW_GAP=22,
   ABOUT_NAME_Y_OFFSET=3, LIST_X=1000, LIST_R=1824, ABOUT_NAME_RIGHT_EXTENSION=6;
- static class Box {
-  float left,top,right,bottom;
-  void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}
-  void offset(float x,float y){left+=x;right+=x;top+=y;bottom+=y;}
- }
- final Box rowRect=new Box(); final Spring listScroll=new Spring(0.30f,1f,0);
+ final RectF rowRect=new RectF(); final Spring listScroll=new Spring(0.30f,1f,0);
  int size=35; float k=1;
  int listSize(){return size;}
  static void check(boolean ok,String reason){if(!ok)throw new AssertionError(reason);}
@@ -68,10 +64,11 @@ public class ListEdgesHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-list-edges-') as directory:
     root = Path(directory)
+    for name,body in geometry_sources().items():
+        p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
     (root / 'ListEdgesHarness.java').write_text(harness)
     (root / 'Spring.java').write_text(Path('app/src/io/tvos/Spring.java').read_text())
     (root / 'SettingsListWindow.java').write_text(Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text())
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory,
-                    str(root / 'Spring.java'), str(root / 'ListEdgesHarness.java'), str(root / 'SettingsListWindow.java')], check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.ListEdgesHarness'], check=True)

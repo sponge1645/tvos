@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B143)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B144)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -120,3 +120,29 @@ an ellipsis when it cannot fit, values may become empty. That policy participate
 in the existing single-value cache. Dock retains TextUtils and its 520px limit;
 its measure Paint moved from the Activity into the renderer, with one setup per
 list draw. About detail values retain their original two-step right offset.
+
+Settings structural checkpoint (1B144):
+
+- `settings/SettingsListRenderer` owns complete row presentation, palette,
+  decorations, active-last ordering and shared menu/scroll/accessibility geometry.
+  It reads no Activity, Prefs, HomeApps, Ui, screen IDs or application data. One
+  immediate Row input is reset/reused per draw; it is not a second navigation or
+  selection model. Check-symbol metrics/drawing and update-spinner drawing are
+  narrow graphics callbacks. Menu/editor decoration ordering, disabled VPN
+  fitting, About detail bounds and the three checkmark recipes remain distinct.
+- `SettingsModeMonitor` owns the HomeMode snapshot, pending-switch timing,
+  polling cadence, completion notices and observed region-entry state. The View
+  supplies its existing running/region predicates and notification callbacks;
+  there is no second running flag. Pause stops polling, resets region entry and
+  retains the previous busy state exactly as before.
+- `SettingsValues` also owns installed-version/last-check text and its cache.
+  The View retains only bindings: navigation/focus and picker data, localization
+  selection, platform launch/prompt effects, input adapters and lifecycle/frame
+  coordination. Those are intentional Android adapter responsibilities, not
+  further independent renderers or generic models to be split for line count.
+
+Regression coverage executes the list renderer and every View row-binding path,
+including active-last/overscan, all row/marker modes, themes, 720p/1080p/4K,
+spinner frame ownership, read-only About, disabled VPN and legacy screens. Mode
+monitor tests cover both clocks, exact timeout limits, reboot/stale timestamps,
+notice delivery across pause, region visits and stale-callback cancellation.

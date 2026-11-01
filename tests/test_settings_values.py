@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from settings_strings_fixture import write
 sources={
-'android/content/SharedPreferences.java':'''package android.content;import java.util.*;public class SharedPreferences {public final Map<String,Object> data=new HashMap<>();public boolean getBoolean(String k,boolean d){return (Boolean)data.getOrDefault(k,d);}public String getString(String k,String d){return (String)data.getOrDefault(k,d);}}''',
+'android/content/SharedPreferences.java':'''package android.content;import java.util.*;public class SharedPreferences {public final Map<String,Object> data=new HashMap<>();public long getLong(String k,long d){return ((Number)data.getOrDefault(k,d)).longValue();}public boolean getBoolean(String k,boolean d){return (Boolean)data.getOrDefault(k,d);}public String getString(String k,String d){return (String)data.getOrDefault(k,d);}}''',
 'android/content/Context.java':'''package android.content;public class Context {public static final int MODE_PRIVATE=0;public static final String WIFI_SERVICE="wifi";public final SharedPreferences prefs=new SharedPreferences();public final android.content.pm.PackageManager pm=new android.content.pm.PackageManager();public android.net.wifi.WifiManager wifi=new android.net.wifi.WifiManager();public SharedPreferences getSharedPreferences(String s,int mode){return prefs;}public android.content.pm.PackageManager getPackageManager(){return pm;}public String getPackageName(){return "io.tvos";}public Context getApplicationContext(){return this;}public Object getSystemService(String name){return wifi;}}''',
 'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public boolean fail;public static class NameNotFoundException extends Exception {private static final long serialVersionUID=1L;}public static class Info {public String versionName="1.1.0";}public Object getApplicationInfo(String p,int f)throws NameNotFoundException {if(fail)throw new NameNotFoundException();return p;}public CharSequence getApplicationLabel(Object p){return "Label "+p;}public Info getPackageInfo(String p,int f){if(fail)throw new SecurityException();return new Info();}}''',
 'android/app/Activity.java':'''package android.app;public class Activity extends android.content.Context {public WindowManager getWindowManager(){return new WindowManager();}public static class WindowManager {public WindowManager getDefaultDisplay(){return this;}public void getRealMetrics(android.util.DisplayMetrics m){m.widthPixels=1920;m.heightPixels=1080;}}}''',
@@ -32,6 +32,8 @@ public class ValuesHarness {
    free[0]=true;check(v.menu(SYSTEM,4)[2].equals("tvOS"),"current launcher callback");
    check(v.menu(ACCESSIBILITY,3)[2].isEmpty(),"TV Settings action has no misplaced launcher value");
    free[0]=false;check(v.menu(SYSTEM,4)[2].equals(ru?"Встроенный":"Built-in"),"built-in launcher value follows moved row");free[0]=true;
+   a.prefs.data.put("self_update_attempt",0L);int reads=SettingsUpdateDialog.reads;String details=v.updateDetailsText();check(details.equals("tvOS installed\\n"+AppStrings.get(R.string.settings_last_check_never)),"localized update details owned by values");v.updateDetailsText();check(SettingsUpdateDialog.reads==(reads==0?1:reads),"installed version cached across frames/language changes");
+   a.prefs.data.put("self_update_attempt",1700000000000L);check(v.updateDetailsText().equals("tvOS installed\\n"+SettingsValues.formatLastUpdateCheck(1700000000000L,AppLanguage.current())),"new check timestamp refreshes details");
    a.prefs.data.put("auto_update",true);check(v.menu(UPDATES,2)[1].equals(SettingsValues.onOff(true)),"auto update value");
    a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,5);check(saver[0].equals("National Geographic")&&saver[4].isEmpty(),"saver source and action row");
    check(v.menu(WEATHER,2)[0].equals(SettingsValues.onOff(true))&&v.menu(WEATHER,2)[1].equals(SettingsValues.onOff(false)),"independent weather callback");
@@ -44,7 +46,7 @@ public class ValuesHarness {
    mappings=SettingsValues.keyValues(Collections.emptyList(),Collections.emptyList());check(mappings[4].equals(AppStrings.get(R.string.settings_not_configured)),"unmapped MI has no default app");
    for(String mapping:mappings)check(mapping.equals(ru?"Не настроено":"Not configured"),"empty catalog uses same status for all four buttons");
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B143)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
+   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B144)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,8)[6].equals("Home"),"SSID quotes removed");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,8);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");
@@ -55,6 +57,7 @@ public class ValuesHarness {
 }'''
 }
 for name in ['SettingsValues','SettingsContent']:sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
+sources['io/tvos/SettingsUpdateDialog.java']='package io.tvos;class SettingsUpdateDialog {static int reads;static String versionName(android.content.Context c){reads++;return "tvOS installed";}}'
 sources['io/tvos/version/SoftwareBuild.java']=Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-settings-values-') as tmp:
  root=Path(tmp);write(root)

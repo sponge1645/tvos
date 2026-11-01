@@ -4,8 +4,9 @@ import subprocess
 import tempfile
 from tmdb_metadata_fixture import block
 from settings_remote_fixture import write as write_remote
+from settings_list_renderer_fixture import geometry_sources
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
-harness='''import io.tvos.settings.*;import android.view.KeyEvent;import static io.tvos.settings.SettingsScreen.*;
+harness='''import io.tvos.settings.*;import android.view.KeyEvent;import android.graphics.RectF;import static io.tvos.settings.SettingsScreen.*;
 public class WindowHarness {
  final SettingsListWindow listWindow=new SettingsListWindow(10);int focus,screen=PICKER,size=35,clicks,invalidations,announcements;
  final Click tvosClick=new Click();class Click {void move(){clicks++;}}
@@ -16,9 +17,8 @@ public class WindowHarness {
  boolean key(int code,boolean down,int repeat){return input.onKey(new KeyEvent(down?KeyEvent.ACTION_DOWN:KeyEvent.ACTION_UP,code,repeat,false),screen==MAIN,actions);}
 ''' + block(source,'        private void moveFocus(') + '''
  static final float LIST_TOP=186,ROW_H=62,MAIN_ROW_GAP=22,ABOUT_ROW_GAP=22,ABOUT_NAME_Y_OFFSET=3,ABOUT_DETAILS_Y_OFFSET=13,LIST_X=1000,LIST_R=1824,ABOUT_NAME_RIGHT_EXTENSION=6;
- static class RectF {float left,top,right,bottom;void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}void offset(float x,float y){left+=x;right+=x;top+=y;bottom+=y;}}
  static class Position {float value;}final Position mainScroll=new Position(),listScroll=new Position();final RectF focusBox=new RectF();float k=1;
-''' + block(source,'        private RectF rowBox(') + '''
+''' + block(source,'        private RectF rowBox(')+block(source,'        private SettingsListRenderer.Layout rowLayout(') + '''
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static void near(float a,float b){check(Math.abs(a-b)<.001f,a+" != "+b);}
  public static void main(String[] args){
@@ -55,6 +55,8 @@ public class WindowHarness {
  }}'''
 with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp);write_remote(root)
+ for name,body in geometry_sources().items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
  (root/'WindowHarness.java').write_text(harness)
  for name in ['SettingsListWindow','SettingsScreen']:
   (root/(name+'.java')).write_text(Path('app/src/io/tvos/settings',name+'.java').read_text())

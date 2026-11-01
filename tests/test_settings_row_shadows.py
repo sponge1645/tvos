@@ -3,6 +3,7 @@ from pathlib import Path
 import re,subprocess,tempfile
 from settings_strings_fixture import write
 from home_renderers_fixture import files
+from settings_list_renderer_fixture import add as add_list_renderer
 from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 renderer=Path('app/src/io/tvos/settings/SettingsRowRenderer.java').read_text()
@@ -13,7 +14,9 @@ harness='''package io.tvos;import android.graphics.*;import java.util.*;
 public class SettingsShadowHarness {
  float k=1;boolean light;final Spring[] pop=new Spring[12];{for(int i=0;i<pop.length;i++)pop[i]=new Spring(.28f,.85f,0);}final RectF rowRect=new RectF(),tmp=new RectF();
  final Shadows rowShadows=new Shadows();final io.tvos.settings.SettingsRowRenderer rowRenderer=new io.tvos.settings.SettingsRowRenderer(rowShadows::draw);boolean lightSettings(){return light;}
- '''+''.join(block(source,sig) for sig in ['        private float drawApprovedCapsule(', '        private static int paintRow(', '        private int secondaryInk(', '        private int valueInk(', '        private static int blend('])+'''
+ float drawApprovedCapsule(Canvas c,int i){return rowRenderer.draw(c,rowRect,k,light,i>=0&&i<pop.length?pop[i].value:0);}
+ static int paintRow(int p,int first,int end,int active){return io.tvos.settings.SettingsListRenderer.paintRow(p,first,end,active);}
+ int valueInk(float f){return io.tvos.settings.SettingsListRenderer.valueInk(light,f);}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b,String why){check(Math.abs(a-b)<.03,why+" "+a+" != "+b);}
  static List<Canvas.Entry> entries(Canvas c,String kind){List<Canvas.Entry> out=new ArrayList<>();for(Canvas.Entry e:c.entries)if(e.kind.equals(kind))out.add(e);return out;}
  public static void main(String[] args){SettingsShadowHarness h=new SettingsShadowHarness();
@@ -45,7 +48,7 @@ public class SettingsShadowHarness {
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-settings-shadow-') as tmp:
- root=Path(tmp);write(root);sources=files()
+ root=Path(tmp);write(root);sources=add_list_renderer(files())
  sources['android/graphics/Shader.java']=sources['android/graphics/Shader.java'].replace('public enum','public void setLocalMatrix(Matrix m){}public enum')
  sources['android/graphics/Matrix.java']=sources['android/graphics/Matrix.java'].replace('public void setScale','public void setSinCos(float a,float b){}public void postScale(float a,float b){}public void setScale')
  sources['io/tvos/settings/SettingsRowRenderer.java']=renderer

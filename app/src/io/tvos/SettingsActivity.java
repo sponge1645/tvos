@@ -9,6 +9,9 @@ import io.tvos.settings.SettingsBackground;
 import io.tvos.settings.SettingsTextRenderer;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
+import io.tvos.settings.SettingsListRenderer;
+import io.tvos.settings.SettingsListRenderer.Kind;
+import io.tvos.settings.SettingsListRenderer.Marker;
 import io.tvos.settings.SettingsListViewport;
 import io.tvos.settings.SettingsTransitions;
 import io.tvos.settings.SettingsListWindow;
@@ -36,9 +39,6 @@ import android.view.View;
 import android.view.accessibility.AccessibilityNodeProvider;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -96,8 +96,6 @@ public class SettingsActivity extends Activity {
 
     static final class SettingsView extends View {
         private final SettingsListWindow listWindow = new SettingsListWindow(10);
-        private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62;
-        private static final int INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
         private Click tvosClick; // TVOS_AERIAL_CONTROLS_V1: same sound as HomeView
@@ -122,6 +120,14 @@ public class SettingsActivity extends Activity {
         private final RectF rowRect = new RectF(), focusBox = new RectF();
         private final SettingsTextRenderer textRenderer = new SettingsTextRenderer();
         private final SettingsLogoRenderer logoRenderer = new SettingsLogoRenderer();
+        private final SettingsListRenderer.Row rowData = new SettingsListRenderer.Row();
+        private final SettingsListRenderer listRenderer = new SettingsListRenderer(rowRenderer, textRenderer,
+                new SettingsListRenderer.Check() {
+                    @Override public float width(float size) { return Symbols.width(getContext(), "check", size); }
+                    @Override public void draw(Canvas c, float x, float y, float size, int ink) {
+                        Symbols.draw(getContext(), c, "check", x, y, size, ink);
+                    }
+                }, this::drawUpdateSpinner);
         private final SettingsOrderEditor categoryEditor = SettingsEditors.categories();
         private final SettingsOrderEditor buttonEditor = SettingsEditors.buttons();
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
@@ -129,18 +135,15 @@ public class SettingsActivity extends Activity {
         private final SettingsBackground background = new SettingsBackground();
         private final SettingsUpdateDialog updateDialog;
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
-        private JSONObject state = new JSONObject();
+        private final SettingsModeMonitor modeMonitor;
         private int screen = MAIN, focus, settingsGroup = GENERAL, returnFocus = 0;
         private final SettingsTransitions transitions = new SettingsTransitions();
         private final java.util.function.IntUnaryOperator transitionParent = this::parentScreen;
         private final SettingsTransitions.ScreenPainter transitionPainter = this::drawTransitionScreen;
-        private String updateInstalledVersion, updateCheckShown;
-        private long updateCheckAt = Long.MIN_VALUE;
-        private AppLanguage updateCheckLanguage;
         private final SettingsListViewport listViewport = new SettingsListViewport();
         private final SettingsListViewport.Content listContent = this::drawMenuTransition;
 
-        private boolean running, wasBusy;
+        private boolean running;
         private final SettingsRemoteInput remoteInput = new SettingsRemoteInput();
         private final SettingsRemoteInput.Actions remoteActions = new SettingsRemoteInput.Actions() {
             @Override public void vertical(int direction, boolean down, boolean first) { moveFocus(direction, down, first); }
@@ -157,37 +160,18 @@ public class SettingsActivity extends Activity {
         };
         private boolean lightAppearance;
         private final Spoken spoken;
-        private long lastNanos, pendingAt;
+        private long lastNanos;
         private int w, h;
         private float k = 1;
         private Paint rowLabel, rowValue;
 
         private Paint pageTitle;
 
-        private boolean regionWasOpen;
-        private final Runnable poll = new Runnable() {
-            @Override public void run() {
-                if (!running) return;
-                if (screen == REGION && !regionWasOpen) AutoRegion.enter(getContext());
-                regionWasOpen = screen == REGION;
-                state = HomeMode.state(getContext());
-                boolean nowBusy = !busyText().isEmpty();
-                if (nowBusy) pendingAt = 0;
-                // A switch just ended: TalkBack reads how it went (the newest notice).
-                JSONArray notices = state.optJSONArray("notices");
-                if (wasBusy && !nowBusy && notices != null && notices.length() > 0) {
-                    JSONObject newest = notices.optJSONObject(0);
-                    if (newest != null) announceForAccessibility(NoticeText.render(newest));
-                }
-                wasBusy = nowBusy;
-                invalidate();
-                handler.postDelayed(this, busy() ? 500 : 2000);
-            }
-        };
-
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            modeMonitor = new SettingsModeMonitor(a, handler, () -> running, () -> screen == REGION,
+                    this::announceForAccessibility, this::invalidate);
             preferenceEditor = new SettingsPreferenceEditor(localPrefs(),
                     () -> HomeData.get(getContext()).settingsChanged(), this::invalidate);
             deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
@@ -283,12 +267,14 @@ public class SettingsActivity extends Activity {
         }
 
         private RectF rowBox(int row) {
-            float top = LIST_TOP + row * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
-                    + (screen == ABOUT && row != 0 ? ABOUT_DETAILS_Y_OFFSET : ABOUT_NAME_Y_OFFSET);
-            if (screen == MAIN) top -= mainScroll.value * (ROW_H + MAIN_ROW_GAP);
-            focusBox.set(LIST_X * k, top * k, (LIST_R + ABOUT_NAME_RIGHT_EXTENSION) * k, (top + ROW_H) * k);
-            if (scrolling()) focusBox.offset(0, (listWindow.offset() - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
+            SettingsListRenderer.accessibilityBounds(focusBox, row, rowLayout(), mainScroll.value,
+                    scrolling(), listWindow.offset(), listScroll.value, k);
             return focusBox;
+        }
+
+        private SettingsListRenderer.Layout rowLayout() {
+            return screen == MAIN ? SettingsListRenderer.Layout.ROOT
+                    : screen == ABOUT ? SettingsListRenderer.Layout.ABOUT : SettingsListRenderer.Layout.STANDARD;
         }
 
         void resume() {
@@ -298,7 +284,7 @@ public class SettingsActivity extends Activity {
             HomeData.get(getContext()).localizeCity(Prefs.language());
             updateDialog.resume();
             lastNanos = 0;
-            handler.post(poll);
+            modeMonitor.start();
             invalidate();
             spoken.readAgain();
         }
@@ -309,8 +295,7 @@ public class SettingsActivity extends Activity {
             appLoader.cancel();
             updateDialog.pause();
             citySearch.cancel();
-            regionWasOpen = false;
-            handler.removeCallbacks(poll);
+            modeMonitor.stop();
             background.clear(); // Free cached bitmap when settings are hidden.
             rowShadows.clear();
             textRenderer.clear();
@@ -346,19 +331,9 @@ public class SettingsActivity extends Activity {
             pageTitle.setTextAlign(Paint.Align.CENTER);
         }
 
-        private boolean busy() {
-            return !busyText().isEmpty() || (pendingAt != 0 && SystemClock.uptimeMillis() - pendingAt < 10_000);
-        }
+        private boolean busy() { return modeMonitor.busy(); }
 
-        private String busyText() {
-            long at = state.optLong("busyAt"), now = SystemClock.elapsedRealtime();
-            boolean stale = now < at || now - at > 10 * 60_000L;
-            return stale ? "" : state.optString("busy");
-        }
-
-        private boolean freeActive() {
-            return HomeMode.FREE.equals(state.optString("mode")) && !state.optBoolean("homeReverted");
-        }
+        private boolean freeActive() { return modeMonitor.freeActive(); }
 
         private int rowCount() {
             int fixed = SettingsScreen.fixedRows(screen);
@@ -448,11 +423,6 @@ public class SettingsActivity extends Activity {
 
         private boolean lightSettings() { return lightAppearance; }
 
-        private int normalInk() { return lightSettings() ? 0xE5162730 : 0xF2FFFFFF; }
-        private int secondaryInk() { return lightSettings() ? 0xFF758390 : 0xFF6C7B81; }
-        private int valueInk(float focusAmount) { return lightSettings() ? blend(secondaryInk(), 0xFF999999, focusAmount) : 0xFF999999; }
-        private int arrowInk() { return lightSettings() ? 0x8A34444C : 0x66FFFFFF; }
-
         private String screenTitle() {
             return SettingsContent.screenTitle(screen, settingsGroup, pickFor);
         }
@@ -469,26 +439,7 @@ public class SettingsActivity extends Activity {
         private void toggleWeather(boolean top) { preferenceEditor.toggleWeather(top); }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
         private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.enter(getContext()); invalidate(); }
-        // Approved About-screen geometry (all dimensions are scaled by k).
-        private static final float ABOUT_ROW_GAP = 22f, MAIN_ROW_GAP = 22f;
-        private static final float ABOUT_NAME_Y_OFFSET = 3f;
-        private static final float ABOUT_DETAILS_Y_OFFSET = 13f;
-        private static final float ABOUT_NAME_RIGHT_EXTENSION = 6f;
-
-        // Approved Name-button capsule: geometry stays separate from text hit coordinates.
-        private float drawApprovedCapsule(Canvas c, int i) {
-            return rowRenderer.draw(c, rowRect, k, lightSettings(),
-                    i >= 0 && i < pop.length ? pop[i].value : 0f);
-        }
-
-        private void drawApprovedChevron(Canvas c) {
-            rowRenderer.drawChevron(c, rowRect, k);
-        }
-
-        private void setApprovedRowRect(int i) {
-            float y = (LIST_TOP + i * (ROW_H + ABOUT_ROW_GAP) + ABOUT_NAME_Y_OFFSET) * k;
-            rowRect.set(LIST_X * k, y, (LIST_R + ABOUT_NAME_RIGHT_EXTENSION) * k, y + ROW_H * k);
-        }
+        private void setApprovedRowRect(int i) { SettingsListRenderer.approvedBounds(rowRect, i, k); }
 
         /** Parent hierarchy also determines animation direction. No per-screen animation code. */
         private int parentScreen(int child) {
@@ -527,77 +478,50 @@ public class SettingsActivity extends Activity {
             return SettingsScreen.hasChevron(screen, row, screen == REGION && Prefs.automaticRegion());
         }
 
+        private SettingsListRenderer.Row prepareRow(int index, String label, String value) {
+            return rowData.set(label, value, index >= 0 && index < pop.length ? pop[index].value : 0f);
+        }
+
+        private void drawRow(Canvas c) {
+            listRenderer.draw(c, rowRect, k, rowRect.centerY() + Ui.halfCap(rowLabel), lightSettings(), rowLabel, rowValue, rowData);
+        }
+
+        private void drawUpdateSpinner(Canvas c, float x, float y, float scale, int ink) {
+            boolean reduced = localFlag("reduce_motion");
+            updateProgress.drawSpinner(c, x, y, scale, ink, reduced);
+            if (running && !reduced) postInvalidateDelayed(80);
+        }
+
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
             for (int pass = 0; pass < labels.length; pass++) {
-                int i = paintRow(pass, 0, labels.length, focus);
-                float y = (LIST_TOP + i * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
-                        + (screen == ABOUT ? (i == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET)) * k;
-                if (screen == MAIN) y -= mainScroll.value * (ROW_H + MAIN_ROW_GAP) * k;
-                rowRect.set(LIST_X * k, y, LIST_R * k, y + ROW_H * k);
-                if (screen != ABOUT || i == 0) rowRect.right += ABOUT_NAME_RIGHT_EXTENSION * k;
-                // Only the first About row (device name) is an actionable capsule.
-                float f;
-                if (screen != ABOUT || i == 0) {
-                    f = drawApprovedCapsule(c, i);
-                } else {
-                    f = 0f;
-                }
-                rowLabel.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : blend(normalInk(), INK, f));
-                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawRowLabel(c, labels[i], rowRect, k, base, rowLabel);
-                if (screen != ABOUT || i == 0) {
-                    if (screen == UPDATES && i == 0 && updateProgress.busy()) {
-                        boolean reduced = localFlag("reduce_motion");
-                        updateProgress.drawSpinner(c, rowRect.right - 43 * k, rowRect.centerY(), k,
-                                f > 0.5f ? 0xFF777777 : secondaryInk(), reduced);
-                        if (running && !reduced) postInvalidateDelayed(80);
-                    } else if (menuChevronVisible(i)) drawApprovedChevron(c);
-                    if (screen == MOVIE_SERVICE) {
-                        if (i == MovieService.index(localPrefs().getString(MovieService.KEY, "")))
-                            Symbols.draw(getContext(), c, "check", rowRect.right - 43 * k, rowRect.centerY(), 24 * k,
-                                    blend(normalInk(), INK, f));
-                    } else {
-                        rowValue.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : valueInk(f));
-                        textRenderer.drawRowValue(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
-                                rowRect, k, base, menuChevronVisible(i) ? 61 : 13, rowValue);
-                    }
-                } else {
-                    rowValue.setColor(valueInk(f));
-                    textRenderer.drawTracked(c, values[i], rowRect.right - 30 * k + 20 * k, base, rowValue, 0.02f);
-                }
+                int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
+                SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
+                SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
+                row.kind = screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
+                row.disabled = screen == REGION && i == 1 && Prefs.automaticRegion();
+                boolean chevron = menuChevronVisible(i);
+                row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
+                        : chevron ? Marker.CHEVRON : Marker.NONE;
+                row.valueInset = chevron ? 61 : 13;
+                row.fitValue = screen == MEDIA || screen == REGION;
+                row.showValue = screen != MOVIE_SERVICE;
+                if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.SERVICE_CHECK;
+                drawRow(c);
             }
         }
-
-        /** Keep the service in its right-aligned column, with a visible gap after the label. */
-        private String fitServiceValue(String label, String value) {
-            return textRenderer.fitRowValue(label, value, rowRect, k, rowLabel, rowValue);
-        }
-
-        /** Stable row order with the focused row last, without extra layers or allocations. */
-        private static int paintRow(int pass, int first, int end, int active) {
-            if (active < first || active >= end) return first + pass;
-            if (pass == end - first - 1) return active;
-            int row = first + pass;
-            return row >= active ? row + 1 : row;
-        }
-
 
         /** Home launcher selection, using the same compact tvOS capsules as other screens. */
         private void drawChoice(Canvas c) {
             String[] options = {"tvOS", AppStrings.get(R.string.settings_built_in)};
             int current = freeActive() ? 0 : 1;
             for (int pass = 0; pass < options.length; pass++) {
-                int i = paintRow(pass, 0, options.length, focus);
+                int i = SettingsListRenderer.paintRow(pass, 0, options.length, focus);
                 setApprovedRowRect(i);
-                float f = drawApprovedCapsule(c, i);
-                rowLabel.setColor(blend(normalInk(), INK, f));
-                textRenderer.drawRowLabel(c, options[i], rowRect, k, rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel);
-                if (i == current) {
-                    float cw = Symbols.width(getContext(), "check", 26 * k);
-                    Symbols.draw(getContext(), c, "check", rowRect.right - 30 * k - cw / 2,
-                            rowRect.centerY(), 26 * k, blend(arrowInk(), INK, f));
-                }
+                SettingsListRenderer.Row row = prepareRow(i, options[i], "");
+                row.showValue = false;
+                if (i == current) row.marker = Marker.CHOICE_CHECK;
+                drawRow(c);
             }
         }
 
@@ -613,33 +537,7 @@ public class SettingsActivity extends Activity {
             textRenderer.drawDescription(c, info, k, lightSettings(), Ui.displaySemibold);
         }
 
-        private String updateDetailsText() {
-            if (updateInstalledVersion == null) updateInstalledVersion = SettingsUpdateDialog.versionName(getContext());
-            long checkedAt = localPrefs().getLong("self_update_attempt", 0);
-            if (updateCheckShown == null || checkedAt != updateCheckAt || updateCheckLanguage != AppLanguage.current()) {
-                updateCheckAt = checkedAt;
-                updateCheckLanguage = AppLanguage.current();
-                updateCheckShown = formatLastUpdateCheck(checkedAt, AppLanguage.current());
-            }
-            return updateInstalledVersion + "\n" + updateCheckShown;
-        }
-
-        private static String formatLastUpdateCheck(long checkedAt, AppLanguage language) {
-            if (checkedAt <= 0) return AppStrings.get(R.string.settings_last_check_never, language);
-            java.text.SimpleDateFormat format = new java.text.SimpleDateFormat(
-                    AppStrings.get(R.string.settings_last_check_date_pattern, language),
-                    language.locale);
-            return String.format(language.locale,
-                    AppStrings.get(R.string.settings_last_check, language),
-                    format.format(new java.util.Date(checkedAt)));
-        }
-
-        private static int blend(int a, int b, float f) {
-            int aa = a >>> 24, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
-            int ba = b >>> 24, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-            return (Math.round(aa + (ba - aa) * f) << 24) | (Math.round(ar + (br - ar) * f) << 16)
-                    | (Math.round(ag + (bg - ag) * f) << 8) | Math.round(ab + (bb - ab) * f);
-        }
+        private String updateDetailsText() { return valueSource.updateDetailsText(); }
 
         private void toggleAutomaticUpdates() {
             boolean enabled = !localPrefs().getBoolean("auto_update", false);
@@ -778,22 +676,18 @@ public class SettingsActivity extends Activity {
         private void drawMenuButtonEditor(Canvas c) {
             int count = buttonEditor.size() + 1;
             for (int pass = 0; pass < count; pass++) {
-                int row = paintRow(pass, 0, count, focus);
-                setApprovedRowRect(row);
-                float f = drawApprovedCapsule(c, row);
-                boolean disabled = row == buttonEditor.size() && !vpnTopEnabled();
-                rowLabel.setColor(disabled ? 0x66808080 : blend(normalInk(), INK, f));
-                rowValue.setColor(disabled ? 0x66808080 : valueInk(f));
-                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                boolean vpnApp = row == buttonEditor.size();
-                int id = vpnApp ? -1 : buttonEditor.get(row);
-                textRenderer.drawRowLabel(c, vpnApp ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
-                        rowRect, k, base, rowLabel);
-                if (vpnApp) textRenderer.drawRowValue(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
-                        rowRect, k, base, 61, rowValue);
-                if (!vpnApp) textRenderer.drawRowValue(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
-                        rowRect, k, base, 13, rowValue);
-                if (vpnApp && !disabled) drawApprovedChevron(c);
+                int i = SettingsListRenderer.paintRow(pass, 0, count, focus);
+                boolean vpn = i == buttonEditor.size();
+                int id = vpn ? -1 : buttonEditor.get(i);
+                setApprovedRowRect(i);
+                SettingsListRenderer.Row row = prepareRow(i, vpn ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
+                        vpn ? valueSource.vpnApp() : Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off));
+                row.disabled = vpn && !vpnTopEnabled();
+                row.fitValue = vpn;
+                row.valueInset = vpn ? 61 : 13;
+                if (vpn && !row.disabled) row.marker = Marker.CHEVRON;
+                row.markerAfterValue = true;
+                drawRow(c);
             }
         }
 
@@ -903,16 +797,11 @@ public class SettingsActivity extends Activity {
         private void drawCategoryEditor(Canvas c) {
             int count = categoryEditor.size();
             for (int pass = 0; pass < count; pass++) {
-                int row = paintRow(pass, 0, count, focus);
-                int id = categoryEditor.get(row);
-                setApprovedRowRect(row);
-                float f = drawApprovedCapsule(c, row);
-                rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(valueInk(f));
-                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawRowLabel(c, categoryLabel(id), rowRect, k, base, rowLabel);
-                textRenderer.drawRowValue(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off),
-                        rowRect, k, base, 13, rowValue);
+                int i = SettingsListRenderer.paintRow(pass, 0, count, focus);
+                int id = categoryEditor.get(i);
+                setApprovedRowRect(i);
+                prepareRow(i, categoryLabel(id), Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off));
+                drawRow(c);
             }
         }
 
@@ -940,21 +829,16 @@ public class SettingsActivity extends Activity {
         }
 
         private void drawShelfEditor(Canvas c) {
-            // The centered screenTitle() is the only heading.
-            textRenderer.beginShelf(rowLabel);
+            listRenderer.beginShelf(rowLabel);
             int first = listWindow.firstDrawn(listScroll.value), last = listWindow.endDrawn(listScroll.value, listSize());
             for (int pass = 0; pass < last - first; pass++) {
-                int at = paintRow(pass, first, last, listWindow.absoluteRow(focus));
-                int i = at - listWindow.offset();
+                int at = SettingsListRenderer.paintRow(pass, first, last, listWindow.absoluteRow(focus));
                 String[] app = dockEditor.get(at);
                 int place = dockEditor.position(app[0]);
                 setScrollingRowRect(at);
-                float f = drawApprovedCapsule(c, i);
-                rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(valueInk(f));
-                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawShelfLabel(c, app[1], rowRect, k, base, rowLabel);
-                textRenderer.drawRowValue(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect, k, base, 13, rowValue);
+                SettingsListRenderer.Row row = prepareRow(at - listWindow.offset(), app[1], place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off));
+                row.kind = Kind.SHELF;
+                drawRow(c);
             }
         }
 
@@ -974,27 +858,21 @@ public class SettingsActivity extends Activity {
             screen = PICKER;
         }
 
-        private void setScrollingRowRect(int absoluteRow) {
-            setApprovedRowRect(absoluteRow - listWindow.offset());
-            rowRect.offset(0, (listWindow.offset() - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
+        private void setScrollingRowRect(int at) {
+            SettingsListRenderer.scrollingBounds(rowRect, at, listWindow.offset(), listScroll.value, k);
         }
 
         /** A long list with buffered edge rows and a continuous vertical scroll. */
         private void drawPicker(Canvas c) {
-            // The centered screenTitle() is the only heading.
             int first = listWindow.firstDrawn(listScroll.value), last = listWindow.endDrawn(listScroll.value, listSize());
             for (int pass = 0; pass < last - first; pass++) {
-                int at = paintRow(pass, first, last, listWindow.absoluteRow(focus));
-                int i = at - listWindow.offset();
+                int at = SettingsListRenderer.paintRow(pass, first, last, listWindow.absoluteRow(focus));
                 setScrollingRowRect(at);
-                float f = drawApprovedCapsule(c, i);
-                rowLabel.setColor(blend(normalInk(), INK, f));
-                textRenderer.drawPickerLabel(c, pickLabels.get(at), rowRect, k,
-                        rowRect.centerY() + Ui.halfCap(rowLabel), at == pickCurrent, rowLabel);
-                if (at == pickCurrent) {
-                    float cw = Symbols.width(getContext(), "check", 26 * k);
-                    Symbols.draw(getContext(), c, "check", rowRect.right - 30 * k - cw / 2, rowRect.centerY(), 26 * k, blend(0xFFFFFFFF, INK, f));
-                }
+                SettingsListRenderer.Row row = prepareRow(at - listWindow.offset(), pickLabels.get(at), "");
+                row.kind = Kind.PICKER;
+                row.showValue = false;
+                if (at == pickCurrent) row.marker = Marker.PICKER_CHECK;
+                drawRow(c);
             }
         }
 
@@ -1002,20 +880,16 @@ public class SettingsActivity extends Activity {
             boolean keys = screen == REMOTE_KEYS;
             String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[randomRow()]} : settingLabels();
             String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[randomRow()]} : valueSource.settings();
-            // The screen title is already drawn centrally; no legacy subtitle.
             for (int pass = 0; pass < labels.length; pass++) {
-                int i = paintRow(pass, 0, labels.length, focus);
+                int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 setApprovedRowRect(i);
-                float f = drawApprovedCapsule(c, i);
-                rowLabel.setColor(blend(normalInk(), INK, f));
-                rowValue.setColor(valueInk(f));
-                float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawRowLabel(c, labels[i], rowRect, k, base, rowLabel);
-                boolean transition = keys || (settingsGroup != SYSTEM && i == CITY_ROW);
-                textRenderer.drawRowValue(c, values[i], rowRect, k, base, transition ? 61 : 13, rowValue);
-                if (transition) drawApprovedChevron(c);
+                SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
+                boolean chevron = keys || (settingsGroup != SYSTEM && i == CITY_ROW);
+                row.marker = chevron ? Marker.CHEVRON : Marker.NONE;
+                row.valueInset = chevron ? 61 : 13;
+                row.markerAfterValue = true;
+                drawRow(c);
             }
-
         }
 
         private void activate() {
@@ -1035,7 +909,7 @@ public class SettingsActivity extends Activity {
                 case HOME_MODE:
                     if (!busy()) {
                         HomeMode.request(c, focus == 0 ? HomeMode.FREE : HomeMode.ORIGINAL);
-                        pendingAt = SystemClock.uptimeMillis();
+                        modeMonitor.markPending();
                     }
                     invalidate();
                     return;

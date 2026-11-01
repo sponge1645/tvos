@@ -47,8 +47,8 @@ public class ActionsTest {
   v=create(PICKER,1);v.pickFor=PICK_VPN;v.activate();
   check(v.screen==MENU_BUTTONS&&v.focus==v.buttonEditor.size()&&ActionView.Prefs.shelf.equals(Arrays.asList("watch.kino")),"VPN selection preserves removal of duplicate INCY Dock entry");
   v=create(PICKER,1);v.pickFor=2;v.activate();check(v.screen==REMOTE_KEYS&&v.focus==1&&ActionView.events.contains("key:youtube:app1"),"remote picker updates correct key");
-  v=create(HOME_CHOICE,0);v.busyFlag=true;v.activate();check(ActionView.events.equals(Arrays.asList("invalidate"))&&v.pendingAt==0,"busy home choice cannot restart request");
-  v=create(HOME_CHOICE,1);v.activate();check(v.screen==HOME_CHOICE&&v.pendingAt==123&&ActionView.events.contains("home:2"),"launcher selection stays on same screen");
+  v=create(HOME_CHOICE,0);v.busyFlag=true;v.activate();check(ActionView.events.equals(Arrays.asList("invalidate"))&&v.modeMonitor.pendingAt==0,"busy home choice cannot restart request");
+  v=create(HOME_CHOICE,1);v.activate();check(v.screen==HOME_CHOICE&&v.modeMonitor.pendingAt==123&&ActionView.events.contains("home:2"),"launcher selection stays on same screen");
   v=create(SCREENSAVER,4);v.activate();check(ActionView.events.equals(Arrays.asList("pause","preview")),"preview pauses view before opening");
   v=create(GENERAL,1);v.activate();check(!ActionView.events.contains("snap")&&ActionView.events.contains("theme:light"),"value change preserves current focus animation");
   v=create(GENERAL,0);v.activate();check(v.screen==ABOUT&&ActionView.events.contains("snap"),"page change resets focus springs");

@@ -30,4 +30,5 @@ with tempfile.TemporaryDirectory() as d:
  subprocess.run(['java','-cp',d,'io.tvos.PauseHarness'],check=True)
 assert 'AutoRegion.ensure' not in Path('app/src/io/tvos/HomeData.java').read_text()
 assert 'AutoRegion.ensure' not in Path('app/src/io/tvos/HomeView.java').read_text()
-assert 'screen == REGION && !regionWasOpen' in Path('app/src/io/tvos/SettingsActivity.java').read_text()
+assert '() -> screen == REGION' in Path('app/src/io/tvos/SettingsActivity.java').read_text()
+assert 'inRegion && !regionWasOpen' in Path('app/src/io/tvos/SettingsModeMonitor.java').read_text()

@@ -7,7 +7,7 @@ source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 def method(sig):
  text=source
  if sig not in text:
-  text=Path("app/src/io/tvos/SettingsValues.java").read_text();sig=sig.replace("        private ","    static ")
+  text=Path("app/src/io/tvos/SettingsValues.java").read_text();sig=sig.replace("        private static ","    static ").replace("        private ","    static ")
  return extract(text,sig)
 def extract(source,sig):
  a=source.index(sig);b=source.index('{',a);i=b+1;d=1

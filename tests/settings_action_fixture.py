@@ -14,7 +14,7 @@ public class CLASSNAME {
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,returnFocus,selectedSetting,buttonCount=6;
  final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
- boolean updateRequested,busyFlag,freeFlag,vpnFlag;long pendingAt;
+ boolean updateRequested,busyFlag,freeFlag,vpnFlag;final ModeMonitor modeMonitor=new ModeMonitor();class ModeMonitor {long pendingAt;void markPending(){pendingAt=SystemClock.uptimeMillis();}}
  final AppLoader appLoader=new AppLoader();class AppLoader {void cancel(){}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
@@ -66,7 +66,7 @@ public class CLASSNAME {
  void openMenuButtonEditor(){screen=MENU_BUTTONS;focus=0;note("button-editor");}
  final Dialogs deviceDialogs=new Dialogs();static class Dialogs {void askDeviceName(){note("name");}void confirmClearCache(){note("confirm-cache");}void confirmResetTvos(){note("confirm-reset");}}
  void rebuildMenuButtonRows(int selected){buttonEditor.rows.clear();for(int i=0;i<buttonCount;i++)buttonEditor.rows.add(i);note("rebuild-buttons");}
- String snapshot(){return screen+":"+focus+":"+pickFor+":"+settingsGroup+":"+returnFocus+":"+pendingAt+":"+updateRequested+":"+events;}
+ String snapshot(){return screen+":"+focus+":"+pickFor+":"+settingsGroup+":"+returnFocus+":"+modeMonitor.pendingAt+":"+updateRequested+":"+events;}
 '''
 def view(name, activation=None, back=None):
  return HEADER.replace('CLASSNAME',name)+method('        private void adjustMenu(int dir)')+(activation or method('        private void activate()'))+(back or method('        private void backFromScreen()'))+'\n}\n'

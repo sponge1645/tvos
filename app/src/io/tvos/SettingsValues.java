@@ -18,6 +18,9 @@ import java.util.function.Supplier;
 final class SettingsValues {
     private static final int CITY_ROW = 4;
     private final Activity activity;
+    private String updateInstalledVersion, updateCheckShown;
+    private long updateCheckAt = Long.MIN_VALUE;
+    private AppLanguage updateCheckLanguage;
     private final SettingsOrderEditor buttonEditor;
     private final BooleanSupplier freeActive;
     private final Predicate<Boolean> weatherVisible;
@@ -187,4 +190,24 @@ final class SettingsValues {
         return v;
     }
 
+    String updateDetailsText() {
+        if (updateInstalledVersion == null) updateInstalledVersion = SettingsUpdateDialog.versionName(activity);
+        long checkedAt = localPrefs().getLong("self_update_attempt", 0);
+        if (updateCheckShown == null || checkedAt != updateCheckAt || updateCheckLanguage != AppLanguage.current()) {
+            updateCheckAt = checkedAt;
+            updateCheckLanguage = AppLanguage.current();
+            updateCheckShown = formatLastUpdateCheck(checkedAt, AppLanguage.current());
+        }
+        return updateInstalledVersion + "\n" + updateCheckShown;
+    }
+
+    static String formatLastUpdateCheck(long checkedAt, AppLanguage language) {
+        if (checkedAt <= 0) return AppStrings.get(R.string.settings_last_check_never, language);
+        java.text.SimpleDateFormat format = new java.text.SimpleDateFormat(
+                AppStrings.get(R.string.settings_last_check_date_pattern, language),
+                language.locale);
+        return String.format(language.locale,
+                AppStrings.get(R.string.settings_last_check, language),
+                format.format(new java.util.Date(checkedAt)));
+    }
 }
