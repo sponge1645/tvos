@@ -63,7 +63,7 @@ public class ActionsTest {
 production=view('ActionView').replace('private void activate()', 'void activate()').replace('private void backFromScreen()', 'void backFromScreen()')
 with tempfile.TemporaryDirectory(prefix='tvos-settings-actions-') as tmp:
  root=Path(tmp);(root/'ActionView.java').write_text(production);(root/'ActionsTest.java').write_text(harness)
- for name in ('SettingsContent','SettingsActions'):(root/(name+'.java')).write_text(Path('app/src/io/tvos/'+('settings/' if name=='SettingsActions' else '')+name+'.java').read_text())
+ for name in ('SettingsContent','SettingsActions','SettingsListWindow'):(root/(name+'.java')).write_text(Path('app/src/io/tvos/'+('settings/' if name in ('SettingsActions','SettingsListWindow') else '')+name+'.java').read_text())
  write_strings(root)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.ActionsTest'],check=True)

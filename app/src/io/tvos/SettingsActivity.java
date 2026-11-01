@@ -10,6 +10,7 @@ import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
 import io.tvos.settings.SettingsListViewport;
 import io.tvos.settings.SettingsTransitions;
+import io.tvos.settings.SettingsListWindow;
 
 import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
@@ -95,7 +96,7 @@ public class SettingsActivity extends Activity {
     void showPreview() { preview.show(); }
 
     static final class SettingsView extends View {
-        private static final int PICK_VISIBLE = 10;
+        private final SettingsListWindow listWindow = new SettingsListWindow(10);
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62;
         private static final int INK = 0xFF1C1C1E;
 
@@ -114,7 +115,7 @@ public class SettingsActivity extends Activity {
         private final List<String> pickLabels = new ArrayList<>();
         // The shelf editor: the apps it can hold (selected ones first, in order) and the selection.
         private final SettingsDockEditor dockEditor = SettingsEditors.dock();
-        private int pickFor, pickCurrent, pickScroll;   // pickFor: the remote button (index + 1)
+        private int pickFor, pickCurrent;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private final Spring mainScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
@@ -237,7 +238,7 @@ public class SettingsActivity extends Activity {
                     return row < labels.length ? labels[row] + ", " + values[row] : "";
                 }
                 case PICKER: {
-                    int at = pickScroll + row;
+                    int at = listWindow.absoluteRow(row);
                     if (at >= pickLabels.size()) return "";
                     return pickLabels.get(at) + (at == pickCurrent ? AppStrings.get(R.string.settings_selected) : "")
                             + ", " + (at + 1) + AppStrings.get(R.string.settings_of) + pickLabels.size();
@@ -256,7 +257,7 @@ public class SettingsActivity extends Activity {
                             ? AppStrings.get(R.string.settings_position) + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off));
                 }
                 case SHELF_EDIT: {
-                    int at = pickScroll + row;
+                    int at = listWindow.absoluteRow(row);
                     if (at >= dockEditor.size()) return "";
                     String[] app = dockEditor.get(at);
                     int place = dockEditor.position(app[0]);
@@ -269,24 +270,11 @@ public class SettingsActivity extends Activity {
         }
 
         private RectF rowBox(int row) {
-            float top, height;
-            if (screen == MAIN || screen == MEDIA || screen == HOME_SCREEN || screen == MOVIE_SERVICE || screen == GENERAL || screen == WIDGETS || screen == WEATHER || screen == DATE_TIME || screen == MENU_BUTTONS || screen == SYSTEM || screen == RESET || screen == TOP_PANEL || screen == ACCESSIBILITY || screen == REGION || screen == ABOUT || screen == SCREENSAVER) {
-                top = LIST_TOP + row * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
-                        + (screen == ABOUT ? (row == 0 ? ABOUT_NAME_Y_OFFSET : ABOUT_DETAILS_Y_OFFSET) : ABOUT_NAME_Y_OFFSET);
-                height = ROW_H;
-            } else if (screen == HOME_CHOICE) {
-                top = LIST_TOP + ABOUT_NAME_Y_OFFSET + row * (ROW_H + ABOUT_ROW_GAP);
-                height = ROW_H;
-            } else if (screen == SHELF_EDIT) {
-                top = LIST_TOP + ABOUT_NAME_Y_OFFSET + row * (ROW_H + ABOUT_ROW_GAP);
-                height = ROW_H;
-            } else {
-                top = LIST_TOP + ABOUT_NAME_Y_OFFSET + row * (ROW_H + ABOUT_ROW_GAP);
-                height = ROW_H;
-            }
+            float top = LIST_TOP + row * (ROW_H + (screen == MAIN ? MAIN_ROW_GAP : ABOUT_ROW_GAP))
+                    + (screen == ABOUT && row != 0 ? ABOUT_DETAILS_Y_OFFSET : ABOUT_NAME_Y_OFFSET);
             if (screen == MAIN) top -= mainScroll.value * (ROW_H + MAIN_ROW_GAP);
-            focusBox.set(LIST_X * k, top * k, (LIST_R + ABOUT_NAME_RIGHT_EXTENSION) * k, (top + height) * k);
-            if (scrolling()) focusBox.offset(0, (pickScroll - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
+            focusBox.set(LIST_X * k, top * k, (LIST_R + ABOUT_NAME_RIGHT_EXTENSION) * k, (top + ROW_H) * k);
+            if (scrolling()) focusBox.offset(0, (listWindow.offset() - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
             return focusBox;
         }
 
@@ -382,8 +370,8 @@ public class SettingsActivity extends Activity {
                 case ABOUT: return 8;
                 case HOME_CHOICE: return 2;
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
-                case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
-                case SHELF_EDIT: return Math.min(PICK_VISIBLE, dockEditor.size());
+                case PICKER: return listWindow.visibleRows(pickLabels.size());
+                case SHELF_EDIT: return listWindow.visibleRows(dockEditor.size());
                 default: return Prefs.KEYS.length;
             }
         }
@@ -397,9 +385,9 @@ public class SettingsActivity extends Activity {
             float dt = lastNanos == 0 ? 1 / 60f : Math.min(0.05f, (now - lastNanos) / 1e9f);
             lastNanos = now;
             if (scrolling()) {
-                listScroll.target = pickScroll;
-                if (localFlag("reduce_motion") || Math.abs(listScroll.target - listScroll.value) > PICK_VISIBLE)
-                    listScroll.snap(pickScroll);
+                listScroll.target = listWindow.offset();
+                if (localFlag("reduce_motion") || Math.abs(listScroll.target - listScroll.value) > listWindow.capacity())
+                    listScroll.snap(listWindow.offset());
                 else if (listScroll.step(dt)) postInvalidateOnAnimation();
             }
             stepMainScroll(dt);
@@ -433,7 +421,7 @@ public class SettingsActivity extends Activity {
 
         private void stepMainScroll(float dt) {
             if (screen != MAIN) return;
-            mainScroll.target = Math.max(0, focus - (PICK_VISIBLE - 1));
+            mainScroll.target = Math.max(0, focus - (listWindow.capacity() - 1));
             if (localFlag("reduce_motion")) mainScroll.snap(mainScroll.target);
             else if (mainScroll.step(dt)) postInvalidateOnAnimation();
         }
@@ -728,20 +716,15 @@ public class SettingsActivity extends Activity {
             boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
             switch (e.getKeyCode()) {
                 case KeyEvent.KEYCODE_DPAD_UP:
-                    if (screen == ABOUT) return true;
-
-                    if (down && e.getRepeatCount() == 0 && (focus > 0 || (scrolling() && pickScroll > 0))) tvosClick.move();
-                    if (down && focus > 0) focus--;
-                    else if (down && scrolling() && pickScroll > 0) pickScroll--;
-                    invalidate();
-                    spoken.focusMoved();
-                    return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                     if (screen == ABOUT) return true;
-
-                    if (down && e.getRepeatCount() == 0 && (focus < rowCount() - 1 || (scrolling() && pickScroll + rowCount() < listSize()))) tvosClick.move();
-                    if (down && focus < rowCount() - 1) focus++;
-                    else if (down && scrolling() && pickScroll + rowCount() < listSize()) pickScroll++;
+                    if (down) {
+                        int direction = e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1;
+                        boolean scrolling = scrolling();
+                        int rows = rowCount(), size = scrolling ? listSize() : rows;
+                        if (e.getRepeatCount() == 0 && listWindow.canMove(direction, focus, rows, size, scrolling)) tvosClick.move();
+                        focus = listWindow.move(direction, focus, rows, size, scrolling);
+                    }
                     invalidate();
                     spoken.focusMoved();
                     return true;
@@ -1061,7 +1044,7 @@ public class SettingsActivity extends Activity {
 
         private void openShelfEditor() {
             dockEditor.open(HomeApps.shelfPackages(getContext()), HomeApps.shelfCandidates(getContext()));
-            pickScroll = 0;
+            listWindow.reset();
             listScroll.snap(0);
             focus = 0;
             screen = SHELF_EDIT;
@@ -1069,28 +1052,24 @@ public class SettingsActivity extends Activity {
 
         /** Keep the changed app focused and visible after the model reorders its candidates. */
         private void focusShelfRow(int at) {
-            if (at < 0) return;
-            int visible = rowCount();
-            if (at < pickScroll) pickScroll = at;
-            else if (at >= pickScroll + visible) pickScroll = at - visible + 1;
-            focus = at - pickScroll;
+            focus = listWindow.keepVisible(at, rowCount(), focus);
         }
 
         private void toggleShelfApp() {
-            focusShelfRow(dockEditor.toggle(pickScroll + focus));
+            focusShelfRow(dockEditor.toggle(listWindow.absoluteRow(focus)));
         }
 
         private void moveShelfApp(int dir) {
-            focusShelfRow(dockEditor.move(pickScroll + focus, dir));
+            focusShelfRow(dockEditor.move(listWindow.absoluteRow(focus), dir));
         }
 
         private void drawShelfEditor(Canvas c) {
             // The centered screenTitle() is the only heading.
             shelfMeasurePaint.set(rowLabel);
-            int first = scrollingFirstRow(), last = scrollingEndRow();
+            int first = listWindow.firstDrawn(listScroll.value), last = listWindow.endDrawn(listScroll.value, listSize());
             for (int pass = 0; pass < last - first; pass++) {
-                int at = paintRow(pass, first, last, pickScroll + focus);
-                int i = at - pickScroll;
+                int at = paintRow(pass, first, last, listWindow.absoluteRow(focus));
+                int i = at - listWindow.offset();
                 String[] app = dockEditor.get(at);
                 int place = dockEditor.position(app[0]);
                 setScrollingRowRect(at);
@@ -1114,35 +1093,23 @@ public class SettingsActivity extends Activity {
                 if (!pickLabels.isEmpty()) pickLabels.set(0, AppStrings.get(R.string.settings_not_configured));
                 pickCurrent = appPkgs.indexOf(which == PICK_VPN ? localPrefs().getString("vpn_app", "") : Prefs.keyApp(Prefs.KEYS[which - 1]));
             }
-            int visible = Math.min(PICK_VISIBLE, pickLabels.size());
-            int at = Math.max(0, pickCurrent);
-            pickScroll = Math.max(0, Math.min(at - 3, pickLabels.size() - visible));
-            listScroll.snap(pickScroll);
-            focus = at - pickScroll;
+            focus = listWindow.openPicker(pickCurrent, pickLabels.size());
+            listScroll.snap(listWindow.offset());
             screen = PICKER;
         }
 
-        // Include rows on both sides of the logical window: they must physically enter the fade mask.
-        private int scrollingFirstRow() {
-            return Math.max(0, (int) Math.floor(listScroll.value) - 1);
-        }
-
-        private int scrollingEndRow() {
-            return Math.min(listSize(), (int) Math.ceil(listScroll.value) + PICK_VISIBLE + 1);
-        }
-
         private void setScrollingRowRect(int absoluteRow) {
-            setApprovedRowRect(absoluteRow - pickScroll);
-            rowRect.offset(0, (pickScroll - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
+            setApprovedRowRect(absoluteRow - listWindow.offset());
+            rowRect.offset(0, (listWindow.offset() - listScroll.value) * (ROW_H + ABOUT_ROW_GAP) * k);
         }
 
         /** A long list with buffered edge rows and a continuous vertical scroll. */
         private void drawPicker(Canvas c) {
             // The centered screenTitle() is the only heading.
-            int first = scrollingFirstRow(), last = scrollingEndRow();
+            int first = listWindow.firstDrawn(listScroll.value), last = listWindow.endDrawn(listScroll.value, listSize());
             for (int pass = 0; pass < last - first; pass++) {
-                int at = paintRow(pass, first, last, pickScroll + focus);
-                int i = at - pickScroll;
+                int at = paintRow(pass, first, last, listWindow.absoluteRow(focus));
+                int i = at - listWindow.offset();
                 setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
@@ -1226,14 +1193,14 @@ public class SettingsActivity extends Activity {
                     screen = MEDIA; focus = 0;
                     break;
                 case SELECT_CITY: {
-                    String[] city = cities.get(pickScroll + focus);
+                    String[] city = cities.get(listWindow.absoluteRow(focus));
                     Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);
                     HomeData.get(c).settingsChanged();
                     focus = 1; screen = REGION;
                     break;
                 }
                 case SELECT_VPN: {
-                    String pkg = appPkgs.get(pickScroll + focus);
+                    String pkg = appPkgs.get(listWindow.absoluteRow(focus));
                     localPrefs().edit().putString("vpn_app", pkg).apply();
                     if (!pkg.isEmpty()) {
                         java.util.List<String> shelf = Prefs.shelf();
@@ -1244,7 +1211,7 @@ public class SettingsActivity extends Activity {
                     break;
                 }
                 case SELECT_KEY:
-                    Prefs.setKeyApp(Prefs.KEYS[pickFor - 1], appPkgs.get(pickScroll + focus));
+                    Prefs.setKeyApp(Prefs.KEYS[pickFor - 1], appPkgs.get(listWindow.absoluteRow(focus)));
                     focus = pickFor - 1; screen = REMOTE_KEYS;
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;

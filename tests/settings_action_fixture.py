@@ -12,7 +12,8 @@ public class CLASSNAME {
  static void note(String s){events.add(s);}
  static final int CITY_ROW=4;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
- int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,pickScroll,returnFocus,selectedSetting,buttonCount=6;
+ int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,returnFocus,selectedSetting,buttonCount=6;
+ final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;long pendingAt;
  final AppLoader appLoader=new AppLoader();class AppLoader {void cancel(){}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}

@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B138)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B139)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -80,3 +80,11 @@ callbacks are allocated once. The existing parent-dependent direction, 280ms
 smoothstep, title-only crossfade and fixed background/logo geometry are preserved.
 Four obsolete list geometry constants and the viewport forwarding method were
 removed after checking source, resources, reflection and tooling references.
+
+`settings/SettingsListWindow` owns the logical offset, directional window movement,
+picker positioning, editor focus-following and buffered draw range. It takes row
+counts and indices without Android, preferences, screen IDs or app data. Focus
+and the existing Spring animations remain in SettingsActivity; the old offset
+field is removed. Shared Up/Down handling preserves key-repeat sounds, key-up
+accessibility callbacks and About's read-only behavior. Row bounds share one
+calculation, retaining About's detail offset and animated accessibility geometry.

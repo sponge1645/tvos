@@ -17,13 +17,12 @@ def method(signature):
 
 body = ''.join(method(s) for s in [
     '        private void stepMainScroll(',
-    '        private int scrollingFirstRow(',
-    '        private int scrollingEndRow(',
     '        private void setScrollingRowRect(',
     '        private void setApprovedRowRect(',
 ])
 harness = '''package io.tvos;
 public class ListEdgesHarness {
+ final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  static final int PICK_VISIBLE=10, MAIN=0;
  int screen,focus,invalidations;boolean reduced;final Spring mainScroll=new Spring(.30f,1f,0);
  boolean localFlag(String key){return reduced;}void postInvalidateOnAnimation(){invalidations++;}
@@ -35,7 +34,7 @@ public class ListEdgesHarness {
   void offset(float x,float y){left+=x;right+=x;top+=y;bottom+=y;}
  }
  final Box rowRect=new Box(); final Spring listScroll=new Spring(0.30f,1f,0);
- int pickScroll, size=35; float k=1;
+ int size=35; float k=1;
  int listSize(){return size;}
  static void check(boolean ok,String reason){if(!ok)throw new AssertionError(reason);}
 ''' + body + '''
@@ -44,15 +43,15 @@ public class ListEdgesHarness {
   h.focus=10;h.stepMainScroll(1f/60);check(h.mainScroll.value>0&&h.mainScroll.value<1&&h.invalidations>0,"root final row scrolls smoothly");
   h.reduced=true;h.stepMainScroll(1f/60);check(h.mainScroll.value==1,"reduced motion exposes last root row immediately");
   h.focus=0;h.stepMainScroll(1f/60);check(h.mainScroll.value==0,"first root row returns to top");
-  check(h.scrollingEndRow()>PICK_VISIBLE,"draw past the old ten-row cutoff");
+  check(h.listWindow.endDrawn(h.listScroll.value,h.listSize())>PICK_VISIBLE,"draw past the old ten-row cutoff");
   h.setScrollingRowRect(10);
   check(h.rowRect.top<1080 && h.rowRect.bottom>1016,"next row intersects bottom fade");
-  h.listScroll.snap(1); h.pickScroll=1;
-  check(h.scrollingFirstRow()==0,"retain previous row past logical window start");
+  h.listScroll.snap(1); h.listWindow.move(1,9,10,35,true);
+  check(h.listWindow.firstDrawn(h.listScroll.value)==0,"retain previous row past logical window start");
   h.setScrollingRowRect(0);
   check(h.rowRect.top<186 && h.rowRect.bottom>148,"previous row intersects top fade");
-  h.listScroll.snap(0);h.pickScroll=0;h.setScrollingRowRect(9);float before=h.rowRect.top;
-  h.pickScroll=1;h.setScrollingRowRect(9);
+  h.listScroll.snap(0);h.listWindow.reset();h.setScrollingRowRect(9);float before=h.rowRect.top;
+  h.listWindow.move(1,9,10,35,true);h.setScrollingRowRect(9);
   check(h.rowRect.top==before,"changing logical window cannot jump existing rows");
   h.listScroll.target=1;h.listScroll.step(1f/60);h.setScrollingRowRect(9);
   check(h.rowRect.top<before && h.rowRect.top>before-84,"row moves fractionally, not a full step");
@@ -60,7 +59,7 @@ public class ListEdgesHarness {
    h.size=size;
    for(int offset=0;offset<=Math.max(0,size-PICK_VISIBLE);offset++){
     h.listScroll.snap(offset);
-    check(h.scrollingFirstRow()>=0 && h.scrollingEndRow()<=size,"bounded draw range");
+    check(h.listWindow.firstDrawn(h.listScroll.value)>=0 && h.listWindow.endDrawn(h.listScroll.value,h.listSize())<=size,"bounded draw range");
    }
   }
   System.out.println("PASS: top/bottom fade coverage, continuous scrolling, bounded buffered rows");
@@ -71,7 +70,8 @@ with tempfile.TemporaryDirectory(prefix='tvos-list-edges-') as directory:
     root = Path(directory)
     (root / 'ListEdgesHarness.java').write_text(harness)
     (root / 'Spring.java').write_text(Path('app/src/io/tvos/Spring.java').read_text())
+    (root / 'SettingsListWindow.java').write_text(Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text())
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory,
-                    str(root / 'Spring.java'), str(root / 'ListEdgesHarness.java')], check=True)
+                    str(root / 'Spring.java'), str(root / 'ListEdgesHarness.java'), str(root / 'SettingsListWindow.java')], check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.ListEdgesHarness'], check=True)

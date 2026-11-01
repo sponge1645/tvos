@@ -14,7 +14,7 @@ harness='''package io.tvos;
 import java.util.*;import static io.tvos.settings.SettingsScreen.*;
 public class ContentHarness {
  static class Ui {static boolean ru;}
- int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;static final int PICK_VISIBLE=10;
+ int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  final List<Integer> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),dockEditor=new ArrayList<>();final List<String> pickLabels=new ArrayList<>();
  static class Prefs {static final String[] KEYS=new String[4];static boolean automaticRegion(){return false;}}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
  String[] menuButtonLabels(){String[] rows=new String[dynamicRows+1];Arrays.fill(rows,"dynamic");rows[dynamicRows]="VPN";return rows;}
@@ -74,6 +74,7 @@ public class ContentHarness {
 with tempfile.TemporaryDirectory(prefix='tvos-settings-content-') as tmp:
  root=Path(tmp);(root/'ContentHarness.java').write_text(harness)
  (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
+ (root/'SettingsListWindow.java').write_text(Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text())
  write_strings(root)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.ContentHarness'],check=True)
