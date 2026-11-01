@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B139)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B140)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -88,3 +88,10 @@ and the existing Spring animations remain in SettingsActivity; the old offset
 field is removed. Shared Up/Down handling preserves key-repeat sounds, key-up
 accessibility callbacks and About's read-only behavior. Row bounds share one
 calculation, retaining About's detail offset and animated accessibility geometry.
+
+`settings/SettingsRemoteInput` owns OK/Back press state and key-event sequencing.
+Four callbacks expose vertical movement, horizontal adjustment, confirmation and
+Back; they carry no launcher data or lifecycle access. The Activity retains screen
+policy, click sounds, TalkBack gating and update-dialog dispatch. Pause resets the
+input component; no duplicate held-key flags remain. Horizontal row routing uses
+one invalidation after an actual edit, preserving repeat and release behavior.

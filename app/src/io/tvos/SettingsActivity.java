@@ -11,6 +11,7 @@ import io.tvos.settings.SettingsRowRenderer;
 import io.tvos.settings.SettingsListViewport;
 import io.tvos.settings.SettingsTransitions;
 import io.tvos.settings.SettingsListWindow;
+import io.tvos.settings.SettingsRemoteInput;
 
 import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
@@ -141,7 +142,21 @@ public class SettingsActivity extends Activity {
         private final SettingsListViewport listViewport = new SettingsListViewport();
         private final SettingsListViewport.Content listContent = this::drawMenuTransition;
 
-        private boolean running, okDown, backDown, wasBusy;
+        private boolean running, wasBusy;
+        private final SettingsRemoteInput remoteInput = new SettingsRemoteInput();
+        private final SettingsRemoteInput.Actions remoteActions = new SettingsRemoteInput.Actions() {
+            @Override public void vertical(int direction, boolean down, boolean first) { moveFocus(direction, down, first); }
+            @Override public void horizontal(int direction, boolean down, boolean first) { adjustFocusedRow(direction, down, first); }
+            @Override public void confirm() {
+                if (spoken.keyClick()) { tvosClick.open(); activate(); }
+            }
+            @Override public void back(boolean activate, boolean root) {
+                if (root) { if (activate) tvosClick.back(); return; }
+                if (activate) { tvosClick.back(); backFromScreen(); }
+                invalidate();
+                spoken.focusMoved();
+            }
+        };
         private boolean lightAppearance;
         private StaticLayout errorLayout;   // the last error, wrapped (rebuilt only when it changes)
         private String errorShown;
@@ -292,7 +307,7 @@ public class SettingsActivity extends Activity {
 
         void pause() {
             running = false;
-            okDown = backDown = false;
+            remoteInput.reset();
             appLoader.cancel();
             updateDialog.pause();
             citySearch.cancel();
@@ -713,65 +728,30 @@ public class SettingsActivity extends Activity {
                 }
                 return updateDialog.onKey(e);
             }
-            boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
-            switch (e.getKeyCode()) {
-                case KeyEvent.KEYCODE_DPAD_UP:
-                case KeyEvent.KEYCODE_DPAD_DOWN:
-                    if (screen == ABOUT) return true;
-                    if (down) {
-                        int direction = e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1;
-                        boolean scrolling = scrolling();
-                        int rows = rowCount(), size = scrolling ? listSize() : rows;
-                        if (e.getRepeatCount() == 0 && listWindow.canMove(direction, focus, rows, size, scrolling)) tvosClick.move();
-                        focus = listWindow.move(direction, focus, rows, size, scrolling);
-                    }
-                    invalidate();
-                    spoken.focusMoved();
-                    return true;
-                case KeyEvent.KEYCODE_DPAD_LEFT:
-                case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    if (down && e.getRepeatCount() == 0 && (screen == SHELF_EDIT || screen == CATEGORY_EDIT || canAdjustMenu())) tvosClick.move();
-                    if (down && screen == MENU_BUTTONS && focus < buttonEditor.size()) {
-                        moveMenuButton(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                        invalidate();
-                    } else if (down && screen == CATEGORY_EDIT) {
-                        moveCategory(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                        invalidate();
-                    } else if (down && screen == SHELF_EDIT) {
-                        moveShelfApp(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                        invalidate();
-                    } else if (down && canAdjustMenu()) {
-                        adjustMenu(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                        invalidate();
-                    }
-                    return true;
-                case KeyEvent.KEYCODE_DPAD_CENTER:
-                case KeyEvent.KEYCODE_ENTER:
-                case KeyEvent.KEYCODE_NUMPAD_ENTER:
-                    if (down) {
-                        if (e.getRepeatCount() == 0) okDown = true;
-                    } else {
-                        if (okDown && !e.isCanceled() && spoken.keyClick()) { tvosClick.open(); activate(); }
-                        okDown = false;
-                    }
-                    return true;
-                case KeyEvent.KEYCODE_BACK:
-                    if (screen == MAIN) { if (!down && !e.isCanceled()) tvosClick.back(); return false; }
-                    if (down) {
-                        if (e.getRepeatCount() == 0) backDown = true;
-                    } else {
-                        if (backDown && !e.isCanceled()) {
-                            tvosClick.back();
-                            backFromScreen();
-                        }
-                        backDown = false;
-                    }
-                    invalidate();
-                    spoken.focusMoved();
-                    return true;
-                default:
-                    return false;
+            return remoteInput.onKey(e, screen == MAIN, remoteActions);
+        }
+
+        private void moveFocus(int direction, boolean down, boolean first) {
+            if (screen == ABOUT) return;
+            if (down) {
+                boolean scrolling = scrolling();
+                int rows = rowCount(), size = scrolling ? listSize() : rows;
+                if (first && listWindow.canMove(direction, focus, rows, size, scrolling)) tvosClick.move();
+                focus = listWindow.move(direction, focus, rows, size, scrolling);
             }
+            invalidate();
+            spoken.focusMoved();
+        }
+
+        private void adjustFocusedRow(int direction, boolean down, boolean first) {
+            if (!down) return;
+            if (first && (screen == SHELF_EDIT || screen == CATEGORY_EDIT || canAdjustMenu())) tvosClick.move();
+            if (screen == MENU_BUTTONS && focus < buttonEditor.size()) moveMenuButton(direction);
+            else if (screen == CATEGORY_EDIT) moveCategory(direction);
+            else if (screen == SHELF_EDIT) moveShelfApp(direction);
+            else if (canAdjustMenu()) adjustMenu(direction);
+            else return;
+            invalidate();
         }
 
         private void backFromScreen() {

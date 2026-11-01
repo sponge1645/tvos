@@ -5,7 +5,7 @@ from tmdb_metadata_fixture import block
 from settings_transitions_fixture import write as write_transitions
 settings=Path('app/src/io/tvos/SettingsActivity.java').read_text();home=Path('app/src/io/tvos/HomeView.java').read_text()
 assert 'new Scene(' not in settings and 'Choreographer' not in settings
-assert 'okDown = backDown = false;' in block(settings,'        void pause(')
+assert 'remoteInput.reset();' in block(settings,'        void pause(')
 assert 'okDown = backDown = false;' in block(home,'    void pause(')
 assert 'appLoader.cancel();' in block(settings,'        void pause(')
 assert 'appLoader.cancel();' in block(settings,'        private void backFromScreen(')

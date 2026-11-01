@@ -3,18 +3,18 @@ from pathlib import Path
 import subprocess
 import tempfile
 from tmdb_metadata_fixture import block
+from settings_remote_fixture import write as write_remote
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
-key=source[source.index('                case KeyEvent.KEYCODE_DPAD_UP:',source.index('        boolean onKey(')):]
-key=key[:key.index('                case KeyEvent.KEYCODE_DPAD_LEFT:')]
-harness='''import io.tvos.settings.*;import static io.tvos.settings.SettingsScreen.*;
+harness='''import io.tvos.settings.*;import android.view.KeyEvent;import static io.tvos.settings.SettingsScreen.*;
 public class WindowHarness {
  final SettingsListWindow listWindow=new SettingsListWindow(10);int focus,screen=PICKER,size=35,clicks,invalidations,announcements;
- static class KeyEvent {static final int KEYCODE_DPAD_UP=1,KEYCODE_DPAD_DOWN=2;int code,repeat;KeyEvent(int c,int r){code=c;repeat=r;}int getKeyCode(){return code;}int getRepeatCount(){return repeat;}}
  final Click tvosClick=new Click();class Click {void move(){clicks++;}}
  final Spoken spoken=new Spoken();class Spoken {void focusMoved(){announcements++;}}
  boolean scrolling(){return screen==PICKER||screen==SHELF_EDIT;}int rowCount(){return scrolling()?listWindow.visibleRows(size):8;}int listSize(){return size;}void invalidate(){invalidations++;}
- boolean key(int code,boolean down,int repeat){KeyEvent e=new KeyEvent(code,repeat);switch(code){
-''' + key + '''default:return false;}}
+ final SettingsRemoteInput input=new SettingsRemoteInput();
+ final SettingsRemoteInput.Actions actions=new SettingsRemoteInput.Actions(){public void vertical(int d,boolean down,boolean first){moveFocus(d,down,first);}public void horizontal(int d,boolean down,boolean first){}public void confirm(){}public void back(boolean activate,boolean root){}};
+ boolean key(int code,boolean down,int repeat){return input.onKey(new KeyEvent(down?KeyEvent.ACTION_DOWN:KeyEvent.ACTION_UP,code,repeat,false),screen==MAIN,actions);}
+''' + block(source,'        private void moveFocus(') + '''
  static final float LIST_TOP=186,ROW_H=62,MAIN_ROW_GAP=22,ABOUT_ROW_GAP=22,ABOUT_NAME_Y_OFFSET=3,ABOUT_DETAILS_Y_OFFSET=13,LIST_X=1000,LIST_R=1824,ABOUT_NAME_RIGHT_EXTENSION=6;
  static class RectF {float left,top,right,bottom;void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}void offset(float x,float y){left+=x;right+=x;top+=y;bottom+=y;}}
  static class Position {float value;}final Position mainScroll=new Position(),listScroll=new Position();final RectF focusBox=new RectF();float k=1;
@@ -54,9 +54,9 @@ public class WindowHarness {
  System.out.println("PASS: list traversal, boundaries, empty/saved pickers, fixed pages, actual key down/up/repeats/sound/accessibility, all page bounds at 720p/1080p/4K and reorder focus");
  }}'''
 with tempfile.TemporaryDirectory() as tmp:
- root=Path(tmp)
+ root=Path(tmp);write_remote(root)
  (root/'WindowHarness.java').write_text(harness)
  for name in ['SettingsListWindow','SettingsScreen']:
   (root/(name+'.java')).write_text(Path('app/src/io/tvos/settings',name+'.java').read_text())
- subprocess.run(['java','com.sun.tools.javac.Main','-Xlint:all','-Werror','-d',tmp,*map(str,root.glob('*.java'))],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','-Xlint:all','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'WindowHarness'],check=True)

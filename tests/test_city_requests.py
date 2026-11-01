@@ -1,6 +1,7 @@
 # Run from project root with Python 3 and JDK 17+.
 # Production methods exercised with deterministic Android/network stubs.
 from settings_strings_fixture import write as write_strings
+from settings_remote_fixture import write as write_remote
 import os, subprocess, tempfile
 from pathlib import Path
 
@@ -29,7 +30,11 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
  Object getContext(){return this;}
  static final ThreadPoolExecutor CITY_IO=executor();
  static ThreadPoolExecutor executor(){try{java.lang.reflect.Field f=SettingsCitySearch.class.getDeclaredField("IO");f.setAccessible(true);return (ThreadPoolExecutor)f.get(null);}catch(Exception e){throw new AssertionError(e);}}
-     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean regionWasOpen;boolean running=true,okDown=true,backDown=true;static class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}final AppLoader appLoader=new AppLoader();
+     Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;boolean regionWasOpen;boolean running=true;
+ final io.tvos.settings.SettingsRemoteInput remoteInput=new io.tvos.settings.SettingsRemoteInput();int confirmations,backs;
+ final io.tvos.settings.SettingsRemoteInput.Actions keyActions=new io.tvos.settings.SettingsRemoteInput.Actions(){public void vertical(int d,boolean down,boolean first){}public void horizontal(int d,boolean down,boolean first){}public void confirm(){confirmations++;}public void back(boolean activate,boolean root){if(activate)backs++;}};
+ void keys(int action){for(int code:new int[]{android.view.KeyEvent.KEYCODE_ENTER,android.view.KeyEvent.KEYCODE_BACK})remoteInput.onKey(new android.view.KeyEvent(action,code,0,false),false,keyActions);}
+static class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}final AppLoader appLoader=new AppLoader();
  final SettingsCitySearch citySearch=new SettingsCitySearch(handler,()->running,()->screen,this::showCityResults,this::invalidate);
      List<String[]> cities=new ArrayList<>();Runnable poll=()->{};
      void invalidate(){}static class Background {void clear(){}}final Background background=new Background();void openPicker(int id){pickers++;}
@@ -38,11 +43,11 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
     '''
     tests='''
      public static void main(String[] args)throws Exception {
-      CityHarness h=new CityHarness();
+      CityHarness h=new CityHarness();h.keys(android.view.KeyEvent.ACTION_DOWN);
       try {
        h.citySearch.search("old");h.flush();h.pause();h.handler.drain();check(h.pickers==0,"paused settings suppress city callback");
        check(h.updateDialog.paused,"pause delegates update listener lifecycle");
-       check(!h.okDown&&!h.backDown&&h.appLoader.cancelled,"pause clears held keys and app lookup");
+       h.keys(android.view.KeyEvent.ACTION_UP);check(h.confirmations==0&&h.backs==0&&h.appLoader.cancelled,"pause clears held keys and app lookup");
        check(h.rowShadows.cleared && h.textRenderer.cleared,"pause drops shadow and description caches");
        h.running=true;h.citySearch.search("different-screen");h.flush();h.screen=99;h.handler.drain();check(h.pickers==0 && h.citySearch.status().isEmpty(),"navigation suppresses picker");
        h.screen=GENERAL;CountDownLatch gate=new CountDownLatch(1),entered=new CountDownLatch(1);
@@ -72,6 +77,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
     for name,content in adapters.items():
      path=destination/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)
     write_strings(destination)
+    write_remote(destination)
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', str(destination), 'app/src/io/tvos/UiRequest.java', *map(str,destination.rglob('*.java'))], check=True)
     subprocess.run([java, '-cp', str(destination), 'io.tvos.CityHarness'], check=True)
