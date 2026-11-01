@@ -15,7 +15,7 @@ public final class SettingsLogoRenderer {
     private final Paint.FontMetrics logoMetrics = new Paint.FontMetrics();
     private final Matrix logoMatrix = new Matrix();
     private final Path logoCutout = new Path();
-    private final Paint logoInk = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint logoInk = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint logoTile = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Shader darkLogoGradient = new LinearGradient(0, 1, 1, 0,
             0xFF51595B, 0xFF55646B, Shader.TileMode.CLAMP);

@@ -4,13 +4,13 @@ import subprocess, tempfile
 sources={
 'android/graphics/Typeface.java':'package android.graphics;public class Typeface {}',
 'android/graphics/Paint.java':'''package android.graphics;public class Paint {
- public static final int ANTI_ALIAS_FLAG=1;public enum Align{LEFT,CENTER,RIGHT}public static class FontMetrics{public float ascent,descent;}
+ public static final int ANTI_ALIAS_FLAG=1,SUBPIXEL_TEXT_FLAG=128;public int flags;public enum Align{LEFT,CENTER,RIGHT}public static class FontMetrics{public float ascent,descent;}
  public static int allocations;public float size;public int color;public Align align=Align.LEFT;public Typeface face;public Shader shader;
- public Paint(){allocations++;}public Paint(int flags){this();}public void set(Paint p){size=p.size;color=p.color;align=p.align;face=p.face;shader=p.shader;}
+ public Paint(){allocations++;}public Paint(int flags){this();this.flags=flags;}public void set(Paint p){size=p.size;color=p.color;align=p.align;face=p.face;shader=p.shader;}
  public void setTextSize(float v){size=v;}public float getTextSize(){return size;}public void setTextAlign(Align a){align=a;}public Align getTextAlign(){return align;}
  public void setTypeface(Typeface t){face=t;}public void setColor(int c){color=c;}public void setShader(Shader s){shader=s;}
  public float measureText(String s){return s.codePointCount(0,s.length())*size/2;}public float measureText(String s,int a,int b){return measureText(s.substring(a,b));}
- public void getFontMetrics(FontMetrics m){m.ascent=-size*.75f;m.descent=size*.25f;}public void getTextPath(String s,int a,int b,float x,float y,Path p){p.revisions++;}
+ public void getFontMetrics(FontMetrics m){m.ascent=-size*.75f;m.descent=size*.25f;}public void getTextPath(String s,int a,int b,float x,float y,Path p){if(flags!=129)throw new AssertionError("original wordmark text flags");p.revisions++;}
 }''',
 'android/graphics/Path.java':'package android.graphics;public class Path {public int revisions;public void reset(){}}',
 'android/graphics/Matrix.java':'package android.graphics;public class Matrix {public void setScale(float x,float y){}public void postTranslate(float x,float y){}}',
