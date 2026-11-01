@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B134)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B135)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -59,3 +59,5 @@ atomic promotion, retry timing and stale-window checks. Regression coverage
 includes provider oversize/null streams and cancellation during copying.
 
 Settings presentation: `settings/SettingsTextRenderer` owns tracked glyph drawing and the single wrapped-description cache; `settings/SettingsLogoRenderer` owns cached tile/cutout geometry. The Activity supplies text, theme, scale and typeface and clears description state on pause/resize. Both renderers are independent of preferences, localization and screen IDs. Cache keys include exact scale and typeface, not only rounded width. Removed obsolete title/subtitle/subrow/warning/spinner Paint allocations from SettingsActivity.
+
+Settings rows: `settings/SettingsRowRenderer` owns capsule/focus geometry, reusable Paint/blur state and the cached chevron path; a shadow callback retains the existing legacy cache adapter. Drawing never mutates logical label/focus bounds. `SettingsTextRenderer` shares tracked-width measurement and one fitted-value cache including width, text size, typeface and tracking; pause/resize clears it. SettingsActivity retains screen policy and application data, without duplicate row graphics state or the unreachable About-row background branch.

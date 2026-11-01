@@ -7,6 +7,7 @@ import io.tvos.settings.SettingsDockEditor;
 import io.tvos.settings.SettingsBackground;
 import io.tvos.settings.SettingsTextRenderer;
 import io.tvos.settings.SettingsLogoRenderer;
+import io.tvos.settings.SettingsRowRenderer;
 
 import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
@@ -16,12 +17,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.BlurMaskFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Shader;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
@@ -101,12 +100,12 @@ public class SettingsActivity extends Activity {
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
         private static final int PICK_VISIBLE = 10;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 62, ROW_GAP = 12, CHOICE_H = 62;
-        private static final float SETTINGS_SHADOW_BLUR = 40, SETTINGS_SHADOW_DROP = 15, SETTINGS_SHADOW_OPACITY = 0.40f;
         private static final int INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
         private Click tvosClick; // TVOS_AERIAL_CONTROLS_V1: same sound as HomeView
         private final Shadows rowShadows = new Shadows();
+        private final SettingsRowRenderer rowRenderer = new SettingsRowRenderer(rowShadows::draw);
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final SettingsCitySearch citySearch;
         private final SettingsAppLoader appLoader;
@@ -122,14 +121,10 @@ public class SettingsActivity extends Activity {
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private final Spring mainScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
-        private final RectF tmp = new RectF(), rowRect = new RectF(), focusBox = new RectF();
+        private final RectF rowRect = new RectF(), focusBox = new RectF();
         private final SettingsTextRenderer textRenderer = new SettingsTextRenderer();
         private final SettingsLogoRenderer logoRenderer = new SettingsLogoRenderer();
-        private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path arrowPath = new Path();
         private final TextPaint shelfMeasurePaint = new TextPaint();
-        private String serviceValueSource, serviceValueShown;
-        private float serviceValueWidth = -1, serviceValueSize = -1;
         private final SettingsOrderEditor categoryEditor = SettingsEditors.categories();
         private final SettingsOrderEditor buttonEditor = SettingsEditors.buttons();
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
@@ -161,9 +156,9 @@ public class SettingsActivity extends Activity {
         private long lastNanos, pendingAt;
         private int w, h;
         private float k = 1;
-        private Paint rowLabel, rowValue, white, shadow;
+        private Paint rowLabel, rowValue;
 
-        private Paint pageTitle, capsule = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private Paint pageTitle;
 
         private boolean regionWasOpen;
         private final Runnable poll = new Runnable() {
@@ -348,15 +343,6 @@ public class SettingsActivity extends Activity {
             k = w / 1920f;
             rowShadows.clear();
             textRenderer.clear();
-            arrowPaint.setColor(0xFFA1A3A1);
-            arrowPaint.setStyle(Paint.Style.STROKE);
-            arrowPaint.setStrokeWidth(ABOUT_ARROW_STROKE * k);
-            arrowPaint.setStrokeCap(Paint.Cap.ROUND);
-            arrowPaint.setStrokeJoin(Paint.Join.ROUND);
-            arrowPath.reset();
-            arrowPath.moveTo(-ABOUT_ARROW_LEFT * k, -ABOUT_ARROW_HALF_HEIGHT * k);
-            arrowPath.lineTo(ABOUT_ARROW_TIP * k, 0);
-            arrowPath.lineTo(-ABOUT_ARROW_LEFT * k, ABOUT_ARROW_HALF_HEIGHT * k);
             float listTop = 148 * k, listSpan = Math.max(1f, h - listTop);
             float topStop = Math.min(0.25f, 38 * k / listSpan);
             float bottomStop = Math.max(topStop, 1f - 64 * k / listSpan);
@@ -368,10 +354,6 @@ public class SettingsActivity extends Activity {
             rowLabel = Ui.text(Ui.displaySemibold, 36 * k, 0xF2FFFFFF);
             rowValue = Ui.text(Ui.displayRegular, 36 * k, 0x8CFFFFFF);
             rowValue.setTextAlign(Paint.Align.RIGHT);
-            white = new Paint(Paint.ANTI_ALIAS_FLAG);
-            white.setColor(0xFFF5F5F7);
-            shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            shadow.setMaskFilter(new BlurMaskFilter(SETTINGS_SHADOW_BLUR * k, BlurMaskFilter.Blur.NORMAL));
             pageTitle = Ui.text(Ui.displayBold, 56 * k, 0x99FFFFFF);
             pageTitle.setTextAlign(Paint.Align.CENTER);
         }
@@ -577,35 +559,20 @@ public class SettingsActivity extends Activity {
         }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
         private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.enter(getContext()); invalidate(); }
-        // Legacy display/Wi-Fi information remains available on older TV firmware.
-        @SuppressWarnings("deprecation")
         // Approved About-screen geometry (all dimensions are scaled by k).
         private static final float ABOUT_ROW_GAP = 22f, MAIN_ROW_GAP = 22f;
         private static final float ABOUT_NAME_Y_OFFSET = 3f;
         private static final float ABOUT_DETAILS_Y_OFFSET = 13f;
         private static final float ABOUT_NAME_RIGHT_EXTENSION = 6f;
-        private static final float ABOUT_ARROW_STROKE = 3.4425f;
-        private static final float ABOUT_ARROW_HALF_HEIGHT = 13.77f;
-        private static final float ABOUT_ARROW_LEFT = 11.475f;
-        private static final float ABOUT_ARROW_TIP = 2.295f;
 
         // Approved Name-button capsule: geometry stays separate from text hit coordinates.
         private float drawApprovedCapsule(Canvas c, int i) {
-            float left = rowRect.left, top = rowRect.top;
-            float right = rowRect.right, bottom = rowRect.bottom;
-            float labelX = left + rowRect.width() * 0.10f + 10 * k;
-            rowRect.set(labelX - 30 * k, top - 5 * k, right + 16 * k, bottom + 5 * k);
-            float focusAmount = drawRowBackground(c, i);
-            rowRect.set(left, top, right, bottom);
-            return focusAmount;
+            return rowRenderer.draw(c, rowRect, k, lightSettings(),
+                    i >= 0 && i < pop.length ? pop[i].value : 0f);
         }
 
         private void drawApprovedChevron(Canvas c) {
-            float x = rowRect.right - 13 * k, y = rowRect.centerY();
-            c.save();
-            c.translate(x, y);
-            c.drawPath(arrowPath, arrowPaint);
-            c.restore();
+            rowRenderer.drawChevron(c, rowRect, k);
         }
 
         private void setApprovedRowRect(int i) {
@@ -713,7 +680,7 @@ public class SettingsActivity extends Activity {
                 if (screen != ABOUT || i == 0) {
                     f = drawApprovedCapsule(c, i);
                 } else {
-                    f = screen == ABOUT ? 0f : drawRowBackground(c, i);
+                    f = 0f;
                 }
                 rowLabel.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : blend(normalInk(), INK, f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
@@ -745,22 +712,9 @@ public class SettingsActivity extends Activity {
         /** Keep the service in its right-aligned column, with a visible gap after the label. */
         private String fitServiceValue(String label, String value) {
             float labelX = rowRect.left + rowRect.width() * 0.10f + 10 * k;
-            float labelWidth = rowLabel.measureText(label) + rowLabel.getTextSize() * .02f
-                    * Math.max(0, label.codePointCount(0, label.length()) - 1);
+            float labelWidth = SettingsTextRenderer.trackedWidth(label, rowLabel, .02f);
             float available = Math.max(0, rowRect.right - 61 * k - labelX - labelWidth - 32 * k);
-            float size = rowValue.getTextSize();
-            if (value.equals(serviceValueSource) && available == serviceValueWidth && size == serviceValueSize)
-                return serviceValueShown;
-            serviceValueSource = value; serviceValueWidth = available; serviceValueSize = size;
-            String shown = value;
-            int end = value.length();
-            while (rowValue.measureText(shown) + size * .02f
-                    * Math.max(0, shown.codePointCount(0, shown.length()) - 1) > available) {
-                if (end == 0) { shown = ""; break; }
-                end = value.offsetByCodePoints(end, -1);
-                shown = value.substring(0, end) + "…";
-            }
-            return serviceValueShown = shown;
+            return textRenderer.fitValue(value, rowValue, available, .02f);
         }
 
         /** Stable row order with the focused row last, without extra layers or allocations. */
@@ -771,31 +725,6 @@ public class SettingsActivity extends Activity {
             return row >= active ? row + 1 : row;
         }
 
-        /** Theme-colored capsules; focused row lifts into an opaque white pill. */
-        private float drawRowBackground(Canvas c, int i) {
-            float f = i >= 0 && i < pop.length ? Ui.clamp(pop[i].value) : 0f;
-            float radius = rowRect.height() / 2f;
-            capsule.setColor(lightSettings() ? 0xFFD1E3FB : 0xFF31444B);
-            c.drawRoundRect(rowRect, radius, radius, capsule);
-            if (f > 0.01f) {
-                float scale = 1f + 0.012f * f;
-                float cx = rowRect.centerX(), cy = rowRect.centerY();
-                tmp.set(cx - rowRect.width() * scale / 2f,
-                        cy - rowRect.height() * scale / 2f,
-                        cx + rowRect.width() * scale / 2f,
-                        cy + rowRect.height() * scale / 2f);
-                float r = tmp.height() / 2f;
-                // Downward shadow; the filter and legacy cached mask use the same blur.
-                tmp.offset(0, SETTINGS_SHADOW_DROP * k * f);
-                shadow.setColor(Ui.alpha(0xFF000000, SETTINGS_SHADOW_OPACITY * f));
-                rowShadows.draw(c, tmp, r, SETTINGS_SHADOW_BLUR * k, shadow);
-                tmp.offset(0, -SETTINGS_SHADOW_DROP * k * f);
-                white.setAlpha(Math.round(255 * f));
-                c.drawRoundRect(tmp, r, r, white);
-                rowRect.set(tmp);
-            }
-            return f;
-        }
 
         /** Home launcher selection, using the same compact tvOS capsules as other screens. */
         private void drawChoice(Canvas c) {

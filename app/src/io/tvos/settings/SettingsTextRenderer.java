@@ -16,10 +16,15 @@ public final class SettingsTextRenderer {
     private int descriptionWidth;
     private float descriptionScale = -1;
     private Typeface descriptionTypeface;
+    private String fittedSource, fittedValue;
+    private float fittedWidth = -1, fittedSize = -1, fittedTracking;
+    private Typeface fittedTypeface;
 
     public void clear() {
         descriptionLayout = null;
         descriptionText = null;
+        fittedSource = fittedValue = null;
+        fittedTypeface = null;
     }
 
     public void drawTracked(Canvas canvas, String text,
@@ -27,10 +32,7 @@ public final class SettingsTextRenderer {
         if (text == null || text.isEmpty()) return;
 
         float spacing = paint.getTextSize() * tracking;
-        int count = text.codePointCount(0, text.length());
-
-        float width = paint.measureText(text)
-                + spacing * Math.max(0, count - 1);
+        float width = trackedWidth(text, paint, tracking);
 
         float cursor = x;
         if (paint.getTextAlign() == Paint.Align.CENTER) {
@@ -48,6 +50,32 @@ public final class SettingsTextRenderer {
             cursor += glyphPaint.measureText(text, i, next) + spacing;
             i = next;
         }
+    }
+
+    public static float trackedWidth(String text, Paint paint, float tracking) {
+        return paint.measureText(text) + paint.getTextSize() * tracking
+                * Math.max(0, text.codePointCount(0, text.length()) - 1);
+    }
+
+    /** Keep one ellipsized value, including font and tracking in the measurement identity. */
+    public String fitValue(String value, Paint paint, float available, float tracking) {
+        float size = paint.getTextSize();
+        Typeface typeface = paint.getTypeface();
+        if (value.equals(fittedSource) && available == fittedWidth && size == fittedSize
+                && typeface == fittedTypeface && tracking == fittedTracking) return fittedValue;
+        String shown = value;
+        int end = value.length();
+        while (trackedWidth(shown, paint, tracking) > available) {
+            if (end == 0) { shown = ""; break; }
+            end = value.offsetByCodePoints(end, -1);
+            shown = value.substring(0, end) + "…";
+        }
+        fittedSource = value;
+        fittedWidth = available;
+        fittedSize = size;
+        fittedTypeface = typeface;
+        fittedTracking = tracking;
+        return fittedValue = shown;
     }
 
     /** Preserve the established wrapping, spacing and baseline at every display scale. */

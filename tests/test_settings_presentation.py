@@ -2,14 +2,14 @@
 from pathlib import Path
 import subprocess, tempfile
 sources={
-'android/graphics/Typeface.java':'package android.graphics;public class Typeface {}',
+'android/graphics/Typeface.java':'package android.graphics;public class Typeface {public float factor=1;}',
 'android/graphics/Paint.java':'''package android.graphics;public class Paint {
  public static final int ANTI_ALIAS_FLAG=1,SUBPIXEL_TEXT_FLAG=128;public int flags;public enum Align{LEFT,CENTER,RIGHT}public static class FontMetrics{public float ascent,descent;}
- public static int allocations;public float size;public int color;public Align align=Align.LEFT;public Typeface face;public Shader shader;
+ public static int allocations,measurements;public float size;public int color;public Align align=Align.LEFT;public Typeface face;public Shader shader;
  public Paint(){allocations++;}public Paint(int flags){this();this.flags=flags;}public void set(Paint p){size=p.size;color=p.color;align=p.align;face=p.face;shader=p.shader;}
  public void setTextSize(float v){size=v;}public float getTextSize(){return size;}public void setTextAlign(Align a){align=a;}public Align getTextAlign(){return align;}
- public void setTypeface(Typeface t){face=t;}public void setColor(int c){color=c;}public void setShader(Shader s){shader=s;}
- public float measureText(String s){return s.codePointCount(0,s.length())*size/2;}public float measureText(String s,int a,int b){return measureText(s.substring(a,b));}
+ public void setTypeface(Typeface t){face=t;}public Typeface getTypeface(){return face;}public void setColor(int c){color=c;}public void setShader(Shader s){shader=s;}
+ public float measureText(String s){measurements++;return (face==null?1:face.factor)*s.codePointCount(0,s.length())*size/2;}public float measureText(String s,int a,int b){return measureText(s.substring(a,b));}
  public void getFontMetrics(FontMetrics m){m.ascent=-size*.75f;m.descent=size*.25f;}public void getTextPath(String s,int a,int b,float x,float y,Path p){if(flags!=129)throw new AssertionError("original wordmark text flags");p.revisions++;}
 }''',
 'android/graphics/Path.java':'package android.graphics;public class Path {public int revisions;public void reset(){}}',
@@ -46,6 +46,12 @@ public class PresentationTest {
   text.drawDescription(c,"Info",1.0001f,false,face);check(StaticLayout.builds==++builds&&StaticLayout.width==740,"fractional scale invalidates even when rounded width is unchanged");near(StaticLayout.size,30.003f);
   text.drawDescription(c,"Info",1.0001f,false,new Typeface());check(StaticLayout.builds==++builds,"font change invalidates layout");
   text.clear();text.clear();text.drawDescription(c,"Info",1,true,face);check(StaticLayout.builds==++builds,"lifecycle clear rebuilds once");text.drawDescription(c,null,1,true,face);check(StaticLayout.builds==builds,"absent description no layout");
+  paint.setTextSize(20);paint.setTypeface(face);String fitted=text.fitValue("A😀БГД",paint,35,.1f);check(fitted.equals("A😀…"),"fit truncates at code point boundary and counts tracking");
+  int measurements=Paint.measurements;for(int i=0;i<100;i++)check(text.fitValue("A😀БГД",paint,35,.1f)==fitted,"fitted value identity");check(Paint.measurements==measurements,"steady fit performs no text measurements");
+  Typeface wide=new Typeface();wide.factor=2;paint.setTypeface(wide);check(text.fitValue("A😀БГД",paint,35,.1f).equals("…"),"font change invalidates fitted width");
+  paint.setTypeface(face);check(text.fitValue("A😀БГД",paint,35,0).equals("A😀…"),"tracking participates in fit");check(text.fitValue("A😀БГД",paint,40,0).equals("A😀Б…"),"available width invalidates fit");
+  check(text.fitValue("A😀БГД",paint,0,0).isEmpty(),"no room even for ellipsis");check(text.fitValue("",paint,0,0).isEmpty(),"empty fitted value");
+  text.fitValue("abc",paint,100,0);measurements=Paint.measurements;text.clear();text.fitValue("abc",paint,100,0);check(Paint.measurements>measurements,"lifecycle clear drops fitted cache");
   SettingsLogoRenderer logo=new SettingsLogoRenderer();
   for(float k:new float[]{2f/3,1,2}){
    c=new Canvas();logo.draw(c,k,true,face);near(c.left,254*k);near(c.top,236*k);near(c.right,790*k);near(c.bottom,772*k);near(c.radius,116*k);check(c.shader==null&&c.color==0xFF8897AC&&c.depth==0,"light cutout tile and balanced canvas");
