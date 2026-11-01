@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B142)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B143)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -110,3 +110,13 @@ Canvas or navigation state. The existing Prefs backend stays inside the root
 adapter package. Notification order, defaults and persisted keys are unchanged.
 General and legacy theme/unit changes share one allocation-free cycle helper;
 the dream-source choice array is retained rather than rebuilt per adjustment.
+
+SettingsTextRenderer now also owns shared row label/value placement, service value
+fitting, picker label fitting/checkmark reservation and Dock label ellipsizing.
+The Activity supplies strings, bounds, baseline and Paint; screen/data policy and
+decorations stay outside the renderer. Picker and value fitting share width and
+Unicode truncation logic but retain distinct narrow-width behavior: picker keeps
+an ellipsis when it cannot fit, values may become empty. That policy participates
+in the existing single-value cache. Dock retains TextUtils and its 520px limit;
+its measure Paint moved from the Activity into the renderer, with one setup per
+list draw. About detail values retain their original two-step right offset.

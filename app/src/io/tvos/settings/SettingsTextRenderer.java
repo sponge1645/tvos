@@ -3,12 +3,15 @@ package io.tvos.settings;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.graphics.RectF;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.text.TextUtils;
 
 /** Settings typography; owns reusable paints and one wrapped description, without screen state. */
 public final class SettingsTextRenderer {
+    private final TextPaint shelfMeasurePaint = new TextPaint();
     private final Paint glyphPaint = new Paint();
     private final TextPaint descriptionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private StaticLayout descriptionLayout;
@@ -19,6 +22,7 @@ public final class SettingsTextRenderer {
     private String fittedSource, fittedValue;
     private float fittedWidth = -1, fittedSize = -1, fittedTracking;
     private Typeface fittedTypeface;
+    private boolean fittedKeepEllipsis;
 
     public void clear() {
         descriptionLayout = null;
@@ -59,23 +63,65 @@ public final class SettingsTextRenderer {
 
     /** Keep one ellipsized value, including font and tracking in the measurement identity. */
     public String fitValue(String value, Paint paint, float available, float tracking) {
+        return fit(value, paint, available, tracking, false);
+    }
+
+    /** Picker labels retain their historical ellipsis even when the ellipsis cannot fit. */
+    public String fitPickerLabel(String value, Paint paint, float available, float tracking) {
+        return fit(value, paint, available, tracking, true);
+    }
+
+    private String fit(String value, Paint paint, float available, float tracking, boolean keepEllipsis) {
         float size = paint.getTextSize();
         Typeface typeface = paint.getTypeface();
         if (value.equals(fittedSource) && available == fittedWidth && size == fittedSize
-                && typeface == fittedTypeface && tracking == fittedTracking) return fittedValue;
+                && typeface == fittedTypeface && tracking == fittedTracking && keepEllipsis == fittedKeepEllipsis) return fittedValue;
         String shown = value;
         int end = value.length();
         while (trackedWidth(shown, paint, tracking) > available) {
             if (end == 0) { shown = ""; break; }
             end = value.offsetByCodePoints(end, -1);
             shown = value.substring(0, end) + "…";
+            if (keepEllipsis && end == 0) break;
         }
         fittedSource = value;
         fittedWidth = available;
         fittedSize = size;
         fittedTypeface = typeface;
         fittedTracking = tracking;
+        fittedKeepEllipsis = keepEllipsis;
         return fittedValue = shown;
+    }
+
+    public void drawRowLabel(Canvas c, String label, RectF row, float scale, float baseline, Paint paint) {
+        drawTracked(c, label, row.left + row.width() * .10f + 10 * scale, baseline, paint, .02f);
+    }
+
+    public void drawRowValue(Canvas c, String value, RectF row, float scale, float baseline,
+            float rightInset, Paint paint) {
+        drawTracked(c, value, row.right - rightInset * scale, baseline, paint, .02f);
+    }
+
+    public String fitRowValue(String label, String value, RectF row, float scale, Paint labelPaint, Paint valuePaint) {
+        float labelX = row.left + row.width() * .10f + 10 * scale;
+        float available = Math.max(0, row.right - 61 * scale - labelX
+                - trackedWidth(label, labelPaint, .02f) - 32 * scale);
+        return fitValue(value, valuePaint, available, .02f);
+    }
+
+    public void drawPickerLabel(Canvas c, String label, RectF row, float scale,
+            float baseline, boolean selected, Paint paint) {
+        float x = row.left + row.width() * .10f + 10 * scale;
+        float right = row.right - 24 * scale;
+        if (selected) right -= 38 * scale;
+        drawTracked(c, fitPickerLabel(label, paint, Math.max(0f, right - x), .02f), x, baseline, paint, .02f);
+    }
+
+    public void beginShelf(Paint labelPaint) { shelfMeasurePaint.set(labelPaint); }
+
+    public void drawShelfLabel(Canvas c, String label, RectF row, float scale, float baseline, Paint paint) {
+        drawRowLabel(c, TextUtils.ellipsize(label, shelfMeasurePaint, 520 * scale,
+                TextUtils.TruncateAt.END).toString(), row, scale, baseline, paint);
     }
 
     /** Preserve the established wrapping, spacing and baseline at every display scale. */

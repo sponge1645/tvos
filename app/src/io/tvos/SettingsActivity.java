@@ -31,8 +31,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
-import android.text.TextPaint;
-import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeProvider;
@@ -124,7 +122,6 @@ public class SettingsActivity extends Activity {
         private final RectF rowRect = new RectF(), focusBox = new RectF();
         private final SettingsTextRenderer textRenderer = new SettingsTextRenderer();
         private final SettingsLogoRenderer logoRenderer = new SettingsLogoRenderer();
-        private final TextPaint shelfMeasurePaint = new TextPaint();
         private final SettingsOrderEditor categoryEditor = SettingsEditors.categories();
         private final SettingsOrderEditor buttonEditor = SettingsEditors.buttons();
         // TVOS_RAM_GPU_PHASE1: smooth static gradient at half resolution.
@@ -548,8 +545,7 @@ public class SettingsActivity extends Activity {
                 }
                 rowLabel.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : blend(normalInk(), INK, f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawTracked(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                float right = rowRect.right - 30 * k;
+                textRenderer.drawRowLabel(c, labels[i], rowRect, k, base, rowLabel);
                 if (screen != ABOUT || i == 0) {
                     if (screen == UPDATES && i == 0 && updateProgress.busy()) {
                         boolean reduced = localFlag("reduce_motion");
@@ -563,22 +559,19 @@ public class SettingsActivity extends Activity {
                                     blend(normalInk(), INK, f));
                     } else {
                         rowValue.setColor(screen == REGION && i == 1 && Prefs.automaticRegion() ? 0x66808080 : valueInk(f));
-                        textRenderer.drawTracked(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
-                                rowRect.right - (menuChevronVisible(i) ? 61 : 13) * k, base, rowValue, 0.02f);
+                        textRenderer.drawRowValue(c, screen == MEDIA || screen == REGION ? fitServiceValue(labels[i], values[i]) : values[i],
+                                rowRect, k, base, menuChevronVisible(i) ? 61 : 13, rowValue);
                     }
                 } else {
                     rowValue.setColor(valueInk(f));
-                    textRenderer.drawTracked(c, values[i], right + 20 * k, base, rowValue, 0.02f);
+                    textRenderer.drawTracked(c, values[i], rowRect.right - 30 * k + 20 * k, base, rowValue, 0.02f);
                 }
             }
         }
 
         /** Keep the service in its right-aligned column, with a visible gap after the label. */
         private String fitServiceValue(String label, String value) {
-            float labelX = rowRect.left + rowRect.width() * 0.10f + 10 * k;
-            float labelWidth = SettingsTextRenderer.trackedWidth(label, rowLabel, .02f);
-            float available = Math.max(0, rowRect.right - 61 * k - labelX - labelWidth - 32 * k);
-            return textRenderer.fitValue(value, rowValue, available, .02f);
+            return textRenderer.fitRowValue(label, value, rowRect, k, rowLabel, rowValue);
         }
 
         /** Stable row order with the focused row last, without extra layers or allocations. */
@@ -599,8 +592,7 @@ public class SettingsActivity extends Activity {
                 setApprovedRowRect(i);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                textRenderer.drawTracked(c, options[i], rowRect.left + rowRect.width() * 0.10f + 10 * k,
-                        rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel, 0.02f);
+                textRenderer.drawRowLabel(c, options[i], rowRect, k, rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel);
                 if (i == current) {
                     float cw = Symbols.width(getContext(), "check", 26 * k);
                     Symbols.draw(getContext(), c, "check", rowRect.right - 30 * k - cw / 2,
@@ -795,12 +787,12 @@ public class SettingsActivity extends Activity {
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
                 boolean vpnApp = row == buttonEditor.size();
                 int id = vpnApp ? -1 : buttonEditor.get(row);
-                textRenderer.drawTracked(c, vpnApp ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
-                        rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                if (vpnApp) textRenderer.drawTracked(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
-                        rowRect.right - 61 * k, base, rowValue, 0.02f);
-                if (!vpnApp) textRenderer.drawTracked(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
-                        rowRect.right - 13 * k, base, rowValue, 0.02f);
+                textRenderer.drawRowLabel(c, vpnApp ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
+                        rowRect, k, base, rowLabel);
+                if (vpnApp) textRenderer.drawRowValue(c, fitServiceValue(AppStrings.get(R.string.settings_vpn), valueSource.vpnApp()),
+                        rowRect, k, base, 61, rowValue);
+                if (!vpnApp) textRenderer.drawRowValue(c, Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off),
+                        rowRect, k, base, 13, rowValue);
                 if (vpnApp && !disabled) drawApprovedChevron(c);
             }
         }
@@ -918,10 +910,9 @@ public class SettingsActivity extends Activity {
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawTracked(c, categoryLabel(id), rowRect.left + rowRect.width() * 0.10f + 10 * k,
-                        base, rowLabel, 0.02f);
-                textRenderer.drawTracked(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off),
-                        rowRect.right - 13 * k, base, rowValue, 0.02f);
+                textRenderer.drawRowLabel(c, categoryLabel(id), rowRect, k, base, rowLabel);
+                textRenderer.drawRowValue(c, Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off),
+                        rowRect, k, base, 13, rowValue);
             }
         }
 
@@ -950,7 +941,7 @@ public class SettingsActivity extends Activity {
 
         private void drawShelfEditor(Canvas c) {
             // The centered screenTitle() is the only heading.
-            shelfMeasurePaint.set(rowLabel);
+            textRenderer.beginShelf(rowLabel);
             int first = listWindow.firstDrawn(listScroll.value), last = listWindow.endDrawn(listScroll.value, listSize());
             for (int pass = 0; pass < last - first; pass++) {
                 int at = paintRow(pass, first, last, listWindow.absoluteRow(focus));
@@ -962,8 +953,8 @@ public class SettingsActivity extends Activity {
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawTracked(c, TextUtils.ellipsize(app[1], shelfMeasurePaint, 520 * k, TextUtils.TruncateAt.END).toString(), rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
-                textRenderer.drawTracked(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect.right - 13 * k, base, rowValue, 0.02f);
+                textRenderer.drawShelfLabel(c, app[1], rowRect, k, base, rowLabel);
+                textRenderer.drawRowValue(c, place >= 0 ? "#" + (place + 1) : AppStrings.get(R.string.settings_off), rowRect, k, base, 13, rowValue);
             }
         }
 
@@ -998,29 +989,8 @@ public class SettingsActivity extends Activity {
                 setScrollingRowRect(at);
                 float f = drawApprovedCapsule(c, i);
                 rowLabel.setColor(blend(normalInk(), INK, f));
-                float labelX = rowRect.left + rowRect.width() * 0.10f + 10 * k;
-                float labelRight = rowRect.right - 24 * k;
-                if (at == pickCurrent) labelRight -= 38 * k; // reserve room for the checkmark
-                String label = pickLabels.get(at);
-                float available = Math.max(0f, labelRight - labelX);
-                float tracking = rowLabel.getTextSize() * 0.02f;
-                float textWidth = rowLabel.measureText(label)
-                        + tracking * Math.max(0, label.codePointCount(0, label.length()) - 1);
-                if (textWidth > available) {
-                    final String dots = "…";
-                    int end = label.length();
-                    do {
-                        end = label.offsetByCodePoints(end, -1);
-                        String candidate = label.substring(0, end) + dots;
-                        textWidth = rowLabel.measureText(candidate)
-                                + tracking * Math.max(0, candidate.codePointCount(0, candidate.length()) - 1);
-                        if (textWidth <= available || end == 0) {
-                            label = candidate;
-                            break;
-                        }
-                    } while (end > 0);
-                }
-                textRenderer.drawTracked(c, label, labelX, rowRect.centerY() + Ui.halfCap(rowLabel), rowLabel, 0.02f);
+                textRenderer.drawPickerLabel(c, pickLabels.get(at), rowRect, k,
+                        rowRect.centerY() + Ui.halfCap(rowLabel), at == pickCurrent, rowLabel);
                 if (at == pickCurrent) {
                     float cw = Symbols.width(getContext(), "check", 26 * k);
                     Symbols.draw(getContext(), c, "check", rowRect.right - 30 * k - cw / 2, rowRect.centerY(), 26 * k, blend(0xFFFFFFFF, INK, f));
@@ -1040,9 +1010,9 @@ public class SettingsActivity extends Activity {
                 rowLabel.setColor(blend(normalInk(), INK, f));
                 rowValue.setColor(valueInk(f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                textRenderer.drawTracked(c, labels[i], rowRect.left + rowRect.width() * 0.10f + 10 * k, base, rowLabel, 0.02f);
+                textRenderer.drawRowLabel(c, labels[i], rowRect, k, base, rowLabel);
                 boolean transition = keys || (settingsGroup != SYSTEM && i == CITY_ROW);
-                textRenderer.drawTracked(c, values[i], rowRect.right - (transition ? 61 : 13) * k, base, rowValue, 0.02f);
+                textRenderer.drawRowValue(c, values[i], rowRect, k, base, transition ? 61 : 13, rowValue);
                 if (transition) drawApprovedChevron(c);
             }
 

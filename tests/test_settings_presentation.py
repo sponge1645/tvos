@@ -18,12 +18,13 @@ sources={
 'android/graphics/LinearGradient.java':'package android.graphics;public class LinearGradient extends Shader {public LinearGradient(float a,float b,float c,float d,int e,int f,TileMode t){}}',
 'android/graphics/RectF.java':'package android.graphics;public class RectF {public float left,top,right,bottom;public void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}public float width(){return right-left;}public float height(){return bottom-top;}public float centerX(){return (left+right)/2;}public float centerY(){return (top+bottom)/2;}}',
 'android/graphics/Canvas.java':'''package android.graphics;import java.util.*;public class Canvas {
- public List<String> glyphs=new ArrayList<>();public List<Float> xs=new ArrayList<>();public int depth,color,revisions;public Shader shader;public float left,top,right,bottom,radius,tx,ty;
- public void drawText(String s,int a,int b,float x,float y,Paint p){glyphs.add(s.substring(a,b));xs.add(x);if(p.align!=Paint.Align.LEFT)throw new AssertionError("glyph alignment");}
+ public List<String> glyphs=new ArrayList<>();public List<Float> xs=new ArrayList<>(),ys=new ArrayList<>();public int depth,color,revisions;public Shader shader;public float left,top,right,bottom,radius,tx,ty;
+ public void drawText(String s,int a,int b,float x,float y,Paint p){glyphs.add(s.substring(a,b));xs.add(x);ys.add(y);if(p.align!=Paint.Align.LEFT)throw new AssertionError("glyph alignment");}
  public void save(){depth++;}public void restore(){depth--;}public void translate(float x,float y){tx=x;ty=y;}public void clipOutPath(Path p){revisions=p.revisions;}
  public void drawRoundRect(RectF r,float x,float y,Paint p){left=r.left;top=r.top;right=r.right;bottom=r.bottom;radius=x;color=p.color;shader=p.shader;}
 }''',
-'android/text/TextPaint.java':'package android.text;public class TextPaint extends android.graphics.Paint {public TextPaint(int flags){super(flags);}}',
+'android/text/TextPaint.java':'package android.text;public class TextPaint extends android.graphics.Paint {public TextPaint(){super();}public TextPaint(int flags){super(flags);}}',
+'android/text/TextUtils.java':'''package android.text;public class TextUtils {public enum TruncateAt{END}public static float width;public static TextPaint paint;public static CharSequence ellipsize(CharSequence s,TextPaint p,float w,TruncateAt mode){width=w;paint=p;return s;}}''',
 'android/text/Layout.java':'package android.text;public class Layout {public enum Alignment{ALIGN_CENTER}}',
 'android/text/StaticLayout.java':'''package android.text;import android.graphics.Canvas;public class StaticLayout {
  public static int builds;public static float size;public static int color,width;final TextPaint paint;
@@ -52,6 +53,22 @@ public class PresentationTest {
   paint.setTypeface(face);check(text.fitValue("A😀БГД",paint,35,0).equals("A😀…"),"tracking participates in fit");check(text.fitValue("A😀БГД",paint,40,0).equals("A😀Б…"),"available width invalidates fit");
   check(text.fitValue("A😀БГД",paint,0,0).isEmpty(),"no room even for ellipsis");check(text.fitValue("",paint,0,0).isEmpty(),"empty fitted value");
   text.fitValue("abc",paint,100,0);measurements=Paint.measurements;text.clear();text.fitValue("abc",paint,100,0);check(Paint.measurements>measurements,"lifecycle clear drops fitted cache");
+  paint.setTextSize(20);paint.setTextAlign(Paint.Align.LEFT);paint.setTypeface(face);
+  check(text.fitPickerLabel("A😀БГД",paint,35,.1f).equals("A😀…"),"picker counts Unicode and tracking");
+  check(text.fitPickerLabel("Long",paint,0,.02f).equals("…"),"picker retains ellipsis in zero available width");
+  check(text.fitValue("Long",paint,0,.02f).isEmpty(),"value cache distinguishes picker ellipsis policy");
+  check(text.fitPickerLabel("Long",paint,0,.02f).equals("…"),"reverse cache policy change");
+  measurements=Paint.measurements;for(int i=0;i<100;i++)text.fitPickerLabel("Long",paint,0,.02f);check(Paint.measurements==measurements,"picker fit cache reused");
+  for(float k:new float[]{2f/3,1,2}){
+   RectF row=new RectF();row.set(1000*k,200*k,1830*k,262*k);paint.setTextSize(36*k);paint.setTextAlign(Paint.Align.LEFT);
+   c=new Canvas();text.drawRowLabel(c,"A😀",row,k,240*k,paint);near(c.xs.get(0),1093*k);near(c.ys.get(0),240*k);check(String.join("",c.glyphs).equals("A😀"),"row label text");
+   paint.setTextAlign(Paint.Align.RIGHT);
+   for(float inset:new float[]{10,13,61}){c=new Canvas();text.drawRowValue(c,"AB",row,k,240*k,inset,paint);near(c.xs.get(0),(1830-inset)*k-SettingsTextRenderer.trackedWidth("AB",paint,.02f));near(c.ys.get(0),240*k);}
+   paint.setTextAlign(Paint.Align.LEFT);String label="ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ";
+   for(boolean selected:new boolean[]{false,true}){c=new Canvas();text.drawPickerLabel(c,label,row,k,240*k,selected,paint);near(c.xs.get(0),1093*k);near(c.ys.get(0),240*k);float available=(1830-24-(selected?38:0)-1093)*k;check(String.join("",c.glyphs).equals(text.fitPickerLabel(label,paint,available,.02f)),"picker reserves selected check space");}
+   text.beginShelf(paint);c=new Canvas();text.drawShelfLabel(c,"App",row,k,240*k,paint);near(TextUtils.width,520*k);near(TextUtils.paint.getTextSize(),36*k);near(c.xs.get(0),1093*k);near(c.ys.get(0),240*k);check(String.join("",c.glyphs).equals("App"),"Dock retains platform ellipsize and geometry");
+   Paint value=new Paint();value.setTextSize(36*k);value.setTypeface(face);float available=Math.max(0,(1830-61-1093-32)*k-SettingsTextRenderer.trackedWidth("Label",paint,.02f));check(text.fitRowValue("Label",label,row,k,paint,value).equals(text.fitValue(label,value,available,.02f)),"service label/value gap and arrow reserve");
+  }
   SettingsLogoRenderer logo=new SettingsLogoRenderer();
   for(float k:new float[]{2f/3,1,2}){
    c=new Canvas();logo.draw(c,k,true,face);near(c.left,254*k);near(c.top,236*k);near(c.right,790*k);near(c.bottom,772*k);near(c.radius,116*k);check(c.shader==null&&c.color==0xFF8897AC&&c.depth==0,"light cutout tile and balanced canvas");
