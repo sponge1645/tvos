@@ -1,5 +1,6 @@
 """Production persistence/editor/layout/navigation for every Menu Bar order and visibility mask."""
 from settings_strings_fixture import write as write_strings
+from home_geometry_fixture import write as write_geometry
 from pathlib import Path
 import subprocess,tempfile
 
@@ -11,7 +12,7 @@ prefs=Path('app/src/io/tvos/Prefs.java').read_text();settings=Path('app/src/io/t
 prefs_body='\n'.join(method(prefs,s) for s in ['    private static void put(String key, String value)','    private static void put(String key, boolean value)','    private static void readTopButtons(', '    static int[] topButtonOrder(', '    static boolean topButtonEnabled(', '    static int topButtonCount(', '    static int topButtonPosition(', '    static void setTopButtonEnabled(', '    static void setTopButtonOrder('])
 editor='\n'.join(method(settings,s) for s in ['        private String menuButtonLabel(', '        private void rebuildMenuButtonRows(', '        private void openMenuButtonEditor(', '        private void toggleMenuButton(', '        private void moveMenuButton('])
 nav='\n'.join(method(home,s) for s in ['    private boolean topButtonEnabled(', '    private boolean topControlVisible(', '    private int nextTopControl(', '    private int availableTopButton(', '    private int posterCornerTarget(', '    private void layoutTopActions('])
-header='import java.util.*;import io.tvos.home.HomeLayout;import io.tvos.home.HomeFocusPolicy;import io.tvos.settings.SettingsOrderEditor;\n'+'''\n
+header='import android.graphics.RectF;import java.util.*;import io.tvos.home.HomeLayout;import io.tvos.home.HomeFocusPolicy;import io.tvos.settings.SettingsOrderEditor;\n'+'''\n
 class Ui {static boolean ru;}
 class Prefs {
  static int version,topButtonVersion=-1,topButtonMask;static int[] topButtonOrderCache;
@@ -32,14 +33,9 @@ class Editor {
 '''+editor+'''
  void open(){openMenuButtonEditor();}void toggle(){toggleMenuButton();}void move(int d){moveMenuButton(d);}
 }
-class Navigation {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
+class Navigation {final io.tvos.home.HomeGeometry geometry=new io.tvos.home.HomeGeometry();final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
  boolean searchMode;int tab=1;float k=1;String clockText="12:34";static final float L_BUTTON_GAP=12;
- static class Ui {static Object displayMedium;}
- static class Paint {
-  static final int ANTI_ALIAS_FLAG=1;Paint(int f){}void setTypeface(Object t){}void setTextSize(float s){}
-  static class FontMetrics {float descent=5,ascent=-25;}FontMetrics getFontMetrics(){return new FontMetrics();}float measureText(String s){return s.length()*15;}
- }
- static class RectF {float left,right,top,bottom;void set(float l,float t,float r,float b){left=l;top=t;right=r;bottom=b;}void setEmpty(){left=right=top=bottom=0;}float width(){return right-left;}}
+ static class Ui {static android.graphics.Typeface displayMedium;}
  RectF[] topRects=new RectF[11];Navigation(){for(int i=0;i<11;i++)topRects[i]=new RectF();}
  boolean picksOn(){return !searchMode;}boolean tabEnabled(int id){return id==1;}
 '''+nav+'''
@@ -61,7 +57,7 @@ public class TopButtonsHarness {
    check(snapshot(model).equals(grouped),"editor grouping for every order/mask");
    for(int i=0;i<visible.size();i++)check(Prefs.topButtonPosition(visible.get(i)-5)==i+1,"numbered positions");
    Navigation n=new Navigation();n.layout();
-   float prior=-10000;for(int id:visible){Navigation.RectF r=n.topRects[id];check(r.left>prior,"saved order has nonoverlapping rectangles, including clock");prior=r.right;check(id==9?r.width()>60:r.width()==60,"clock keeps its own width");}
+   float prior=-10000;for(int id:visible){RectF r=n.topRects[id];check(r.left>prior,"saved order has nonoverlapping rectangles, including clock");prior=r.right;check(id==9?r.width()>60:r.width()==60,"clock keeps its own width");}
    for(int id=5;id<11;id++)if(!visible.contains(id))check(n.topRects[id].width()==0,"hidden rectangles cleared");
    if(!visible.isEmpty()){
     check(n.topRects[visible.get(visible.size()-1)].right==1780,"last visible button remains right aligned");
@@ -103,5 +99,6 @@ with tempfile.TemporaryDirectory() as d:
  adapter_body=method(adapter,'    static SettingsOrderEditor categories(')+method(adapter,'    static SettingsOrderEditor buttons(')
  (Path(d)/'SettingsEditors.java').write_text('import io.tvos.settings.SettingsOrderEditor;import java.util.List;final class SettingsEditors {'+adapter_body+'}')
  write_strings(Path(d),package=False)
+ write_geometry(Path(d),android=True)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'TopButtonsHarness'],check=True)

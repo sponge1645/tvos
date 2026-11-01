@@ -4,11 +4,13 @@ import subprocess,tempfile
 from settings_strings_fixture import write as write_strings
 from home_renderers_fixture import files
 from tmdb_metadata_fixture import block
+from home_geometry_fixture import write as write_geometry
 home=Path('app/src/io/tvos/HomeView.java').read_text()
 methods='\n'.join(block(home,sig) for sig in ['    private void layoutShelf(', '    private void layoutDrawer(', '    private void layoutLight(', '    private void layoutTopActions('])
 harness='''package io.tvos;import io.tvos.home.HomeLayout;
 import android.graphics.*;import java.util.*;
 public class HomeLayoutHarness {
+ final io.tvos.home.HomeGeometry geometry=new io.tvos.home.HomeGeometry();final java.util.function.IntPredicate enabledTabs=this::tabEnabled,enabledTop=this::topButtonEnabled;
  static final float MARGIN=HomeLayout.EDGE,CONTENT_R=HomeLayout.RIGHT,SHELF_PAD=HomeLayout.DOCK_PAD,TILE_GAP=HomeLayout.DOCK_GAP;
  static final float ROW_TOP=540,ROW_H=126,CARDS_H=HomeLayout.WEATHER_HEIGHT,L_TABBAR_TOP=HomeLayout.TAB_TOP,L_TABBAR_H=HomeLayout.TAB_HEIGHT,L_BUTTON=HomeLayout.BUTTON,L_BUTTON_GAP=20,L_BUTTON_CY=HomeLayout.HEADER_CY;
  final List<HomeApps.Item> shelf=new ArrayList<>(),drawerItems=new ArrayList<>();
@@ -65,7 +67,7 @@ public class HomeLayoutHarness {
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-home-layout-') as tmp:
- root=Path(tmp);write_strings(root);sources=files();sources['io/tvos/HomeLayoutHarness.java']=harness
+ root=Path(tmp);write_strings(root);write_geometry(root);sources=files();sources['io/tvos/HomeLayoutHarness.java']=harness
  for name,value in sources.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)

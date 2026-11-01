@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B144)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B145)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -146,3 +146,15 @@ including active-last/overscan, all row/marker modes, themes, 720p/1080p/4K,
 spinner frame ownership, read-only About, disabled VPN and legacy screens. Mode
 monitor tests cover both clocks, exact timeout limits, reboot/stale timestamps,
 notice delivery across pause, region visits and stale-callback cancellation.
+
+`home/HomeGeometry` owns Dock, drawer/weather, tabs, action-button and poster
+bounds. It takes existing output rectangles plus order/visibility, labels,
+fonts and dimensions; it imports no View, Activity, Prefs, HomeApps or Ui and
+stores no selection/navigation state. HomeView retains cache invalidation and
+dirty flags. Clock measurement reuses one Paint/FontMetrics pair while reading
+current text, typeface and scale on every call. The pure HomeLayout constants/math
+remain Android-independent. HomeView retains the original seven redraw layers
+and two search-position buffers rather than allocating them on every use.
+Validation covers 720p/1080p/4K, Dock counts 0–8, drawer groups, compact layout,
+all 720 action orders x 64 visibility masks, live clock/font changes, measurement
+object reuse, search coordinates and exact invalidation/lifecycle guards.

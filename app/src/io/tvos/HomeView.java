@@ -4,6 +4,7 @@ import io.tvos.artwork.RoundedImages;
 import io.tvos.home.dock.HomeDockEditor;
 
 import io.tvos.home.HomeLayout;
+import io.tvos.home.HomeGeometry;
 import io.tvos.home.HomeFocusPolicy;
 import io.tvos.home.HomeReveal;
 import io.tvos.watching.WatchingSources;
@@ -49,9 +50,8 @@ import java.util.concurrent.Executors;
 final class HomeView extends ViewGroup implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
     // Shared side edges; vertical margins and content centering live in HomeLayout.
     private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT;
-    private static final float SHELF_PAD = HomeLayout.DOCK_PAD, TILE_GAP = HomeLayout.DOCK_GAP;
     // Bottom drawer (measured with it open; everything moves up by SHIFT).
-    private static final float SHIFT = 560, ROW_TOP = 540, ROW_H = 126, CARDS_H = HomeLayout.WEATHER_HEIGHT;
+    private static final float SHIFT = 560;
     // "All Apps" sheet.
     private static final int COLUMNS = HomeAccessibility.COLUMNS, VISIBLE_ROWS = 3;
     private static final float GRID_W = HomeAccessibility.GRID_W, GRID_H = HomeAccessibility.GRID_H,
@@ -65,7 +65,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
     // Light design (the L_ constants): title, tab bar, three recommendation cards and the shelf.
     // The tab bar is a 68 px capsule; all recommendation cards use a 5-column portrait grid.
-    private static final float L_TABBAR_TOP = HomeLayout.TAB_TOP, L_TABBAR_H = HomeLayout.TAB_HEIGHT;
     private static final float L_BUTTON = HomeLayout.BUTTON, L_BUTTON_GAP = 20, L_BUTTON_CY = HomeLayout.HEADER_CY;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73;
     // Prepared once per supported language; the drawing path never builds a label array.
@@ -74,6 +73,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final int Z_TOP = 4, Z_CARDS = 5;
 
     private final Activity activity;
+    private final HomeGeometry geometry = new HomeGeometry();
     private final Scene scene = new Scene();
     private final RoundedImages images = new RoundedImages(Ui.LEGACY);
     private final HomeBackground background = new HomeBackground(scene, this::backgroundChanged);
@@ -100,6 +100,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int tab, topIndex, cardIndex;
     private final RectF searchGlassBounds = new RectF(), searchShadowBounds = new RectF();
     private boolean searchGlassVisible;
+    private final int[] searchPanelPosition = new int[2], searchHomePosition = new int[2];
     private final HomeSearchInput searchInput;
     private boolean searchMode;
     private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
@@ -132,7 +133,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private Paint lTab, lTabOn, lCardTitle, lCardMeta, lDate;
     private float contentTop, contentBottom;
     private final HomeReveal reveal = new HomeReveal();
-    private final View[] revealContent;
+    private final View[] revealContent, redrawLayers;
 
     // Shelf
     private List<HomeApps.Item> shelf = new ArrayList<>();
@@ -356,6 +357,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         toastLayer = new Layer(a, TOAST);
         searchGlassLayer = new Layer(a, SEARCH_GLASS);
         revealContent = new View[] {sky, heroLayer};
+        redrawLayers = new View[] {revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer};
         notices = new HomeNotices(a, scene, LOADER, handler, toastLayer::invalidate, this::wake, this::announceForAccessibility);
         searchInput = new HomeSearchInput(a,this,searchGlassLayer,new HomeSearchInput.Host(){
             @Override public boolean running(){return running;}
@@ -584,6 +586,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", AppStrings.get(R.string.home_settings), "settings"));
     }
 
+    private final java.util.function.IntPredicate enabledTabs = HomeView::tabEnabled;
     private final java.util.function.IntPredicate visibleTop = this::topControlVisible;
     private final java.util.function.IntPredicate enabledTop = this::topButtonEnabled;
     private final java.util.function.IntSupplier topFallback = () -> picksOn() ? tab : 0;
@@ -690,7 +693,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void invalidateAll() {
-        for (View v : new View[] {revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer}) v.invalidate();
+        for (View v : redrawLayers) v.invalidate();
     }
 
     // MARK: - Size and layers
@@ -1000,19 +1003,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void layoutShelf() {
-        int n = shelf.size();
-        float pad = SHELF_PAD * k, gap = TILE_GAP * k;
-        float tw = HomeLayout.dockTileWidth(n, k);
-        float th = tw / HomeLayout.DOCK_ASPECT;
-        float width = n * tw + Math.max(0, n - 1) * gap, left = (w - width) / 2f;
-        float bottom = HomeLayout.dockBottom(h, k);
-        float top = bottom - th - 2 * pad;
-        platterRect.set(left - pad, top, left + width + pad, bottom);
-        float x = left, y = top + pad;
-        for (int i = 0; i < n; i++) {
-            tileRects[i].set(x, y, x + tw, y + th);
-            x += tw + gap;
-        }
+        geometry.shelf(platterRect, tileRects, shelf.size(), w, h, k);
         appSurfaces.clear();
         header.clearFrame();
         layoutLight(); // Dock height changes the free space for posters and roulette.
@@ -1050,22 +1041,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void layoutDrawer() {
-        int n = drawerItems.size();
-        float left = MARGIN * k, right = CONTENT_R * k;
-        float gap = 18 * k, groupGap = 56 * k;
-        int groups = drawerInputs > 0 && drawerInputs < n ? 2 : 1;
-        float tw = Math.max(1, (right - left - Math.max(0, n - groups) * gap
-                - (groups - 1) * groupGap) / Math.max(1, n));
-        float rowHeight = Math.max(ROW_H * k, Math.min(168 * k, tw * ROW_H / 230f));
-        drawerExtraHeight = n == 0 ? 0 : rowHeight - ROW_H * k;
-        float x = left, top = ROW_TOP * k - drawerExtraHeight;
-        for (int i = 0; i < n; i++) {
-            if (i == drawerInputs && i > 0) x += groupGap - gap;
-            drawerRects[i].set(x, top, x + tw, top + rowHeight);
-            x += tw + gap;
-        }
-        float cardsTop = HomeLayout.weatherTop(h, k);
-        weatherCard.set(left, cardsTop, right, cardsTop + CARDS_H * k);
+        drawerExtraHeight = geometry.drawer(drawerRects, drawerItems.size(), drawerInputs, weatherCard, h, k);
         drawerDirty = motionDirty = true;
     }
 
@@ -1508,7 +1484,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void syncSearchGlass(View panel) {
         if (!running || !searchInput.showing()) return;
         if (panel.getWidth() == 0 || panel.getHeight() == 0) return;
-        int[] panelPos = new int[2], homePos = new int[2];
+        int[] panelPos = searchPanelPosition, homePos = searchHomePosition;
         panel.getLocationOnScreen(panelPos);
         getLocationOnScreen(homePos);
         searchGlassBounds.set(panelPos[0] - homePos[0], panelPos[1] - homePos[1],
@@ -1694,60 +1670,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void layoutLight() {
         if (lTab == null) return;
         largePostersWithoutWidgets = noTopWidgets();
-        // Align the resting tab capsule with the common outer edge; text keeps its inner padding.
-        float pad = 26 * k;
-        float tabTop = (largePostersWithoutWidgets ? HomeLayout.TOP : L_TABBAR_TOP) * k;
-        float tabBottom = tabTop + L_TABBAR_H * k;
-        float x = MARGIN * k;
-        for (int i : Prefs.categoryOrder()) {
-            if (!tabEnabled(i)) { topRects[i].setEmpty(); continue; }
-            float tw = Math.max(lTabOn.measureText(tabs()[i]), lTab.measureText(tabs()[i]));
-            topRects[i].set(x, tabTop, x + tw + 2 * pad, tabBottom);
-            x = topRects[i].right + 4 * k;
-        }
-        float b = L_BUTTON * k, right = CONTENT_R * k, cy = L_BUTTON_CY * k;
-        layoutTopActions(b, right, cy);
-        float regularW = ((CONTENT_R - MARGIN) * k - 5 * 18 * k) / 6f;
-        // Keep compact-header posters 10% larger; center poster + all captions as one block.
-        float posterW = regularW * (largePostersWithoutWidgets ? 1.10f : 1f);
-        float posterH = posterW * 1.5f;
-        contentTop = Math.max(tabBottom, (HomeLayout.TOP + L_BUTTON) * k);
+        contentTop = geometry.tabs(topRects, Prefs.categoryOrder(), enabledTabs, tabs(), lTab, lTabOn, largePostersWithoutWidgets, k);
+        layoutTopActions(L_BUTTON * k, CONTENT_R * k, L_BUTTON_CY * k);
         contentBottom = platterRect.top;
-        float captionHeight = HomeLayout.POSTER_META_BASELINE * k + lCardMeta.descent() + 1.5f * k;
-        float top = HomeLayout.centeredTop(contentTop, contentBottom, posterH + captionHeight);
-        float spacing = ((CONTENT_R - MARGIN) * k - 5 * posterW) / 4f;
-        float left = MARGIN * k;
-        for (int i = 0; i < 5; i++) {
-            float px = left + i * (posterW + spacing);
-            cardRects[i].set(px, top, px + posterW, top + posterH);
-        }
+        geometry.posters(cardRects, largePostersWithoutWidgets, contentTop, contentBottom, lCardMeta, k);
         heroDirty = statusDirty = true;
     }
 
     private void layoutTopActions(float b, float right, float cy) {
-        // Pack variable-width clock and fixed-width actions together in the configured order.
-        int[] buttons = Prefs.topButtonOrder();
-        for (int position = buttons.length - 1; position >= 0; position--) {
-            int id = buttons[position], control = 5 + id;
-            if (!topButtonEnabled(id)) { topRects[control].setEmpty(); continue; }
-            if (id == 4) {
-                Paint clockMeasure = new Paint(Paint.ANTI_ALIAS_FLAG);
-                clockMeasure.setTypeface(Ui.displayMedium);
-                float unit = k * HomeLayout.BUTTON_SCALE;
-                clockMeasure.setTextSize(27 * unit);
-                Paint.FontMetrics fm = clockMeasure.getFontMetrics();
-                float glyphHeight = fm.descent - fm.ascent;
-                float textInset = Math.max(5 * unit, (b - glyphHeight) / 2f);
-                float avatarDiameter = b - 10 * unit;
-                float capsuleWidth = textInset + 5 * unit + clockMeasure.measureText(clockText) + 10 * unit
-                        + avatarDiameter + 5 * unit + 5 * unit;
-                topRects[9].set(right - capsuleWidth, cy - b / 2f, right, cy + b / 2f);
-                right = topRects[9].left - L_BUTTON_GAP * k;
-            } else {
-                topRects[control].set(right - b, cy - b / 2, right, cy + b / 2);
-                right -= b + L_BUTTON_GAP * k;
-            }
-        }
+        geometry.actions(topRects, Prefs.topButtonOrder(), enabledTop, clockText, Ui.displayMedium,
+                b, right, cy, L_BUTTON_GAP * k, k);
     }
 
     private List<Recs.Pick> baseCatalog() {
