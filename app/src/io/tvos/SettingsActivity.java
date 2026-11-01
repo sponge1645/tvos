@@ -8,6 +8,7 @@ import io.tvos.settings.SettingsBackground;
 import io.tvos.settings.SettingsTextRenderer;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
+import io.tvos.settings.SettingsListViewport;
 
 import static io.tvos.settings.SettingsScreen.*;
 import static io.tvos.SettingsValues.*;
@@ -17,12 +18,8 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.LinearGradient;
-import android.graphics.Shader;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Bundle;
@@ -143,10 +140,11 @@ public class SettingsActivity extends Activity {
         private String updateInstalledVersion, updateCheckShown;
         private long updateCheckAt = Long.MIN_VALUE;
         private AppLanguage updateCheckLanguage;
-        private final Paint listEdgeMask = new Paint();
-        {
-            listEdgeMask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
-        }
+        private final SettingsListViewport listViewport = new SettingsListViewport();
+        private final SettingsListViewport.Content listContent = c -> {
+            if (transitionFrom != -1) drawMenuTransition(c);
+            else drawScreenContent(c);
+        };
 
         private boolean running, okDown, backDown, wasBusy;
         private boolean lightAppearance;
@@ -343,12 +341,7 @@ public class SettingsActivity extends Activity {
             k = w / 1920f;
             rowShadows.clear();
             textRenderer.clear();
-            float listTop = 148 * k, listSpan = Math.max(1f, h - listTop);
-            float topStop = Math.min(0.25f, 38 * k / listSpan);
-            float bottomStop = Math.max(topStop, 1f - 64 * k / listSpan);
-            listEdgeMask.setShader(new LinearGradient(0, listTop, 0, h,
-                    new int[] {0x00FFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00FFFFFF},
-                    new float[] {0f, topStop, bottomStop, 1f}, Shader.TileMode.CLAMP));
+            listViewport.resize(w, h, k);
             background.clear();
             updateDialog.resize(k);
             rowLabel = Ui.text(Ui.displaySemibold, 36 * k, 0xF2FFFFFF);
@@ -498,13 +491,7 @@ public class SettingsActivity extends Activity {
 
         /** Fade the list into the untouched background at both vertical viewport edges. */
         private void drawListViewport(Canvas c) {
-            float left = 960 * k, top = 148 * k;
-            int layer = c.saveLayer(left, top, w, h, null);
-            c.clipRect(left, top, w, h);
-            if (transitionFrom != -1) drawMenuTransition(c);
-            else drawScreenContent(c);
-            c.drawRect(left, top, w, h, listEdgeMask);
-            c.restoreToCount(layer);
+            listViewport.draw(c, listContent);
         }
 
         /** Resolve once per frame so every surface uses the launcher's same sunrise/sunset policy. */
