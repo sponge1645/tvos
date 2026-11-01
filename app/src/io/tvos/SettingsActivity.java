@@ -109,6 +109,7 @@ public class SettingsActivity extends Activity {
         private final SettingsCitySearch citySearch;
         private final SettingsAppLoader appLoader;
         private final SettingsValues valueSource;
+        private final SettingsPreferenceEditor preferenceEditor;
         private final SettingsDeviceDialogs deviceDialogs;
         private final Spring[] pop = new Spring[12];
         private final List<String> appPkgs = new ArrayList<>(), appLabels = new ArrayList<>();
@@ -190,6 +191,8 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            preferenceEditor = new SettingsPreferenceEditor(localPrefs(),
+                    () -> HomeData.get(getContext()).settingsChanged(), this::invalidate);
             deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
             appLoader = new SettingsAppLoader(a.getApplicationContext(), handler, () -> running);
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
@@ -461,36 +464,12 @@ public class SettingsActivity extends Activity {
             return screen == MENU_BUTTONS ? menuButtonLabels() : SettingsContent.menuLabels(screen);
         }
         private android.content.SharedPreferences localPrefs() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE); }
-        private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
-        private void setLocalFlag(String key, boolean value) { localPrefs().edit().putBoolean(key, value).apply(); invalidate(); }
-        private void cycleDreamSource(int direction) {
-            String[] choices = {"apple", "google", "na"};
-            String value = localPrefs().getString("video_dream_source", "google");
-            int at = 0;
-            for (int i = 0; i < choices.length; i++) if (choices[i].equals(value)) at = i;
-            localPrefs().edit().putString("video_dream_source", choices[(at + direction + choices.length) % choices.length]).apply();
-            invalidate();
-        }
+        private boolean localFlag(String key) { return preferenceEditor.flag(key); }
+        private void setLocalFlag(String key, boolean value) { preferenceEditor.setFlag(key, value); }
+        private void cycleDreamSource(int direction) { preferenceEditor.cycleDreamSource(direction); }
         // Two independent switches. Old four-state preference is read as a migration fallback.
-        private boolean weatherVisible(boolean top) {
-            if (!Prefs.weather()) return false;
-            String key = top ? "weather_show_top" : "weather_show_bottom";
-            if (localPrefs().contains(key)) return localPrefs().getBoolean(key, true);
-            int old = localPrefs().getInt("weather_placement", 3);
-            return top ? (old == 1 || old == 3) : (old == 2 || old == 3);
-        }
-        private void toggleWeather(boolean top) {
-            boolean newTop = top ? !weatherVisible(true) : weatherVisible(true);
-            boolean newBottom = top ? weatherVisible(false) : !weatherVisible(false);
-            localPrefs().edit()
-                    .putBoolean("weather_show_top", newTop)
-                    .putBoolean("weather_show_bottom", newBottom)
-                    .putInt("weather_placement", (newTop ? 1 : 0) | (newBottom ? 2 : 0))
-                    .apply();
-            Prefs.setWeather(newTop || newBottom);
-            HomeData.get(getContext()).settingsChanged();
-            invalidate();
-        }
+        private boolean weatherVisible(boolean top) { return preferenceEditor.weatherVisible(top); }
+        private void toggleWeather(boolean top) { preferenceEditor.toggleWeather(top); }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
         private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.enter(getContext()); invalidate(); }
         // Approved About-screen geometry (all dimensions are scaled by k).
@@ -723,7 +702,6 @@ public class SettingsActivity extends Activity {
 
         // MARK: - Home Settings and Remote Buttons
 
-        private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
         /** Home Settings: language, temperature, theme, weather, city and categories. */
         private static final int CITY_ROW = 4;
 
@@ -827,10 +805,7 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        private void toggleDateTime() {
-            String key = "show_date";
-            setLocalFlag(key, !localPrefs().getBoolean(key, true));
-        }
+        private void toggleDateTime() { preferenceEditor.toggleDateTime(); }
 
         /** Only value rows respond to left/right; actions and submenus require OK. */
         private boolean canAdjustMenu() {
@@ -851,14 +826,7 @@ public class SettingsActivity extends Activity {
                 case MOTION: setLocalFlag("reduce_motion", !localFlag("reduce_motion")); return;
                 case REGION_MODE: toggleAutomaticRegion(); return;
                 case MENU_BUTTON: moveMenuButton(dir); return;
-                case GENERAL:
-                    if (focus == 1) { int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme()); Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]); }
-                    else if (focus == 2) Prefs.setLanguage(AppLanguage.step(Prefs.language(), dir).code);
-                    else if (focus == 4) { int at = java.util.Arrays.asList(UNITS).indexOf(Prefs.temperature()); Prefs.setTemperature(UNITS[(at + dir + UNITS.length) % UNITS.length]); }
-                    else if (focus == 5) { Prefs.setHour24(!Prefs.hour24()); }
-                    else if (focus == 6) { setLocalFlag("navigation_clicks", !localPrefs().getBoolean("navigation_clicks", true)); }
-                    HomeData.get(getContext()).settingsChanged();
-                    return;
+                case GENERAL: preferenceEditor.general(focus, dir); return;
                 default: return;
             }
         }
@@ -872,28 +840,7 @@ public class SettingsActivity extends Activity {
                 Prefs.setKeyApp(Prefs.KEYS[focus], appPkgs.get(next));
                 return;
             }
-            int selected = settingIndex();
-            if (selected == randomRow()) { Prefs.setRandomMovie(!Prefs.randomMovie()); HomeData.get(getContext()).settingsChanged(); return; }
-            switch (selected) {
-                case 0: {
-                    Prefs.setLanguage(AppLanguage.step(Prefs.language(), dir).code);
-                    break;
-                }
-                case 1: {
-                    int at = java.util.Arrays.asList(UNITS).indexOf(Prefs.temperature());
-                    Prefs.setTemperature(UNITS[(at + dir + UNITS.length) % UNITS.length]);
-                    break;
-                }
-                case 2: {
-                    int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme());
-                    Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]);
-                    break;
-                }
-                case 3: Prefs.setWeather(!Prefs.weather()); break;
-                case CITY_ROW: return;
-                default: return;
-            }
-            HomeData.get(getContext()).settingsChanged();
+            preferenceEditor.legacy(settingIndex(), randomRow(), dir);
         }
 
         private void askCity() {

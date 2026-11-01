@@ -29,7 +29,7 @@ public class CLASSNAME {
  static class Activity {void startActivity(Intent i){note("start:"+i.action+":"+i.flags);}void finish(){note("finish");}void showPreview(){note("preview");}}
  final Activity activity=new Activity();
  static class Prefs {static boolean homeContinue(){return home;}static boolean home;static void setHomeContinue(boolean v){home=v;}
-  static String theme="auto",language="en",unit="auto";static boolean h24,auto;static boolean automaticRegion(){return auto;}
+  static String theme="auto",language="en",unit="auto";static boolean weather=true,random;static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static boolean randomMovie(){return random;}static void setRandomMovie(boolean v){random=v;}static boolean h24,auto;static boolean automaticRegion(){return auto;}
   static String theme(){return theme;}static String language(){return language;}static String temperature(){return unit;}static boolean hour24(){return h24;}
   static void setTheme(String v){theme=v;note("theme:"+v);}static void setLanguage(String v){language=v;note("language:"+v);}static void setTemperature(String v){unit=v;note("unit:"+v);}static void setHour24(boolean v){h24=v;note("hour24:"+v);}
   static final String[] KEYS={"netflix","youtube","prime","tcl"};static List<String> shelf;
@@ -38,8 +38,8 @@ public class CLASSNAME {
   static void setKeyApp(String key,String pkg){note("key:"+key+":"+pkg);}
  }
  static class HomeApps {static List<String> shelfPackages(Context c){return Arrays.asList("llc.itdev.incy","watch.kino");}}
- static class Store {final Map<String,String> strings=new HashMap<>();String getString(String k,String d){return strings.getOrDefault(k,d);}final Map<String,Boolean> flags=new HashMap<>();boolean getBoolean(String key,boolean fallback){return flags.getOrDefault(key,fallback);}Store edit(){return this;}Store putString(String k,String v){strings.put(k,v);note(k+":"+v);return this;}void apply(){}}
- final Store store=new Store();Store localPrefs(){return store;}
+ static class Store extends android.content.SharedPreferences {final Map<String,String> strings=new HashMap<>();public String getString(String k,String d){return strings.getOrDefault(k,d);}final Map<String,Boolean> flags=new HashMap<>();public boolean getBoolean(String key,boolean fallback){return flags.getOrDefault(key,fallback);}public Store edit(){return this;}public Store putString(String k,String v){strings.put(k,v);note(k+":"+v);return this;}public Store putBoolean(String k,boolean v){flags.put(k,v);note("flag:"+k+":"+v);return this;}public void apply(){}}
+ final Store store=new Store();final SettingsPreferenceEditor preferenceEditor=new SettingsPreferenceEditor(store,()->HomeData.get(getContext()).settingsChanged(),this::invalidate);Store localPrefs(){return store;}
  static class HomeData {static HomeData get(Context c){return new HomeData();}void settingsChanged(){note("changed");}}
  static class HomeMode {
   static final int FREE=1,ORIGINAL=2;

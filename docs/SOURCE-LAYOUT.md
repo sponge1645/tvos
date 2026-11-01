@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B141)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B142)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -102,3 +102,11 @@ return-row rules and unknown/legacy fallbacks are preserved. SettingsActivity
 supplies live app/editor counts and the automatic-region flag without duplicating
 screen structure. Removed unused errorLayout/errorShown fields and their obsolete
 StaticLayout import after checking source, resources, reflection and tooling.
+
+SettingsPreferenceEditor is the platform storage adapter for value mutations:
+General and legacy values, weather visibility/migration, date and dream source.
+It receives SharedPreferences and change/redraw callbacks, with no Activity,
+Canvas or navigation state. The existing Prefs backend stays inside the root
+adapter package. Notification order, defaults and persisted keys are unchanged.
+General and legacy theme/unit changes share one allocation-free cycle helper;
+the dream-source choice array is retained rather than rebuilt per adjustment.

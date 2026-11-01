@@ -1,5 +1,6 @@
 """Exercise production value-row routing, widget toggles and application labels on JVM."""
 from settings_strings_fixture import write as write_strings
+from settings_preferences_fixture import write as write_preferences
 from pathlib import Path
 import os
 import subprocess
@@ -17,11 +18,11 @@ import java.util.*;
 import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsActions;
 public class SettingsHarness {
  static class Ui {static boolean ru;}
- static class Prefs {static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
+ static class Prefs {static boolean random;static boolean randomMovie(){return random;}static void setRandomMovie(boolean v){random=v;}static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
  static class HomeData {static HomeData get(Object c){return new HomeData();}void settingsChanged(){}}
- static class Store {Map<String,Object> m=new HashMap<>();boolean contains(String k){return m.containsKey(k);}boolean getBoolean(String k,boolean d){return m.containsKey(k)?(Boolean)m.get(k):d;}int getInt(String k,int d){return m.containsKey(k)?(Integer)m.get(k):d;}Store edit(){return this;}Store putBoolean(String k,boolean v){m.put(k,v);return this;}Store putInt(String k,int v){m.put(k,v);return this;}void apply(){}}
+ static class Store extends android.content.SharedPreferences {Map<String,Object> m=new HashMap<>();public boolean contains(String k){return m.containsKey(k);}public boolean getBoolean(String k,boolean d){return m.containsKey(k)?(Boolean)m.get(k):d;}public int getInt(String k,int d){return m.containsKey(k)?(Integer)m.get(k):d;}public Store edit(){return this;}public Store putBoolean(String k,boolean v){m.put(k,v);return this;}public Store putInt(String k,int v){m.put(k,v);return this;}public void apply(){}}
  List<Integer> buttonEditor=new ArrayList<>(Arrays.asList(0,1,3,5,4,2));
- Store store=new Store();int screen,focus,adjusted,moved;
+ Store store=new Store();final SettingsPreferenceEditor preferenceEditor=new SettingsPreferenceEditor(store,()->HomeData.get(getContext()).settingsChanged(),this::invalidate);int screen,focus,adjusted,moved;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Object getContext(){return this;}void invalidate(){}
  String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleAutomaticRegion(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
@@ -76,5 +77,6 @@ with tempfile.TemporaryDirectory(prefix='tvos-settings-test-') as directory:
     (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     write_strings(root)
+    write_preferences(root,"SettingsHarness.Prefs")
     subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
     subprocess.run([java,'-cp',directory,'io.tvos.SettingsHarness'],check=True)
