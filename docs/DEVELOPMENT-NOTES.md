@@ -85,3 +85,31 @@ behavior requires an additional verified mechanism; do not claim this alternativ
 already preserves MI. Avoid adding volume broadcasts/toggle timers as a claimed
 fix: volume changes do not identify key release and can originate in other apps,
 and changing the filter resets dispatcher input state. Compatibility remains open.
+
+## Volume-only ADB experiment (no APK change)
+
+Keep the existing accessibility app-key assignments enabled. Instead of replacing
+that backend, observe only raw EV_KEY volume DOWN/UP through ADB and add missing
+volume steps after a hold delay. `tools/test-volume-hold.py` is a temporary host-side
+experiment, not a background TV service or a universal Android 9+ fix.
+
+Run with Python 3 and the ordinary `adb` on the Mac/PC, one connected device. It
+requires tvOS accessibility to be enabled. No installation/settings changes or
+root are performed. `--observe-only` reads without injecting. The active mode
+sends complete `adb shell input keyevent 24/25` pairs after 500 ms, at most 12 extra
+steps / 4 seconds per hold. The initial physical step remains native. Release,
+raw repeats/duplicate downs, ambiguous simultaneous keys and input stream loss
+stop new steps. A command already in flight can finish after release; this host
+prototype logs per-command time and deliberately does not catch up missed ticks.
+Ctrl+C closes the reader; no persistent repeat helper is installed. Retain this
+latency limitation when interpreting the trial.
+
+Test only on a device where the enabled key filter demonstrably breaks native
+hold. Raw repeat detection cannot detect repeats synthesized later by Android;
+therefore do not automatically enable this on devices with working native repeat.
+If volume accelerates unexpectedly, stop the experiment. Verify +/−, short taps,
+release, the selected app buttons, sleep/disconnection and external audio routing
+before implementing an opt-in on-device version. Reading input devices and sending
+injected volume keys may vary by firmware even when the Android APIs support 9+.
+The scheduler/parser and actual CLI transport are covered with deterministic
+clock checks and a fake adb. A real-TV run is still required.
