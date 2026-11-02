@@ -30,3 +30,14 @@ adb shell setprop log.tag.tvOS-Volume INFO
 Log fields include key/action/repeat, down/event times, device/scan/flags and the
 actual handled result. Unrelated keys are not logged. Logging is off by default;
 no volume adjustment, event injection or repeat scheduling has been introduced.
+
+## Expanded boundary trace — 1B157
+
+The installed APK contains the trace tag. A DEBUG shell probe is visible, but no
+volume lines appear; dumpsys lists tvOS as bound/enabled without a crashed service.
+This does not establish whether volume has nonstandard Android codes or bypasses
+the callback. Extend the same opt-in tag to every key and service lifecycle.
+Set DEBUG before disabling/re-enabling the tvOS accessibility service to capture
+`CONNECTED build=157 flags=...`, then press arrows and hold volume +/−. Include
+source/action/repeat metadata and preserve the filter return value. Disable the
+trace afterward with INFO. No repeat fallback is implemented before this evidence.

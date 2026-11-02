@@ -1,8 +1,10 @@
 package io.tvos;
 
 import android.accessibilityservice.AccessibilityService;
-import android.view.KeyEvent;
+import android.content.Intent;
 import android.util.Log;
+import android.view.KeyEvent;
+import io.tvos.version.SoftwareBuild;
 import android.view.accessibility.AccessibilityEvent;
 
 /**
@@ -10,17 +12,41 @@ import android.view.accessibility.AccessibilityEvent;
  * system waits for it on every key (up to half a second), so it runs in a process of its own and does next to nothing.
  */
 public class RemoteKeyService extends AccessibilityService {
+    private static final String TRACE_TAG = "tvOS-Volume";
+
+    @Override protected void onServiceConnected() {
+        super.onServiceConnected();
+        if (Log.isLoggable(TRACE_TAG, Log.DEBUG)) {
+            android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
+            Log.d(TRACE_TAG, "CONNECTED build=" + SoftwareBuild.SEQUENCE
+                    + " flags=" + (info == null ? -1 : info.flags));
+        }
+    }
+
+    @Override public boolean onUnbind(Intent intent) {
+        traceLifecycle("UNBIND");
+        return super.onUnbind(intent);
+    }
+
+    @Override public void onDestroy() {
+        traceLifecycle("DESTROY");
+        super.onDestroy();
+    }
+
+    private static void traceLifecycle(String state) {
+        if (Log.isLoggable(TRACE_TAG, Log.DEBUG)) Log.d(TRACE_TAG, state);
+    }
+
     @Override protected boolean onKeyEvent(KeyEvent event) {
         boolean handled = RemoteKeys.onKey(this, event);
-        int code = event.getKeyCode();
-        // Opt-in diagnostics at the Android key-filter boundary, not raw Linux input.
-        // Observe only: volume must still follow the system's original path.
-        if ((code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN)
-                && Log.isLoggable("tvOS-Volume", Log.DEBUG)) {
-            Log.d("tvOS-Volume", "key=" + code + " action=" + event.getAction()
+        // Opt-in diagnostics for every key: firmware may use unexpected volume codes.
+        // Observe only: retain the actual app-key policy result and original event.
+        if (Log.isLoggable(TRACE_TAG, Log.DEBUG)) {
+            Log.d(TRACE_TAG, "key=" + event.getKeyCode() + " action=" + event.getAction()
                     + " repeat=" + event.getRepeatCount() + " down=" + event.getDownTime()
                     + " time=" + event.getEventTime() + " device=" + event.getDeviceId()
-                    + " scan=" + event.getScanCode() + " flags=" + event.getFlags()
+                    + " scan=" + event.getScanCode() + " source=" + event.getSource()
+                    + " flags=" + event.getFlags()
                     + " handled=" + handled);
         }
         return handled;
@@ -30,5 +56,5 @@ public class RemoteKeyService extends AccessibilityService {
         ChiqBootGuard.onWindowEvent(this, event);
     }
 
-    @Override public void onInterrupt() {}
+    @Override public void onInterrupt() { traceLifecycle("INTERRUPT"); }
 }
