@@ -41,3 +41,19 @@ jobs:
           ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
         run: python3 tools/check-resource-strings.py --aapt2 "$ANDROID_HOME/build-tools/34.0.0/aapt2" tvOS.apk
       # No production signing key or TMDB key is used; this APK is deliberately not published.
+
+  jdk21-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Strict settings regressions on JDK 21
+        run: |
+          python3 tests/test_settings_list_window.py
+          python3 tests/test_settings_preference_editor.py

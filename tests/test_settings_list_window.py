@@ -8,6 +8,10 @@ from settings_list_renderer_fixture import geometry_sources
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 harness='''import io.tvos.settings.*;import android.view.KeyEvent;import android.graphics.RectF;import static io.tvos.settings.SettingsScreen.*;
 public class WindowHarness {
+ static class ConstructorProbe extends RectF {
+  ConstructorProbe(){super(1,2,3,4);}
+  @Override public void set(float l,float t,float r,float b){throw new AssertionError("RectF constructor dispatched to override");}
+ }
  final SettingsListWindow listWindow=new SettingsListWindow(10);int focus,screen=PICKER,size=35,clicks,invalidations,announcements;
  final Click tvosClick=new Click();class Click {void move(){clicks++;}}
  final Spoken spoken=new Spoken();class Spoken {void focusMoved(){announcements++;}}
@@ -22,6 +26,7 @@ public class WindowHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static void near(float a,float b){check(Math.abs(a-b)<.001f,a+" != "+b);}
  public static void main(String[] args){
+ ConstructorProbe probe=new ConstructorProbe();check(probe.left==1&&probe.top==2&&probe.right==3&&probe.bottom==4,"RectF constructor initializes bounds without virtual dispatch");
  for(int capacity:new int[]{1,3,10})for(int size=0;size<100;size++){
   SettingsListWindow w=new SettingsListWindow(capacity);int rows=w.visibleRows(size),focus=0;
   check(!w.canMove(-1,focus,rows,size,true),"top boundary");

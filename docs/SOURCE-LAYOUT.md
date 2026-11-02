@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B154)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B155)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -345,3 +345,17 @@ remaining device-validation work. HomeView and SettingsActivity remain Android U
 coordinators; their size alone is not a reason to introduce additional Host interfaces
 or duplicate navigation state. Future extraction should follow a concrete independently
 owned responsibility, not a target file/line count.
+
+
+### Strict JDK 21 settings regressions (1B155)
+
+The Russian locale uses Java-8/Android-compatible `Locale.forLanguageTag("ru-RU")`
+rather than the Locale constructor deprecated on newer JDKs. The shared test RectF
+constructor assigns bounds directly instead of dispatching to an overridable set method;
+a subclass probe verifies this behavior. Both affected settings scripts keep
+`-Xlint:all -Werror`. A separate CI job runs those two regressions on JDK 21, while
+the full suite and strict Android APK build remain on JDK 17. The structural baseline
+and app language/date/API-tag behavior are unchanged.
+
+The shared `Paint` stub also uses a private copy helper so its public copy
+constructor does not dispatch to an override under JDK 21.
