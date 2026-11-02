@@ -2,6 +2,11 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import importlib.util
+
+spec=importlib.util.spec_from_file_location('device_runner',Path('tools/test-volume-hold-device.py'))
+runner=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
 
 source = Path('tools/volume-hold/VolumeHoldDevice.java').read_text()
 files = {
@@ -44,18 +49,14 @@ for manager in ['InputManager', 'InputManagerGlobal']:
             p=root/name
             p.parent.mkdir(parents=True,exist_ok=True)
             p.write_text(content)
-        subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all','-Werror','-d',directory,*map(str,root.rglob('*.java'))],check=True)
+        runner.compile_sources('java', root, list(root.rglob('*.java')))
         subprocess.run(['java','-cp',directory,'io.tvos.tools.DeviceHarness'],check=True)
 
 # Run the actual host lifecycle against fake adb; interrupt must send STOP and clean only its own files.
-import importlib.util
 import json
 import os
 import signal
 import sys
-spec=importlib.util.spec_from_file_location('device_runner',Path('tools/test-volume-hold-device.py'))
-runner=importlib.util.module_from_spec(spec)
-spec.loader.exec_module(runner)
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
     fake=root/'adb'

@@ -33,6 +33,14 @@ def android_tools():
     raise RuntimeError('Android SDK not found. Use the same ANDROID_HOME as for build.sh.')
 
 
+def compile_sources(java, output, sources):
+    # New JDKs warn about targeting Java 8. Keep code warnings fatal, but the
+    # intentional Android-compatible target must not make compilation fail.
+    subprocess.run([java, 'com.sun.tools.javac.Main', '--release', '8',
+                    '-Xlint:all,-options', '-Werror', '-d', str(output),
+                    *map(str, sources)], check=True)
+
+
 def build(output):
     d8, android_jar = android_tools()
     java = str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else shutil.which('java')
@@ -43,8 +51,7 @@ def build(output):
         root = Path(directory)
         classes = root/'classes'
         classes.mkdir()
-        subprocess.run([java, 'com.sun.tools.javac.Main', '--release', '8', '-Xlint:all', '-Werror',
-                        '-d', str(classes), str(source)], check=True)
+        compile_sources(java, classes, [source])
         jar = root/'input.jar'
         with zipfile.ZipFile(jar, 'w') as archive:
             for path in classes.rglob('*.class'):

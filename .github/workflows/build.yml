@@ -61,3 +61,17 @@ jobs:
         run: |
           python3 tests/test_settings_list_window.py
           python3 tests/test_settings_preference_editor.py
+
+  jdk25-volume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Strict volume-helper regression on JDK 25
+        run: python3 tests/test_volume_device_helper.py

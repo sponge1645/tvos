@@ -152,3 +152,13 @@ fixtures, verify timing boundaries/device identity/release/repeats/caps/heartbea
 and release after rejected DOWN, and run the actual host runner with fake ADB to
 check Ctrl+C STOP delivery and scoped cleanup. CI separately compiles the actual
 standalone jar with D8/min-api 28. No signing identity or app display build changes.
+
+
+## Prototype compiler compatibility correction
+
+The user's device helper did not start: the host JDK rejected the intentional
+Java 8 target's options warning under -Werror. Change only the options lint group
+via `-Xlint:all,-options`; retain --release 8 and -Werror for source warnings.
+The helper regression now invokes the actual runner compile function, and CI
+runs it on JDK 25 as well as the existing JDK 17 suite/D8 build. This fixes host
+compilation; it is not evidence that on-device injection or timing works yet.
