@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
-/** Main-thread search scheduling; the view owns presentation, results and focus. */
+/** Main-thread search scheduling; presentation session and focus have separate owners. */
 final class SearchController {
     private final Handler handler;
     private final Recs recs;

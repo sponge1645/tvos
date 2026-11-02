@@ -12,18 +12,18 @@ public class SearchFocusHarness {final java.util.function.IntPredicate visibleTo
  static class DockState {int index;List<Object> items=new ArrayList<>(Arrays.asList(new Object()));RectF[] rects={new RectF()};}final DockState dock=new DockState();
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;
  int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,actions=63;
- boolean searchMode=true,enabled=true;int retargets,clicks;
+ boolean enabled=true;static class Session {boolean active=true;List<Object> results=new ArrayList<>();}final Session search=new Session();int retargets,clicks;
  static class Roulette {boolean finished(){return false;}}
  final Roulette rouletteWork=new Roulette();
- List<Object> cards=new ArrayList<>(),searchResults=new ArrayList<>();
+ List<Object> cards=new ArrayList<>();
  static class RectF {float centerX(){return 10;}}
  RectF[] cardRects={new RectF(),new RectF(),new RectF(),new RectF(),new RectF()},topRects=new RectF[11];
  SearchFocusHarness(){Arrays.fill(topRects,new RectF());}
  static class Recs {List<Object> catalog(Object kind){return new ArrayList<>();}}
  Recs recs=new Recs();Object[] TAB_KIND=new Object[5];
  class Click {void move(){clicks++;}void app(){clicks++;}}Click click=new Click();
- boolean topControlVisible(int id){return id<5?!searchMode&&enabled:topButtonEnabled(id-5);}
- java.util.List<Object> currentCatalog(){return searchMode?searchResults:recs.catalog(TAB_KIND[tab]);}
+ boolean topControlVisible(int id){return id<5?!search.active&&enabled:topButtonEnabled(id-5);}
+ java.util.List<Object> currentCatalog(){return search.active?search.results:recs.catalog(TAB_KIND[tab]);}
  boolean picksOn(){return enabled;}boolean topButtonEnabled(int i){return (actions&(1<<i))!=0;}boolean clockButtonEnabled(){return topButtonEnabled(4);}
  int posterCornerTarget(boolean right){return right?9:5;}int nextTopControl(int current,int dx){return current+dx;}
  void selectTab(int t){tab=t;}void spinRoulette(){}void updateCards(){}void retarget(boolean snap){retargets++;}
@@ -44,13 +44,13 @@ tests='''
   }
   SearchFocusHarness full=new SearchFocusHarness();full.cards.add(new Object());full.moveLight(0,-1);
   check(full.zone==Z_CARDS,"nonempty results retain normal Dock-to-results navigation");
-  SearchFocusHarness category=new SearchFocusHarness();category.searchMode=false;category.tab=2;category.moveLight(0,-1);
+  SearchFocusHarness category=new SearchFocusHarness();category.search.active=false;category.tab=2;category.moveLight(0,-1);
   check(category.zone==Z_TOP&&category.topIndex==2,"empty ordinary category still focuses its visible tab");
-  SearchFocusHarness noCatalog=new SearchFocusHarness();noCatalog.enabled=false;noCatalog.searchMode=false;noCatalog.actions=0;noCatalog.moveLight(0,-1);
+  SearchFocusHarness noCatalog=new SearchFocusHarness();noCatalog.enabled=false;noCatalog.search.active=false;noCatalog.actions=0;noCatalog.moveLight(0,-1);
   check(noCatalog.zone==Z_SHELF,"no catalog and all actions hidden keeps focus in Dock");
   SearchFocusHarness emptyDock=new SearchFocusHarness();emptyDock.dock.items.clear();emptyDock.actions=32;
   emptyDock.moveLight(0,-1);check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==10,"empty Dock reaches the visible Network action");
-  emptyDock.searchMode=false;emptyDock.tab=2;emptyDock.zone=Z_SHELF;emptyDock.moveLight(0,-1);
+  emptyDock.search.active=false;emptyDock.tab=2;emptyDock.zone=Z_SHELF;emptyDock.moveLight(0,-1);
   check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==2,"empty Dock with recommendations reaches current category");
   System.out.println("PASS: empty search focus across all tabs/button masks, repeated up/down, empty cards, populated results, ordinary empty category");
  }

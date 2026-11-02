@@ -65,13 +65,13 @@ harness = '''package io.tvos;
 import java.util.*;
 public class RouletteFocusHarness {
  static final int Z_SHELF=1,Z_CARDS=2,Z_HERO=3,Z_STATUS=4,Z_DRAWER=5,WIDGETS=6;
- boolean running=true,enabled=true,searchMode,tilesDirty,heroDirty;
- int zone=Z_CARDS,statusIndex,widgetIndex,drawerIndex,lightMoves,cardIndex,tab=4,changes,toasts,retargets;
+ boolean running=true,enabled=true,tilesDirty,heroDirty;
+ int zone=Z_CARDS,statusIndex,widgetIndex,lightMoves,cardIndex,tab=4,changes,toasts,retargets;
  static class Item {} static class HomeApps {static class Item extends RouletteFocusHarness.Item {}}
  static class RectF {float centerX(){return 0;}}static class LinearGradient {}
  static class DockState {int index;List<HomeApps.Item> items=new ArrayList<>();RectF[] rects={new RectF()};}final DockState dock=new DockState();static class Grid {boolean open;}final Grid grid=new Grid();
  static class Hero {boolean button;} Hero hero;
- List<HomeApps.Item> statusItems=new ArrayList<>(),drawerItems=new ArrayList<>();
+ List<HomeApps.Item> statusItems=new ArrayList<>();static class Session {boolean active;}final Session search=new Session();static class DrawerState {int index;List<HomeApps.Item> items=new ArrayList<>();}final DrawerState drawer=new DrawerState();
  RectF[] statusRects={new RectF()};LinearGradient[] tileShaders;
  static class Target {void app(){}void back(){}void move(){}void invalidate(){}}Target click=new Target(),platter=new Target();
  static class Ui {static boolean ru=false;}

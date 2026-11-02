@@ -13,10 +13,10 @@ public class HomeLayoutHarness {
  final io.tvos.home.HomeGeometry geometry=new io.tvos.home.HomeGeometry();final java.util.function.IntPredicate enabledTabs=this::tabEnabled,enabledTop=this::topButtonEnabled;
  static final float MARGIN=HomeLayout.EDGE,CONTENT_R=HomeLayout.RIGHT,SHELF_PAD=HomeLayout.DOCK_PAD,TILE_GAP=HomeLayout.DOCK_GAP;
  static final float ROW_TOP=540,ROW_H=126,CARDS_H=HomeLayout.WEATHER_HEIGHT,L_TABBAR_TOP=HomeLayout.TAB_TOP,L_TABBAR_H=HomeLayout.TAB_HEIGHT,L_BUTTON=HomeLayout.BUTTON,L_BUTTON_GAP=20,L_BUTTON_CY=HomeLayout.HEADER_CY;
- final List<HomeApps.Item> drawerItems=new ArrayList<>();
- final RectF platterRect=new RectF(),weatherCard=new RectF();RectF[] drawerRects=new RectF[0],topRects=new RectF[11],cardRects=new RectF[8];
+ static class DrawerState {List<HomeApps.Item> items=new ArrayList<>();RectF[] rects=new RectF[0];final RectF weather=new RectF();int inputs;float extraHeight;}final DrawerState drawer=new DrawerState();
+ final RectF platterRect=new RectF();RectF[] topRects=new RectF[11],cardRects=new RectF[8];
  static class DockState {final List<HomeApps.Item> items=new ArrayList<>();RectF[] rects=new RectF[0];}final DockState dock=new DockState();
- float drawerExtraHeight;float k=1,contentTop,contentBottom;int w=1920,h=1080,drawerInputs;boolean motionDirty,drawerDirty,heroDirty,statusDirty,largePostersWithoutWidgets,compact;
+ float k=1,contentTop,contentBottom;int w=1920,h=1080;boolean motionDirty,drawerDirty,heroDirty,statusDirty,largePostersWithoutWidgets,compact;
  Paint lTab=Ui.text(Ui.medium,30,0),lTabOn=Ui.text(Ui.semibold,30,0),lCardMeta=Ui.text(Ui.medium,25,0);String clockText="12:34";
  static class Cache {void clear(){}}final Cache appSurfaces=new Cache();static class Header {void clearFrame(){}}final Header header=new Header();
  static class Prefs {static int[] order={0,1,2,3,5,4};static int mask=63;static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}}
@@ -42,15 +42,15 @@ public class HomeLayoutHarness {
     for(RectF r:t.dock.rects){float liftScale=1.08f*1.2f;check(r.centerY()-r.height()*liftScale/2>=HomeLayout.DOCK_LAYER_TOP*t.k,"lifted tile stays inside its layer top");}
    }
    t.count(0);t.layoutShelf();check(Float.isFinite(t.platterRect.left),"empty Dock remains finite");
-   t.count(6);t.layoutShelf();t.drawerItems.clear();t.drawerItems.add(new HomeApps.Item("input"));t.drawerRects=new RectF[]{new RectF()};t.drawerInputs=1;t.layoutDrawer();
-   near(t.weatherCard.left,40*t.k,"weather left");near(t.w-t.weatherCard.right,40*t.k,"weather right");near(t.h-t.weatherCard.bottom,40*t.k,"weather bottom");near(t.weatherCard.height(),300*t.k,"weather content height retained");
+   t.count(6);t.layoutShelf();t.drawer.items.clear();t.drawer.items.add(new HomeApps.Item("input"));t.drawer.rects=new RectF[]{new RectF()};t.drawer.inputs=1;t.layoutDrawer();
+   near(t.drawer.weather.left,40*t.k,"weather left");near(t.w-t.drawer.weather.right,40*t.k,"weather right");near(t.h-t.drawer.weather.bottom,40*t.k,"weather bottom");near(t.drawer.weather.height(),300*t.k,"weather content height retained");
    for(int count=1;count<=10;count++)for(int inputs:new int[]{0,count/2,count}){
-    t.drawerItems.clear();t.drawerRects=new RectF[count];t.drawerInputs=inputs;
-    for(int i=0;i<count;i++){t.drawerItems.add(new HomeApps.Item("item"));t.drawerRects[i]=new RectF();}
-    t.layoutDrawer();near(t.drawerRects[0].left,40*t.k,"row left aligned");near(t.drawerRects[count-1].right,1880*t.k,"row fills common right edge");
-    for(int i=0;i<count;i++){RectF r=t.drawerRects[i];near(r.bottom,666*t.k,"row bottom and weather gap preserved");check(r.height()>=126*t.k-.03&&r.height()<=168*t.k+.03,"bounded proportional button height");
-     if(i>0)near(r.left-t.drawerRects[i-1].right,(i==inputs?56:18)*t.k,"button and group gaps preserved");}
-    near(t.drawerExtraHeight,t.drawerRects[0].height()-126*t.k,"Dock lift matches row height increase");
+    t.drawer.items.clear();t.drawer.rects=new RectF[count];t.drawer.inputs=inputs;
+    for(int i=0;i<count;i++){t.drawer.items.add(new HomeApps.Item("item"));t.drawer.rects[i]=new RectF();}
+    t.layoutDrawer();near(t.drawer.rects[0].left,40*t.k,"row left aligned");near(t.drawer.rects[count-1].right,1880*t.k,"row fills common right edge");
+    for(int i=0;i<count;i++){RectF r=t.drawer.rects[i];near(r.bottom,666*t.k,"row bottom and weather gap preserved");check(r.height()>=126*t.k-.03&&r.height()<=168*t.k+.03,"bounded proportional button height");
+     if(i>0)near(r.left-t.drawer.rects[i-1].right,(i==inputs?56:18)*t.k,"button and group gaps preserved");}
+    near(t.drawer.extraHeight,t.drawer.rects[0].height()-126*t.k,"Dock lift matches row height increase");
    }
    for(boolean compact:new boolean[]{false,true}){t.compact=compact;t.layoutLight();near(t.topRects[10].top,50*t.k,"Network top");
     float right=0;for(int i=5;i<11;i++)right=Math.max(right,t.topRects[i].right);near(t.w-right,40*t.k,"rightmost action edge");near(t.topRects[0].left,40*t.k,"category capsule left");near(t.cardRects[0].left,40*t.k,"first poster left");near(t.w-t.cardRects[4].right,40*t.k,"last poster right");

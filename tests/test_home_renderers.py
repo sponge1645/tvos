@@ -109,20 +109,20 @@ public class HomeRenderHarness {
 
 focus=block(Path('app/src/io/tvos/HomeView.java').read_text(),'    private int focusedPoster()')
 harness=harness.replace(' static void posters()throws Exception{', ''' static class FocusHarness {
- static class Grid {boolean open;}final Grid grid=new Grid(); boolean searchMode;int tab,zone=2,cardIndex;static final int Z_CARDS=2;
+ static class Grid {boolean open;}final Grid grid=new Grid(); static class Session {boolean active;}final Session search=new Session(); int tab,zone=2,cardIndex;static final int Z_CARDS=2;
  List<Recs.Pick> cards=new ArrayList<>(Arrays.asList(new Recs.Pick()));boolean picksOn(){return true;}
  '''+focus+''' }
  static void posters()throws Exception{''')
 harness=harness.replace('  recs.missing=true;', '''  FocusHarness focus=new FocusHarness();
   for(int tab:new int[]{0,1,3,4}){
-   focus.tab=tab;focus.searchMode=true;long start=10000+tab*2000;
+   focus.tab=tab;focus.search.active=true;long start=10000+tab*2000;
    p.focus(focus.focusedPoster(),0,tab,start);p.begin(1,0,tab,0,true,true,title,meta);SystemClock.now=start;p.draw(new Canvas(),pick,base,1,0);
    check(!p.marqueeActive(start+999),"search keeps normal one-second dwell");
    SystemClock.now=start+1500;p.begin(1,0,tab,0,true,true,title,meta);Canvas search=new Canvas();p.draw(search,pick,base,1,0);
    check(p.marqueeActive(start+1500)&&text(search,pick.title).l<base.left&&entries(search,"rect").stream().anyMatch(e->e.mode!=null),"search scrolls full long title with edge mask from every tab, including roulette");
   }
-  focus.searchMode=false;focus.tab=4;check(focus.focusedPoster()==-1,"roulette itself still has no poster marquee");
-  focus.searchMode=true;focus.grid.open=true;check(focus.focusedPoster()==-1,"sheet blocks underlying marquee");focus.grid.open=false;focus.zone=1;check(focus.focusedPoster()==-1,"top focus stops poster marquee");
+  focus.search.active=false;focus.tab=4;check(focus.focusedPoster()==-1,"roulette itself still has no poster marquee");
+  focus.search.active=true;focus.grid.open=true;check(focus.focusedPoster()==-1,"sheet blocks underlying marquee");focus.grid.open=false;focus.zone=1;check(focus.focusedPoster()==-1,"top focus stops poster marquee");
   focus.zone=2;focus.cards.clear();check(focus.focusedPoster()==-1,"empty results have no marquee");
   recs.missing=true;''')
 with tempfile.TemporaryDirectory(prefix='tvos-home-renderers-') as tmp:

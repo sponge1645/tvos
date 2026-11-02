@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B147)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B148)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -202,3 +202,31 @@ were removed from HomeView; renderer/accessibility geometry stays in HomeLayout.
 Regression coverage executes full models and View adapters, Dock edits including
 multi-move rollback, all grid indices/arrows at counts 0–67, stale refresh guards,
 TalkBack bindings, key handling, and dream/overlay transforms at 720p/1080p/4K.
+
+`HomeDrawerState<T>` owns drawer entries, the leading input count, selection,
+focus/geometry arrays, weather bounds, extra height and opening spring. Entry
+identity and input classification are injected predicates; it has no HomeApps,
+Activity, Prefs or Ui dependency. Same-count refresh retains focus/rectangle
+identities even when keys or connection state change, unlike Dock's deliberately
+different rebuild policy. Opening/closing snap focus exactly as before. HomeView
+keeps geometry calls, cross-region nearest-item navigation and invalidation.
+
+`HomeSearchState<T>` is the sole owner of search mode, retained query, results and
+heading spring. It distinguishes first entry from input reopening, preserves query
+on close, and owns heading intent/fades without Android input-window dependencies.
+SearchController retains debounce, request generations and pause/resume retry;
+HomeView retains page/index and navigation effects. The shared View refresh helper
+keeps typing's focus behavior distinct from delivered-result and screen transitions.
+
+`HomeSearchGlass` owns input-backing bounds, the two position buffers, shadow
+Paint/filter, drawing and dismissal transform cleanup. It receives retained Views,
+Scene/Shadows and current scale/night; it does not consult Activity, Prefs or Ui.
+Repeated resize at the same scale reuses its blur filter. The View retains active/
+input visibility guards and tone updates. Blending now uses the existing
+ActionSurface implementation, removing HomeView's duplicate blend and unused tone
+helpers. The redundant roulette guard after currentCatalog's early return was
+removed. No keys, input timing, material parameters or lifecycle policy changed.
+Tests execute complete drawer/session/backing components with actual View adapters:
+0–10 drawer entries, leading groups, same-count/shrink/connection changes, remote
+and TalkBack routing, search debounce/stale callbacks/Done/reopen/heading reversal,
+backing coordinates/material/night colors, retained resources and 720p/1080p/4K.

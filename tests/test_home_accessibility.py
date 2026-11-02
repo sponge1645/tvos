@@ -25,10 +25,10 @@ files={
 import java.util.*;import android.graphics.*;import android.content.Context;
 import static io.tvos.HomeAccessibility.*;
 public class AccessibilityHarness implements HomeAccessibility.Host {
- boolean searchMode,drawerOpen,picks=true,weather=true,gridDirty;int tab,zone=Z_SHELF,topIndex,cardIndex,drawerIndex,widgetIndex;
- List<HomeApps.Item> drawerItems=new ArrayList<>(Arrays.asList(new HomeApps.Item("HDMI"))),lightButtons=new ArrayList<>();
+ boolean picks=true,weather=true,gridDirty;int tab,zone=Z_SHELF,topIndex,cardIndex,widgetIndex;
+ List<HomeApps.Item> lightButtons=new ArrayList<>();
  List<Recs.Pick> cards=new ArrayList<>(Arrays.asList(new Recs.Pick("Title","2024, 120 min","Seena")));
- RectF[] topRects=new RectF[11],cardRects={new RectF(80,262,300,704)},drawerRects={new RectF(80,540,304,666)};RectF weatherCard=new RectF(80,708,1840,1008);
+ RectF[] topRects=new RectF[11],cardRects={new RectF(80,262,300,704)};static class Session {boolean active;}final Session search=new Session();static class DrawerState {boolean open;int index;List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("HDMI")));RectF[] rects={new RectF(80,540,304,666)};final RectF weather=new RectF(80,708,1840,1008);}final DrawerState drawer=new DrawerState();
  float k=1,h=1080,contentTop=226,contentBottom=788;static class Layer {float y;float getTranslationY(){return y;}}final Layer heroLayer=new Layer(),status=new Layer(),tiles=new Layer();
  static class Spring {float target;}static class DockState {int index;List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("Lampa")));RectF[] rects={new RectF(80,814,304,940)};}final DockState dock=new DockState();static class Grid {boolean open;int index;final Spring scroll=new Spring();List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("YouTube"),new HomeApps.Item("Settings")));}final Grid grid=new Grid();static class Work {boolean active;boolean spinning(){return active;}}final Work rouletteWork=new Work();
  final NetworkStatus networkStatus=new NetworkStatus();final HomeData data=new HomeData();final Context context=new Context();
@@ -36,9 +36,9 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
  int moves,wakes,activations,retargets,gridRetargets,selected=-1;static class Click {int count;void move(){count++;}void app(){count++;}}final Click click=new Click();
  AccessibilityHarness(){for(int i=0;i<11;i++){topRects[i]=new RectF(i*100,46,i*100+68,114);lightButtons.add(new HomeApps.Item("Action"+i));visible[i]=true;}}
  public void read(HomeAccessibility.State s){readAccessibilityState(s);}public void focus(int group,int i){moves++;focusAccessibleItem(group,i);}public void wake(){wakes++;}public void activate(){activations++;}
- boolean picksOn(){return picks;}boolean weatherBottom(){return weather;}boolean topControlVisible(int i){return visible[i]&&(i>=5||!searchMode&&picks);}
+ boolean picksOn(){return picks;}boolean weatherBottom(){return weather;}boolean topControlVisible(int i){return visible[i]&&(i>=5||!search.active&&picks);}
  String[] tabs(){return new String[]{"New","Movies","","Shows","Dice"};}
- void retarget(boolean snap){retargets++;}void retargetGrid(boolean snap){gridRetargets++;}void openDrawer(){drawerOpen=true;}void closeDrawer(){drawerOpen=false;}void selectTab(int i){selected=tab=i;}
+ void retarget(boolean snap){retargets++;}void retargetGrid(boolean snap){gridRetargets++;}void openDrawer(){drawer.open=true;}void closeDrawer(){drawer.open=false;}void selectTab(int i){selected=tab=i;}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static int node(int group,int index){return HomeAccessibility.id(group,index);}
  List<Integer> ids(){List<Integer> out=new ArrayList<>();source.items(out);return out;}
@@ -53,12 +53,12 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   check(h.source.text(4001).equals("New, tab 2 of 3"),"tab position uses configured order");
   Rect r=new Rect();h.heroLayer.y=-560;check(h.source.bounds(4001,r)&&r.top==0&&r.bottom==24,"offscreen top edge remains reachable");
   check(h.source.bounds(3001,r)&&r.top==1056&&r.bottom==1080,"closed drawer at bottom edge");
-  h.source.focus(3001);check(h.drawerOpen&&h.zone==Z_DRAWER&&h.drawerIndex==0&&h.click.count==1,"focus opens drawer and moves remote");
+  h.source.focus(3001);check(h.drawer.open&&h.zone==Z_DRAWER&&h.drawer.index==0&&h.click.count==1,"focus opens drawer and moves remote");
   check(h.ids().contains(8001)&&!h.source.clickable(8001),"weather is readable without click action");
   h.source.focus(8001);check(h.zone==WIDGETS&&h.source.focused()==8001,"weather focus");
   check(h.source.text(8001).contains("10°, Clear")&&h.source.text(8001).contains("09:00 11°"),"weather spoken data");
   Prefs.city="Tokyo";check(h.source.text(8001).startsWith("Tokyo."),"live city");h.data.weather.temp=Double.NaN;check(h.source.text(8001).contains("No weather data"),"missing weather");
-  h.source.focus(2001);check(!h.drawerOpen&&h.zone==Z_SHELF,"focus closes drawer");
+  h.source.focus(2001);check(!h.drawer.open&&h.zone==Z_SHELF,"focus closes drawer");
   h.source.focus(4004);check(h.topIndex==3&&h.selected==3&&h.zone==Z_TOP,"category changes through host");
   h.grid.open=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==151,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
   h.grid.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
@@ -70,8 +70,8 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   h.visible[10]=false;check(!h.source.bounds(4011,r),"disabled top control has no bounds");h.source.focus(4011);check(h.zone==Z_CARDS,"disabled focus ignored");
   for(int id:new int[]{-1,0,999999}){check(h.source.text(id).isEmpty()&&!h.source.bounds(id,r),"invalid IDs safely ignored");h.source.focus(id);}
   check(!h.source.talkBack(),"disabled service");h.context.manager.enabled=true;check(!h.source.talkBack(),"nonspoken accessibility alone is insufficient");h.context.manager.services.add(new Object());check(h.source.talkBack(),"spoken feedback service detection");
-  h.grid.open=false;h.searchMode=true;check(!h.ids().contains(4001)&&h.ids().contains(5001),"search hides categories but keeps result node");
-  h.tab=0;h.cards.clear();h.dock.items.clear();h.drawerItems.clear();h.zone=Z_SHELF;check(h.source.focused()==-1&&!h.ids().contains(5001),"empty lists immediately replace prior snapshot");
+  h.grid.open=false;h.search.active=true;check(!h.ids().contains(4001)&&h.ids().contains(5001),"search hides categories but keeps result node");
+  h.tab=0;h.cards.clear();h.dock.items.clear();h.drawer.items.clear();h.zone=Z_SHELF;check(h.source.focused()==-1&&!h.ids().contains(5001),"empty lists immediately replace prior snapshot");
   h.source.clear();check(h.source.focused()==-1,"snapshot refreshes normally after release");
   System.out.println("PASS: complete accessibility source, live snapshot, reading order/labels/language, bounds/edges, real navigation, sheet/search/roulette guards and empty lists");
  }

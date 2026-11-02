@@ -15,7 +15,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -54,9 +53,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT;
     // "All Apps" sheet.
     private static final int COLUMNS = HomeAccessibility.COLUMNS, VISIBLE_ROWS = 3;
-    private static final int SMOKE = 0xFF111113, WHITE = 0xFFF5F5F7;
-    /** Search glass shadow radius shared with the cached Shadows renderer. */
-    private static final float SHADOW_BLUR = 26;
+    private static final int WHITE = 0xFFF5F5F7;
     private static final int SKY = 0, HERO = 1, STATUS = 2, PLATTER = 3, TILES = 4, DRAWER = 5, SHEET = 6, TOAST = 7, SEARCH_GLASS = 8;
     private static final int Z_SHELF = HomeAccessibility.Z_SHELF, Z_DRAWER = HomeAccessibility.Z_DRAWER;
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
@@ -95,14 +92,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // Category and action IDs remain stable while their visual order is configurable.
     private int tab, topIndex, cardIndex;
-    private final RectF searchGlassBounds = new RectF(), searchShadowBounds = new RectF();
-    private boolean searchGlassVisible;
-    private final int[] searchPanelPosition = new int[2], searchHomePosition = new int[2];
+    private final HomeSearchGlass searchGlass;
     private final HomeSearchInput searchInput;
-    private boolean searchMode;
-    private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
-    private String searchQuery = "";
-    private List<Recs.Pick> searchResults = new ArrayList<>();
+    private final HomeSearchState<Recs.Pick> search = new HomeSearchState<>();
     private final HomeAppWork appWork;
     private final SearchController searchWork;
     private final RouletteController rouletteWork;
@@ -138,15 +130,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final RectF platterRect = new RectF();
 
     // Bottom drawer
-    private List<HomeApps.Item> drawerItems = new ArrayList<>();
-    private float drawerExtraHeight;
-    private int drawerInputs;          // how many leading items are inputs (the rest are shortcuts)
-    private Spring[] drawerFocus = new Spring[0];
-    private RectF[] drawerRects = new RectF[0];
-    private final RectF weatherCard = new RectF();
-    private final Spring drawer = new Spring(0.46f, 0.92f, 0);
-    private boolean drawerOpen;
-    private int drawerIndex;
+    private final HomeDrawerState<HomeApps.Item> drawer = new HomeDrawerState<>(
+            (a, b) -> a.key.equals(b.key) && a.connected == b.connected,
+            item -> item.kind == HomeApps.INPUT || item.kind == HomeApps.LIVE_TV);
 
     // "All Apps" sheet
     private final HomeGridState<HomeApps.Item> grid = new HomeGridState<>(COLUMNS, VISIBLE_ROWS);
@@ -165,7 +151,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Runnable vpnHold = this::openVpnOnHold;
 
     private boolean vpnFocused() {
-        return running && !grid.open && !drawerOpen && zone == Z_TOP
+        return running && !grid.open && !drawer.open && zone == Z_TOP
                 && topIndex == 7 && topButtonEnabled(2);
     }
     private void openVpnOnHold() {
@@ -193,10 +179,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         wake();
     }
 
-    private final Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Shadows shadows = new Shadows();
     private final ActionSurface actionSurface = new ActionSurface(scene, shadows);
-    // Reused only on the UI drawing thread to avoid Paint allocations per frame.
 
 
     /** One layer of the screen. It draws in full-screen coordinates: the glass needs each pixel's real position. */
@@ -216,7 +200,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             // not redrawn while they move).
             scene.setOffset(0, kind == DRAWER || kind == STATUS ? 0 : getTranslationY());
             switch (kind) {
-                case SKY: background.draw(c, drawer.value); break;
+                case SKY: background.draw(c, drawer.motion.value); break;
                 case HERO: drawLightTop(c); break;
                 case STATUS: {
                     HomeHeaderRenderer.Frame topFrame = headerFrame();
@@ -282,13 +266,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         dockContinue = new DockContinue(activity, this::dockContinueChanged);
         watching = new WatchingCatalog(activity, () -> {
             if (running) updateDockBackdrop();
-            if (running && tab == 2 && !searchMode) {
+            if (running && tab == 2 && !search.active) {
                 updateCards();
                 logWatchingCards();
                 wake();
             }
         });
-        searchWork = new SearchController(handler, recs, () -> running && searchMode,
+        searchWork = new SearchController(handler, recs, () -> running && search.active,
                 this::acceptSearchResults);
         rouletteWork = new RouletteController(handler, recs, () -> running,
                 () -> tabEnabled(4), () -> tab == 4,
@@ -331,13 +315,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer = new Layer(a, SHEET);
         toastLayer = new Layer(a, TOAST);
         searchGlassLayer = new Layer(a, SEARCH_GLASS);
+        searchGlass = new HomeSearchGlass(this, searchGlassLayer, scene, shadows);
         revealContent = new View[] {sky, heroLayer};
         layerMotion = new HomeLayerMotion(revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer);
         redrawLayers = new View[] {revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer};
         notices = new HomeNotices(a, scene, LOADER, handler, toastLayer::invalidate, this::wake, this::announceForAccessibility);
         searchInput = new HomeSearchInput(a,this,searchGlassLayer,new HomeSearchInput.Host(){
             @Override public boolean running(){return running;}
-            @Override public String query(){return searchQuery;}
+            @Override public String query(){return search.query;}
             @Override public void queryChanged(String query){searchQueryChanged(query);}
             @Override public void restore(){restoreSearchRequest();}
             @Override public void dismissed(){searchInputDismissed();}
@@ -421,14 +406,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         Choreographer.getInstance().postFrameCallback(this);
         spoken.readAgain();
         if (tab == 4 && tabEnabled(4) && rouletteWork.picks().isEmpty() && !rouletteWork.loading()) loadRoulette();
-        searchWork.resume(searchQuery);
+        searchWork.resume(search.query);
     }
 
     private HomeGenres.Host menuHost(int category) {
         return new HomeGenres.Host() {
             @Override public String kind() { return category == 3 ? "tv" : "movie"; }
             @Override public boolean eligible() {
-                return running && okDown && tab == category && !searchMode && !grid.open && !drawerOpen
+                return running && okDown && tab == category && !search.active && !grid.open && !drawer.open
                         && !dockEditor.editing() && zone == Z_TOP && topIndex == category;
             }
             @Override public RectF anchor() { return topRects[category]; }
@@ -438,7 +423,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void moved() { click.move(); }
             @Override public void changed() {
                 if (category != 2) layoutLight();
-                if (category == 2 || (tab == category && !searchMode)) {
+                if (category == 2 || (tab == category && !search.active)) {
                     cardPage = cardIndex = 0;
                     updateCards(); retarget(false);
                 }
@@ -469,7 +454,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void prepareDreamReturn() {
-        if (drawerOpen || grid.open || searchMode || dockEditor.editing()) return;
+        if (drawer.open || grid.open || search.active || dockEditor.editing()) return;
         reveal.prepare(reducedDreamMotion());
         updateMotion();
     }
@@ -485,7 +470,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void revealFromDream() {
-        if (!running || drawerOpen || grid.open || searchMode || dockEditor.editing()) return;
+        if (!running || drawer.open || grid.open || search.active || dockEditor.editing()) return;
         reveal.start(SystemClock.uptimeMillis(), reducedDreamMotion());
         updateMotion();
         wake();
@@ -501,7 +486,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         networkStatus.stop();
         handler.removeCallbacks(vpnHold); vpnPress = false;
         appWork.invalidate();
-        searchWork.pause(searchMode);
+        searchWork.pause(search.active);
         cancelRouletteWork();
         dockEditor.pause();
         okDown = backDown = false;
@@ -538,15 +523,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         zone = Z_SHELF;
         dock.index = 0;
         grid.open = false;
-        drawerOpen = false;
+        drawer.open = false;
         if (animated) {
             grid.sheet.target = 0;
-            drawer.target = 0;
+            drawer.motion.target = 0;
         } else {
             grid.sheet.snap(0);
-            drawer.snap(0);
+            drawer.motion.snap(0);
         }
-        if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
+        if (search.active) { cancelSearchWork(); search.close(); }
         if (Prefs.firstCategory() >= 0 && tab != Prefs.firstCategory()) selectTab(Prefs.firstCategory());
         updateCards();
         retarget(!animated);
@@ -569,7 +554,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private boolean topButtonEnabled(int index) { return Prefs.topButtonEnabled(index); }
     private boolean topControlVisible(int id) {
-        return id < 5 ? !searchMode && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
+        return id < 5 ? !search.active && picksOn() && tabEnabled(id) : topButtonEnabled(id - 5);
     }
 
     /** Tabs and actions follow their saved visual order, independently of stable IDs. */
@@ -627,8 +612,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void updateDockBackdrop() {
         if (!running) return;
-        if (Prefs.categoryCount() != 0 || searchMode) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
-        if (grid.open || drawerOpen || zone != Z_SHELF || dock.index < 0 || dock.index >= dock.items.size()) return;
+        if (Prefs.categoryCount() != 0 || search.active) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
+        if (grid.open || drawer.open || zone != Z_SHELF || dock.index < 0 || dock.index >= dock.items.size()) return;
         HomeApps.Item item = dock.items.get(dock.index);
         String pkg = item.kind == HomeApps.APP ? item.pkg
                 : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
@@ -648,7 +633,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void showDockBackdrop(DockBackdrop.Artwork artwork) {
-        if (!running || Prefs.categoryCount() != 0 || searchMode) return;
+        if (!running || Prefs.categoryCount() != 0 || search.active) return;
         boolean animate = !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
         dockBanner.show(artwork, animate);
         heroDirty = true; heroLayer.invalidate();
@@ -750,7 +735,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lCardTitle.setLetterSpacing(0.012f);
         lCardMeta = Ui.text(Ui.medium, 25 * k, L_DIM);
         lDate = Ui.text(Ui.semibold, 34 * k, L_DIM);
-        shadow.setMaskFilter(new BlurMaskFilter(SHADOW_BLUR * k, BlurMaskFilter.Blur.NORMAL));
+        searchGlass.resize(k);
     }
 
     // MARK: - Frames: 60 per second while something moves; nothing is redrawn when still
@@ -781,11 +766,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean vpnMoving = vpnColor.step(dt);
         boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
         if (topMoving || vpnMoving) status.invalidate();
-        boolean bannerMoving = Prefs.categoryCount() == 0 && !searchMode && dockBanner.tick(up);
+        boolean bannerMoving = Prefs.categoryCount() == 0 && !search.active && dockBanner.tick(up);
         boolean heroMoving = topMoving | cardsMoving | bannerMoving;
-        boolean drawerItemsMoving = step(drawerFocus, dt);
+        boolean drawerItemsMoving = step(drawer.focus, dt);
         boolean gridMoving = step(grid.focus, dt) | grid.scroll.step(dt);
-        boolean drawerMoving = drawer.step(dt);
+        boolean drawerMoving = drawer.motion.step(dt);
         boolean sheetMoving = grid.sheet.step(dt);
         boolean toastFading = notices.tick(up);
         boolean bgFading = background.tickFade(up, drawerLayer.getVisibility() == VISIBLE || notices.visible());
@@ -821,13 +806,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             // Short text needs only the normal clock tick. Long text wakes at its dwell deadline,
             // then keeps the existing 50 ms marquee cadence without polling during the wait.
             long delay = posters.nextDelay(up);
-            if (Prefs.categoryCount() == 0 && !searchMode) delay = Math.min(delay, dockBanner.nextDelay(up));
+            if (Prefs.categoryCount() == 0 && !search.active) delay = Math.min(delay, dockBanner.nextDelay(up));
             Choreographer.getInstance().postFrameCallbackDelayed(this, delay);
         }
     }
 
     private int focusedPoster() {
-        return !grid.open && picksOn() && (searchMode || tab != 4) && zone == Z_CARDS
+        return !grid.open && picksOn() && (search.active || tab != 4) && zone == Z_CARDS
                 && cardIndex >= 0 && cardIndex < cards.size() ? cardIndex : -1;
     }
 
@@ -847,7 +832,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Drawer and sheet: the layers' positions and opacity (without redrawing their content). */
     private void updateMotion() {
-        layerMotion.apply(drawer.value, grid.sheet.value, grid.open, reveal, k, h, platterRect.top, drawerExtraHeight);
+        layerMotion.apply(drawer.motion.value, grid.sheet.value, grid.open, reveal, k, h, platterRect.top, drawer.extraHeight);
     }
 
 
@@ -869,7 +854,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // MARK: - Night look
 
-    /** How dark it is: 0 = day, 1 = night (in between during the transition). */
+    /** Refresh layers that sample the changing wallpaper. */
     private void backgroundChanged() {
         heroDirty = statusDirty = tilesDirty = drawerDirty = true;
         sky.invalidate();
@@ -877,18 +862,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         platter.invalidate();
     }
 
-    private float dark() {
-        return background.night();
-    }
 
     /** The day color or the night color, depending on the night value (blended during the transition). */
     private int tone(int onLight, int onDark) {
-        return blend(onLight, onDark, dark());
+        return ActionSurface.blend(onLight, onDark, background.night());
     }
 
-    private float tone(float onLight, float onDark) {
-        return onLight + (onDark - onLight) * dark();
-    }
 
     /** Text colors for the current night value (dark by day, white at night). */
     private void applyTone() {
@@ -936,56 +915,37 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // MARK: - Bottom drawer
 
     private void setDrawerItems(List<HomeApps.Item> list) {
-        int inputs = 0;
-        while (inputs < list.size() && (list.get(inputs).kind == HomeApps.INPUT || list.get(inputs).kind == HomeApps.LIVE_TV)) inputs++;
-        boolean same = list.size() == drawerItems.size();
-        for (int i = 0; same && i < list.size(); i++) {
-            same = list.get(i).key.equals(drawerItems.get(i).key) && list.get(i).connected == drawerItems.get(i).connected;
-        }
-        drawerItems = list;
-        drawerInputs = inputs;
-        if (drawerFocus.length != list.size()) {
-            drawerFocus = new Spring[list.size()];
-            drawerRects = new RectF[list.size()];
-            for (int i = 0; i < drawerFocus.length; i++) {
-                drawerFocus[i] = new Spring(0.28f, 0.85f, 0);
-                drawerRects[i] = new RectF();
-            }
-            drawerIndex = Math.min(drawerIndex, Math.max(0, list.size() - 1));
-            retarget(true);
-        }
+        boolean resized = drawer.focus.length != list.size();
+        boolean changed = drawer.replace(list);
+        if (resized) retarget(true);
         layoutDrawer();
-        if (!same) drawerDirty = true;
+        if (changed) drawerDirty = true;
     }
 
     private void layoutDrawer() {
-        drawerExtraHeight = geometry.drawer(drawerRects, drawerItems.size(), drawerInputs, weatherCard, h, k);
+        drawer.extraHeight = geometry.drawer(drawer.rects, drawer.items.size(), drawer.inputs, drawer.weather, h, k);
         drawerDirty = motionDirty = true;
     }
 
     private void openDrawer() {
-        if (drawerItems.isEmpty()) return;
-        drawerOpen = true;
-        drawer.target = 1;
+        if (drawer.items.isEmpty()) return;
+        drawer.open(dock.items.isEmpty() ? 0 : nearest(drawer.rects, dock.rects[dock.index].centerX()));
         zone = Z_DRAWER;
-        drawerIndex = dock.items.isEmpty() ? 0 : nearest(drawerRects, dock.rects[dock.index].centerX());
-        for (int i = 0; i < drawerFocus.length; i++) drawerFocus[i].snap(i == drawerIndex ? 1 : 0);
         drawerDirty = true;
     }
 
     private void closeDrawer() {
-        drawerOpen = false;
-        drawer.target = 0;
+        drawer.close();
         zone = Z_SHELF;
-        for (Spring f : drawerFocus) f.snap(0);   // the drawer goes away: its focus doesn't need to animate
-        if (!dock.items.isEmpty() && drawerIndex < drawerRects.length) dock.index = nearest(dock.rects, drawerRects[drawerIndex].centerX());
+        if (!dock.items.isEmpty() && drawer.index < drawer.rects.length)
+            dock.index = nearest(dock.rects, drawer.rects[drawer.index].centerX());
     }
 
     private HomeAppsRenderer.Frame appFrame() {
         appFrame.shelf = dock.items; appFrame.tileRects = dock.rects; appFrame.tileFocus = dock.focus; appFrame.dockSlide = dock.slide;
         appFrame.dockLiftIndex = dock.liftedIndex; appFrame.dockLift = dock.lift.value; appFrame.dockWiggleAt = dock.wiggleAt;
-        appFrame.drawerItems = drawerItems; appFrame.drawerRects = drawerRects; appFrame.drawerFocus = drawerFocus;
-        appFrame.drawerInputs = drawerInputs; appFrame.weatherCard = weatherCard; appFrame.weatherBottom = weatherBottom();
+        appFrame.drawerItems = drawer.items; appFrame.drawerRects = drawer.rects; appFrame.drawerFocus = drawer.focus;
+        appFrame.drawerInputs = drawer.inputs; appFrame.weatherCard = drawer.weather; appFrame.weatherBottom = weatherBottom();
         appFrame.others = grid.items; appFrame.gridFocus = grid.focus; appFrame.gridIndex = grid.index; appFrame.sheetOpen = grid.open;
         appFrame.focusedCell = focusedCell; appFrame.scroll = grid.scroll.value; appFrame.platterRect = platterRect;
         appFrame.k = k; appFrame.night = background.night(); appFrame.w = w; appFrame.h = h;
@@ -999,7 +959,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         updateDockBackdrop();
         // Only the group whose focus changed is redrawn (moving along the shelf doesn't redraw the hero or capsule).
         boolean tilesChanged = aim(dock.focus, !grid.open && zone == Z_SHELF ? dock.index : -1, snap);
-        boolean drawerChanged = aim(drawerFocus, !grid.open && zone == Z_DRAWER ? drawerIndex : -1, snap);
+        boolean drawerChanged = aim(drawer.focus, !grid.open && zone == Z_DRAWER ? drawer.index : -1, snap);
         boolean topChanged = aim(topFocus, !grid.open && zone == Z_TOP ? topIndex : -1, snap);
         float rouletteTarget = !grid.open && tab == 4 && zone == Z_CARDS ? 1 : 0;
         boolean heroChanged = rouletteButtonFocus.target != rouletteTarget;
@@ -1066,7 +1026,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // MARK: - Keys: only the arrows, OK and Back (system keys pass through to the system)
 
     private boolean dockContinueKey(KeyEvent e) {
-        if (!dockEditor.editing() && !grid.open && !drawerOpen && !searchMode && dockContinue.key(e, zone == Z_SHELF,
+        if (!dockEditor.editing() && !grid.open && !drawer.open && !search.active && dockContinue.key(e, zone == Z_SHELF,
                 () -> { zone = Z_TOP; topIndex = availableTopButton(5); retarget(false); },
                 pick -> { if (!watching.open(pick)) showToast(AppStrings.get(R.string.home_watching_open_failed)); })) {
             okDown = false; dockEditor.cancelHold(); return true;
@@ -1157,7 +1117,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (dockEditor.editing()) { dockEditor.finish(false); click.back(); return; }
         if (grid.open) {
             closeSheet();
-        } else if (searchMode) {
+        } else if (search.active) {
             closeSearch();
         } else if (zone == Z_DRAWER || zone == WIDGETS) {
             closeDrawer();
@@ -1190,7 +1150,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     if (next == dock.index) return;
                     dock.index = next;
                 } else {
-                    if (dy <= 0 || drawerItems.isEmpty()) return;
+                    if (dy <= 0 || drawer.items.isEmpty()) return;
                     openDrawer();
                 }
                 break;
@@ -1208,9 +1168,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
             default:
                 if (dx != 0) {
-                    int next = Math.max(0, Math.min(drawerItems.size() - 1, drawerIndex + dx));
-                    if (next == drawerIndex) return;
-                    drawerIndex = next;
+                    int next = Math.max(0, Math.min(drawer.items.size() - 1, drawer.index + dx));
+                    if (next == drawer.index) return;
+                    drawer.index = next;
                 } else if (dy < 0) {
                     closeDrawer();
                 } else if (accessibility.talkBack() && !widgets().isEmpty()) {
@@ -1248,12 +1208,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             it = grid.items.get(grid.index);
             r = focusedCell;
         } else if (zone == Z_DRAWER) {
-            if (drawerItems.isEmpty()) return;
-            it = drawerItems.get(drawerIndex);
-            r = drawerRects[drawerIndex];
+            if (drawer.items.isEmpty()) return;
+            it = drawer.items.get(drawer.index);
+            r = drawer.rects[drawer.index];
         } else if (zone == Z_TOP) {
             if (topIndex < 5) {
-                if (searchMode) { closeSearch(); return; }
+                if (search.active) { closeSearch(); return; }
                 selectTab(topIndex);
                 return;
             }
@@ -1272,7 +1232,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             it = lightButtons.get(topIndex - 5);
             r = topRects[topIndex];
         } else if (zone == Z_CARDS) {
-            if (tab == 4 && !searchMode) {
+            if (tab == 4 && !search.active) {
                 if (rouletteWork.finished() && !rouletteWork.picks().isEmpty()) movieApps.choose(rouletteWork.picks().get(rouletteWork.winner()));
                 else spinRoulette();
                 return;
@@ -1304,9 +1264,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (it.kind == HomeApps.INPUTS) {
             openDrawer();
-            for (int i = 0; i < drawerItems.size(); i++) {
-                if (drawerItems.get(i).kind == HomeApps.INPUT) {
-                    drawerIndex = i;
+            for (int i = 0; i < drawer.items.size(); i++) {
+                if (drawer.items.get(i).kind == HomeApps.INPUT) {
+                    drawer.index = i;
                     break;
                 }
             }
@@ -1320,46 +1280,25 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** The exact same wallpaper-aware liquid material used by the app Dock and top-right buttons. */
     private void drawSearchGlass(Canvas c) {
-        if (!searchGlassVisible || searchGlassBounds.isEmpty()) return;
+        if (!searchGlass.visible()) return;
         applyTone();
-        float radius = searchGlassBounds.height() / 2f;
-        searchShadowBounds.set(searchGlassBounds);
-        searchShadowBounds.offset(0, 9 * k);
-        shadow.setColor(tone(0x1F000000, 0x52000000));
-        shadows.draw(c, searchShadowBounds, radius, SHADOW_BLUR * k, shadow);
-        scene.liquid(c, searchGlassBounds, radius, tone(0xFFFFFFFF, SMOKE),
-                tone(0.42f, 0.12f), tone(0.03f, 0.08f),
-                tone(30, 34) * k, tone(22, 28) * k, tone(0.65f, 0.95f), 1);
+        searchGlass.draw(c, k, background.night());
     }
 
     /** Position the wallpaper-aware glass under the transparent Android text-input window. */
     private void syncSearchGlass(View panel) {
-        if (!running || !searchInput.showing()) return;
-        if (panel.getWidth() == 0 || panel.getHeight() == 0) return;
-        int[] panelPos = searchPanelPosition, homePos = searchHomePosition;
-        panel.getLocationOnScreen(panelPos);
-        getLocationOnScreen(homePos);
-        searchGlassBounds.set(panelPos[0] - homePos[0], panelPos[1] - homePos[1],
-                panelPos[0] - homePos[0] + panel.getWidth(),
-                panelPos[1] - homePos[1] + panel.getHeight());
-        searchGlassVisible = true;
-        searchGlassLayer.setVisibility(VISIBLE);
-        searchGlassLayer.invalidate();
+        if (running && searchInput.showing()) searchGlass.sync(panel);
     }
 
     private void beginSearch() {
         randomPoster.clear();
         cancelRouletteWork();
         setSearchInputOpen(true);
-        if (!searchMode) {
-            searchResults = new ArrayList<>();
-            cardPage = cardIndex = 0;
-        }
-        searchMode = true;
+        if (search.begin()) cardPage = cardIndex = 0;
     }
 
     private void restoreSearchRequest() {
-        searchWork.restore(searchQuery, !searchResults.isEmpty());
+        searchWork.restore(search.query, !search.results.isEmpty());
     }
 
     private void openSearch() {
@@ -1367,36 +1306,22 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         beginSearch();
         zone = Z_TOP;
         topIndex = availableTopButton(5);
-        layoutLight();
-        updateCards();
-        retarget(false);
-        heroDirty = statusDirty = true;
-        wake();
-        searchInput.open(searchQuery,background.night()>.5f,L_BUTTON_CY*k);
+        refreshSearch(true);
+        searchInput.open(search.query,background.night()>.5f,L_BUTTON_CY*k);
     }
 
     private void searchQueryChanged(String query) {
-        searchQuery = query;
-        searchResults = new ArrayList<>();
+        search.changed(query);
         cardPage = cardIndex = 0;
-        layoutLight();
-        updateCards();
-        heroDirty = statusDirty = true;
-        wake();
+        refreshSearch(false);
         searchWork.changed(query);
     }
 
     private void searchInputDismissed() {
-        searchGlassVisible = false;
+        searchGlass.hide();
         setSearchInputOpen(false);
-        searchGlassLayer.animate().cancel();
-        searchGlassLayer.setAlpha(1f);
-        searchGlassLayer.setScaleX(1f);
-        searchGlassLayer.setScaleY(1f);
-        searchGlassLayer.setTranslationY(0f);
-        searchGlassLayer.setVisibility(INVISIBLE);
         searchWork.flush();
-        zone = searchResults.isEmpty() ? Z_TOP : Z_CARDS;
+        zone = search.results.isEmpty() ? Z_TOP : Z_CARDS;
         if (zone == Z_TOP) topIndex = availableTopButton(5);
         retarget(false);
         heroDirty = statusDirty = true;
@@ -1408,42 +1333,35 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void acceptSearchResults(List<Recs.Pick> found) {
-        searchResults = found;
+        search.accept(found);
         cardPage = cardIndex = 0;
-        layoutLight();
-        updateCards();
-        retarget(false);
-        heroDirty = statusDirty = true;
-        wake();
+        refreshSearch(true);
     }
 
     /** Input intent is known before the dialog has its first layout, avoiding a heading flash. */
     private void setSearchInputOpen(boolean open) {
-        if (open && !searchMode) searchHeadingOpacity.snap(0);
-        searchHeadingOpacity.target = open || !searchMode ? 0 : 1;
+        search.inputOpen(open);
         heroDirty = true;
         wake();
     }
 
-    private boolean tickSearchHeading(float dt) {
-        if (!searchMode) {
-            searchHeadingOpacity.snap(0);
-            return false;
-        }
-        return searchHeadingOpacity.step(dt);
-    }
+    private boolean tickSearchHeading(float dt) { return search.tickHeading(dt); }
 
     private void closeSearch() {
         cancelSearchWork();
-        searchMode = false;
-        searchResults.clear();
+        search.close();
         cardPage = cardIndex = 0;
         zone = Z_TOP;
         topIndex = Prefs.firstCategory() >= 0 ? tab : availableTopButton(5);
         if (!topControlVisible(topIndex)) zone = Z_SHELF;
+        refreshSearch(true);
+    }
+
+    /** Typing keeps input focus; accepted results and screen transitions retarget poster focus. */
+    private void refreshSearch(boolean retargetFocus) {
         layoutLight();
         updateCards();
-        retarget(false);
+        if (retargetFocus) retarget(false);
         heroDirty = statusDirty = true;
         wake();
     }
@@ -1455,13 +1373,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() { return spoken; }
 
     private void readAccessibilityState(HomeAccessibility.State s) {
-        s.sheetOpen = grid.open; s.searchMode = searchMode; s.drawerOpen = drawerOpen;
+        s.sheetOpen = grid.open; s.searchMode = search.active; s.drawerOpen = drawer.open;
         s.picksOn = picksOn(); s.weatherBottom = weatherBottom(); s.spinning = rouletteWork.spinning();
         s.tab = tab; s.zone = zone; s.gridIndex = grid.index; s.topIndex = topIndex;
-        s.cardIndex = cardIndex; s.shelfIndex = dock.index; s.drawerIndex = drawerIndex; s.widgetIndex = widgetIndex;
-        s.others = grid.items; s.shelf = dock.items; s.drawerItems = drawerItems; s.lightButtons = lightButtons; s.cards = cards;
-        s.topRects = topRects; s.cardRects = cardRects; s.tileRects = dock.rects; s.drawerRects = drawerRects;
-        s.weatherCard = weatherCard; s.tabs = tabs(); s.networkState = networkStatus.state();
+        s.cardIndex = cardIndex; s.shelfIndex = dock.index; s.drawerIndex = drawer.index; s.widgetIndex = widgetIndex;
+        s.others = grid.items; s.shelf = dock.items; s.drawerItems = drawer.items; s.lightButtons = lightButtons; s.cards = cards;
+        s.topRects = topRects; s.cardRects = cardRects; s.tileRects = dock.rects; s.drawerRects = drawer.rects;
+        s.weatherCard = drawer.weather; s.tabs = tabs(); s.networkState = networkStatus.state();
         s.k = k; s.h = h; s.scroll = grid.scroll.target;
         s.contentTop = contentTop; s.contentBottom = contentBottom;
         s.heroY = heroLayer.getTranslationY(); s.statusY = status.getTranslationY(); s.tilesY = tiles.getTranslationY();
@@ -1478,23 +1396,23 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         switch (group) {
             case Z_DRAWER:
-                if (!drawerOpen) openDrawer();
-                drawerIndex = i;
+                if (!drawer.open) openDrawer();
+                drawer.index = i;
                 break;
             case WIDGETS:
                 widgetIndex = i;
                 break;
             case Z_TOP:
-                if (drawerOpen) closeDrawer();
+                if (drawer.open) closeDrawer();
                 topIndex = i;
                 if (i < 5) selectTab(i);
                 break;
             case Z_CARDS:
-                if (drawerOpen) closeDrawer();
+                if (drawer.open) closeDrawer();
                 cardIndex = i;
                 break;
             case Z_SHELF:
-                if (drawerOpen) closeDrawer();
+                if (drawer.open) closeDrawer();
                 dock.index = i;
                 break;
             default:
@@ -1507,7 +1425,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private List<Integer> widgets() {
         List<Integer> out = new ArrayList<>();
-        if (!drawerOpen) return out;
+        if (!drawer.open) return out;
         if (weatherBottom()) out.add(0);
         return out;
     }
@@ -1542,12 +1460,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
     private int randomGenre() { return tab == 1 ? genres.selectedId() : tab == 3 ? tvGenres.selectedId() : 0; }
     private List<Recs.Pick> currentCatalog() {
-        if (searchMode) return searchResults;
+        if (search.active) return search.results;
         if (tab == 4) return java.util.Collections.emptyList();
         if (tab == 2) return watching.picks();
         List<Recs.Pick> base = baseCatalog();
         List<Recs.Pick> all = new ArrayList<>(base.subList(0, Math.min(24, base.size())));
-        if (tab != 4 && !all.isEmpty())
+        if (!all.isEmpty())
             all.add(randomPoster.tail(tab + ":" + randomGenre() + ":" + Ui.language, tab == 3 ? "tv" : "movie"));
         return all;
     }
@@ -1555,13 +1473,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
     private void updateCards() {
         if (lTab == null) return;
-        if (!searchMode && Prefs.firstCategory() < 0) {
+        if (!search.active && Prefs.firstCategory() < 0) {
             cards.clear();
             recs.setPosterWindow(java.util.Collections.emptyList());
             heroDirty = true;
             return;
         }
-        if (tab == 4 && !searchMode) {
+        if (tab == 4 && !search.active) {
             cards.clear();
             if (!rouletteWork.spinning() && !rouletteWork.finished()) {
                 rouletteWork.invalidatePosters();
@@ -1579,7 +1497,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (list != cards) {
             cards = list;
             cardIndex = Math.min(cardIndex, Math.max(0, list.size() - 1));
-            if (zone == Z_CARDS && list.isEmpty() && !searchMode) zone = Z_SHELF;
+            if (zone == Z_CARDS && list.isEmpty() && !search.active) zone = Z_SHELF;
             // A refresh can shrink the focused page without any directional key event.
             retarget(false);
         }
@@ -1588,7 +1506,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         recs.setPosterWindow(running ? posterWindow : java.util.Collections.emptyList());
         if (running) for (Recs.Pick pick : posterWindow) recs.poster(pick);
         if (running) {
-            if (searchMode || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0 && pick.watchingKey == null) recs.requestDuration(pick);
+            if (search.active || tab <= 2) for (Recs.Pick pick : cards) if (pick.id > 0 && pick.watchingKey == null) recs.requestDuration(pick);
             Backdrop b = cards.isEmpty() || cards.get(0).id <= 0 ? null : recs.backdrop(cards.get(0));
             if (cards.isEmpty() || b != null) background.show(b);
         }
@@ -1597,7 +1515,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void selectTab(int index) {
-        if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
+        if (search.active) { cancelSearchWork(); search.close(); }
         if (index == tab || !tabEnabled(index)) return;
         if (tab == 4 || index == 4) {
             rouletteWork.reset();
@@ -1644,21 +1562,21 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void drawLightTop(Canvas c) {
-        posters.begin(k, background.night(), tab, cardPage, searchMode, zone == Z_CARDS && !grid.open,
+        posters.begin(k, background.night(), tab, cardPage, search.active, zone == Z_CARDS && !grid.open,
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
         if (!picksOn()) {
             if (dockContinue.visible()) dockContinue.draw(c, k, contentBottom - 20 * k, background.night());
-            else if (!searchMode && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
+            else if (!search.active && Prefs.categoryCount() == 0) dockBanner.draw(c, k, noTopWidgets());
             return;
         }
         header.drawTabs(c, heading);
-        if (tab == 4 && !searchMode) {
+        if (tab == 4 && !search.active) {
             rouletteRenderer.draw(c, k, background.night(), lCardTitle, rouletteButtonFocus.value,
                     zone == Z_CARDS && !grid.open ? cardFocus[0].value : 0f, contentTop, contentBottom);
             return;
         }
-        if (tab == 2 && !searchMode && cards.isEmpty()) {
+        if (tab == 2 && !search.active && cards.isEmpty()) {
             c.drawText(watching.emptyText(), MARGIN * k, contentTop + 55 * k, lCardMeta);
         }
         int top = -1;
@@ -1674,21 +1592,21 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private HomeHeaderRenderer.Frame headerFrame() {
         applyTone();
-        headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = searchHeadingOpacity.value;
+        headingFrame.k = k; headingFrame.night = background.night(); headingFrame.headingOpacity = search.heading.value;
         headingFrame.vpnTint = Ui.clamp(vpnColor.value);
         headingFrame.hiddenTab = genres.hidesAnchor() ? 1 : tvGenres.hidesAnchor() ? 3 : watchingMenu.hidesAnchor() ? 2 : -1;
         headingFrame.tab = tab; headingFrame.networkState = networkStatus.state(); headingFrame.wifiLevel = networkStatus.wifiLevel(); headingFrame.tabs = tabs();
-        headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = searchQuery;
+        headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = search.query;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
         headingFrame.lDate = lDate; headingFrame.lTab = lTab; headingFrame.lTabOn = lTabOn;
         headingFrame.showDate = showHeaderPart("show_date"); headingFrame.weatherTop = weatherTop();
-        headingFrame.searchMode = searchMode; headingFrame.largePostersWithoutWidgets = largePostersWithoutWidgets;
+        headingFrame.searchMode = search.active; headingFrame.largePostersWithoutWidgets = largePostersWithoutWidgets;
         return headingFrame;
     }
 
     private boolean picksOn() {
-        return (Recs.hasKey(getContext()) || (!searchMode && Prefs.categoryEnabled(2)))
-                && (searchMode || Prefs.categoryCount() > 0);
+        return (Recs.hasKey(getContext()) || (!search.active && Prefs.categoryEnabled(2)))
+                && (search.active || Prefs.categoryCount() > 0);
     }
 
     private void openNetworkSettings() {
@@ -1705,19 +1623,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (dy >= 0) return false;
                 if (dock.items.isEmpty()) {
                     zone = Z_TOP;
-                    topIndex = searchMode || !picksOn() ? availableTopButton(5) : tab;
-                } else if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
+                    topIndex = search.active || !picksOn() ? availableTopButton(5) : tab;
+                } else if (!picksOn() || (cards.isEmpty() && (tab != 4 || search.active))) {
                     zone = Z_TOP;
-                    topIndex = searchMode || !picksOn() ? availableTopButton(5) : tab;
+                    topIndex = search.active || !picksOn() ? availableTopButton(5) : tab;
                 } else {
                     zone = Z_CARDS;
                     cardIndex = nearest(cardRects, cards.size(), dock.rects[dock.index].centerX());
                 }
                 break;
             case Z_CARDS:
-                if (tab == 4 && !searchMode) {
+                if (tab == 4 && !search.active) {
                     if (dx > 0 && rouletteWork.finished()) spinRoulette();
-                    else if (dy < 0) { zone = Z_TOP; topIndex = searchMode ? availableTopButton(5) : tab; }
+                    else if (dy < 0) { zone = Z_TOP; topIndex = search.active ? availableTopButton(5) : tab; }
                     else if (dy > 0) zone = Z_SHELF;
                     break;
                 }
@@ -1736,19 +1654,19 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         updateCards();
                         // updateCards() clamps focus for the last (possibly incomplete) page.
                     } else cardIndex = next;
-                    if (!searchMode && randomPoster.resetAway(cardPage * 5 + cardIndex, currentCatalog().size() - 1))
+                    if (!search.active && randomPoster.resetAway(cardPage * 5 + cardIndex, currentCatalog().size() - 1))
                         updateCards();
                 } else if (dy < 0) {
                     zone = Z_TOP;
                     // Route by visible position, not fixed action IDs. The last poster
                     // reaches the rightmost action; the preceding poster reaches the
                     // action immediately to its left (or the same one if only one exists).
-                    if (!searchMode && cardIndex == 4) {
+                    if (!search.active && cardIndex == 4) {
                         topIndex = posterCornerTarget(true);
-                    } else if (!searchMode && cardIndex == 3) {
+                    } else if (!search.active && cardIndex == 3) {
                         topIndex = posterCornerTarget(false);
                     } else {
-                        topIndex = searchMode ? availableTopButton(5) : tab;
+                        topIndex = search.active ? availableTopButton(5) : tab;
                     }
                 } else {
                     zone = Z_SHELF;
@@ -1762,7 +1680,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     topIndex = next;
                     if (topIndex < 5) selectTab(topIndex);   // category tabs: focusing a tab selects it
                 } else if (dy > 0) {
-                    if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
+                    if (!picksOn() || (cards.isEmpty() && (tab != 4 || search.active))) {
                         zone = Z_SHELF;
                     } else {
                         zone = Z_CARDS;
@@ -1794,12 +1712,4 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return best;
     }
 
-    // MARK: - Helpers
-
-    private static int blend(int a, int b, float f) {
-        int aa = a >>> 24, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
-        int ba = b >>> 24, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-        return (Math.round(aa + (ba - aa) * f) << 24) | (Math.round(ar + (br - ar) * f) << 16)
-                | (Math.round(ag + (bg - ag) * f) << 8) | Math.round(ab + (bb - ab) * f);
-    }
 }
