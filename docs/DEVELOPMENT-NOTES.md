@@ -12,3 +12,21 @@ unconfirmed; do not attribute it to a proven firmware bug yet. First compare key
 down/up/repeat events with the service enabled and disabled. If a repeat fallback
 is needed, preserve native repeats, stop on release/service shutdown and avoid
 applying volume twice. No volume-handling change is part of this refactoring pass.
+
+## Investigation resumed — 1B156
+
+On the same TV, both raw `getevent` traces contain only DOWN/UP; the user confirms
+hold works with tvOS Accessibility disabled and changes only one step when enabled.
+This establishes a service/filter-path interaction, not the exact Android failure.
+RemoteKeyService now has opt-in Android-boundary diagnostics:
+
+```sh
+adb shell setprop log.tag.tvOS-Volume DEBUG
+adb logcat -v time -s tvOS-Volume:D
+# Hold each volume key, release, then stop logcat with Ctrl+C.
+adb shell setprop log.tag.tvOS-Volume INFO
+```
+
+Log fields include key/action/repeat, down/event times, device/scan/flags and the
+actual handled result. Unrelated keys are not logged. Logging is off by default;
+no volume adjustment, event injection or repeat scheduling has been introduced.
