@@ -102,6 +102,7 @@ public class HomeActivity extends Activity {
     /** Home button pressed on the home screen: back to the entry state (focus on the first app, sheet closed). */
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (shortcuts != null) shortcuts.cancel();
         if (runWatchNextProbe(intent)) return;
         if (intent.getBooleanExtra("io.tvos.RESTART_HOME", false)) {
             setIntent(intent);
@@ -134,6 +135,11 @@ public class HomeActivity extends Activity {
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         if (level >= TRIM_MEMORY_COMPLETE) Recs.get(this).trim();
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (!focused && shortcuts != null) shortcuts.cancel();
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
