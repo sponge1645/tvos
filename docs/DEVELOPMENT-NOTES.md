@@ -261,3 +261,10 @@ independently, retaining their original geometry. Retire the superseded host
 volume prototype and its test; keep the device helper builder used by build.sh.
 Clarify the existing system-wide Incy pause in localized help. No VPN behavior,
 preferences, signing policy or Android versionCode changes.
+
+## Download fix and light settings palette — 1B160
+
+INCY rolling `latest` metadata now supplies the required file SHA-256 instead of
+a stale fixed hash; preserve package/certificate verification and fail closed on
+missing/malformed digest or unexpected asset URL. Light-theme unfocused settings
+capsules use #C9E4F7; focus geometry and dark palette are unchanged.

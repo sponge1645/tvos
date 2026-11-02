@@ -65,7 +65,7 @@ final class AppDownloadCatalog {
         new Entry("INCY", "llc.itdev.incy",
                 "e1430d81de511c72253a6a409910e609686f084e3944eab6f154999ac7128b13",
                 source("https://github.com/INCY-DEV/incy-platforms/releases/download/latest/Incy.apk",
-                        "67c8253b3dc5fd2a0a0b27d5d4736834fa43e276a1a54d3282f5df0935092836"), null, true, 381),
+                        null), "INCY-DEV/incy-platforms", false, 0),
         new Entry("Seena", "com.seena.app",
                 "731e85d4ed0224a0aea4d58058b5d73f82cb4d4e2dcf8dc9ab54b0c5ef20c59d",
                 source("https://seena.su/d.apk", null), null, false, 0),
@@ -101,7 +101,27 @@ final class AppDownloadCatalog {
         }
     }
 
+    private static Source incy(Entry app, BooleanSupplier cancelled) throws Exception {
+        JSONObject release = new JSONObject(ApkTransfer.json(
+                "https://api.github.com/repos/" + app.repository + "/releases/tags/latest", cancelled));
+        if (release.optBoolean("draft") || release.optBoolean("prerelease"))
+            throw new IOException("INCY release is not stable");
+        JSONArray assets = release.optJSONArray("assets");
+        if (assets != null) for (int i = 0; i < assets.length(); i++) {
+            ApkTransfer.checkCancelled(cancelled);
+            JSONObject asset = assets.getJSONObject(i);
+            if (!"Incy.apk".equals(asset.optString("name"))) continue;
+            String digest = asset.optString("digest");
+            if (!app.bootstrap.url.equals(asset.optString("browser_download_url"))
+                    || !digest.matches("sha256:[0-9a-f]{64}"))
+                throw new IOException("INCY release has no verified APK digest");
+            return source(app.bootstrap.url, digest.substring(7));
+        }
+        throw new IOException("INCY APK not found in release");
+    }
+
     static Source resolve(Entry app, boolean installed, String[] abis, BooleanSupplier cancelled) throws Exception {
+        if ("llc.itdev.incy".equals(app.packageName)) return incy(app, cancelled);
         if ("com.seena.app".equals(app.packageName)) return seena(abis, cancelled);
         if (!installed || app.fixedArtifact) {
             if (app.bootstrap == null) throw new IOException(AppStrings.get(R.string.runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru));

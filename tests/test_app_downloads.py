@@ -33,7 +33,7 @@ stubs = {
  public JSONArray(String s){items=next;}public JSONArray(List<JSONObject> v){items=v;}
  public int length(){return items.size();}public JSONObject getJSONObject(int n){return items.get(n);} }''',
  'org/json/JSONObject.java': '''package org.json; import java.util.*; public class JSONObject {
- public static String version="1.9.3";public JSONObject(){}public JSONObject(String text){data.put("version",version);}public final Map<String,Object> data=new HashMap<>();public JSONObject put(String k,Object v){data.put(k,v);return this;}
+ public static String version="1.9.3";public JSONObject(){}public JSONObject(String text){data.put("version",version);data.put("assets",new JSONArray(JSONArray.next));}public final Map<String,Object> data=new HashMap<>();public JSONObject put(String k,Object v){data.put(k,v);return this;}
  public String optString(String k){return data.containsKey(k)?data.get(k).toString():"";}
  public boolean optBoolean(String k){return Boolean.TRUE.equals(data.get(k));}
  public JSONArray optJSONArray(String k){return (JSONArray)data.get(k);} }'''
@@ -111,6 +111,25 @@ public class DownloadHarness {
   org.json.JSONObject.version="1.9.3";
   check(!ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(4),new AppDownloadCatalog.Source("https://seena.su/d.apk",null)),"Seena rolling first install authenticated by signer pin");
   check(ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(6),new AppDownloadCatalog.Source("https://example.test/update.apk",null)),"unpinned mirror update still requires installed app");
+  AppDownloadCatalog.Entry incy=AppDownloadCatalog.get(3);
+  org.json.JSONObject asset=new org.json.JSONObject().put("name","Incy.apk").put("browser_download_url",incy.bootstrap.url).put("digest","sha256:"+hash);
+  org.json.JSONArray.next=Arrays.asList(asset);
+  for(boolean installed:new boolean[]{false,true}){
+   reply("metadata".getBytes(),8);
+   AppDownloadCatalog.Source current=AppDownloadCatalog.resolve(incy,installed,arm32,()->false);
+   check(hash.equals(current.sha256)&&current.url.equals(incy.bootstrap.url),"INCY current release hash for install and update");
+  }
+  String nextHash=String.join("",Collections.nCopies(64,"a"));asset.put("digest","sha256:"+nextHash);reply("metadata".getBytes(),8);
+  check(nextHash.equals(AppDownloadCatalog.resolve(incy,false,arm32,()->false).sha256),"INCY follows replacement digest without catalog update");
+  for(String bad:new String[]{"","sha256:bad","sha512:"+hash}){
+   asset.put("digest",bad);reply("metadata".getBytes(),8);
+   rejects(()->AppDownloadCatalog.resolve(incy,false,arm32,()->false),"INCY missing/malformed digest fails closed");
+  }
+  asset.put("digest","sha256:"+hash).put("browser_download_url","https://test.invalid/Incy.apk");reply("metadata".getBytes(),8);
+  rejects(()->AppDownloadCatalog.resolve(incy,true,arm32,()->false),"INCY foreign URL rejected");
+  org.json.JSONArray.next=Collections.emptyList();reply("metadata".getBytes(),8);
+  rejects(()->AppDownloadCatalog.resolve(incy,false,arm32,()->false),"INCY missing APK rejected");
+  rejects(()->AppDownloadCatalog.resolve(incy,false,arm32,()->true),"INCY cancellation before metadata");
   File tmp=Files.createTempDirectory("app-transfer-").resolve("part.apk").toFile();
   Response ok=reply(bytes,bytes.length);
   ApkTransfer.download(src,tmp,()->false,p->{});

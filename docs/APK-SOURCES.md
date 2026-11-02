@@ -23,3 +23,14 @@ fixed APK hash. Both still require package `com.seena.app` and certificate SHA-2
 
 This trusts APKs signed by that identity, including future versions; it does not
 pin a specific reviewed binary or establish the absence of application defects.
+
+## INCY rolling release (1B160)
+
+The publisher replaces Incy.apk under the `latest` tag. A historical fixed file
+hash therefore rejected legitimate replacements. Resolve the exact Incy.apk asset
+from the official INCY-DEV/incy-platforms releases/tags/latest API on both first
+installation and update. Require its SHA-256 digest and expected official download
+URL; missing/malformed metadata fails closed. APK bytes must match that digest,
+then package and existing pinned signer checks still apply. No unsigned or
+hashless fallback is used. Replacement between metadata and download is rejected;
+retry obtains fresh metadata. GitHub rate limits/network failures remain errors.

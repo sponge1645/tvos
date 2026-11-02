@@ -22,7 +22,7 @@ public class SettingsShadowHarness {
  public static void main(String[] args){SettingsShadowHarness h=new SettingsShadowHarness();
   for(float k:new float[]{2f/3,1,2})for(boolean light:new boolean[]{false,true})for(float f:new float[]{0,.5f,1}){
    h.k=k;h.light=light;h.pop[0].snap(f);h.rowRect.set(1000*k,200*k,1824*k,272*k);Canvas c=new Canvas();near(h.drawApprovedCapsule(c,0),f,"focus state retained");near(h.rowRect.left,1000*k,"label bounds never mutated");near(h.rowRect.top,200*k,"logical focus bounds retained");near(h.rowRect.right,1824*k,"logical row width retained");
-   check(entries(c,"round").get(0).color==(light?0xFFD1E3FB:0xFF31444B),"theme-specific unfocused capsule color");
+   check(entries(c,"round").get(0).color==(light?0xFFC9E4F7:0xFF31444B),"theme-specific unfocused capsule color");
    if(f==0){check(entries(c,"shadow").isEmpty(),"no focus shadow at rest");continue;}
    Canvas.Entry shadow=entries(c,"shadow").get(0),pill=entries(c,"round").get(1);near(shadow.t-pill.t,15*k*f,"shadow points down");near(shadow.l,pill.l,"no horizontal displacement");near(shadow.blur,40*k,"requested blur in both themes/scales");check((shadow.color>>>24)==Math.round(255*.4f*f),"focus-weighted 40 percent opacity");near(pill.r-pill.l,(824*.9f+36)*k*(1+.012f*f),"focused pill geometry retained");
   }

@@ -48,7 +48,7 @@ public final class SettingsRowRenderer {
         float labelX = row.left + row.width() * 0.10f + 10 * k;
         bounds.set(labelX - 30 * k, row.top - 5 * k, row.right + 16 * k, row.bottom + 5 * k);
         float radius = bounds.height() / 2f;
-        capsule.setColor(light ? 0xFFD1E3FB : 0xFF31444B);
+        capsule.setColor(light ? 0xFFC9E4F7 : 0xFF31444B);
         c.drawRoundRect(bounds, radius, radius, capsule);
         if (f > 0.01f) {
             float grow = 1f + 0.012f * f;
