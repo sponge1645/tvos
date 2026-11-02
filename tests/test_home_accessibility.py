@@ -25,12 +25,12 @@ files={
 import java.util.*;import android.graphics.*;import android.content.Context;
 import static io.tvos.HomeAccessibility.*;
 public class AccessibilityHarness implements HomeAccessibility.Host {
- boolean sheetOpen,searchMode,drawerOpen,picks=true,weather=true,gridDirty;int tab,zone=Z_SHELF,gridIndex,topIndex,cardIndex,shelfIndex,drawerIndex,widgetIndex;
- List<HomeApps.Item> others=new ArrayList<>(Arrays.asList(new HomeApps.Item("YouTube"),new HomeApps.Item("Settings"))),shelf=new ArrayList<>(Arrays.asList(new HomeApps.Item("Lampa"))),drawerItems=new ArrayList<>(Arrays.asList(new HomeApps.Item("HDMI"))),lightButtons=new ArrayList<>();
+ boolean searchMode,drawerOpen,picks=true,weather=true,gridDirty;int tab,zone=Z_SHELF,topIndex,cardIndex,drawerIndex,widgetIndex;
+ List<HomeApps.Item> drawerItems=new ArrayList<>(Arrays.asList(new HomeApps.Item("HDMI"))),lightButtons=new ArrayList<>();
  List<Recs.Pick> cards=new ArrayList<>(Arrays.asList(new Recs.Pick("Title","2024, 120 min","Seena")));
- RectF[] topRects=new RectF[11],cardRects={new RectF(80,262,300,704)},tileRects={new RectF(80,814,304,940)},drawerRects={new RectF(80,540,304,666)};RectF weatherCard=new RectF(80,708,1840,1008);
+ RectF[] topRects=new RectF[11],cardRects={new RectF(80,262,300,704)},drawerRects={new RectF(80,540,304,666)};RectF weatherCard=new RectF(80,708,1840,1008);
  float k=1,h=1080,contentTop=226,contentBottom=788;static class Layer {float y;float getTranslationY(){return y;}}final Layer heroLayer=new Layer(),status=new Layer(),tiles=new Layer();
- static class Spring {float target;}final Spring scroll=new Spring();static class Work {boolean active;boolean spinning(){return active;}}final Work rouletteWork=new Work();
+ static class Spring {float target;}static class DockState {int index;List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("Lampa")));RectF[] rects={new RectF(80,814,304,940)};}final DockState dock=new DockState();static class Grid {boolean open;int index;final Spring scroll=new Spring();List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("YouTube"),new HomeApps.Item("Settings")));}final Grid grid=new Grid();static class Work {boolean active;boolean spinning(){return active;}}final Work rouletteWork=new Work();
  final NetworkStatus networkStatus=new NetworkStatus();final HomeData data=new HomeData();final Context context=new Context();
  final HomeAccessibility source=new HomeAccessibility(context,data,this);final boolean[] visible=new boolean[11];
  int moves,wakes,activations,retargets,gridRetargets,selected=-1;static class Click {int count;void move(){count++;}void app(){count++;}}final Click click=new Click();
@@ -60,18 +60,18 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   Prefs.city="Tokyo";check(h.source.text(8001).startsWith("Tokyo."),"live city");h.data.weather.temp=Double.NaN;check(h.source.text(8001).contains("No weather data"),"missing weather");
   h.source.focus(2001);check(!h.drawerOpen&&h.zone==Z_SHELF,"focus closes drawer");
   h.source.focus(4004);check(h.topIndex==3&&h.selected==3&&h.zone==Z_TOP,"category changes through host");
-  h.sheetOpen=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==151,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
-  h.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
-  h.source.focus(9002);check(h.gridIndex==1&&h.gridDirty&&h.gridRetargets==1&&h.source.focused()==9002,"grid focus/scroll host");
+  h.grid.open=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==151,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
+  h.grid.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
+  h.source.focus(9002);check(h.grid.index==1&&h.gridDirty&&h.gridRetargets==1&&h.source.focused()==9002,"grid focus/scroll host");
   int moves=h.moves;h.source.focus(2001);check(h.moves==moves,"sheet blocks underlying focus");h.source.focus(9003);check(h.moves==moves,"invalid grid index ignored");
-  h.sheetOpen=false;h.tab=4;h.heroLayer.y=0;check(h.source.bounds(5001,r)&&r.left==665&&r.top==444&&r.right==1255&&r.bottom==570,"shared roulette button bounds");
+  h.grid.open=false;h.tab=4;h.heroLayer.y=0;check(h.source.bounds(5001,r)&&r.left==665&&r.top==444&&r.right==1255&&r.bottom==570,"shared roulette button bounds");
   h.rouletteWork.active=true;h.source.focus(3001);check(h.moves==moves,"spinning locks TalkBack focus");h.rouletteWork.active=false;h.source.focus(5001);check(h.zone==Z_CARDS&&h.source.text(5001).equals("Random Movie"),"roulette node");
   h.source.click(5001);check(h.activations==1,"click delegates existing activation");
   h.visible[10]=false;check(!h.source.bounds(4011,r),"disabled top control has no bounds");h.source.focus(4011);check(h.zone==Z_CARDS,"disabled focus ignored");
   for(int id:new int[]{-1,0,999999}){check(h.source.text(id).isEmpty()&&!h.source.bounds(id,r),"invalid IDs safely ignored");h.source.focus(id);}
   check(!h.source.talkBack(),"disabled service");h.context.manager.enabled=true;check(!h.source.talkBack(),"nonspoken accessibility alone is insufficient");h.context.manager.services.add(new Object());check(h.source.talkBack(),"spoken feedback service detection");
-  h.sheetOpen=false;h.searchMode=true;check(!h.ids().contains(4001)&&h.ids().contains(5001),"search hides categories but keeps result node");
-  h.tab=0;h.cards.clear();h.shelf.clear();h.drawerItems.clear();h.zone=Z_SHELF;check(h.source.focused()==-1&&!h.ids().contains(5001),"empty lists immediately replace prior snapshot");
+  h.grid.open=false;h.searchMode=true;check(!h.ids().contains(4001)&&h.ids().contains(5001),"search hides categories but keeps result node");
+  h.tab=0;h.cards.clear();h.dock.items.clear();h.drawerItems.clear();h.zone=Z_SHELF;check(h.source.focused()==-1&&!h.ids().contains(5001),"empty lists immediately replace prior snapshot");
   h.source.clear();check(h.source.focused()==-1,"snapshot refreshes normally after release");
   System.out.println("PASS: complete accessibility source, live snapshot, reading order/labels/language, bounds/edges, real navigation, sheet/search/roulette guards and empty lists");
  }

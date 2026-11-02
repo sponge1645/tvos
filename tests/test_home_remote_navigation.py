@@ -21,12 +21,13 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
  boolean dockContinueKey(KeyEvent e){return false;}
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static final int Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
- int zone=Z_SHELF,shelfIndex,drawerIndex,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;
+ int zone=Z_SHELF,drawerIndex,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;
  boolean running=true,vpnPress;int vpnOpens;final Runnable vpnHold=this::openVpnOnHold;void openVpnApp(){vpnOpens++;}
- boolean okDown,backDown,sheetOpen,searchMode,drawerOpen,enabled=true,heroDirty,statusDirty;
- List<HomeApps.Item> shelf=new ArrayList<>(),drawerItems=new ArrayList<>();List<Object> cards=new ArrayList<>(),searchResults=new ArrayList<>();
+ boolean okDown,backDown,searchMode,drawerOpen,enabled=true,heroDirty,statusDirty;
+ List<HomeApps.Item> drawerItems=new ArrayList<>();List<Object> cards=new ArrayList<>(),searchResults=new ArrayList<>();
  static class RectF {final float x;RectF(float x){this.x=x;}float centerX(){return x;}}
- RectF[] tileRects=new RectF[0],cardRects={new RectF(150),new RectF(550),new RectF(950),new RectF(1350),new RectF(1750)},topRects=new RectF[11];
+ RectF[] cardRects={new RectF(150),new RectF(550),new RectF(950),new RectF(1350),new RectF(1750)},topRects=new RectF[11];
+ static class DockState {int index;List<HomeApps.Item> items=new ArrayList<>();RectF[] rects=new RectF[0];}final DockState dock=new DockState();static class Grid {boolean open;}final Grid grid=new Grid();
  static final String[] TAB_KIND={null,"movie",null,"tv",null};
  static class Recs {List<Object> catalog(String kind){return Arrays.asList(new Object(),new Object(),new Object());}}final Recs recs=new Recs();
  static class Roulette {boolean spin,done;boolean spinning(){return spin;}boolean finished(){return done;}void cancel(){spin=false;}}final Roulette rouletteWork=new Roulette();
@@ -35,18 +36,18 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
  static class Genres {void cancelHold(){}void arm(){}void released(){}}final Genres genres=new Genres(),tvGenres=new Genres(),watchingMenu=new Genres();
  List<Object> currentCatalog(){return searchMode?searchResults:recs.catalog(TAB_KIND[tab]);}
  final Handler handler=new Handler();final HomeDockEditor<HomeApps.Item> dockEditor=new HomeDockEditor<>(handler,new HomeDockEditor.Host<HomeApps.Item>(){
-  public boolean eligible(){return okDown&&!sheetOpen&&zone==Z_SHELF&&!shelf.isEmpty();}public List<HomeApps.Item> items(){return shelf;}public int index(){return shelfIndex;}public void begin(){}
-  public void move(int a,int b){Collections.swap(shelf,a,b);shelfIndex=b;}
-  public void finish(List<HomeApps.Item> before){if(before!=null){HomeApps.Item selected=shelf.get(shelfIndex);shelf=before;shelfIndex=shelf.indexOf(selected);}}public void saved(){}public void canceled(){}
+  public boolean eligible(){return okDown&&!grid.open&&zone==Z_SHELF&&!dock.items.isEmpty();}public List<HomeApps.Item> items(){return dock.items;}public int index(){return dock.index;}public void begin(){}
+  public void move(int a,int b){Collections.swap(dock.items,a,b);dock.index=b;}
+  public void finish(List<HomeApps.Item> before){if(before!=null){HomeApps.Item selected=dock.items.get(dock.index);dock.items=before;dock.index=dock.items.indexOf(selected);}}public void saved(){}public void canceled(){}
  },items->Prefs.setShelf(HomeApps.shelfOrder(items)));
- RemoteNavigationHarness(int n){for(int i=0;i<11;i++)topRects[i]=new RectF(i*100);for(int i=0;i<n;i++)shelf.add(new HomeApps.Item(i));tileRects=new RectF[n];for(int i=0;i<n;i++)tileRects[i]=new RectF(120+i*240);drawerItems.add(new HomeApps.Item(99));updateCards();}
+ RemoteNavigationHarness(int n){for(int i=0;i<11;i++)topRects[i]=new RectF(i*100);for(int i=0;i<n;i++)dock.items.add(new HomeApps.Item(i));dock.rects=new RectF[n];for(int i=0;i<n;i++)dock.rects[i]=new RectF(120+i*240);drawerItems.add(new HomeApps.Item(99));updateCards();}
  boolean picksOn(){return enabled;}void wake(){}void moveGrid(int dx,int dy){}void openDrawer(){drawerOpen=true;zone=Z_DRAWER;}void closeDrawer(){drawerOpen=false;zone=Z_SHELF;}
- List<Integer> widgets(){return Collections.emptyList();}void retarget(boolean snap){retargets++;}void closeSheet(){sheetOpen=false;}void layoutLight(){}void setSearchInputOpen(boolean open){}void cancelSearchWork(){}void selectTab(int id){tab=id;}
+ List<Integer> widgets(){return Collections.emptyList();}void retarget(boolean snap){retargets++;}void closeSheet(){grid.open=false;}void layoutLight(){}void setSearchInputOpen(boolean open){}void cancelSearchWork(){}void selectTab(int id){tab=id;}
  void updateCards(){cards=new ArrayList<>(searchMode?searchResults:recs.catalog(null));}void spinRoulette(){rouletteWork.spin=true;}void activate(){launches++;}
  void event(int key,boolean down,int repeats){check(onKey(new KeyEvent(down?0:1,key,repeats)),"direction/OK/Back handled");}
  void key(int key){event(key,true,0);event(key,false,0);}void right(){key(22);}void left(){key(21);}void up(){key(19);}void down(){key(20);}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
- void traverse(){zone=Z_SHELF;shelfIndex=0;for(int i=0;i<shelf.size()+2;i++){int before=shelfIndex;right();check(shelfIndex==Math.min(shelf.size()-1,before+1),"right moves to next Dock app or stops at edge");}for(int i=0;i<shelf.size()+2;i++){int before=shelfIndex;left();check(shelfIndex==Math.max(0,before-1),"left moves to previous Dock app or stops at edge");}}
+ void traverse(){zone=Z_SHELF;dock.index=0;for(int i=0;i<dock.items.size()+2;i++){int before=dock.index;right();check(dock.index==Math.min(dock.items.size()-1,before+1),"right moves to next Dock app or stops at edge");}for(int i=0;i<dock.items.size()+2;i++){int before=dock.index;left();check(dock.index==Math.max(0,before-1),"left moves to previous Dock app or stops at edge");}}
 '''+methods+'''
  public static void main(String[] args){
   for(int count=1;count<=8;count++){
@@ -58,12 +59,12 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
     h.beginSearch();h.searchResults.clear();h.updateCards();h.traverse();h.up();check(h.zone==Z_TOP,"empty search permits top focus");h.down();check(h.zone==Z_SHELF,"empty search returns to Dock");h.traverse();h.key(4);h.traverse();
    }
    h.down();check(h.zone==Z_DRAWER&&h.drawerOpen,"Dock down opens drawer");h.up();check(h.zone==Z_SHELF,"drawer up returns to Dock");h.traverse();
-   h.shelfIndex=0;h.event(22,false,0);check(h.shelfIndex==0,"direction release alone never moves");h.event(22,true,1);check(h.shelfIndex==Math.min(1,count-1),"held arrow repeat moves normally");
+   h.dock.index=0;h.event(22,false,0);check(h.dock.index==0,"direction release alone never moves");h.event(22,true,1);check(h.dock.index==Math.min(1,count-1),"held arrow repeat moves normally");
   }
-  RemoteNavigationHarness h=new RemoteNavigationHarness(6);h.key(23);check(h.launches==1&&!h.dockEditor.editing(),"short OK launches exactly once");h.event(23,true,0);h.handler.advance(500);h.event(23,false,0);check(h.dockEditor.editing(),"long hold enters editor");String first=h.shelf.get(0).key;h.right();check(h.shelfIndex==1&&h.shelf.get(1).key.equals(first),"edit mode reorders independently");h.key(23);check(!h.dockEditor.editing()&&Prefs.saves==1&&h.launches==1,"save consumes release without launching");h.traverse();
-  h.rouletteWork.spin=true;int at=h.shelfIndex;h.right();check(h.shelfIndex==at,"running roulette retains existing focus lock");h.key(4);check(!h.rouletteWork.spin,"Back releases roulette lock");h.traverse();
+  RemoteNavigationHarness h=new RemoteNavigationHarness(6);h.key(23);check(h.launches==1&&!h.dockEditor.editing(),"short OK launches exactly once");h.event(23,true,0);h.handler.advance(500);h.event(23,false,0);check(h.dockEditor.editing(),"long hold enters editor");String first=h.dock.items.get(0).key;h.right();check(h.dock.index==1&&h.dock.items.get(1).key.equals(first),"edit mode reorders independently");h.key(23);check(!h.dockEditor.editing()&&Prefs.saves==1&&h.launches==1,"save consumes release without launching");h.traverse();
+  h.rouletteWork.spin=true;int at=h.dock.index;h.right();check(h.dock.index==at,"running roulette retains existing focus lock");h.key(4);check(!h.rouletteWork.spin,"Back releases roulette lock");h.traverse();
   RemoteNavigationHarness offline=new RemoteNavigationHarness(6);offline.enabled=false;offline.up();check(offline.zone==Z_TOP,"no-catalog home reaches actions");offline.down();check(offline.zone==Z_SHELF,"no-catalog home returns to Dock");offline.traverse();
-  RemoteNavigationHarness empty=new RemoteNavigationHarness(0);empty.right();empty.left();check(empty.shelfIndex==0,"empty Dock arrows remain safe");empty.up();check(empty.zone==Z_TOP,"empty Dock reaches top controls");
+  RemoteNavigationHarness empty=new RemoteNavigationHarness(0);empty.right();empty.left();check(empty.dock.index==0,"empty Dock arrows remain safe");empty.up();check(empty.zone==Z_TOP,"empty Dock reaches top controls");
   RemoteNavigationHarness vpn=new RemoteNavigationHarness(1);vpn.zone=Z_TOP;vpn.topIndex=7;
   vpn.searchMode=true;vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
   vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold works inside Search and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");

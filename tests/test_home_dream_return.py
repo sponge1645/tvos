@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
-methods='\n'.join(block(home,s) for s in ['    void prepareDreamReturn(', '    void cancelDreamReturn(', '    private boolean reducedDreamMotion(', '    void revealFromDream(', '    private void updateMotion(', '    private static void show(', '    private static float smoothstep('])
+methods='\n'.join(block(home,s) for s in ['    void prepareDreamReturn(', '    void cancelDreamReturn(', '    private boolean reducedDreamMotion(', '    void revealFromDream(', '    private void updateMotion('])
 files={
 'android/content/BroadcastReceiver.java':'package android.content;public abstract class BroadcastReceiver {public abstract void onReceive(Context c,Intent i);}',
 'android/content/Intent.java':'''package android.content;public class Intent {public static final String ACTION_CLOSE_SYSTEM_DIALOGS="close",ACTION_DREAMING_STARTED="start",ACTION_DREAMING_STOPPED="stop";final String action;String reason;public Intent(String action){this.action=action;}public Intent setPackage(String p){return this;}public Intent putExtra(String k,String v){reason=v;return this;}public String getAction(){return action;}public String getStringExtra(String k){return reason;}}''',
@@ -14,17 +14,18 @@ files={
 'android/animation/ValueAnimator.java':'package android.animation;public class ValueAnimator {public static boolean enabled=true;public static boolean areAnimatorsEnabled(){return enabled;}}',
 'android/view/View.java':'''package android.view;public class View {public static final int VISIBLE=0,INVISIBLE=4;public float alpha=1,y,sx=1,sy=1;public int visibility;public void setAlpha(float n){alpha=n;}public void setTranslationY(float n){y=n;}public void setVisibility(int v){visibility=v;}public void setScaleX(float n){sx=n;}public void setScaleY(float n){sy=n;}}''',
 'io/tvos/HomeDreamReturn.java':Path('app/src/io/tvos/HomeDreamReturn.java').read_text(),
+'io/tvos/home/HomeLayerMotion.java':Path('app/src/io/tvos/home/HomeLayerMotion.java').read_text(),
 'io/tvos/home/HomeReveal.java':Path('app/src/io/tvos/home/HomeReveal.java').read_text(),
-'io/tvos/DreamReturnHarness.java':'''package io.tvos;import io.tvos.home.HomeReveal;
+'io/tvos/DreamReturnHarness.java':'''package io.tvos;import io.tvos.home.HomeReveal;import io.tvos.home.HomeLayerMotion;
 import android.content.*;import android.view.View;import android.os.*;
 public class DreamReturnHarness {
- static final int VISIBLE=0,INVISIBLE=4;static final float SHIFT=560;
+ static final int VISIBLE=0,INVISIBLE=4;
  final Context context=new Context();final HomeReveal reveal=new HomeReveal();
- static class Spring {float value;}final Spring drawer=new Spring(),sheet=new Spring();
+ static class Spring {float value;}final Spring drawer=new Spring();static class Grid {boolean open;final Spring sheet=new Spring();}final Grid grid=new Grid();
  final View revealBackdrop=new View(),sky=new View(),heroLayer=new View(),status=new View(),platter=new View(),tiles=new View(),drawerLayer=new View(),sheetLayer=new View();
- final View[] revealContent={sky,heroLayer};float h=1080,k=1,drawerExtraHeight;boolean running=true,drawerOpen,sheetOpen,searchMode;int wakes;
+ int h=1080;float k=1,drawerExtraHeight;boolean running=true,drawerOpen,searchMode;int wakes;
+ final HomeLayerMotion layerMotion=new HomeLayerMotion(revealBackdrop,sky,heroLayer,status,platter,tiles,drawerLayer,sheetLayer);
  static class Rect {float top=788;}final Rect platterRect=new Rect();static class Editor {boolean editing(){return false;}}final Editor dockEditor=new Editor();
- static class Ui {static float clamp(float n){return Math.max(0,Math.min(1,n));}}
  Context getContext(){return context;}void wake(){wakes++;}
 '''+methods+'''
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b,String why){check(Math.abs(a-b)<.0001,why+" "+a+" != "+b);}
@@ -57,8 +58,16 @@ public class DreamReturnHarness {
   v.context.reduced=true;v.prepareDreamReturn();check(!v.reveal.prepared(),"Reduce Motion skips preparation");v.revealFromDream();check(!v.reveal.active(),"Reduce Motion skips effect");near(v.sky.sx,1,"Reduce Motion preserves normal content");near(v.sky.alpha,1,"Reduce Motion keeps full opacity");check(v.revealBackdrop.visibility==INVISIBLE,"Reduce Motion adds no backdrop draw");near(v.tiles.y,0,"Reduce Motion preserves normal Dock");
   v.context.reduced=false;android.animation.ValueAnimator.enabled=false;v.prepareDreamReturn();check(!v.reveal.prepared(),"system animations disabled skips preparation");v.revealFromDream();check(!v.reveal.active(),"system animation disable respected");android.animation.ValueAnimator.enabled=true;
   v.revealFromDream();v.reveal.cancel();v.updateMotion();near(v.sky.sx,1,"pause cancellation resets scale");near(v.tiles.y,0,"pause cancellation resets translation");
-  for(int guard=0;guard<4;guard++){v.running=guard!=0;v.drawerOpen=guard==1;v.sheetOpen=guard==2;v.searchMode=guard==3;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
-  v.running=true;v.drawerOpen=v.sheetOpen=v.searchMode=false;v.drawer.value=1;v.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.drawerExtraHeight=30;v.updateMotion();near(v.tiles.y,-590,"expanded drawer lifts Dock by added button height");near(v.platter.y,v.tiles.y,"Dock background and icons stay together");v.drawerExtraHeight=0;v.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
+  for(int guard=0;guard<4;guard++){v.running=guard!=0;v.drawerOpen=guard==1;v.grid.open=guard==2;v.searchMode=guard==3;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
+  v.running=true;v.drawerOpen=v.grid.open=v.searchMode=false;v.drawer.value=1;v.grid.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.drawerExtraHeight=30;v.updateMotion();near(v.tiles.y,-590,"expanded drawer lifts Dock by added button height");near(v.platter.y,v.tiles.y,"Dock background and icons stay together");v.drawerExtraHeight=0;v.grid.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
+  for(int width:new int[]{1280,1920,3840}){
+   DreamReturnHarness sized=new DreamReturnHarness();sized.k=width/1920f;sized.h=width*9/16;sized.platterRect.top=788*sized.k;sized.drawerExtraHeight=30*sized.k;
+   sized.drawer.value=1;sized.updateMotion();near(sized.tiles.y,-590*sized.k,"drawer lift scales at every resolution");near(sized.drawerLayer.y,0,"open drawer at resting coordinates");near(sized.status.alpha,0,"drawer hides top controls");
+   sized.drawer.value=1.1f;sized.updateMotion();near(sized.tiles.y,-649*sized.k,"spring overshoot retained in translation");near(sized.drawerLayer.y,-56*sized.k,"drawer overshoot retained");near(sized.drawerLayer.alpha,1,"overshoot opacity clamped");
+   sized.drawer.value=-.1f;sized.grid.sheet.value=-.1f;sized.updateMotion();near(sized.heroLayer.alpha,1,"negative springs clamp only opacity");near(sized.tiles.y,59*sized.k,"negative drawer spring retains position");check(sized.drawerLayer.visibility==INVISIBLE&&sized.sheetLayer.visibility==INVISIBLE,"closed negative spring layers hidden");
+   sized.grid.open=true;sized.updateMotion();check(sized.sheetLayer.visibility==VISIBLE&&sized.sheetLayer.alpha==0,"opening sheet starts visible before first positive frame");sized.grid.sheet.value=1.1f;sized.updateMotion();near(sized.sheetLayer.alpha,1,"sheet overshoot opacity clamped");near(sized.sheetLayer.sx,1,"sheet overshoot scale clamped");near(sized.tiles.alpha,0,"sheet hides Dock");
+   sized.grid.open=false;sized.grid.sheet.value=0;sized.drawer.value=0;sized.prepareDreamReturn();near(sized.tiles.y,312*sized.k,"dream Dock offset scales at every resolution");near(sized.sky.sx,.9f,"dream content scale independent of resolution");
+  }
   System.out.println("PASS: actual dream receiver/lifecycle, SDK 28/30/33/34, staged first frame, delayed STOP/focus/resume ordering, duplicate/stale/foreign-app guards, real HomeView transforms, cubic ease-out, Reduce Motion and cleanup");
  }
 }'''}

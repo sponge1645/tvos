@@ -5,6 +5,7 @@ import io.tvos.home.dock.HomeDockEditor;
 
 import io.tvos.home.HomeLayout;
 import io.tvos.home.HomeGeometry;
+import io.tvos.home.HomeLayerMotion;
 import io.tvos.home.HomePosterWindow;
 import io.tvos.home.HomeFocusPolicy;
 import io.tvos.home.HomeReveal;
@@ -51,13 +52,8 @@ import java.util.concurrent.Executors;
 final class HomeView extends ViewGroup implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
     // Shared side edges; vertical margins and content centering live in HomeLayout.
     private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT;
-    // Bottom drawer (measured with it open; everything moves up by SHIFT).
-    private static final float SHIFT = 560;
     // "All Apps" sheet.
     private static final int COLUMNS = HomeAccessibility.COLUMNS, VISIBLE_ROWS = 3;
-    private static final float GRID_W = HomeAccessibility.GRID_W, GRID_H = HomeAccessibility.GRID_H,
-            GRID_GAP = HomeAccessibility.GRID_GAP, GRID_ROW = HomeAccessibility.GRID_ROW,
-            GRID_TOP = HomeAccessibility.GRID_TOP;
     private static final int SMOKE = 0xFF111113, WHITE = 0xFFF5F5F7;
     /** Search glass shadow radius shared with the cached Shadows renderer. */
     private static final float SHADOW_BLUR = 26;
@@ -135,18 +131,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private float contentTop, contentBottom;
     private final HomeReveal reveal = new HomeReveal();
     private final View[] revealContent, redrawLayers;
+    private final HomeLayerMotion layerMotion;
 
     // Shelf
-    private List<HomeApps.Item> shelf = new ArrayList<>();
-    private Spring[] tileFocus = new Spring[0];
-    private RectF[] tileRects = new RectF[0];
+    private final HomeDockState<HomeApps.Item> dock = new HomeDockState<>((a, b) -> a.key.equals(b.key));
     private final RectF platterRect = new RectF();
-    private int shelfIndex;
-    private Spring[] dockSlide = new Spring[0];
-    private final Spring dockLift = new Spring(0.3f, 0.72f, 0);
-    private int dockLiftIndex = -1;
-    private long dockWiggleAt;
-    private boolean dockAnimating;
 
     // Bottom drawer
     private List<HomeApps.Item> drawerItems = new ArrayList<>();
@@ -160,13 +149,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int drawerIndex;
 
     // "All Apps" sheet
-    private List<HomeApps.Item> others = new ArrayList<>();
-    private Spring[] gridFocus = new Spring[0];
-    private final Spring sheet = new Spring(0.38f, 0.9f, 0);
-    private final Spring scroll = new Spring(0.34f, 1f, 0);
+    private final HomeGridState<HomeApps.Item> grid = new HomeGridState<>(COLUMNS, VISIBLE_ROWS);
     private final RectF focusedCell = new RectF();
-    private boolean sheetOpen;
-    private int gridIndex;
 
     // Frames
     private boolean running, tilesDirty, statusDirty, heroDirty, drawerDirty, gridDirty, motionDirty = true;
@@ -181,7 +165,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Runnable vpnHold = this::openVpnOnHold;
 
     private boolean vpnFocused() {
-        return running && !sheetOpen && !drawerOpen && zone == Z_TOP
+        return running && !grid.open && !drawerOpen && zone == Z_TOP
                 && topIndex == 7 && topButtonEnabled(2);
     }
     private void openVpnOnHold() {
@@ -202,10 +186,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         appWork.toggleVpn();
     }
     private void beginDockEdit() {
-        dockLiftIndex = shelfIndex;
-        dockWiggleAt = SystemClock.uptimeMillis();
-        dockLift.target = 1;
-        dockAnimating = true;
+        dock.begin(SystemClock.uptimeMillis());
         click.open();
         notices.hint(AppStrings.get(R.string.home_dock_edit_hint));
         tilesDirty = true;
@@ -286,10 +267,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         super(a);
         activity = a;
         appWork = new HomeAppWork(a.getApplicationContext(), LOADER, handler, () -> running,
-                (shelf, drawer, others) -> {
-                    setShelf(shelf);
+                (loadedShelf, drawer, loadedOthers) -> {
+                    setShelf(loadedShelf);
                     setDrawerItems(drawer);
-                    if (!sheetOpen) setOthers(others);
+                    if (!grid.open) setOthers(loadedOthers);
                 }, () -> showToast(AppStrings.get(R.string.home_vpn_toggle_failed)));
         data = HomeData.get(a);
         widgets = new HomeWidgets(a,data);
@@ -326,9 +307,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             @Override public void toast(String text) { showToast(text); }
         });
         dockEditor = new HomeDockEditor<>(handler, new HomeDockEditor.Host<HomeApps.Item>() {
-            @Override public boolean eligible() { return okDown && !sheetOpen && zone == Z_SHELF && !shelf.isEmpty(); }
-            @Override public List<HomeApps.Item> items() { return shelf; }
-            @Override public int index() { return shelfIndex; }
+            @Override public boolean eligible() { return okDown && !grid.open && zone == Z_SHELF && !dock.items.isEmpty(); }
+            @Override public List<HomeApps.Item> items() { return dock.items; }
+            @Override public int index() { return dock.index; }
             @Override public void begin() { beginDockEdit(); }
             @Override public void move(int from, int to) { shiftDockTiles(from, to); }
             @Override public void finish(List<HomeApps.Item> restore) { finishDockTiles(restore); }
@@ -351,6 +332,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         toastLayer = new Layer(a, TOAST);
         searchGlassLayer = new Layer(a, SEARCH_GLASS);
         revealContent = new View[] {sky, heroLayer};
+        layerMotion = new HomeLayerMotion(revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer, sheetLayer);
         redrawLayers = new View[] {revealBackdrop, sky, heroLayer, status, platter, tiles, drawerLayer};
         notices = new HomeNotices(a, scene, LOADER, handler, toastLayer::invalidate, this::wake, this::announceForAccessibility);
         searchInput = new HomeSearchInput(a,this,searchGlassLayer,new HomeSearchInput.Host(){
@@ -430,8 +412,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         reload();
         updatePalette();
         updateCards();
-        if (sheetOpen) closeSheet();
-        sheet.snap(sheet.target);
+        if (grid.open) closeSheet();
+        grid.sheet.snap(grid.sheet.target);
         motionDirty = true;
         updateMotion(); // Keep a staged dream return applied before the first resumed draw.
         invalidateAll();
@@ -446,7 +428,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return new HomeGenres.Host() {
             @Override public String kind() { return category == 3 ? "tv" : "movie"; }
             @Override public boolean eligible() {
-                return running && okDown && tab == category && !searchMode && !sheetOpen && !drawerOpen
+                return running && okDown && tab == category && !searchMode && !grid.open && !drawerOpen
                         && !dockEditor.editing() && zone == Z_TOP && topIndex == category;
             }
             @Override public RectF anchor() { return topRects[category]; }
@@ -487,7 +469,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void prepareDreamReturn() {
-        if (drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
+        if (drawerOpen || grid.open || searchMode || dockEditor.editing()) return;
         reveal.prepare(reducedDreamMotion());
         updateMotion();
     }
@@ -503,7 +485,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void revealFromDream() {
-        if (!running || drawerOpen || sheetOpen || searchMode || dockEditor.editing()) return;
+        if (!running || drawerOpen || grid.open || searchMode || dockEditor.editing()) return;
         reveal.start(SystemClock.uptimeMillis(), reducedDreamMotion());
         updateMotion();
         wake();
@@ -554,14 +536,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     void reset(boolean animated) {
         wake();
         zone = Z_SHELF;
-        shelfIndex = 0;
-        sheetOpen = false;
+        dock.index = 0;
+        grid.open = false;
         drawerOpen = false;
         if (animated) {
-            sheet.target = 0;
+            grid.sheet.target = 0;
             drawer.target = 0;
         } else {
-            sheet.snap(0);
+            grid.sheet.snap(0);
             drawer.snap(0);
         }
         if (searchMode) { cancelSearchWork(); searchMode = false; searchResults.clear(); }
@@ -646,8 +628,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void updateDockBackdrop() {
         if (!running) return;
         if (Prefs.categoryCount() != 0 || searchMode) { dockContinue.hide(); dockBackdrop.pause(); backdropDockIndex = -1; backdropFocus = null; return; }
-        if (sheetOpen || drawerOpen || zone != Z_SHELF || shelfIndex < 0 || shelfIndex >= shelf.size()) return;
-        HomeApps.Item item = shelf.get(shelfIndex);
+        if (grid.open || drawerOpen || zone != Z_SHELF || dock.index < 0 || dock.index >= dock.items.size()) return;
+        HomeApps.Item item = dock.items.get(dock.index);
         String pkg = item.kind == HomeApps.APP ? item.pkg
                 : item.kind == HomeApps.SETTINGS || item.kind == HomeApps.ANDROID_SETTINGS ? "io.tvos" : null;
         String source = WatchingSources.id(pkg);
@@ -657,8 +639,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             return;
         }
         dockContinue.hide();
-        int direction = backdropDockIndex < 0 ? 0 : Integer.compare(shelfIndex, backdropDockIndex);
-        backdropDockIndex = shelfIndex;
+        int direction = backdropDockIndex < 0 ? 0 : Integer.compare(dock.index, backdropDockIndex);
+        backdropDockIndex = dock.index;
         if (pkg != null) {
             if (!pkg.equals(backdropFocus)) { backdropDirection = direction; backdropFocus = pkg; }
             dockBackdrop.focus(pkg);
@@ -790,12 +772,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (posters.focus(focusedPoster, cardPage, tab, up)) heroDirty = true;
         boolean marqueeActive = posters.marqueeActive(up);
         if (marqueeActive || rouletteWork.spinning()) heroDirty = true;
-        boolean dockMoving = step(dockSlide, dt) | dockLift.step(dt);
-        if (dockEditor.editing() || dockLift.value > 0.001f) dockMoving = true;
-        dockAnimating = dockMoving;
-        if (!dockEditor.editing() && !dockMoving) dockLiftIndex = -1;
+        boolean dockMoving = dock.step(dt, dockEditor.editing());
         if (dockMoving) tilesDirty = true;
-        boolean tilesMoving = step(tileFocus, dt) | dockMoving;
+        boolean tilesMoving = step(dock.focus, dt) | dockMoving;
         boolean searchHeadingMoving = tickSearchHeading(dt);
         vpnColor.target = networkStatus.vpn() ? 1 : 0;
         if (reducedDreamMotion()) vpnColor.snap(vpnColor.target);
@@ -805,9 +784,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean bannerMoving = Prefs.categoryCount() == 0 && !searchMode && dockBanner.tick(up);
         boolean heroMoving = topMoving | cardsMoving | bannerMoving;
         boolean drawerItemsMoving = step(drawerFocus, dt);
-        boolean gridMoving = step(gridFocus, dt) | scroll.step(dt);
+        boolean gridMoving = step(grid.focus, dt) | grid.scroll.step(dt);
         boolean drawerMoving = drawer.step(dt);
-        boolean sheetMoving = sheet.step(dt);
+        boolean sheetMoving = grid.sheet.step(dt);
         boolean toastFading = notices.tick(up);
         boolean bgFading = background.tickFade(up, drawerLayer.getVisibility() == VISIBLE || notices.visible());
         boolean nightMoving = background.tickNight(up);
@@ -848,7 +827,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private int focusedPoster() {
-        return !sheetOpen && picksOn() && (searchMode || tab != 4) && zone == Z_CARDS
+        return !grid.open && picksOn() && (searchMode || tab != 4) && zone == Z_CARDS
                 && cardIndex >= 0 && cardIndex < cards.size() ? cardIndex : -1;
     }
 
@@ -868,38 +847,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Drawer and sheet: the layers' positions and opacity (without redrawing their content). */
     private void updateMotion() {
-        float d = drawer.value, dc = Ui.clamp(d), s = Ui.clamp(sheet.value);
-        float home = 1 - s, top = home * (1 - smoothstep(0, 0.32f, dc));
-        float shift = SHIFT * k;
-        float lift = -d * shift;
-        show(heroLayer, top * reveal.opacity(), lift);
-        show(status, top, lift);
-        float dockOffset = (h - platterRect.top + 20 * k) * reveal.remaining();
-        show(platter, home, lift - d * drawerExtraHeight + dockOffset);
-        show(tiles, home, lift - d * drawerExtraHeight + dockOffset);
-        revealBackdrop.setVisibility(reveal.remaining() > 0 ? VISIBLE : INVISIBLE);
-        sky.setAlpha(reveal.opacity());
-        float contentScale = reveal.scale();
-        for (View layer : revealContent) {
-            layer.setScaleX(contentScale);
-            layer.setScaleY(contentScale);
-        }
-        float da = home * smoothstep(0.1f, 0.6f, dc);
-        drawerLayer.setTranslationY((1 - d) * shift);
-        drawerLayer.setAlpha(da);
-        drawerLayer.setVisibility(da > 0.002f ? VISIBLE : INVISIBLE);
-        sheetLayer.setVisibility(s > 0.001f || sheetOpen ? VISIBLE : INVISIBLE);
-        sheetLayer.setAlpha(s);
-        float scale = 1.04f - 0.04f * s;
-        sheetLayer.setScaleX(scale);
-        sheetLayer.setScaleY(scale);
+        layerMotion.apply(drawer.value, grid.sheet.value, grid.open, reveal, k, h, platterRect.top, drawerExtraHeight);
     }
 
-    private static void show(View v, float alpha, float translationY) {
-        v.setAlpha(alpha);
-        v.setTranslationY(translationY);
-        v.setVisibility(alpha > 0.002f ? VISIBLE : INVISIBLE);
-    }
 
     private boolean updateClock() {
         long now = System.currentTimeMillis();
@@ -967,20 +917,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void setShelf(List<HomeApps.Item> list) {
         wake();
         appSurfaces.invalidateDock();
-        boolean same = list.size() == shelf.size();
-        for (int i = 0; same && i < list.size(); i++) same = list.get(i).key.equals(shelf.get(i).key);
         if (dockEditor.editing()) return; // Do not overwrite a drag with an asynchronous refresh.
-        shelf = list;
-        if (!same || tileFocus.length != list.size()) {
-            tileFocus = new Spring[list.size()];
-            tileRects = new RectF[list.size()];
-            dockSlide = new Spring[list.size()];
-            for (int i = 0; i < tileFocus.length; i++) {
-                tileFocus[i] = new Spring(0.34f, 0.74f, 0);
-                dockSlide[i] = new Spring(0.3f, 0.72f, 0);
-                tileRects[i] = new RectF();
-            }
-            shelfIndex = Math.min(shelfIndex, Math.max(0, list.size() - 1));
+        if (dock.replace(list)) {
             retarget(true);
             layoutShelf();
         }
@@ -989,7 +927,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void layoutShelf() {
-        geometry.shelf(platterRect, tileRects, shelf.size(), w, h, k);
+        geometry.shelf(platterRect, dock.rects, dock.items.size(), w, h, k);
         appSurfaces.clear();
         header.clearFrame();
         layoutLight(); // Dock height changes the free space for posters and roulette.
@@ -1030,7 +968,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         drawerOpen = true;
         drawer.target = 1;
         zone = Z_DRAWER;
-        drawerIndex = shelf.isEmpty() ? 0 : nearest(drawerRects, tileRects[shelfIndex].centerX());
+        drawerIndex = dock.items.isEmpty() ? 0 : nearest(drawerRects, dock.rects[dock.index].centerX());
         for (int i = 0; i < drawerFocus.length; i++) drawerFocus[i].snap(i == drawerIndex ? 1 : 0);
         drawerDirty = true;
     }
@@ -1040,16 +978,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         drawer.target = 0;
         zone = Z_SHELF;
         for (Spring f : drawerFocus) f.snap(0);   // the drawer goes away: its focus doesn't need to animate
-        if (!shelf.isEmpty() && drawerIndex < drawerRects.length) shelfIndex = nearest(tileRects, drawerRects[drawerIndex].centerX());
+        if (!dock.items.isEmpty() && drawerIndex < drawerRects.length) dock.index = nearest(dock.rects, drawerRects[drawerIndex].centerX());
     }
 
     private HomeAppsRenderer.Frame appFrame() {
-        appFrame.shelf = shelf; appFrame.tileRects = tileRects; appFrame.tileFocus = tileFocus; appFrame.dockSlide = dockSlide;
-        appFrame.dockLiftIndex = dockLiftIndex; appFrame.dockLift = dockLift.value; appFrame.dockWiggleAt = dockWiggleAt;
+        appFrame.shelf = dock.items; appFrame.tileRects = dock.rects; appFrame.tileFocus = dock.focus; appFrame.dockSlide = dock.slide;
+        appFrame.dockLiftIndex = dock.liftedIndex; appFrame.dockLift = dock.lift.value; appFrame.dockWiggleAt = dock.wiggleAt;
         appFrame.drawerItems = drawerItems; appFrame.drawerRects = drawerRects; appFrame.drawerFocus = drawerFocus;
         appFrame.drawerInputs = drawerInputs; appFrame.weatherCard = weatherCard; appFrame.weatherBottom = weatherBottom();
-        appFrame.others = others; appFrame.gridFocus = gridFocus; appFrame.gridIndex = gridIndex; appFrame.sheetOpen = sheetOpen;
-        appFrame.focusedCell = focusedCell; appFrame.scroll = scroll.value; appFrame.platterRect = platterRect;
+        appFrame.others = grid.items; appFrame.gridFocus = grid.focus; appFrame.gridIndex = grid.index; appFrame.sheetOpen = grid.open;
+        appFrame.focusedCell = focusedCell; appFrame.scroll = grid.scroll.value; appFrame.platterRect = platterRect;
         appFrame.k = k; appFrame.night = background.night(); appFrame.w = w; appFrame.h = h;
         return appFrame;
     }
@@ -1060,14 +998,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void retarget(boolean snap) {
         updateDockBackdrop();
         // Only the group whose focus changed is redrawn (moving along the shelf doesn't redraw the hero or capsule).
-        boolean tilesChanged = aim(tileFocus, !sheetOpen && zone == Z_SHELF ? shelfIndex : -1, snap);
-        boolean drawerChanged = aim(drawerFocus, !sheetOpen && zone == Z_DRAWER ? drawerIndex : -1, snap);
-        boolean topChanged = aim(topFocus, !sheetOpen && zone == Z_TOP ? topIndex : -1, snap);
-        float rouletteTarget = !sheetOpen && tab == 4 && zone == Z_CARDS ? 1 : 0;
+        boolean tilesChanged = aim(dock.focus, !grid.open && zone == Z_SHELF ? dock.index : -1, snap);
+        boolean drawerChanged = aim(drawerFocus, !grid.open && zone == Z_DRAWER ? drawerIndex : -1, snap);
+        boolean topChanged = aim(topFocus, !grid.open && zone == Z_TOP ? topIndex : -1, snap);
+        float rouletteTarget = !grid.open && tab == 4 && zone == Z_CARDS ? 1 : 0;
         boolean heroChanged = rouletteButtonFocus.target != rouletteTarget;
         rouletteButtonFocus.target = rouletteTarget;
         if (snap) rouletteButtonFocus.snap(rouletteTarget);
-        heroChanged |= aim(cardFocus, !sheetOpen && zone == Z_CARDS ? cardIndex : -1, snap) | topChanged;
+        heroChanged |= aim(cardFocus, !grid.open && zone == Z_CARDS ? cardIndex : -1, snap) | topChanged;
         tilesDirty |= snap || tilesChanged;
         statusDirty |= snap || topChanged;
         heroDirty |= snap || heroChanged;
@@ -1090,44 +1028,30 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // MARK: - "All Apps" sheet
 
     private void setOthers(List<HomeApps.Item> list) {
-        others = list;
-        gridFocus = new Spring[list.size()];
-        for (int i = 0; i < gridFocus.length; i++) gridFocus[i] = new Spring(0.3f, 0.82f, 0);
+        grid.replace(list);
         appSurfaces.invalidateLabels();
-        gridIndex = Math.min(gridIndex, Math.max(0, list.size() - 1));
         retargetGrid(true);
         gridDirty = true;
     }
 
     private void openSheet() {
-        sheetOpen = true;
-        gridIndex = 0;
-        scroll.snap(0);
+        grid.open = true;
+        grid.index = 0;
+        grid.scroll.snap(0);
         retargetGrid(true);
         retarget(false);
-        sheet.target = 1;
+        grid.sheet.target = 1;
         gridDirty = true;
     }
 
     private void closeSheet() {
-        sheetOpen = false;
-        sheet.target = 0;
+        grid.open = false;
+        grid.sheet.target = 0;
         retarget(false);
     }
 
     private void retargetGrid(boolean snap) {
-        for (int i = 0; i < gridFocus.length; i++) {
-            gridFocus[i].target = sheetOpen && i == gridIndex ? 1 : 0;
-            if (snap) gridFocus[i].snap(gridFocus[i].target);
-        }
-        int rows = Math.max(1, (others.size() + COLUMNS - 1) / COLUMNS);
-        int visible = Math.min(rows, VISIBLE_ROWS);
-        int r = gridIndex / COLUMNS;
-        float target = scroll.target;
-        if (r < target) target = r;
-        else if (r > target + visible - 1) target = r - visible + 1;
-        scroll.target = Math.max(0, Math.min(rows - visible, target));
-        if (snap) scroll.snap(scroll.target);
+        grid.retarget(snap);
         spoken.focusMoved();
     }
 
@@ -1142,7 +1066,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // MARK: - Keys: only the arrows, OK and Back (system keys pass through to the system)
 
     private boolean dockContinueKey(KeyEvent e) {
-        if (!dockEditor.editing() && !sheetOpen && !drawerOpen && !searchMode && dockContinue.key(e, zone == Z_SHELF,
+        if (!dockEditor.editing() && !grid.open && !drawerOpen && !searchMode && dockContinue.key(e, zone == Z_SHELF,
                 () -> { zone = Z_TOP; topIndex = availableTopButton(5); retarget(false); },
                 pick -> { if (!watching.open(pick)) showToast(AppStrings.get(R.string.home_watching_open_failed)); })) {
             okDown = false; dockEditor.cancelHold(); return true;
@@ -1212,16 +1136,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void shiftDockTiles(int i, int j) {
-        HomeApps.Item item = shelf.get(i);
-        shelf.set(i, shelf.get(j));
-        shelf.set(j, item);
-        Spring f = tileFocus[i]; tileFocus[i] = tileFocus[j]; tileFocus[j] = f;
-        Spring slide = dockSlide[i]; dockSlide[i] = dockSlide[j]; dockSlide[j] = slide;
-        float d = tileRects[i].left - tileRects[j].left;
-        dockSlide[j].value += d;
-        dockSlide[i].value -= d;
-        appSurfaces.swapDock(i, j, shelf.size());
-        shelfIndex = dockLiftIndex = j;
+        dock.swap(i, j);
+        appSurfaces.swapDock(i, j, dock.items.size());
         retarget(false);
         tilesDirty = true;
         wake();
@@ -1229,25 +1145,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void finishDockTiles(List<HomeApps.Item> before) {
-        dockLift.target = 0;
-        if (before != null && before.size() == shelf.size()) {
-            HomeApps.Item selected = shelf.get(shelfIndex);
-            int n = shelf.size();
-            Spring[] focus = new Spring[n], slide = new Spring[n];
-            appSurfaces.restoreDock(before, shelf);
-            for (int a = 0; a < n; a++) {
-                int b = shelf.indexOf(before.get(a));
-                if (b < 0) { b = a; }
-                focus[a] = tileFocus[b];
-                slide[a] = dockSlide[b];
-                slide[a].value += tileRects[b].left - tileRects[a].left;
-            }
-            shelf = before;
-            tileFocus = focus;
-            dockSlide = slide;
-            shelfIndex = dockLiftIndex = shelf.indexOf(selected);
-            if (shelfIndex < 0) shelfIndex = dockLiftIndex = 0;
-        }
+        if (before != null && before.size() == dock.items.size()) appSurfaces.restoreDock(before, dock.items);
+        dock.finish(before);
         retarget(false);
         tilesDirty = true;
         wake();
@@ -1256,7 +1155,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void back() {
         if (rouletteWork.spinning()) cancelRouletteWork();
         if (dockEditor.editing()) { dockEditor.finish(false); click.back(); return; }
-        if (sheetOpen) {
+        if (grid.open) {
             closeSheet();
         } else if (searchMode) {
             closeSearch();
@@ -1279,7 +1178,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void move(int dx, int dy) {
         if (rouletteWork.spinning()) return; // Keep remote focus on the running roulette until it stops.
         if (dockEditor.editing()) { if (dx != 0) dockEditor.move(dx); return; }
-        if (sheetOpen) {
+        if (grid.open) {
             moveGrid(dx, dy);
             return;
         }
@@ -1287,9 +1186,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         switch (zone) {
             case Z_SHELF:
                 if (dx != 0) {
-                    int next = Math.max(0, Math.min(shelf.size() - 1, shelfIndex + dx));
-                    if (next == shelfIndex) return;
-                    shelfIndex = next;
+                    int next = Math.max(0, Math.min(dock.items.size() - 1, dock.index + dx));
+                    if (next == dock.index) return;
+                    dock.index = next;
                 } else {
                     if (dy <= 0 || drawerItems.isEmpty()) return;
                     openDrawer();
@@ -1332,20 +1231,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void moveGrid(int dx, int dy) {
-        int n = others.size();
-        if (n == 0) return;
-        int r = gridIndex / COLUMNS, col = gridIndex % COLUMNS;
-        int rows = (n + COLUMNS - 1) / COLUMNS;
-        int next = gridIndex;
-        if (dx != 0) {
-            int candidate = gridIndex + dx;
-            if (candidate >= 0 && candidate < n && candidate / COLUMNS == r) next = candidate;
-        } else {
-            int targetRow = r + dy;
-            if (targetRow >= 0 && targetRow < rows) next = Math.min(n - 1, targetRow * COLUMNS + col);
-        }
-        if (next == gridIndex) return;
-        gridIndex = next;
+        if (!grid.move(dx, dy)) return;
         retargetGrid(false);
         click.move();
         gridDirty = true;
@@ -1356,10 +1242,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (rouletteWork.spinning()) return;
         HomeApps.Item it;
         RectF r;
-        if (!sheetOpen && zone == WIDGETS) return;   // a widget is only read
-        if (sheetOpen) {
-            if (others.isEmpty()) return;
-            it = others.get(gridIndex);
+        if (!grid.open && zone == WIDGETS) return;   // a widget is only read
+        if (grid.open) {
+            if (grid.items.isEmpty()) return;
+            it = grid.items.get(grid.index);
             r = focusedCell;
         } else if (zone == Z_DRAWER) {
             if (drawerItems.isEmpty()) return;
@@ -1403,9 +1289,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             } else movieApps.choose(p);
             return;
         } else {
-            if (shelf.isEmpty()) return;
-            it = shelf.get(shelfIndex);
-            r = tileRects[shelfIndex];
+            if (dock.items.isEmpty()) return;
+            it = dock.items.get(dock.index);
+            r = dock.rects[dock.index];
         }
         click.open();
         if (it.kind == HomeApps.ALL_APPS) {
@@ -1569,14 +1455,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() { return spoken; }
 
     private void readAccessibilityState(HomeAccessibility.State s) {
-        s.sheetOpen = sheetOpen; s.searchMode = searchMode; s.drawerOpen = drawerOpen;
+        s.sheetOpen = grid.open; s.searchMode = searchMode; s.drawerOpen = drawerOpen;
         s.picksOn = picksOn(); s.weatherBottom = weatherBottom(); s.spinning = rouletteWork.spinning();
-        s.tab = tab; s.zone = zone; s.gridIndex = gridIndex; s.topIndex = topIndex;
-        s.cardIndex = cardIndex; s.shelfIndex = shelfIndex; s.drawerIndex = drawerIndex; s.widgetIndex = widgetIndex;
-        s.others = others; s.shelf = shelf; s.drawerItems = drawerItems; s.lightButtons = lightButtons; s.cards = cards;
-        s.topRects = topRects; s.cardRects = cardRects; s.tileRects = tileRects; s.drawerRects = drawerRects;
+        s.tab = tab; s.zone = zone; s.gridIndex = grid.index; s.topIndex = topIndex;
+        s.cardIndex = cardIndex; s.shelfIndex = dock.index; s.drawerIndex = drawerIndex; s.widgetIndex = widgetIndex;
+        s.others = grid.items; s.shelf = dock.items; s.drawerItems = drawerItems; s.lightButtons = lightButtons; s.cards = cards;
+        s.topRects = topRects; s.cardRects = cardRects; s.tileRects = dock.rects; s.drawerRects = drawerRects;
         s.weatherCard = weatherCard; s.tabs = tabs(); s.networkState = networkStatus.state();
-        s.k = k; s.h = h; s.scroll = scroll.target;
+        s.k = k; s.h = h; s.scroll = grid.scroll.target;
         s.contentTop = contentTop; s.contentBottom = contentBottom;
         s.heroY = heroLayer.getTranslationY(); s.statusY = status.getTranslationY(); s.tilesY = tiles.getTranslationY();
         for (int i = 0; i < s.topVisible.length; i++) s.topVisible[i] = topControlVisible(i);
@@ -1584,7 +1470,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void focusAccessibleItem(int group, int i) {
         if (group == GRID) {
-            gridIndex = i;
+            grid.index = i;
             retargetGrid(false);
             gridDirty = true;
             click.move();
@@ -1609,7 +1495,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 break;
             case Z_SHELF:
                 if (drawerOpen) closeDrawer();
-                shelfIndex = i;
+                dock.index = i;
                 break;
             default:
                 return;
@@ -1758,7 +1644,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void drawLightTop(Canvas c) {
-        posters.begin(k, background.night(), tab, cardPage, searchMode, zone == Z_CARDS && !sheetOpen,
+        posters.begin(k, background.night(), tab, cardPage, searchMode, zone == Z_CARDS && !grid.open,
                 lCardTitle, lCardMeta);
         HomeHeaderRenderer.Frame heading = headerFrame();
         if (!picksOn()) {
@@ -1769,7 +1655,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.drawTabs(c, heading);
         if (tab == 4 && !searchMode) {
             rouletteRenderer.draw(c, k, background.night(), lCardTitle, rouletteButtonFocus.value,
-                    zone == Z_CARDS && !sheetOpen ? cardFocus[0].value : 0f, contentTop, contentBottom);
+                    zone == Z_CARDS && !grid.open ? cardFocus[0].value : 0f, contentTop, contentBottom);
             return;
         }
         if (tab == 2 && !searchMode && cards.isEmpty()) {
@@ -1817,7 +1703,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         switch (zone) {
             case Z_SHELF:
                 if (dy >= 0) return false;
-                if (shelf.isEmpty()) {
+                if (dock.items.isEmpty()) {
                     zone = Z_TOP;
                     topIndex = searchMode || !picksOn() ? availableTopButton(5) : tab;
                 } else if (!picksOn() || (cards.isEmpty() && (tab != 4 || searchMode))) {
@@ -1825,7 +1711,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     topIndex = searchMode || !picksOn() ? availableTopButton(5) : tab;
                 } else {
                     zone = Z_CARDS;
-                    cardIndex = nearest(cardRects, cards.size(), tileRects[shelfIndex].centerX());
+                    cardIndex = nearest(cardRects, cards.size(), dock.rects[dock.index].centerX());
                 }
                 break;
             case Z_CARDS:
@@ -1866,7 +1752,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     }
                 } else {
                     zone = Z_SHELF;
-                    if (!shelf.isEmpty()) shelfIndex = nearest(tileRects, tileRects.length, cardRects[cardIndex].centerX());
+                    if (!dock.items.isEmpty()) dock.index = nearest(dock.rects, dock.rects.length, cardRects[cardIndex].centerX());
                 }
                 break;
             case Z_TOP:
@@ -1909,11 +1795,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     // MARK: - Helpers
-
-    private static float smoothstep(float e0, float e1, float x) {
-        float t = Ui.clamp((x - e0) / (e1 - e0));
-        return t * t * (3 - 2 * t);
-    }
 
     private static int blend(int a, int b, float f) {
         int aa = a >>> 24, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;

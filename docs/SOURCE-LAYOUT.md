@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B146)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B147)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -175,3 +175,30 @@ the current page list; new localized objects replace it even when IDs match.
 Changed pages remain independent mutable snapshots. HomeView retains focus,
 animations, catalog selection and image requests. Regression tests execute both
 components with controlled worker/UI queues and exhaustive page/window cases.
+
+`HomeDockState<T>` now owns the Dock item list, selected/lifted indices, focus and
+slide springs, rectangles, lift spring and wiggle origin. Key comparison is an
+injected predicate; the component imports no Activity, Prefs, HomeApps or Ui.
+Refreshing identical keys replaces app objects while retaining animation
+identities. Reorder/rollback keep item focus, velocity and animated screen
+position together. HomeDockEditor still owns the edit transaction and persistence;
+HomeView coordinates renderer caches, layout, input, sound and accessibility.
+The unused write-only `dockAnimating` flag was removed.
+
+`HomeGridState<T>` owns All Apps items, selection, sheet/open state, focus and
+scroll springs. It handles row-bounded navigation and scroll targeting without
+Android Views, application types, preferences or UI callbacks. HomeView supplies
+column/visible-row counts and applies feedback only when selection changes.
+Data replacement retains the original focus-reset policy; opening/closing and
+lifecycle resets use the same model state, with no parallel View copies.
+
+`home/HomeLayerMotion` applies drawer/sheet/dream-return transforms to retained
+Views from current values and dimensions. It does not schedule frames, retain
+selection/progress copies or depend on Activity/Prefs/HomeApps/Ui. The existing
+HomeReveal remains the sole reveal clock. Opacity clamps and translation
+overshoot stay distinct; transform geometry, visibility thresholds, pivot setup
+and cached-layer redraw policy remain unchanged. Unused grid geometry aliases
+were removed from HomeView; renderer/accessibility geometry stays in HomeLayout.
+Regression coverage executes full models and View adapters, Dock edits including
+multi-move rollback, all grid indices/arrows at counts 0–67, stale refresh guards,
+TalkBack bindings, key handling, and dream/overlay transforms at 720p/1080p/4K.

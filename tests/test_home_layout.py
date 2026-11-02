@@ -13,8 +13,9 @@ public class HomeLayoutHarness {
  final io.tvos.home.HomeGeometry geometry=new io.tvos.home.HomeGeometry();final java.util.function.IntPredicate enabledTabs=this::tabEnabled,enabledTop=this::topButtonEnabled;
  static final float MARGIN=HomeLayout.EDGE,CONTENT_R=HomeLayout.RIGHT,SHELF_PAD=HomeLayout.DOCK_PAD,TILE_GAP=HomeLayout.DOCK_GAP;
  static final float ROW_TOP=540,ROW_H=126,CARDS_H=HomeLayout.WEATHER_HEIGHT,L_TABBAR_TOP=HomeLayout.TAB_TOP,L_TABBAR_H=HomeLayout.TAB_HEIGHT,L_BUTTON=HomeLayout.BUTTON,L_BUTTON_GAP=20,L_BUTTON_CY=HomeLayout.HEADER_CY;
- final List<HomeApps.Item> shelf=new ArrayList<>(),drawerItems=new ArrayList<>();
- final RectF platterRect=new RectF(),weatherCard=new RectF();RectF[] tileRects=new RectF[0],drawerRects=new RectF[0],topRects=new RectF[11],cardRects=new RectF[8];
+ final List<HomeApps.Item> drawerItems=new ArrayList<>();
+ final RectF platterRect=new RectF(),weatherCard=new RectF();RectF[] drawerRects=new RectF[0],topRects=new RectF[11],cardRects=new RectF[8];
+ static class DockState {final List<HomeApps.Item> items=new ArrayList<>();RectF[] rects=new RectF[0];}final DockState dock=new DockState();
  float drawerExtraHeight;float k=1,contentTop,contentBottom;int w=1920,h=1080,drawerInputs;boolean motionDirty,drawerDirty,heroDirty,statusDirty,largePostersWithoutWidgets,compact;
  Paint lTab=Ui.text(Ui.medium,30,0),lTabOn=Ui.text(Ui.semibold,30,0),lCardMeta=Ui.text(Ui.medium,25,0);String clockText="12:34";
  static class Cache {void clear(){}}final Cache appSurfaces=new Cache();static class Header {void clearFrame(){}}final Header header=new Header();
@@ -24,7 +25,7 @@ public class HomeLayoutHarness {
  HomeLayoutHarness(){for(int i=0;i<11;i++)topRects[i]=new RectF();for(int i=0;i<8;i++)cardRects[i]=new RectF();}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static void near(float a,float b,String why){check(Math.abs(a-b)<.03f,why+" "+a+" != "+b);}
- void count(int n){shelf.clear();tileRects=new RectF[n];for(int i=0;i<n;i++){shelf.add(new HomeApps.Item("app"+i));tileRects[i]=new RectF();}}
+ void count(int n){dock.items.clear();dock.rects=new RectF[n];for(int i=0;i<n;i++){dock.items.add(new HomeApps.Item("app"+i));dock.rects[i]=new RectF();}}
 '''+methods+'''
  public static void main(String[] args){
   HomeLayoutHarness t=new HomeLayoutHarness();
@@ -33,12 +34,12 @@ public class HomeLayoutHarness {
     t.count(n);t.layoutShelf();float outer=(t.platterRect.right-t.platterRect.left)/t.k;
     near(t.platterRect.left,t.w-t.platterRect.right,"Dock remains centered");near(t.h-t.platterRect.bottom,60*t.k,"bottom safe edge");
     check(t.platterRect.left>=40*t.k-.03,"Dock does not exceed safe width");
-    for(RectF r:t.tileRects){near(r.width()/r.height(),5f/3,"5:3 at every count and resolution");near(r.top-t.platterRect.top,40*t.k,"top inner padding");near(t.platterRect.bottom-r.bottom,40*t.k,"bottom inner padding");}
+    for(RectF r:t.dock.rects){near(r.width()/r.height(),5f/3,"5:3 at every count and resolution");near(r.top-t.platterRect.top,40*t.k,"top inner padding");near(t.platterRect.bottom-r.bottom,40*t.k,"bottom inner padding");}
     if(n<6)check(outer<1840,"one to five apps keep a narrower Dock");else {near(outer,1840,"six to eight reach max width");near(t.platterRect.left,40*t.k,"max width side margin");}
-    if(n==6){near(t.tileRects[0].width()/t.k,253.33333f,"six-app tile width");near(t.tileRects[0].height()/t.k,152,"six-app tile height");near(t.platterRect.top/t.k,788,"taller Dock anchored at bottom");}
+    if(n==6){near(t.dock.rects[0].width()/t.k,253.33333f,"six-app tile width");near(t.dock.rects[0].height()/t.k,152,"six-app tile height");near(t.platterRect.top/t.k,788,"taller Dock anchored at bottom");}
     for(boolean compact:new boolean[]{false,true}){t.compact=compact;t.layoutLight();float end=t.cardRects[0].bottom+HomeLayout.POSTER_META_BASELINE*t.k+t.lCardMeta.descent()+1.5f*t.k;
      near(t.cardRects[0].top-t.contentTop,t.contentBottom-end,"centering for every Dock count");check(t.cardRects[0].top>=t.contentTop,"posters stay below upper controls");}
-    for(RectF r:t.tileRects){float liftScale=1.08f*1.2f;check(r.centerY()-r.height()*liftScale/2>=HomeLayout.DOCK_LAYER_TOP*t.k,"lifted tile stays inside its layer top");}
+    for(RectF r:t.dock.rects){float liftScale=1.08f*1.2f;check(r.centerY()-r.height()*liftScale/2>=HomeLayout.DOCK_LAYER_TOP*t.k,"lifted tile stays inside its layer top");}
    }
    t.count(0);t.layoutShelf();check(Float.isFinite(t.platterRect.left),"empty Dock remains finite");
    t.count(6);t.layoutShelf();t.drawerItems.clear();t.drawerItems.add(new HomeApps.Item("input"));t.drawerRects=new RectF[]{new RectF()};t.drawerInputs=1;t.layoutDrawer();

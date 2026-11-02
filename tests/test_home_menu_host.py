@@ -11,7 +11,8 @@ assert 'menuHost(2)' in block(home,'    private HomeGenres createWatchingMenu(')
 assert 'return nearest(rects, rects.length, x);' in block(home,'    private static int nearest(RectF[] rects, float x)')
 assert 'new RectF(' not in block(home,'    private void drawSearchGlass(')
 harness='''public class MenuHostTest {
- static final int Z_TOP=4;boolean running=true,okDown=true,searchMode,sheetOpen,drawerOpen,heroDirty,statusDirty;int tab=1,topIndex=1,zone=Z_TOP,cardPage=3,cardIndex=4,updates,targets,layouts,wakes;
+ static final int Z_TOP=4;boolean running=true,okDown=true,searchMode,drawerOpen,heroDirty,statusDirty;int tab=1,topIndex=1,zone=Z_TOP,cardPage=3,cardIndex=4,updates,targets,layouts,wakes;
+ static class Grid {boolean open;}final Grid grid=new Grid();
  static class RectF {}static class Paint {}RectF[] topRects={new RectF(),new RectF(),new RectF(),new RectF()};Paint lTabOn=new Paint();
  static class Editor {boolean editing;int cancels;boolean editing(){return editing;}void cancelHold(){cancels++;}}Editor dockEditor=new Editor();
  static class Click {int opens,moves;void open(){opens++;}void move(){moves++;}}Click click=new Click();
@@ -25,10 +26,10 @@ harness='''public class MenuHostTest {
    MenuHostTest t=new MenuHostTest();t.tab=t.topIndex=category;HomeGenres.Host host=t.menuHost(category);
    check(host.eligible()&&host.anchor()==t.topRects[category]&&host.anchorPaint()==t.lTabOn,"each menu uses its own anchor and eligibility");check(host.kind().equals(category==3?"tv":"movie"),"movie/series query type preserved");
    for(int guard=0;guard<8;guard++){
-    t.running=guard!=0;t.okDown=guard!=1;t.searchMode=guard==2;t.sheetOpen=guard==3;t.drawerOpen=guard==4;t.dockEditor.editing=guard==5;t.zone=guard==6?0:Z_TOP;t.topIndex=guard==7?10:category;
+    t.running=guard!=0;t.okDown=guard!=1;t.searchMode=guard==2;t.grid.open=guard==3;t.drawerOpen=guard==4;t.dockEditor.editing=guard==5;t.zone=guard==6?0:Z_TOP;t.topIndex=guard==7?10:category;
     check(!host.eligible(),"hold rejected outside active menu context");
    }
-   t.running=t.okDown=true;t.searchMode=t.sheetOpen=t.drawerOpen=t.dockEditor.editing=false;t.zone=Z_TOP;t.topIndex=category;
+   t.running=t.okDown=true;t.searchMode=t.grid.open=t.drawerOpen=t.dockEditor.editing=false;t.zone=Z_TOP;t.topIndex=category;
    host.opened();check(!t.okDown&&t.dockEditor.cancels==1&&t.click.opens==1,"hold release is consumed and sound plays once");host.moved();check(t.click.moves==1,"source and genre rows share navigation sound");
    host.visibilityChanged();check(t.heroDirty&&t.heroLayer.invalidates==1,"visibility invalidates hero");host.changed();check(t.cardPage==0&&t.cardIndex==0&&t.updates==1&&t.targets==1,"selection refreshes focused page");check(t.layouts==(category==2?0:1)&&t.statusDirty==(category!=2),"service menu avoids genre-only layout/status work");
    host.message("test");check(t.message.equals("test"),"message forwarded");

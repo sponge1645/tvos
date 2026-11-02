@@ -9,14 +9,15 @@ def method(sig):
 header='''import java.util.*;import io.tvos.home.HomeFocusPolicy;
 public class SearchFocusHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;static class RandomPoster {boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static class Prefs {static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}}
+ static class DockState {int index;List<Object> items=new ArrayList<>(Arrays.asList(new Object()));RectF[] rects={new RectF()};}final DockState dock=new DockState();
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;
- int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,shelfIndex,actions=63;
+ int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,actions=63;
  boolean searchMode=true,enabled=true;int retargets,clicks;
  static class Roulette {boolean finished(){return false;}}
  final Roulette rouletteWork=new Roulette();
- List<Object> shelf=new ArrayList<>(Arrays.asList(new Object())),cards=new ArrayList<>(),searchResults=new ArrayList<>();
+ List<Object> cards=new ArrayList<>(),searchResults=new ArrayList<>();
  static class RectF {float centerX(){return 10;}}
- RectF[] tileRects={new RectF()},cardRects={new RectF(),new RectF(),new RectF(),new RectF(),new RectF()},topRects=new RectF[11];
+ RectF[] cardRects={new RectF(),new RectF(),new RectF(),new RectF(),new RectF()},topRects=new RectF[11];
  SearchFocusHarness(){Arrays.fill(topRects,new RectF());}
  static class Recs {List<Object> catalog(Object kind){return new ArrayList<>();}}
  Recs recs=new Recs();Object[] TAB_KIND=new Object[5];
@@ -47,7 +48,7 @@ tests='''
   check(category.zone==Z_TOP&&category.topIndex==2,"empty ordinary category still focuses its visible tab");
   SearchFocusHarness noCatalog=new SearchFocusHarness();noCatalog.enabled=false;noCatalog.searchMode=false;noCatalog.actions=0;noCatalog.moveLight(0,-1);
   check(noCatalog.zone==Z_SHELF,"no catalog and all actions hidden keeps focus in Dock");
-  SearchFocusHarness emptyDock=new SearchFocusHarness();emptyDock.shelf.clear();emptyDock.actions=32;
+  SearchFocusHarness emptyDock=new SearchFocusHarness();emptyDock.dock.items.clear();emptyDock.actions=32;
   emptyDock.moveLight(0,-1);check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==10,"empty Dock reaches the visible Network action");
   emptyDock.searchMode=false;emptyDock.tab=2;emptyDock.zone=Z_SHELF;emptyDock.moveLight(0,-1);
   check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==2,"empty Dock with recommendations reaches current category");
