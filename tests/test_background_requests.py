@@ -15,17 +15,10 @@ import java.util.*;
 import java.io.IOException;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
-import java.net.URLEncoder;
+import org.json.*;import io.tvos.catalog.TmdbQueries;
 public class AsyncHarness {
  static class TmdbMetadata {static Pick search(JSONObject item){return null;}}
  static class Pick {int id; String kind,title,originalTitle,poster,backdrop,movieOrigin,tvOrigin;double rating;}
- static class JSONArray {int length(){return 0;} JSONObject optJSONObject(int i){return null;} }
- static class JSONObject {
-  JSONArray optJSONArray(String s){return new JSONArray();}
-  String optString(String s){return "";} String optString(String s,String d){return d;}
-  int optInt(String s){return 0;} int optInt(String s,int d){return d;}
-  double optDouble(String s,double d){return d;}
- }
  static class Main {
   final List<Runnable> queue=Collections.synchronizedList(new ArrayList<>());
   void post(Runnable r){queue.add(r);} void drain(){while(!queue.isEmpty())queue.remove(0).run();}
@@ -34,7 +27,9 @@ public class AsyncHarness {
  final Main main=new Main();final AtomicInteger calls=new AtomicInteger(); volatile Runnable onGet;boolean failNetwork;
  static class AppLog {static int warnings,unexpected;static void w(String message){warnings++;}static void unexpected(String stage,RuntimeException e){unexpected++;}}
  JSONObject get(String s)throws java.io.IOException,org.json.JSONException{calls.incrementAndGet();if(failNetwork)throw new IOException("offline");Runnable hook=onGet;if(hook!=null)hook.run();return new JSONObject();}
- String lang(){return "en-US";} void add(List<Pick> list,JSONObject item,String kind){}
+ final TmdbQueries<Pick> interactive=new TmdbQueries<>(this::get,()->"en-US",new TmdbQueries.Mapper<Pick>(){
+  public Pick search(JSONObject item){return TmdbMetadata.search(item);}public void addMovie(List<Pick> out,JSONObject item){}public String key(Pick item){return item.kind+":"+item.id;}
+ });
  void flush()throws Exception{requestIo.submit(()->{}).get(3,TimeUnit.SECONDS);}
  static void check(boolean value,String label){if(!value)throw new AssertionError(label);}
  static final class Gate {
@@ -75,6 +70,8 @@ tests='''
    h.search("broken",r->delivered.incrementAndGet());h.flush();h.main.drain();
    check(delivered.get()==1&&AppLog.unexpected==faults+1,"unexpected query fault is diagnosed and retains fallback delivery");
    h.onGet=null;
+   baseline=h.calls.get();delivered.set(0);faults=AppLog.unexpected;h.search(null,r->delivered.incrementAndGet());h.flush();h.main.drain();
+   check(h.calls.get()==baseline&&delivered.get()==0&&AppLog.unexpected==faults,"invalid search argument retains pre-network failure behavior");
    System.out.println("PASS: cancelled queue removal, latest query, delivery guard, in-flight search/roulette cancellation, cancel-before-start");
   }finally{h.requestIo.shutdownNow();}
  }
@@ -82,9 +79,12 @@ tests='''
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-background-test-') as directory:
     root=Path(directory)
-    (root/'AsyncHarness.java').write_text(header+method('    UiRequest loadAcclaimed(')+method('    UiRequest search(')+tests)
+    (root/'AsyncHarness.java').write_text(header+method('    UiRequest loadAcclaimed(')+method('    UiRequest search(')+method('    private UiRequest query(')+tests)
     (root/'Log.java').write_text('package android.util; public class Log {public static int w(String t,String s,Throwable e){return 0;}}')
     (root/'JSONException.java').write_text('package org.json;public class JSONException extends Exception {}')
+    (root/'JSONObject.java').write_text('package org.json;public class JSONObject {public JSONArray optJSONArray(String s){return new JSONArray();}public int optInt(String s,int d){return d;}public int optInt(String s){return 0;}}')
+    (root/'JSONArray.java').write_text('package org.json;public class JSONArray {public int length(){return 0;}public JSONObject optJSONObject(int i){return null;}}')
+    (root/'TmdbQueries.java').write_text(Path('app/src/io/tvos/catalog/TmdbQueries.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UiRequest.java',str(root/'AsyncHarness.java'),str(root/'Log.java'),str(root/'JSONException.java')],check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UiRequest.java',str(root/'AsyncHarness.java'),str(root/'Log.java'),str(root/'JSONException.java'),str(root/'JSONObject.java'),str(root/'JSONArray.java'),str(root/'TmdbQueries.java')],check=True)
     subprocess.run([java,'-cp',directory,'io.tvos.AsyncHarness'],check=True)

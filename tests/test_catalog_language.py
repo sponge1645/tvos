@@ -62,7 +62,7 @@ tests = r'''
 with tempfile.TemporaryDirectory(prefix='tvos-language-test-') as directory:
     root = Path(directory)
     (root/'HomePosterWindow.java').write_text(Path('app/src/io/tvos/home/HomePosterWindow.java').read_text())
-    body = ''.join(method(s) for s in ['    private boolean fetchList(', '    private static void add(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
+    body = ''.join(method(s) for s in ['    private boolean fetchList(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
     body += 'static boolean samePicks(java.util.List<Pick> a,java.util.List<Pick> b){return io.tvos.home.HomePosterWindow.select(a,0,Math.max(1,a.size()),b)==b;}'
     (root/'CatalogHarness.java').write_text(header+body+tests)
     dependencies=files()

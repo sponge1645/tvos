@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B150)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B151)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -266,3 +266,25 @@ helper/imports were removed after checking app sources, resources, manifest, too
 documentation and tests. The diagnostic file continues to be written, with no settings
 or cache migration. Selection regressions execute the new component through actual
 Recs adapters; diagnostic checks use real files and exercise overwrite/failure recovery.
+
+
+### Interactive TMDB query policy (1B151)
+
+`catalog/TmdbQueries<T>` owns multi-search pagination, suffix fallback, ordered type/ID
+replacement and acclaimed discover paging/deduplication. It takes JSON transport, live
+language and a three-operation metadata mapper; page randomness is injectable. The query
+component has no Android, preferences, UI or launcher-model dependency. The search word
+pattern is compiled once and the query is trimmed once within the component.
+
+`Recs` supplies its existing metadata decoder, owns the interactive queue and UiRequest,
+and shares the worker/error/UI-delivery path between search and roulette. Existing
+operation-specific logging, partial results on failures and cancellation before transport,
+after each response and before UI delivery are retained. Search null-argument validation
+remains outside the network-failure path. The now-unused private add wrapper is removed.
+The existing complete-page 36-item threshold is retained: a page can take the result over
+36 before the next-attempt check. No new ranking, strict limit or result ordering is added.
+
+Regression checks execute the real generic policy and actual asynchronous Recs adapters:
+URLs/live locale, two-page cap, suffix order/termination, malformed rows, replacement
+order, partial transport/mapper failures, queued/in-flight/late cancellation, random page
+bounds, ID marking before mapping, complete-page threshold and existing error handling.

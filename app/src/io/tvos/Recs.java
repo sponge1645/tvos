@@ -3,18 +3,17 @@ package io.tvos;
 import io.tvos.artwork.PosterCache;
 import io.tvos.catalog.RecommendationSelection;
 import io.tvos.catalog.RecommendationStatus;
+import io.tvos.catalog.TmdbQueries;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -70,6 +69,12 @@ final class Recs {
     private final BackdropCache backdropCache;
     private final CatalogBuilder catalogBuilder;
     private final GenreCatalog genreCatalog;
+    private final TmdbQueries<Pick> interactive;
+    private static final TmdbQueries.Mapper<Pick> QUERY_MAPPER = new TmdbQueries.Mapper<Pick>() {
+        public Pick search(JSONObject item) { return TmdbMetadata.search(item); }
+        public void addMovie(List<Pick> out, JSONObject item) { TmdbMetadata.add(out, item, "movie"); }
+        public String key(Pick item) { return Recs.key(item); }
+    };
     private volatile List<Pick> picks = new ArrayList<>();
     private volatile List<Pick> newPicks = new ArrayList<>();
     private volatile int period = -1;
@@ -101,6 +106,7 @@ final class Recs {
         backdropCache = new BackdropCache(c, io, this::notifyListeners, () -> newPicks);
         catalogBuilder = new CatalogBuilder(this::get);
         genreCatalog = new GenreCatalog(this::get, requestIo, main);
+        interactive = new TmdbQueries<>(this::get, Recs::lang, QUERY_MAPPER);
         movieEnrichment = new MovieEnrichment(Executors.newSingleThreadExecutor(), main::post,
                 this::get, () -> { save(); notifyListeners(); });
         store = new RecsStore(c.getSharedPreferences("recs", Context.MODE_PRIVATE));
@@ -328,88 +334,31 @@ final class Recs {
         return true;
     }
 
-    /** Critically acclaimed roulette candidates. TMDB discover approximation: rated >= 7,
-     * at least 1000 votes, sorted by vote average. Not an official preset API endpoint. */
+    /** Interactive requests retain their own queue and cancellable UI delivery. */
     UiRequest loadAcclaimed(java.util.function.Consumer<List<Pick>> callback) {
+        return query(null, true, callback);
+    }
+
+    UiRequest search(String text, java.util.function.Consumer<List<Pick>> callback) {
+        return query(text, false, callback);
+    }
+
+    private UiRequest query(String text, boolean acclaimed, java.util.function.Consumer<List<Pick>> callback) {
         UiRequest request = new UiRequest(requestIo);
         request.start(() -> {
             List<Pick> result = new ArrayList<>();
+            if (!acclaimed) java.util.Objects.requireNonNull(text);
             try {
-                java.util.Random random = new java.util.Random();
-                java.util.Set<Integer> seen = new java.util.HashSet<>();
-                for (int attempt = 0; attempt < 5 && result.size() < 36; attempt++) {
-                    if (!request.active()) return;
-                    int page = 1 + random.nextInt(15);
-                    JSONObject response = get("/discover/movie?language=" + lang()
-                            + "&sort_by=vote_average.desc&vote_count.gte=1000"
-                            + "&vote_average.gte=7&include_adult=false&page=" + page);
-                    if (!request.active()) return;
-                    JSONArray items = response.optJSONArray("results");
-                    if (items == null) continue;
-                    for (int i = 0; i < items.length(); i++) {
-                        JSONObject item = items.optJSONObject(i);
-                        if (item == null || !seen.add(item.optInt("id"))) continue;
-                        add(result, item, "movie");
-                    }
-                }
-                java.util.Collections.shuffle(result);
+                if (acclaimed) interactive.acclaimed(result, request::active);
+                else interactive.search(text, result, request::active);
             } catch (IOException | org.json.JSONException e) {
-                AppLog.w("random recommendations: " + e.getClass().getSimpleName());
+                if (acclaimed) AppLog.w("random recommendations: " + e.getClass().getSimpleName());
+                else android.util.Log.w("tvOS", "TMDB search failed", e);
             } catch (RuntimeException e) {
-                AppLog.unexpected("random recommendations", e);
+                AppLog.unexpected(acclaimed ? "random recommendations" : "TMDB search", e);
             }
             if (request.active()) main.post(() -> {
                 if (request.active()) callback.accept(result);
-            });
-        });
-        return request;
-    }
-
-    /** TMDB multi-search, with a limited suffix fallback for incomplete Russian words. */
-    UiRequest search(String query, java.util.function.Consumer<List<Pick>> callback) {
-        UiRequest request = new UiRequest(requestIo);
-        request.start(() -> {
-            java.util.LinkedHashMap<String, Pick> found = new java.util.LinkedHashMap<>();
-            java.util.LinkedHashSet<String> queries = new java.util.LinkedHashSet<>();
-            queries.add(query.trim());
-            // TMDB matches whole words rather than arbitrary Russian prefixes.
-            // Only use suffix variants when the original query returns no results.
-            String q = query.trim();
-            if (q.length() >= 4 && q.matches("[\\p{L} ]+")) {
-                queries.add(q + "ы");
-                queries.add(q + "и");
-                queries.add(q + "а");
-                queries.add(q + "ов");
-            }
-            try {
-                for (String candidate : queries) {
-                    if (!request.active()) return;
-                    if (!found.isEmpty()) break;
-                    String encoded = URLEncoder.encode(candidate, "UTF-8");
-                    for (int page = 1; page <= 2; page++) {
-                        if (!request.active()) return;
-                        JSONObject response = get("/search/multi?language=" + lang()
-                                + "&include_adult=false&query=" + encoded + "&page=" + page);
-                        if (!request.active()) return;
-                        JSONArray items = response.optJSONArray("results");
-                        if (items == null) break;
-                        for (int i = 0; i < items.length(); i++) {
-                            JSONObject item = items.optJSONObject(i);
-                            if (item == null) continue;
-                            Pick p = TmdbMetadata.search(item);
-                            if (p == null) continue;
-                            found.put(p.kind + ":" + p.id, p);
-                        }
-                        if (page >= response.optInt("total_pages", 1)) break;
-                    }
-                }
-            } catch (IOException | org.json.JSONException e) {
-                android.util.Log.w("tvOS", "TMDB search failed", e);
-            } catch (RuntimeException e) {
-                AppLog.unexpected("TMDB search", e);
-            }
-            if (request.active()) main.post(() -> {
-                if (request.active()) callback.accept(new ArrayList<>(found.values()));
             });
         });
         return request;
@@ -423,9 +372,6 @@ final class Recs {
     /** Language of titles and genres; the services come from the region. */
     private static String lang() { return AppLanguage.current().apiTag; }
 
-    private static void add(List<Pick> list, JSONObject o, String kind) {
-        TmdbMetadata.add(list, o, kind);
-    }
 
     /** Genre, runtime (or seasons) and the service it's on, among the ones the TV has. */
     private void fetchDetails(Pick p) throws IOException, org.json.JSONException {
