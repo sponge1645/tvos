@@ -68,7 +68,7 @@ def adb(*args):
     return subprocess.run(['adb', *args], check=True, capture_output=True, text=True, timeout=10).stdout.strip()
 
 
-def run(jar):
+def run(jar, audio=False):
     enabled = adb('shell', 'settings', 'get', 'secure', 'enabled_accessibility_services')
     if 'io.tvos/io.tvos.RemoteKeyService' not in enabled.split(':'):
         raise RuntimeError('Keep the tvOS accessibility service enabled for this test.')
@@ -81,6 +81,8 @@ def run(jar):
     try:
         adb('push', str(jar), remote+'/helper.jar')
         command = 'CLASSPATH=' + shlex.quote(remote+'/helper.jar') + ' app_process /data/local/tmp io.tvos.tools.VolumeHoldDevice'
+        if audio:
+            command += ' audio'
         print('Service stays enabled. Hold + / - briefly. Ctrl+C stops; no APK or settings changes.', flush=True)
         process = subprocess.Popen(['adb', 'shell', '-T', command], stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -136,15 +138,18 @@ def run(jar):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-only', action='store_true')
+    parser.add_argument('--audio', action='store_true', help='experimental direct system audio path instead of key injection')
     parser.add_argument('--output', type=Path, help='helper .jar path for --build-only')
     args = parser.parse_args()
+    if args.audio and args.build_only:
+        parser.error('--audio is a runtime mode')
     if args.output and not args.build_only:
         parser.error('--output requires --build-only')
     with tempfile.TemporaryDirectory(prefix='tvos-volume-device-') as directory:
         output = args.output.resolve() if args.output else Path(directory)/'helper.jar'
         build(output)
         if not args.build_only:
-            run(output)
+            run(output, audio=args.audio)
 
 
 if __name__ == '__main__':

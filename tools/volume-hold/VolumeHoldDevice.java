@@ -68,7 +68,9 @@ public final class VolumeHoldDevice {
         return new int[] {Integer.parseInt(match.group(2), 16), Integer.parseInt(match.group(3), 16)};
     }
 
-    static final class Injector {
+    interface Stepper { void press(int code) throws ReflectiveOperationException; }
+
+    static final class Injector implements Stepper {
         private final Object manager;
         private final Method inject, uptime;
         private final Constructor<?> key;
@@ -97,13 +99,71 @@ public final class VolumeHoldDevice {
             if (!Boolean.TRUE.equals(result)) throw new IllegalStateException("Input injection rejected");
         }
 
-        void press(int code) throws ReflectiveOperationException {
+        @Override public void press(int code) throws ReflectiveOperationException {
             long down = ((Long) uptime.invoke(null)).longValue();
             try {
                 send(code, 0, down);
             } finally {
                 // Also attempt release if a DOWN call failed after reaching the system.
                 send(code, 1, down);
+            }
+        }
+    }
+
+    /** Experimental direct audio path: bypasses InputDispatcher, not system audio policy. */
+    static final class AudioStepper implements Stepper {
+        private final Object service;
+        private final Method method, uptime;
+        private final Constructor<?> key;
+
+        AudioStepper() throws ReflectiveOperationException {
+            Class<?> binder = Class.forName("android.os.IBinder");
+            Object remote = Class.forName("android.os.ServiceManager")
+                    .getMethod("getService", String.class).invoke(null, "audio");
+            service = Class.forName("android.media.IAudioService$Stub")
+                    .getMethod("asInterface", binder).invoke(null, remote);
+            if (service == null) throw new IllegalStateException("Audio service unavailable");
+            Class<?> api = Class.forName("android.media.IAudioService");
+            Method selected;
+            Constructor<?> eventConstructor = null;
+            Method clock = null;
+            Class<?> event = Class.forName("android.view.KeyEvent");
+            try {
+                selected = api.getMethod("handleVolumeKey", event, boolean.class, String.class, String.class);
+            } catch (NoSuchMethodException legacy) {
+                // Android 9 exposes the suggested-stream method instead of handleVolumeKey.
+                selected = api.getMethod("adjustSuggestedStreamVolume", int.class, int.class,
+                        int.class, String.class, String.class);
+            }
+            if ("handleVolumeKey".equals(selected.getName())) {
+                eventConstructor = event.getConstructor(long.class, long.class, int.class, int.class,
+                        int.class, int.class, int.class, int.class, int.class, int.class);
+                clock = Class.forName("android.os.SystemClock").getMethod("uptimeMillis");
+            }
+            method = selected;
+            key = eventConstructor;
+            uptime = clock;
+            System.out.println("AUDIO method=" + method.getName() + " (submission time, not playback acknowledgement)");
+        }
+
+        private void send(int code, int action, long down) throws ReflectiveOperationException {
+            long time = ((Long) uptime.invoke(null)).longValue();
+            Object event = key.newInstance(down, time, action, code, 0, 0, -1, 0, 0, 257);
+            method.invoke(service, event, true, "com.android.shell", "tvOS-volume-test");
+        }
+
+        @Override public void press(int code) throws ReflectiveOperationException {
+            if (key == null) {
+                // USE_DEFAULT_STREAM_TYPE; SHOW_UI | PLAY_SOUND | FROM_KEY, as system volume keys.
+                method.invoke(service, code == 24 ? 1 : -1, Integer.MIN_VALUE,
+                        1 | 4 | 4096, "com.android.shell", "tvOS-volume-test");
+            } else {
+                long down = ((Long) uptime.invoke(null)).longValue();
+                try {
+                    send(code, 0, down);
+                } finally {
+                    send(code, 1, down);
+                }
             }
         }
     }
@@ -120,7 +180,12 @@ public final class VolumeHoldDevice {
 
     public static void main(String[] args) throws Exception {
         final Session session = new Session();
-        final Injector injector = new Injector(); // Fail before opening input on unsupported firmware.
+        if (args.length > 1 || (args.length == 1 && !"audio".equals(args[0]))) {
+            throw new IllegalArgumentException("Expected optional audio mode");
+        }
+        final boolean audio = args.length == 1;
+        final Stepper injector = audio ? new AudioStepper() : new Injector();
+        // Fail before opening input on unsupported firmware.
         final Process input = new ProcessBuilder("/system/bin/getevent", "-t")
                 .redirectErrorStream(true).start();
         Thread controls = new Thread(new Runnable() {
@@ -166,13 +231,13 @@ public final class VolumeHoldDevice {
         try {
             controls.start();
             events.start();
-            System.out.println("READY device helper: delay=400ms interval=50ms; max=4s/40 steps; heartbeat=3s");
+            System.out.println("READY device helper mode=" + (audio ? "audio" : "input") + ": delay=400ms interval=50ms; max=4s/40 steps; heartbeat=3s");
             while (!session.stopped && !session.expired(now())) {
                 int code = session.hold.take(now());
                 if (code != 0 && !session.stopped && !session.expired(now())) {
                     long start = now();
                     injector.press(code);
-                    System.out.println("EXTRA " + code + " inject=" + (now() - start) + "ms");
+                    System.out.println("EXTRA " + code + (audio ? " audio-submit=" : " inject=") + (now() - start) + "ms");
                 }
                 Thread.sleep(5);
             }

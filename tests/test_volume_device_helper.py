@@ -52,6 +52,35 @@ for manager in ['InputManager', 'InputManagerGlobal']:
         runner.compile_sources('java', root, list(root.rglob('*.java')))
         subprocess.run(['java','-cp',directory,'io.tvos.tools.DeviceHarness'],check=True)
 
+# Exercise both direct AudioService signatures, independent of input-manager injection.
+for modern in [False, True]:
+    with tempfile.TemporaryDirectory() as directory:
+        root=Path(directory)
+        sources={name:content for name,content in files.items() if not name.endswith('DeviceHarness.java')}
+        sources['android/os/IBinder.java']='package android.os;public interface IBinder {}'
+        sources['android/os/ServiceManager.java']='package android.os;public class ServiceManager {public static IBinder getService(String name){if(!name.equals("audio"))throw new AssertionError();return new IBinder(){};}}'
+        sources['android/media/Recorder.java']='package android.media;public class Recorder {public static String events="";public static boolean reject;}'
+        legacy='void adjustSuggestedStreamVolume(int direction,int stream,int flags,String pkg,String caller);'
+        legacy_impl='public void adjustSuggestedStreamVolume(int direction,int stream,int flags,String pkg,String caller){if(stream!=Integer.MIN_VALUE||flags!=4101||!pkg.equals("com.android.shell")||!caller.equals("tvOS-volume-test"))throw new AssertionError();Recorder.events+=direction+";";if(Recorder.reject)throw new SecurityException("denied");}'
+        modern_method='void handleVolumeKey(android.view.KeyEvent event,boolean tv,String pkg,String caller);'
+        modern_impl='public void handleVolumeKey(android.view.KeyEvent event,boolean tv,String pkg,String caller){if(!tv||!pkg.equals("com.android.shell")||!caller.equals("tvOS-volume-test"))throw new AssertionError();Recorder.events+=event.code+":"+event.action+";";if(Recorder.reject&&event.action==0)throw new SecurityException("denied");}'
+        methods=modern_method if modern else legacy
+        impl=modern_impl if modern else legacy_impl
+        sources['android/media/IAudioService.java']='package android.media;public interface IAudioService {'+methods+'class Stub {public static IAudioService asInterface(android.os.IBinder b){return new Fake();}}class Fake implements IAudioService {'+impl+'}}'
+        sources['io/tvos/tools/AudioHarness.java']='''package io.tvos.tools;import android.media.Recorder;
+public class AudioHarness {public static void main(String[] args)throws Exception {
+ VolumeHoldDevice.AudioStepper stepper=new VolumeHoldDevice.AudioStepper();stepper.press(24);stepper.press(25);
+ String expected=MODERN?"24:0;24:1;25:0;25:1;":"1;-1;";if(!expected.equals(Recorder.events))throw new AssertionError(Recorder.events);
+ Recorder.events="";Recorder.reject=true;boolean failed=false;
+ try{stepper.press(24);}catch(java.lang.reflect.InvocationTargetException e){failed=e.getCause() instanceof SecurityException;}
+ if(!failed||!(MODERN?"24:0;24:1;":"1;").equals(Recorder.events))throw new AssertionError("failure fallback or missing release");
+ System.out.println("PASS: actual direct-audio adapter, TV key pair / legacy suggested stream, shell attribution, flags and no fallback on denial");
+}}'''.replace('MODERN','true' if modern else 'false')
+        for name,content in sources.items():
+            p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(content)
+        runner.compile_sources('java',root,list(root.rglob('*.java')))
+        subprocess.run(['java','-cp',directory,'io.tvos.tools.AudioHarness'],check=True)
+
 # Run the actual host lifecycle against fake adb; interrupt must send STOP and clean only its own files.
 import json
 import os
@@ -70,7 +99,7 @@ elif a==['shell','mktemp','-d','/data/local/tmp/tvos-volume.XXXXXX']:
  print('/data/local/tmp/tvos-volume.TEST123')
 elif a[0]=='push':pass
 elif a[:2]==['shell','-T']:
- assert 'app_process /data/local/tmp io.tvos.tools.VolumeHoldDevice' in a[2]
+ assert a[2].endswith('app_process /data/local/tmp io.tvos.tools.VolumeHoldDevice audio')
  print('READY FAKE DEVICE',flush=True)
  for line in sys.stdin:
   if line.strip()=='STOP':
@@ -83,7 +112,7 @@ else:raise SystemExit('Unexpected arguments: '+repr(a))
     fake.chmod(0o755)
     env=dict(os.environ,PATH=str(root)+os.pathsep+os.environ['PATH'],VOLUME_DEVICE_CALLS=str(root/'calls'))
     harness=root/'host.py'
-    harness.write_text('import importlib.util\nfrom pathlib import Path\ns=importlib.util.spec_from_file_location("runner",'+repr(str(Path('tools/test-volume-hold-device.py').resolve()))+')\nm=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nm.run(Path("fake.jar"))\n')
+    harness.write_text('import importlib.util\nfrom pathlib import Path\ns=importlib.util.spec_from_file_location("runner",'+repr(str(Path('tools/test-volume-hold-device.py').resolve()))+')\nm=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nm.run(Path("fake.jar"),audio=True)\n')
     process=subprocess.Popen([sys.executable,str(harness)],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     import queue
     import threading

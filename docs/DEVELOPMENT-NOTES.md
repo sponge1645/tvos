@@ -162,3 +162,38 @@ via `-Xlint:all,-options`; retain --release 8 and -Werror for source warnings.
 The helper regression now invokes the actual runner compile function, and CI
 runs it on JDK 25 as well as the existing JDK 17 suite/D8 build. This fixes host
 compilation; it is not evidence that on-device injection or timing works yet.
+
+## Direct audio comparison mode
+
+The user ran the persistent input helper: READY and physical volume DOWN/UP were
+present, but most complete InputManager key pairs still took 165–185 ms. Moving
+the process onto the TV did not remove the observed delay. This establishes a
+cost in that injection path; it does not isolate which system stage waits.
+
+Add explicit `--audio` mode to the same host runner (the input mode remains the
+default for comparison). The shell helper resolves IAudioService via ServiceManager,
+using handleVolumeKey(KeyEvent, true, package, caller) when available, or Android
+9's adjustSuggestedStreamVolume(direction, USE_DEFAULT_STREAM_TYPE, flags, package,
+caller) when that method is absent. Attribute calls to com.android.shell, the
+actual shell process identity. SHOW_UI/PLAY_SOUND/FROM_KEY flags for the legacy
+path match platform volume flags. Do not retry a failed invocation through another
+backend: it may already have applied a step. The modern path attempts UP even if
+DOWN reports an error. Scheduler limits, physical release, heartbeat and cleanup
+are retained. No app/service/setting change or APK update is involved.
+
+Sources checked:
+- https://github.com/aosp-mirror/platform_frameworks_base/blob/android-9.0.0_r1/media/java/android/media/IAudioService.aidl
+- https://github.com/aosp-mirror/platform_frameworks_base/blob/android-9.0.0_r1/media/java/android/media/AudioManager.java
+- https://github.com/aosp-mirror/platform_frameworks_base/blob/android-13.0.0_r1/media/java/android/media/IAudioService.aidl
+- https://github.com/aosp-mirror/platform_frameworks_base/blob/android-13.0.0_r1/services/core/java/com/android/server/audio/AudioService.java
+
+These audio entry points use oneway Binder calls. `audio-submit=...ms` measures
+submission, not sound-service completion or visible UI response. Do not claim it
+eliminates server-side queueing: the trial remains bounded and must be assessed
+for actual volume rate and post-release movement. Direct AudioService also bypasses
+WindowManager's additional HDMI/AVR pre-routing, so complete equivalence for every
+external audio setup is unverified. The legacy suggested-stream path is not a
+claim of identical TV/CEC key-down/up semantics. Keep this experimental and opt-in.
+Tests execute both real adapters against 9/13-shaped interfaces, checking method
+selection, shell attribution/flags, complete TV pairs and absence of retry after
+denial; the host Ctrl+C test also verifies --audio reaches the remote command.
