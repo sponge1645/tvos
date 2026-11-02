@@ -1,6 +1,8 @@
 package io.tvos;
 
 import io.tvos.artwork.PosterCache;
+import io.tvos.catalog.RecommendationSelection;
+import io.tvos.catalog.RecommendationStatus;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -10,17 +12,10 @@ import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -49,7 +44,7 @@ final class Recs {
     interface Listener { void onRecs(); }
 
     private static final long LIST_EVERY = 6 * 3600_000L;
-    private static final int MANHA = 0, TARDE = 1, NOITE = 2;
+    private static final String[] WANTED_KINDS = {null, "movie", "tv"};
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
     private static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
 
@@ -62,6 +57,9 @@ final class Recs {
 
     private final Context context;
     private final RecsStore store;
+    private final RecommendationStatus status = new RecommendationStatus(System::currentTimeMillis);
+    private final RecommendationSelection<Pick> selection = new RecommendationSelection<>(
+            pick -> pick.kind, pick -> pick.title, System::currentTimeMillis);
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     // Interactive queries must not wait behind catalog refresh and backdrop construction.
     private final java.util.concurrent.ThreadPoolExecutor requestIo = new java.util.concurrent.ThreadPoolExecutor(
@@ -122,25 +120,9 @@ final class Recs {
         return TmdbClient.hasKey();
     }
 
-    /** Last fetch, for the settings screen: {count, error, at}. Written by the home screen (another process). */
-    static JSONObject status(Context c) {
-        File f = new File(c.getFilesDir(), "recs-status.json");
-        if (!f.exists() || !hasKey(c)) return new JSONObject();
-        try (FileInputStream in = new FileInputStream(f)) {
-            return new JSONObject(read(in));
-        } catch (IOException | org.json.JSONException e) {
-            AppLog.w("recommendations status read: " + e.getClass().getSimpleName());
-            return new JSONObject();
-        } catch (RuntimeException e) {
-            AppLog.unexpected("recommendations status read", e);
-            return new JSONObject();
-        }
-    }
-
     private void writeStatus() {
-        try (FileOutputStream out = new FileOutputStream(new File(context.getFilesDir(), "recs-status.json"))) {
-            out.write(new JSONObject().put("count", picks.size()).put("error", error).put("at", System.currentTimeMillis())
-                    .toString().getBytes(StandardCharsets.UTF_8));
+        try {
+            status.write(context.getFilesDir(), picks.size(), error);
         } catch (IOException | org.json.JSONException e) {
             AppLog.w("recommendations status write: " + e.getClass().getSimpleName());
         } catch (RuntimeException e) {
@@ -150,36 +132,10 @@ final class Recs {
 
     String error() { return error; }
 
-    private static int period(long now) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTimeInMillis(now);
-        int hour = cal.get(Calendar.HOUR_OF_DAY);
-        return hour >= 5 && hour < 12 ? MANHA : hour >= 12 && hour < 18 ? TARDE : NOITE;
-    }
+    private static int period(long now) { return RecommendationSelection.period(now); }
 
     List<Pick> now(String kind) {
-        List<Pick> list = new ArrayList<>();
-        if (!hasKey(context)) return list;    // no TMDB key: no recommendations
-        for (Pick p : picks) {
-            if (kind == null || kind.equals(p.kind)) list.add(p);
-        }
-        if (list.isEmpty()) return list;
-        long hour = System.currentTimeMillis() / 3600_000L;
-        // Three per hour, never two from the same franchise ("Law & Order" and "Law & Order: Special…").
-        List<Pick> out = new ArrayList<>();
-        java.util.Set<String> seen = new java.util.HashSet<>();
-        for (int i = 0; i < list.size() && out.size() < 3; i++) {
-            Pick p = list.get((int) ((hour * 3 + i) % list.size()));
-            if (seen.add(franchise(p.title))) out.add(p);
-        }
-        return out;
-    }
-
-    private static String franchise(String title) {
-        String t = title == null ? "" : title.toLowerCase(Locale.ROOT);
-        int cut = t.indexOf(':');
-        if (cut < 0) cut = t.indexOf(" - ");
-        return (cut > 0 ? t.substring(0, cut) : t).trim();
+        return hasKey(context) ? selection.now(picks, kind) : new ArrayList<>();
     }
 
     /** Name of the service the pick is on ("Netflix"), or empty. */
@@ -281,10 +237,10 @@ final class Recs {
         List<Pick> out = new ArrayList<>();
         if (!hasKey(context)) return out;
         java.util.Set<String> seen = new java.util.HashSet<>();
-        for (Pick p : wanted()) if (backdropCache.hasImage(p) && seen.add(franchise(p.title))) out.add(p);
+        for (Pick p : wanted()) if (backdropCache.hasImage(p) && seen.add(RecommendationSelection.franchise(p.title))) out.add(p);
         for (Pick p : picks) {
             if (p.detailed && backdropCache.hasImage(p)
-                    && seen.add(franchise(p.title))) out.add(p);
+                    && seen.add(RecommendationSelection.franchise(p.title))) out.add(p);
         }
         return out;
     }
@@ -341,7 +297,7 @@ final class Recs {
     List<Pick> wanted() {
         List<Pick> out = new ArrayList<>();
         java.util.Set<String> seen = new java.util.HashSet<>();
-        for (String kind : new String[] {null, "movie", "tv"}) {
+        for (String kind : WANTED_KINDS) {
             for (Pick p : now(kind)) if (seen.add(key(p))) out.add(p);
         }
         return out;
@@ -461,15 +417,7 @@ final class Recs {
 
     /** Ordered catalog for light home screen; unlike now(), not limited to three. */
     List<Pick> catalog(String kind) {
-        List<Pick> out = new ArrayList<>();
-        if (!hasKey(context)) return out;
-        for (Pick p : kind == null ? newPicks : picks) {
-            if (kind == null || kind.equals(p.kind)) {
-                out.add(p);
-                if (out.size() >= 25) break;
-            }
-        }
-        return out;
+        return hasKey(context) ? selection.catalog(kind == null ? newPicks : picks, kind) : new ArrayList<>();
     }
 
     /** Language of titles and genres; the services come from the region. */
@@ -517,11 +465,4 @@ final class Recs {
         store.save(picks, newPicks, period, listAt, listLanguage, keyStamp);
     }
 
-    private static String read(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int n;
-        while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
-        return out.toString(StandardCharsets.UTF_8.name());
-    }
 }

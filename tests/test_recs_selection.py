@@ -3,11 +3,13 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/Recs.java').read_text()
-methods='\n'.join(block(source,sig) for sig in ['    List<Pick> now(String kind)', '    private static String franchise(', '    List<Pick> wanted(', '    List<Pick> showcase(', '    void trim(', '    static String key('])
-harness='''package io.tvos;import java.util.*;
+methods='\n'.join(block(source,sig) for sig in ['    List<Pick> now(String kind)', '    List<Pick> wanted(', '    List<Pick> showcase(', '    void trim(', '    static String key(', '    List<Pick> catalog(String kind)'])
+harness='''package io.tvos;import java.util.*;import io.tvos.catalog.RecommendationSelection;
 public class SelectionHarness {
 '''+block(source,'    static final class Pick {')+'''
- final Object context=new Object();boolean configured=true;final List<Pick> picks=new ArrayList<>();
+ final Object context=new Object();boolean configured=true;final List<Pick> picks=new ArrayList<>(),newPicks=new ArrayList<>();
+ static final String[] WANTED_KINDS={null,"movie","tv"};long time;int clockReads;
+ final RecommendationSelection<Pick> selection=new RecommendationSelection<>(p->p.kind,p->p.title,()->{clockReads++;return time;});
  boolean hasKey(Object context){return configured;}
  static class Cache {Set<String> kept;boolean hasImage(Pick p){return p.backdrop!=null;}void retain(Set<String> paths){kept=new HashSet<>(paths);}}
  final Cache backdropCache=new Cache();
@@ -24,10 +26,21 @@ public class SelectionHarness {
   check(h.now("movie").size()==1&&h.showcase().size()==1,"franchise dedup remains used by refresh/showcase");
   h.picks.add(pick(1,"tv","Other series"));Set<String> keys=new HashSet<>();for(Pick p:h.wanted())keys.add(key(p));check(keys.contains("movie:1")&&keys.contains("tv:1"),"movie/series IDs remain distinct");
   h.configured=false;check(h.now(null).isEmpty()&&h.wanted().isEmpty()&&h.showcase().isEmpty(),"missing API key suppresses selections");
+  h.configured=true;h.picks.clear();for(int i=0;i<10;i++)h.picks.add(pick(i,"movie","Title "+i));
+  int[][] offsets={{0,1,2},{3,4,5},{9,0,1},{2,3,4}};long[] hours={0,1,3,4};
+  for(int j=0;j<hours.length;j++){h.time=hours[j]*3600_000L;List<Pick> selected=h.now("movie");for(int i=0;i<3;i++)check(selected.get(i)==h.picks.get(offsets[j][i]),"hourly rotation retains source identity and wraps");}
+  int reads=h.clockReads;check(h.now("tv").isEmpty()&&h.clockReads==reads,"no matching items do not read clock");
+  for(int i=10;i<40;i++)h.picks.add(pick(i,"movie","Title "+i));h.newPicks.add(pick(50,"tv","Fresh"));
+  check(h.catalog("movie").size()==25&&h.catalog("movie").get(24)==h.picks.get(24),"catalog preserves ordered first 25 items");check(h.catalog(null).size()==1&&h.catalog(null).get(0)==h.newPicks.get(0),"Overview catalog uses new releases");List<Pick> copy=h.catalog("movie");copy.clear();check(h.picks.size()==40,"returned list does not own source container");
+  h.configured=false;check(h.catalog(null).isEmpty()&&h.catalog("movie").isEmpty(),"API-key gating still belongs to Recs");
+  check(RecommendationSelection.franchise(null).isEmpty()&&RecommendationSelection.franchise("  TITLE - Part ").equals("title")&&RecommendationSelection.franchise("A - B: C").equals("a - b"),"legacy null/trimming and colon-before-hyphen franchise rules");
+  Locale locale=Locale.getDefault();TimeZone zone=TimeZone.getDefault();try{Locale.setDefault(Locale.forLanguageTag("tr"));TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kathmandu"));check(RecommendationSelection.franchise("TITLE: Part").equals("title"),"franchise case is independent of device locale");
+   for(int hour:new int[]{0,4,5,11,12,17,18,23}){Calendar at=Calendar.getInstance();at.set(2026,Calendar.NOVEMBER,2,hour,0,0);int expectedPeriod=hour>=5&&hour<12?0:hour>=12&&hour<18?1:2;check(RecommendationSelection.period(at.getTimeInMillis())==expectedPeriod,"device-local time-of-day boundaries");}
+  }finally{Locale.setDefault(locale);TimeZone.setDefault(zone);}
   System.out.println("PASS: production hourly selection, wanted/showcase/franchise identity and memory-trim dependencies");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-recs-selection-') as tmp:
- root=Path(tmp);p=root/'io/tvos/SelectionHarness.java';p.parent.mkdir(parents=True);p.write_text(harness)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p)],check=True)
+ root=Path(tmp);(root/'RecommendationSelection.java').write_text(Path('app/src/io/tvos/catalog/RecommendationSelection.java').read_text());p=root/'io/tvos/SelectionHarness.java';p.parent.mkdir(parents=True);p.write_text(harness)
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,str(p),str(root/'RecommendationSelection.java')],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.SelectionHarness'],check=True)

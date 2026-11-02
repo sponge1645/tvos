@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B149)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B150)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -248,3 +248,21 @@ persistence and listener delivery stay there. Home, weather widgets, accessibili
 screensavers consume the same forecast type. The city and widget adapters compile against
 the real new components; parser coverage includes DST, lenient dates, hourly boundaries,
 clock timing, malformed responses and concurrent response isolation.
+
+
+### Recommendation selection and diagnostics (1B150)
+
+`catalog/RecommendationSelection<T>` owns the ordered catalog filter (limit 25), hourly
+rotation (up to three distinct franchises) and device-local morning/afternoon/night
+boundaries. Kind/title readers and the clock are injected; lists retain original item
+instances and no catalog state is duplicated. `Recs` retains API-key gating, fresh versus
+popular source selection, tab/type-ID deduplication, showcase image readiness and trim.
+The wanted-tab order is reused instead of allocating a new kind array on every call.
+
+`catalog/RecommendationStatus` writes the existing `recs-status.json` snapshot with the
+same count/error/at fields and UTF-8 output; Recs retains failure handling and refresh
+scheduling. The unreferenced `Recs.status(Context)` reader and its private stream-copy
+helper/imports were removed after checking app sources, resources, manifest, tools,
+documentation and tests. The diagnostic file continues to be written, with no settings
+or cache migration. Selection regressions execute the new component through actual
+Recs adapters; diagnostic checks use real files and exercise overwrite/failure recovery.
