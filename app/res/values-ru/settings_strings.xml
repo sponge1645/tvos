@@ -200,9 +200,45 @@
     <string name="settings_home_screen" formatted="false">Экран «Домой»</string>
     <string name="settings_home_recommendations" formatted="false">Рекомендации</string>
     <string name="settings_help_home_screen" formatted="false">Используется, когда отключены все разделы на экране «Домой». Выберите рекомендации сервиса или карточки для продолжения просмотра.</string>
-    <string name="settings_volume_hold" formatted="false">Удержание громкости (ADB)</string>
-    <string name="settings_help_volume_hold" formatted="false">Исправляет удержание громкости, сохраняя назначения кнопок пульта. Нужны USB-отладка, разрешённое подключение ADB и служба tvOS в специальных возможностях. Включайте, если удержание не работает. На внешней аудиосистеме поведение может отличаться.</string>
+    <string name="settings_volume_hold" formatted="false">Удержание громкости</string>
+    <string name="settings_help_volume_hold" formatted="false">Исправляет удержание громкости. Выберите помощник ADB или экспериментальный системный способ в разделе «Сочетания кнопок». Системному способу нужно однократное разрешение через ADB, помощнику — постоянное подключение. Оба требуют службы tvOS в специальных возможностях. Включайте, только если удержание не работает. На внешней аудиосистеме поведение может отличаться.</string>
     <string name="settings_volume_unavailable" formatted="false">Недоступно: проверьте ADB</string>
     <string name="settings_volume_starting" formatted="false">Подключение…</string>
     <string name="settings_volume_waiting" formatted="false">Ожидание службы</string>
+    <string name="remote_shortcuts" formatted="false">Сочетания кнопок</string>
+    <string name="remote_taps" formatted="false">1×, 2×, 3×</string>
+    <string name="remote_add" formatted="false">Добавить кнопку</string>
+    <string name="remote_volume_method" formatted="false">Способ удержания громкости</string>
+    <string name="remote_system_method" formatted="false">Системный — экспериментальный</string>
+    <string name="remote_adb_method" formatted="false">Помощник ADB</string>
+    <string name="remote_grant_volume" formatted="false">Разрешить системное удержание через ADB</string>
+    <string name="remote_accessibility" formatted="false">Включить службу tvOS в специальных возможностях</string>
+    <string name="remote_press" formatted="false">Нажмите кнопку на пульте</string>
+    <string name="remote_capture_help" formatted="false">Нажмите нужную кнопку один раз. Назад отменяет обучение. Стрелки, громкость, питание и Home зарезервированы. Некоторые кнопки прошивка не передаёт приложениям.</string>
+    <string name="remote_reserved" formatted="false">Эта кнопка зарезервирована для системного управления</string>
+    <string name="remote_scope" formatted="false">Где работает</string>
+    <string name="remote_home" formatted="false">Только экран «Домой»</string>
+    <string name="remote_global" formatted="false">Во всех приложениях</string>
+    <string name="remote_ok_home" formatted="false">Сочетания OK доступны только на экране «Домой»</string>
+    <string name="remote_cancel" formatted="false">Отмена</string>
+    <string name="remote_edit" formatted="false">Настройка кнопки</string>
+    <string name="remote_delete" formatted="false">Удалить назначение</string>
+    <string name="remote_help" formatted="false">Как это работает</string>
+    <string name="remote_done" formatted="false">Готово</string>
+    <string name="remote_original" formatted="false">Обычное действие OK</string>
+    <string name="remote_vpn" formatted="false">Включить / выключить INCY VPN</string>
+    <string name="remote_settings" formatted="false">Открыть настройки tvOS</string>
+    <string name="remote_play" formatted="false">Воспроизведение / пауза</string>
+    <string name="remote_next" formatted="false">Следующая запись</string>
+    <string name="remote_previous" formatted="false">Предыдущая запись</string>
+    <string name="remote_mute" formatted="false">Включить / выключить звук</string>
+    <string name="remote_none" formatted="false">Ничего не делать</string>
+    <string name="remote_unassigned" formatted="false">Не назначено</string>
+    <string name="remote_app" formatted="false">Открыть приложение…</string>
+    <string name="remote_action" formatted="false">Выберите действие</string>
+    <string name="remote_save_failed" formatted="false">Не удалось сохранить настройки кнопок</string>
+    <string name="remote_granted" formatted="false">Разрешение выдано. Включите удержание громкости и проверьте его на пульте.</string>
+    <string name="remote_grant_failed" formatted="false">Разрешение не выдано. Проверьте авторизацию ADB на телевизоре.</string>
+    <string name="remote_system_help" formatted="false">Сначала выдайте разрешение через ADB, затем включите «Удержание громкости» на предыдущем экране. После выдачи разрешения этому способу не нужен постоянный ADB. Регистрация слушателя не гарантирует получение кнопок прошивкой. Если удержание не работает, вернитесь к помощнику ADB.</string>
+    <string name="remote_gesture_help" formatted="false">Назначения включаются только для добавленных кнопок. Интервал между нажатиями — до 300 мс. Двойное и тройное нажатие задерживают обычное действие. Удержание OK с обычным действием передаётся экрану «Домой» после 500 мс; его меню удержания появится позже. Во всех приложениях назначенная кнопка полностью перехватывается и требует включённой службы tvOS. OK доступен только на «Домой». Стрелки, Назад, Home, питание и громкость не переназначаются. Действие VPN управляет только INCY.</string>
 </resources>

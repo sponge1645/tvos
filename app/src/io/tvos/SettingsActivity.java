@@ -359,7 +359,7 @@ public class SettingsActivity extends Activity {
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
                 case PICKER: return listWindow.visibleRows(pickLabels.size());
                 case SHELF_EDIT: return listWindow.visibleRows(dockEditor.size());
-                case REMOTE_KEYS: return Prefs.KEYS.length + 1;
+                case REMOTE_KEYS: return Prefs.KEYS.length + 2;
                 default: return Prefs.KEYS.length;
             }
         }
@@ -908,7 +908,7 @@ public class SettingsActivity extends Activity {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 setApprovedRowRect(i);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
-                boolean chevron = keys ? i < REMOTE_VOLUME_ROW : (settingsGroup != SYSTEM && i == CITY_ROW);
+                boolean chevron = keys ? i != REMOTE_VOLUME_ROW : (settingsGroup != SYSTEM && i == CITY_ROW);
                 row.marker = chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
                 row.markerAfterValue = true;
@@ -970,6 +970,7 @@ public class SettingsActivity extends Activity {
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
                 case VOLUME_HOLD: toggleVolumeHold(); invalidate(); return;
+                case ADVANCED_KEYS: activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class)); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;
                 case HOME_ADJUST: adjust(1); invalidate(); return;

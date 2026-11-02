@@ -195,9 +195,45 @@
     <string name="settings_home_screen" formatted="false">Home Screen</string>
     <string name="settings_home_recommendations" formatted="false">Recommendations</string>
     <string name="settings_help_home_screen" formatted="false">Used when all Home categories are turned off. Choose service recommendations or selectable Continue Watching cards.</string>
-    <string name="settings_volume_hold" formatted="false">Volume hold fix (ADB)</string>
-    <string name="settings_help_volume_hold" formatted="false">Restores held volume buttons while remote button assignments remain active. Requires USB debugging, ADB authorization and the tvOS accessibility service. Enable only if volume hold is broken. External audio equipment may behave differently.</string>
+    <string name="settings_volume_hold" formatted="false">Volume hold fix</string>
+    <string name="settings_help_volume_hold" formatted="false">Restores held volume buttons. Choose the ADB helper or experimental system method in Button shortcuts. The system method needs a one-time ADB grant; the helper needs a persistent connection. Both require the tvOS accessibility service. Enable only if hold is broken. External audio equipment may behave differently.</string>
     <string name="settings_volume_unavailable" formatted="false">Unavailable: check ADB</string>
     <string name="settings_volume_starting" formatted="false">Connecting…</string>
     <string name="settings_volume_waiting" formatted="false">Waiting for service</string>
+    <string name="remote_shortcuts" formatted="false">Button shortcuts</string>
+    <string name="remote_taps" formatted="false">1×, 2×, 3×</string>
+    <string name="remote_add" formatted="false">Add a button</string>
+    <string name="remote_volume_method" formatted="false">Volume hold method</string>
+    <string name="remote_system_method" formatted="false">System — experimental</string>
+    <string name="remote_adb_method" formatted="false">ADB helper</string>
+    <string name="remote_grant_volume" formatted="false">Grant system volume listener through ADB</string>
+    <string name="remote_accessibility" formatted="false">Enable tvOS accessibility service</string>
+    <string name="remote_press" formatted="false">Press a remote button</string>
+    <string name="remote_capture_help" formatted="false">Press the desired button once. Back cancels capture. Arrows, volume, power and Home are reserved. Firmware may not deliver some buttons to apps.</string>
+    <string name="remote_reserved" formatted="false">This button is reserved for system navigation</string>
+    <string name="remote_scope" formatted="false">Where it works</string>
+    <string name="remote_home" formatted="false">Home screen only</string>
+    <string name="remote_global" formatted="false">Across apps</string>
+    <string name="remote_ok_home" formatted="false">OK shortcuts are available only on the Home screen</string>
+    <string name="remote_cancel" formatted="false">Cancel</string>
+    <string name="remote_edit" formatted="false">Button setup</string>
+    <string name="remote_delete" formatted="false">Remove binding</string>
+    <string name="remote_help" formatted="false">How it works</string>
+    <string name="remote_done" formatted="false">Done</string>
+    <string name="remote_original" formatted="false">Original OK action</string>
+    <string name="remote_vpn" formatted="false">Toggle INCY VPN</string>
+    <string name="remote_settings" formatted="false">Open tvOS settings</string>
+    <string name="remote_play" formatted="false">Play / pause</string>
+    <string name="remote_next" formatted="false">Next track</string>
+    <string name="remote_previous" formatted="false">Previous track</string>
+    <string name="remote_mute" formatted="false">Toggle mute</string>
+    <string name="remote_none" formatted="false">Do nothing</string>
+    <string name="remote_unassigned" formatted="false">Not assigned</string>
+    <string name="remote_app" formatted="false">Open an app…</string>
+    <string name="remote_action" formatted="false">Choose action</string>
+    <string name="remote_save_failed" formatted="false">Could not save button settings</string>
+    <string name="remote_granted" formatted="false">Permission granted. Enable the volume hold fix and test your remote.</string>
+    <string name="remote_grant_failed" formatted="false">Permission was not granted. Check ADB authorization on the TV.</string>
+    <string name="remote_system_help" formatted="false">Grant permission through ADB first, then enable Volume hold fix on the previous screen. This method needs no persistent ADB connection after the grant. Listener registration does not guarantee firmware event delivery. If hold does not work, select the ADB helper again.</string>
+    <string name="remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require the enabled tvOS service. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls INCY only.</string>
 </resources>

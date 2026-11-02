@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B160)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current testing display is `1.1.2 (1B161)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -413,3 +413,14 @@ invalidating geometry/edge changes and releasing them on clear. Remove the
 test-only DockArtwork.find wrapper and retired host-per-step volume prototype/
 its duplicate test. The current standalone device runner remains a build tool
 and diagnostic; production depends on its compiler. No further broad splitting.
+
+### Experimental remote bindings and system volume (1B161, branch 1.1.2)
+
+remote/RemoteBindings owns bounded atomic identity/scope/action storage.
+remote/TapSequence owns scheduler-injected single/double/triple/hold state.
+RemoteShortcuts adapts Android events and cancellation in Home and :keys;
+RemoteShortcutActions executes a fixed action allowlist.
+RemoteShortcutSettingsActivity owns capture/editor dialogs. SettingsActivity
+adds one entry while retaining all five legacy assignments and the volume toggle.
+SystemVolume is an opt-in privileged long-press listener: no DUMP polling or
+global hidden-API policy changes. The existing bounded ADB helper remains default.

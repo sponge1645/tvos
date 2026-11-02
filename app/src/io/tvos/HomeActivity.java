@@ -16,6 +16,7 @@ import android.widget.TextView;
  */
 public class HomeActivity extends Activity {
     private HomeView home;
+    private RemoteShortcuts shortcuts;
     private HomeDreamReturn dreamReturn;
     private final SelfUpdate.Listener updateListener = this::noticeUpdate;
 
@@ -48,6 +49,7 @@ public class HomeActivity extends Activity {
         }
         Ui.init(this);
         home = new HomeView(this);
+        shortcuts = new RemoteShortcuts(this, false, event -> { if (home != null) home.onKey(event); });
         setContentView(home);
         dreamReturn = new HomeDreamReturn(this, home::prepareDreamReturn, home::revealFromDream, home::cancelDreamReturn);
         getWindow().setBackgroundDrawable(null);
@@ -78,6 +80,7 @@ public class HomeActivity extends Activity {
             recreate();   // a new language or city: draw everything again
             return;
         }
+        if (shortcuts != null) shortcuts.reload();
         if (home != null) {
             HomeData.get(this).localizeCity(Prefs.language());
             home.resume();
@@ -89,6 +92,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        if (shortcuts != null) shortcuts.cancel();
         if (dreamReturn != null) dreamReturn.paused();
         SelfUpdate.get(this).removeListener(updateListener);
         if (home != null) home.pause();
@@ -121,6 +125,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (shortcuts != null) shortcuts.close();
         if (dreamReturn != null) dreamReturn.close();
         if (home != null) home.destroy();
         super.onDestroy();
@@ -132,6 +137,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (shortcuts != null && shortcuts.onKey(event)) return true;
         if (RemoteKeys.onKey(this, event)) return true;
         if (home != null && home.onKey(event)) return true;
         return super.dispatchKeyEvent(event);

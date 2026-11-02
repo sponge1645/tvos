@@ -40,7 +40,7 @@ public class ValuesHarness {
    check(v.menu(MENU_BUTTONS,3)[0].equals("#4")&&v.menu(MENU_BUTTONS,3)[1].equals(SettingsValues.onOff(false))&&v.menu(MENU_BUTTONS,3)[2].isEmpty(),"button order and VPN footer");
    status[0]="Searching";check(v.menu(REGION,2)[1].equals("Searching"),"Region exposes pending/error lookup status");check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
    check(v.settings().length==6&&SettingsValues.randomRow()==5,"stable category rows without quote/coin controls");
-   check(SettingsValues.keyLabels().length==6&&SettingsValues.keyLabels()[4].equals(ru?"Кнопка MI":"MI Button"),"MI setting present in both languages");String[] mappings=SettingsValues.keyValues(Arrays.asList("", "youtube"),Arrays.asList("old empty label", "YT"));
+   check(SettingsValues.keyLabels().length==7&&SettingsValues.keyLabels()[4].equals(ru?"Кнопка MI":"MI Button"),"MI setting present in both languages");String[] mappings=SettingsValues.keyValues(Arrays.asList("", "youtube"),Arrays.asList("old empty label", "YT"));
    check(mappings[1].equals("YT"),"configured remote retains app label");
    for(int index:new int[]{0,2,3})check(mappings[index].equals(ru?"Не настроено":"Not configured"),"missing and empty remote mappings use one live localized status");
    mappings=SettingsValues.keyValues(Collections.emptyList(),Collections.emptyList());check(mappings[4].equals(AppStrings.get(R.string.settings_not_configured)),"unmapped MI has no default app");
@@ -52,7 +52,7 @@ public class ValuesHarness {
     check(actual.equals(AppStrings.get(id)),"volume runtime status and language");
    }Prefs.hold=false;Prefs.holdStatus="";
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B160)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
+   String[] about=v.menu(ABOUT,8);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B161)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,8)[6].equals("Home"),"SSID quotes removed");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,8);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");

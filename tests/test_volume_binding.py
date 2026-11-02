@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 files={
+'io/tvos/SystemVolume.java':'package io.tvos;class SystemVolume {static boolean ready=true;static int starts,closes;SystemVolume(android.content.Context c){}boolean start(){starts++;return ready;}void close(){closes++;}}',
 'io/tvos/RemoteVolume.java':Path('app/src/io/tvos/RemoteVolume.java').read_text(),
 'io/tvos/remote/VolumeHoldRunner.java':Path('app/src/io/tvos/remote/VolumeHoldRunner.java').read_text(),
 'io/tvos/remote/VolumeHoldStore.java':Path('app/src/io/tvos/remote/VolumeHoldStore.java').read_text(),
@@ -57,6 +58,9 @@ public class BindingHarness {
     VolumeHoldStore.setEnabled(c.dir,true);c.fire(RemoteVolume.CHANGE);c.await("READY");Adb interrupted=Adb.links.get(2);volume.interrupted();check(interrupted.stopped.await(2,TimeUnit.SECONDS),"feedback interruption cancels old input");c.await("READY");check(Adb.links.size()==4,"enabled fix resumes after interruption without a screen event");
     Adb last=Adb.links.get(Adb.links.size()-1);volume.close();check(last.stopped.await(2,TimeUnit.SECONDS),"service destruction ends stream");c.await("WAITING");volume.close();
     check(c.unregister==1&&c.receiver==null&&Adb.live.get()==0&&Adb.max.get()==1,"receiver released once, no parallel sessions");check(c.assets.reads==1,"asset read/encoding reused for reconnects");
+    VolumeHoldStore.setSystem(c.dir,true);Context sys=new Context(dir.toFile());RemoteVolume direct=new RemoteVolume(sys);int before=Adb.links.size();
+    try {direct.start();sys.await("READY");check(Adb.links.size()==before&&SystemVolume.starts>0,"system mode does not open ADB");sys.power.interactive=false;sys.fire(Intent.ACTION_SCREEN_OFF);sys.await("OFF");SystemVolume.ready=false;sys.power.interactive=true;sys.fire(Intent.ACTION_SCREEN_ON);sys.await("ERROR");check(Adb.links.size()==before,"unavailable system method does not silently connect ADB");SystemVolume.ready=true;VolumeHoldStore.setSystem(c.dir,false);sys.fire(RemoteVolume.CHANGE);sys.await("READY");check(Adb.links.size()==before+1,"explicit fallback to existing ADB method");}finally{direct.close();SystemVolume.ready=true;}
+
    }finally{volume.close();try(java.util.stream.Stream<Path> paths=Files.walk(dir)){paths.sorted(Comparator.reverseOrder()).forEach(p->{try{Files.delete(p);}catch(IOException e){throw new UncheckedIOException(e);}});}}
   }
   System.out.println("PASS: actual Android adapter on SDK28/33, default-off, private receiver, bundled asset transfer/cache, fragmented readiness, screen/setting/service stop, reconnect and single-session ownership");

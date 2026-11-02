@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 
 files = {
+    'io/tvos/RemoteShortcuts.java': 'package io.tvos;class RemoteShortcuts {static boolean consume,home;RemoteShortcuts(android.content.Context c,boolean g,Object o){}boolean onKey(android.view.KeyEvent e){return consume;}boolean homeBinding(android.view.KeyEvent e){return home;}void cancel(){}void close(){}}',
     'io/tvos/RemoteVolume.java': 'package io.tvos;final class RemoteVolume {static int starts,closes,pauses;RemoteVolume(android.content.Context c){}void start(){starts++;}void close(){closes++;}void interrupted(){pauses++;}}',
     'io/tvos/RemoteKeyService.java': Path('app/src/io/tvos/RemoteKeyService.java').read_text(),
     'io/tvos/version/SoftwareBuild.java': Path('app/src/io/tvos/version/SoftwareBuild.java').read_text(),
@@ -24,7 +25,7 @@ files = {
         public int code,action,repeat;public int getKeyCode(){return code;}public int getAction(){return action;}public int getRepeatCount(){return repeat;}
         public long getDownTime(){return 100;}public long getEventTime(){return 300;}public int getDeviceId(){return 2;}public int getScanCode(){return 115;}public int getFlags(){return 8;}public int getSource(){return 0;}public InputDevice getDevice(){return new InputDevice();}
     }''',
-    'android/view/accessibility/AccessibilityEvent.java': 'package android.view.accessibility;public class AccessibilityEvent {}',
+    'android/view/accessibility/AccessibilityEvent.java': 'package android.view.accessibility;public class AccessibilityEvent {public static final int TYPE_WINDOW_STATE_CHANGED=32;public String pkg="",cls="";public int getEventType(){return 32;}public CharSequence getPackageName(){return pkg;}public CharSequence getClassName(){return cls;}}',
     'android/accessibilityservice/AccessibilityServiceInfo.java': 'package android.accessibilityservice;public class AccessibilityServiceInfo {public int flags=32;}',
     'android/accessibilityservice/AccessibilityService.java': '''package android.accessibilityservice;public abstract class AccessibilityService extends android.content.Context {public int connected,unbound,destroyed;public AccessibilityServiceInfo info=new AccessibilityServiceInfo();protected void onServiceConnected(){connected++;}public AccessibilityServiceInfo getServiceInfo(){return info;}public boolean onUnbind(android.content.Intent i){unbound++;return true;}public void onDestroy(){destroyed++;}protected boolean onKeyEvent(android.view.KeyEvent e){return false;}public abstract void onAccessibilityEvent(android.view.accessibility.AccessibilityEvent e);public abstract void onInterrupt();}''',
     'io/tvos/ChiqBootGuard.java': 'package io.tvos;final class ChiqBootGuard {static void onWindowEvent(android.content.Context c,android.view.accessibility.AccessibilityEvent e){}}',
@@ -49,6 +50,8 @@ files = {
             check(Log.count==count&&service.connected==1&&service.unbound==1&&service.destroyed==1);
             Log.enabled=true;service.onServiceConnected();check(Log.last.equals("CONNECTED build="+io.tvos.version.SoftwareBuild.SEQUENCE+" flags=32"));
             service.info=null;service.onServiceConnected();check(Log.last.endsWith(" flags=-1"));
+            android.view.accessibility.AccessibilityEvent window=new android.view.accessibility.AccessibilityEvent();window.pkg="io.tvos";window.cls="io.tvos.RemoteShortcutSettingsActivity";service.onAccessibilityEvent(window);RemoteShortcuts.consume=true;check(!service.onKeyEvent(e));
+            window.pkg="other.app";window.cls="Other";service.onAccessibilityEvent(window);check(service.onKeyEvent(e));RemoteShortcuts.consume=false;
             service.onInterrupt();check(Log.last.equals("INTERRUPT"));
             check(service.onUnbind(null));check(Log.last.equals("UNBIND"));
             service.onDestroy();check(Log.last.equals("DESTROY"));

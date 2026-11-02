@@ -21,6 +21,8 @@ final class RemoteVolume implements AutoCloseable {
     static final String CHANGE = "io.tvos.VOLUME_HOLD_CHANGE", STATUS = "io.tvos.VOLUME_HOLD_STATUS";
     private final Context context;
     private final VolumeHoldRunner runner;
+    private final SystemVolume system;
+    private volatile boolean systemMode;
     private String lastStatus = "";
     private String helper;
     private boolean registered, closed;
@@ -30,6 +32,7 @@ final class RemoteVolume implements AutoCloseable {
 
     RemoteVolume(Context context) {
         this.context = context.getApplicationContext();
+        system = new SystemVolume(this.context);
         runner = new VolumeHoldRunner(this::connect, this::publish);
     }
     void start() {
@@ -40,13 +43,21 @@ final class RemoteVolume implements AutoCloseable {
         registered = true;
         refresh();
     }
-    private void refresh() {
+    private synchronized void refresh() {
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        runner.update(VolumeHoldStore.enabled(context.getFilesDir()) && power != null && power.isInteractive());
+        boolean enabled = VolumeHoldStore.enabled(context.getFilesDir()) && power != null && power.isInteractive();
+        systemMode = VolumeHoldStore.system(context.getFilesDir());
+        if (systemMode) {
+            runner.update(false);
+            if (!enabled) system.close();
+            writeStatus(!enabled ? "OFF" : system.start() ? "READY" : "ERROR");
+        } else {
+            system.close(); runner.update(enabled);
+        }
     }
-    void interrupted() { refresh(); }
+    void interrupted() { system.close(); refresh(); }
     private synchronized void publish(String status) {
-        if (!closed) writeStatus(status);
+        if (!closed && !systemMode) writeStatus(status);
     }
     private void writeStatus(String status) {
         if (lastStatus.equals(status)) return;
@@ -101,6 +112,7 @@ final class RemoteVolume implements AutoCloseable {
     @Override public synchronized void close() {
         if (closed) return;
         closed = true;
+        system.close();
         runner.close(); // Stop input before status I/O or receiver cleanup.
         if (registered) { context.unregisterReceiver(receiver); registered = false; }
         writeStatus(VolumeHoldStore.enabled(context.getFilesDir()) ? "WAITING" : "OFF");

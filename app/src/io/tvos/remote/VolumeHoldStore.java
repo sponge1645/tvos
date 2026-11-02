@@ -10,6 +10,10 @@ import java.nio.charset.StandardCharsets;
 public final class VolumeHoldStore {
     private VolumeHoldStore() { }
     public static boolean enabled(File directory) { return "1".equals(read(directory, "volume-hold.enabled")); }
+    public static boolean system(File directory) { return "SYSTEM".equals(read(directory, "volume-hold.mode")); }
+    public static void setSystem(File directory, boolean system) throws IOException {
+        write(directory, "volume-hold.mode", system ? "SYSTEM" : "ADB");
+    }
     public static String status(File directory) { return read(directory, "volume-hold.status"); }
     public static void setEnabled(File directory, boolean enabled) throws IOException {
         write(directory, "volume-hold.enabled", enabled ? "1" : "0");

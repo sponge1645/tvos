@@ -13,11 +13,15 @@ import android.view.accessibility.AccessibilityEvent;
  */
 public class RemoteKeyService extends AccessibilityService {
     private RemoteVolume volume;
+    private RemoteShortcuts shortcuts;
+    private boolean homeWindow, captureWindow;
     private static final String TRACE_TAG = "tvOS-Volume";
 
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
         if (volume != null) volume.close();
+        if (shortcuts != null) shortcuts.close();
+        shortcuts = new RemoteShortcuts(this, true, null);
         volume = new RemoteVolume(this);
         volume.start();
         if (Log.isLoggable(TRACE_TAG, Log.DEBUG)) {
@@ -29,12 +33,14 @@ public class RemoteKeyService extends AccessibilityService {
 
     @Override public boolean onUnbind(Intent intent) {
         if (volume != null) { volume.close(); volume = null; }
+        if (shortcuts != null) { shortcuts.close(); shortcuts = null; }
         traceLifecycle("UNBIND");
         return super.onUnbind(intent);
     }
 
     @Override public void onDestroy() {
         if (volume != null) { volume.close(); volume = null; }
+        if (shortcuts != null) { shortcuts.close(); shortcuts = null; }
         traceLifecycle("DESTROY");
         super.onDestroy();
     }
@@ -44,7 +50,9 @@ public class RemoteKeyService extends AccessibilityService {
     }
 
     @Override protected boolean onKeyEvent(KeyEvent event) {
-        boolean handled = RemoteKeys.onKey(this, event);
+        if (captureWindow) return false;
+        boolean local = homeWindow && shortcuts != null && shortcuts.homeBinding(event);
+        boolean handled = !local && (shortcuts != null && shortcuts.onKey(event) || RemoteKeys.onKey(this, event));
         // Opt-in diagnostics for every key: firmware may use unexpected volume codes.
         // Observe only: retain the actual app-key policy result and original event.
         if (Log.isLoggable(TRACE_TAG, Log.DEBUG)) {
@@ -59,10 +67,20 @@ public class RemoteKeyService extends AccessibilityService {
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            String pkg = event.getPackageName() == null ? "" : event.getPackageName().toString();
+            String cls = event.getClassName() == null ? "" : event.getClassName().toString();
+            if (!"io.tvos".equals(pkg) || "io.tvos.HomeActivity".equals(cls) || "io.tvos.SettingsActivity".equals(cls)) captureWindow = false;
+            if ("io.tvos".equals(pkg) && "io.tvos.RemoteShortcutSettingsActivity".equals(cls)) captureWindow = true;
+            homeWindow = "io.tvos".contentEquals(event.getPackageName() == null ? "" : event.getPackageName())
+                    && "io.tvos.HomeActivity".contentEquals(event.getClassName() == null ? "" : event.getClassName());
+            if (shortcuts != null) shortcuts.cancel();
+        }
         ChiqBootGuard.onWindowEvent(this, event);
     }
 
     @Override public void onInterrupt() {
+        if (shortcuts != null) shortcuts.cancel();
         if (volume != null) volume.interrupted();
         traceLifecycle("INTERRUPT");
     }

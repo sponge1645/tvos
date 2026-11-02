@@ -176,11 +176,11 @@ final class SettingsValues {
 
     static String[] keyLabels() {
         return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_volume_hold)};
+                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_volume_hold), AppStrings.get(R.string.remote_shortcuts)};
     }
 
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {
-        String[] v = new String[Prefs.KEYS.length + 1];
+        String[] v = new String[Prefs.KEYS.length + 2];
         for (int i = 0; i < Prefs.KEYS.length; i++) {
             String pkg = Prefs.keyApp(Prefs.KEYS[i]);
             int at = appPkgs.indexOf(pkg);
@@ -193,6 +193,7 @@ final class SettingsValues {
                 : "ERROR".equals(state) ? AppStrings.get(R.string.settings_volume_unavailable)
                 : "STARTING".equals(state) ? AppStrings.get(R.string.settings_volume_starting)
                 : AppStrings.get(R.string.settings_volume_waiting);
+        v[Prefs.KEYS.length + 1] = AppStrings.get(R.string.remote_taps);
         return v;
     }
 
