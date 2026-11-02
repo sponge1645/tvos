@@ -113,3 +113,42 @@ before implementing an opt-in on-device version. Reading input devices and sendi
 injected volume keys may vary by firmware even when the Android APIs support 9+.
 The scheduler/parser and actual CLI transport are covered with deterministic
 clock checks and a fake adb. A real-TV run is still required.
+
+## On-device persistent helper prototype
+
+The user confirmed the host experiment changes volume on hold and retains app-key
+assignments. Its per-step shell command cost was 128–410 ms, visibly slower than
+native repeat. `tools/test-volume-hold-device.py` now builds a standalone Java-8
+DEX jar (Android min API 28), pushes it to a unique /data/local/tmp directory and
+runs one shell-owned app_process. It leaves the APK, assignments, accessibility
+flags and persistent settings unchanged. The Mac needs the same JDK/Android SDK
+as build.sh; run the script from a complete source snapshot because it compiles
+`tools/volume-hold/VolumeHoldDevice.java`.
+
+The device process reads getevent and injects completed volume DOWN/UP pairs via
+InputManager (Android 9-shaped API) or InputManagerGlobal (Android 14-shaped API).
+The Java reflection entry points were checked against Android 9 and 14 source;
+this is not proof of compatibility with every OEM hidden-API/SELinux policy.
+It starts extras after 400 ms, targets 50 ms intervals, and serializes injections
+with WAIT_FOR_FINISH rather than queuing asynchronous catch-up events. Actual
+injection time is printed; no latency improvement is claimed before device tests.
+The native initial step is unchanged. A pair already submitted can finish after
+physical release. Raw repeats/duplicate downs and simultaneous volume keys suspend
+extras until release; the per-hold bounds are 4 seconds / 40 extra steps.
+
+The host sends a heartbeat every 500 ms. EOF, STOP or a 3-second heartbeat gap
+ends the device session and destroys its getevent child. Input-stream loss and
+injection rejection also end the experiment. The runner sends STOP on Ctrl+C,
+waits for shutdown and removes only its own jar/directory. There is no boot task,
+service installation or permanent helper. If the ADB connection is lost, remote
+file cleanup may need a later connection; the heartbeat still limits the session.
+As with the first trial, use only on a device with confirmed broken native hold;
+raw input cannot detect repeats generated later in Android. HDMI-CEC/external
+routing, sleep/reconnect, OEM injection permissions and real timing remain device
+validation requirements before integrating an opt-in app feature.
+
+Tests compile and execute the real scheduler/reflection adapter with 9/14-shaped
+fixtures, verify timing boundaries/device identity/release/repeats/caps/heartbeat
+and release after rejected DOWN, and run the actual host runner with fake ADB to
+check Ctrl+C STOP delivery and scoped cleanup. CI separately compiles the actual
+standalone jar with D8/min-api 28. No signing identity or app display build changes.
