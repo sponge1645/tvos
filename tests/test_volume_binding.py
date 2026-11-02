@@ -54,7 +54,7 @@ public class BindingHarness {
     c.power.interactive=false;c.fire(Intent.ACTION_SCREEN_OFF);check(first.stopped.await(2,TimeUnit.SECONDS),"screen-off ends stream");c.await("OFF");check(Adb.links.size()==1,"no connection while screen off");
     c.power.interactive=true;c.fire(Intent.ACTION_SCREEN_ON);c.await("READY");check(Adb.links.size()==2,"screen-on resumes");
     VolumeHoldStore.setEnabled(c.dir,false);c.fire(RemoteVolume.CHANGE);check(Adb.links.get(1).stopped.await(2,TimeUnit.SECONDS),"setting off closes connection");c.await("OFF");
-    VolumeHoldStore.setEnabled(c.dir,true);c.fire(RemoteVolume.CHANGE);c.await("READY");volume.pause();c.await("OFF");c.fire(Intent.ACTION_SCREEN_ON);c.await("READY");
+    VolumeHoldStore.setEnabled(c.dir,true);c.fire(RemoteVolume.CHANGE);c.await("READY");Adb interrupted=Adb.links.get(2);volume.interrupted();check(interrupted.stopped.await(2,TimeUnit.SECONDS),"feedback interruption cancels old input");c.await("READY");check(Adb.links.size()==4,"enabled fix resumes after interruption without a screen event");
     Adb last=Adb.links.get(Adb.links.size()-1);volume.close();check(last.stopped.await(2,TimeUnit.SECONDS),"service destruction ends stream");c.await("WAITING");volume.close();
     check(c.unregister==1&&c.receiver==null&&Adb.live.get()==0&&Adb.max.get()==1,"receiver released once, no parallel sessions");check(c.assets.reads==1,"asset read/encoding reused for reconnects");
    }finally{volume.close();try(java.util.stream.Stream<Path> paths=Files.walk(dir)){paths.sorted(Comparator.reverseOrder()).forEach(p->{try{Files.delete(p);}catch(IOException e){throw new UncheckedIOException(e);}});}}

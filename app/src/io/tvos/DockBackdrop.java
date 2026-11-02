@@ -1,6 +1,7 @@
 package io.tvos;
 
 import io.tvos.artwork.DockImageLoader;
+import io.tvos.network.ConnectionObserver;
 import static io.tvos.artwork.DockImageLoader.publishedImage;
 import io.tvos.watching.DockPrograms;
 import io.tvos.watching.DockPrograms.Candidate;
@@ -46,7 +47,7 @@ final class DockBackdrop {
             public boolean active(int token) { return token == generation; }
             public void opened(int token, HttpURLConnection connection) { trackConnection(token, connection); }
             public void closed(HttpURLConnection connection) {
-                if (activeConnection == connection) activeConnection = null;
+                releaseConnection(connection);
             }
         });
     }
@@ -116,11 +117,27 @@ final class DockBackdrop {
     }
 
     private void trackConnection(int token, HttpURLConnection connection) {
-        activeConnection = connection;
-        if (connection != null && token != generation) {
+        if (token != generation) {
             connection.disconnect();
             throw new java.util.concurrent.CancellationException();
         }
+        activeConnection = connection;
+        if (token != generation) {
+            releaseConnection(connection);
+            connection.disconnect();
+            throw new java.util.concurrent.CancellationException();
+        }
+    }
+
+    private void releaseConnection(HttpURLConnection connection) {
+        if (activeConnection == connection) activeConnection = null;
+    }
+
+    private ConnectionObserver connectionObserver(int token) {
+        return new ConnectionObserver() {
+            @Override public void opened(HttpURLConnection connection) { trackConnection(token, connection); }
+            @Override public void closed(HttpURLConnection connection) { releaseConnection(connection); }
+        };
     }
 
     static String bundled(String pkg) {
@@ -218,7 +235,7 @@ final class DockBackdrop {
                     }
                     result = new Artwork(background, candidate.title, null);
                     stage = System.nanoTime();
-                    DockArtwork.loadLogo(extra, connection -> trackConnection(token, connection));
+                    DockArtwork.loadLogo(extra, connectionObserver(token));
                     if (token != generation) return;
                     trace(pkg, "logo metadata", stage, extra.logo.isEmpty() ? "none" : "matched");
                     Bitmap logo = null;
@@ -244,7 +261,7 @@ final class DockBackdrop {
     private DockArtwork lookup(Candidate candidate, String pkg, int token) {
         long started = System.nanoTime();
         DockArtwork extra = new DockArtwork();
-        try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connection -> trackConnection(token, connection)); }
+        try { extra = DockArtwork.lookup(candidate.title, candidate.poster, candidate.year, connectionObserver(token)); }
         catch (IOException | org.json.JSONException e) { AppLog.w("Dock artwork metadata unavailable: " + e.getClass().getSimpleName()); }
         if (token == generation) trace(pkg, "metadata", started, extra.backdrop.isEmpty() ? "no backdrop match" : "matched");
         return extra;

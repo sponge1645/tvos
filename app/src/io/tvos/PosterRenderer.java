@@ -48,6 +48,23 @@ final class PosterRenderer {
     private final RectF ratingInsetScratch = new RectF();
     private final Paint questionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint marqueeMaskScratch = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final MarqueeFade titleFade = new MarqueeFade(), detailFade = new MarqueeFade();
+    private static final class MarqueeFade {
+        private Shader shader;
+        private float left, width, edge;
+        private int sides;
+        Shader get(float x, float w, float e, int flags) {
+            if (shader == null || left != x || width != w || edge != e || sides != flags) {
+                shader = new LinearGradient(x, 0, x + w, 0,
+                        new int[] {(flags & 1) != 0 ? 0x00FFFFFF : 0xFFFFFFFF,
+                                0xFFFFFFFF, 0xFFFFFFFF, (flags & 2) != 0 ? 0x00FFFFFF : 0xFFFFFFFF},
+                        new float[] {0f, e / w, 1f - e / w, 1f}, Shader.TileMode.CLAMP);
+                left = x; width = w; edge = e; sides = flags;
+            }
+            return shader;
+        }
+        void reset() { shader = null; }
+    }
     private final PorterDuffXfermode textEdgeMode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
 
     PosterRenderer(Recs recs, Shadows shadows, ImagePainter images, int capacity) {
@@ -55,7 +72,7 @@ final class PosterRenderer {
         ratingStyle = new RatingStyle(capacity);
         rim.setStyle(Paint.Style.STROKE);
     }
-    void clear() { posterText.clear(); ratingStyle.clear(); }
+    void clear() { posterText.clear(); ratingStyle.clear(); titleFade.reset(); detailFade.reset(); }
     boolean focus(int index, int page, int tab, long now) {
         if (index == marqueeCard && page == marqueePage && tab == marqueeTab) return false;
         marqueeCard = index; marqueePage = page; marqueeTab = tab; marqueeSince = now; marqueeNeeded = false;
@@ -125,7 +142,7 @@ final class PosterRenderer {
         }
         if (p == null) return;
         String title = p.title == null ? "" : p.title;
-        drawCardMarquee(c, title, lCardTitle, base.left, base.bottom + HomeLayout.POSTER_TITLE_BASELINE * k, bw, i);
+        drawCardMarquee(c, title, lCardTitle, base.left, base.bottom + HomeLayout.POSTER_TITLE_BASELINE * k, bw, i, titleFade);
         if (p.id == -1) {
             questionPaint.set(lCardTitle);
             questionPaint.setTextSize(100 * k);
@@ -135,7 +152,7 @@ final class PosterRenderer {
         }
         if (p.watchingKey != null) {
             drawCardMarquee(c, p.meta, lCardMeta, base.left,
-                    base.bottom + HomeLayout.POSTER_META_BASELINE * k, bw, i);
+                    base.bottom + HomeLayout.POSTER_META_BASELINE * k, bw, i, detailFade);
             return;
         }
         PosterText.Entry text = posterText.get(p);
@@ -187,11 +204,11 @@ final class PosterRenderer {
             metaWidth -= badgeWidth + 19 * k;
         }
         if (!detail.isEmpty() && metaWidth > 0) {
-            drawCardMarquee(c, detail, lCardMeta, metaLeft, metaBaseline, metaWidth, i);
+            drawCardMarquee(c, detail, lCardMeta, metaLeft, metaBaseline, metaWidth, i, detailFade);
         }
     }
 
-    private void drawCardMarquee(Canvas c, String value, Paint paint, float left, float baseline, float width, int i) {
+    private void drawCardMarquee(Canvas c, String value, Paint paint, float left, float baseline, float width, int i, MarqueeFade fade) {
         float textWidth = paint.measureText(value);
         boolean focusedOverflow = cardsFocused && i == marqueeCard
                 && cardPage == marqueePage && tab == marqueeTab && textWidth > width;
@@ -222,14 +239,8 @@ final class PosterRenderer {
                 // Fade at the leading/trailing clipped edge, depending on the text position.
                 boolean leftClipped = offset > 0.5f * k;
                 boolean rightClipped = overflow - offset > 0.5f * k;
-                mask.setShader(new LinearGradient(left, 0, left + width, 0,
-                        new int[] {
-                                leftClipped ? 0x00FFFFFF : 0xFFFFFFFF,
-                                0xFFFFFFFF, 0xFFFFFFFF,
-                                rightClipped ? 0x00FFFFFF : 0xFFFFFFFF
-                        },
-                        new float[] {0f, edge / width, 1f - edge / width, 1f},
-                        Shader.TileMode.CLAMP));
+                int sides = (leftClipped ? 1 : 0) | (rightClipped ? 2 : 0);
+                mask.setShader(fade.get(left, width, edge, sides));
                 c.drawRect(left, top, left + width, bottom, mask);
                 mask.setShader(null);
                 mask.setXfermode(null);

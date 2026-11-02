@@ -1,5 +1,8 @@
 # Structural baseline: 1.1.1 (1B154)
 
+Historical baseline. See [FINAL-AUDIT.md](FINAL-AUDIT.md) for 1B159 changes and
+the integrated opt-in volume workaround added after this baseline.
+
 The broad structural-separation phase is complete for the current feature set.
 This is an ownership and cleanup baseline, not evidence of higher FPS or lower PSS.
 

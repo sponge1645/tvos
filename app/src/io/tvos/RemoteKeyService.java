@@ -63,7 +63,7 @@ public class RemoteKeyService extends AccessibilityService {
     }
 
     @Override public void onInterrupt() {
-        if (volume != null) volume.pause();
+        if (volume != null) volume.interrupted();
         traceLifecycle("INTERRUPT");
     }
 }

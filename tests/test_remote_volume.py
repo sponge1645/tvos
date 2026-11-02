@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 
 files = {
-    'io/tvos/RemoteVolume.java': 'package io.tvos;final class RemoteVolume {static int starts,closes,pauses;RemoteVolume(android.content.Context c){}void start(){starts++;}void close(){closes++;}void pause(){pauses++;}}',
+    'io/tvos/RemoteVolume.java': 'package io.tvos;final class RemoteVolume {static int starts,closes,pauses;RemoteVolume(android.content.Context c){}void start(){starts++;}void close(){closes++;}void interrupted(){pauses++;}}',
     'io/tvos/RemoteKeyService.java': Path('app/src/io/tvos/RemoteKeyService.java').read_text(),
     'io/tvos/version/SoftwareBuild.java': Path('app/src/io/tvos/version/SoftwareBuild.java').read_text(),
     'io/tvos/RemoteKeys.java': Path('app/src/io/tvos/RemoteKeys.java').read_text(),

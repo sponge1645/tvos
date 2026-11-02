@@ -59,7 +59,8 @@ for RETIRED_FILE in \
   app/src/io/tvos/SettingsDockEditor.java \
   app/src/io/tvos/SettingsBackground.java \
   app/src/io/tvos/SettingsPopupBackdrop.java \
-  app/src/io/tvos/ScreensaverWindow.java; do
+  app/src/io/tvos/ScreensaverWindow.java \
+  tools/test-volume-hold.py tests/test_volume_hold_prototype.py; do
   rm -f -- "$TARGET/$RETIRED_FILE"
 done
 # These fonts were replaced by SF Pro Display. The complete previous app is already in BACKUP.

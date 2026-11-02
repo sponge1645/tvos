@@ -8,6 +8,7 @@ def method(sig):
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 files={
+'io/tvos/network/ConnectionObserver.java':Path('app/src/io/tvos/network/ConnectionObserver.java').read_text(),
 'io/tvos/TmdbClient.java':Path('app/src/io/tvos/TmdbClient.java').read_text(),
 'io/tvos/Config.java':'package io.tvos;final class Config {static String TMDB_KEY="";}',
 'org/json/JSONException.java':'package org.json;public class JSONException extends Exception {public JSONException(String message){super(message);}}',
@@ -18,7 +19,7 @@ files={
 import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import org.json.*;
 public class TmdbHarness {
  static int status=200,opens;static String response="{\\"title\\":\\"Ёжик и café\\"}";
- static boolean failStatus,failRead;static Connection last;
+ static boolean failStatus,failRead,failSetup,failDisconnect;static Connection last;
  static class Body extends InputStream {
   final ByteArrayInputStream data=new ByteArrayInputStream(response.getBytes(StandardCharsets.UTF_8));
   boolean closed;
@@ -29,7 +30,8 @@ public class TmdbHarness {
  static class Connection extends HttpURLConnection {
   Body body;boolean disconnected;
   Connection(URL url){super(url);}
-  public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){disconnected=true;}
+  public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){disconnected=true;if(failDisconnect)throw new IllegalStateException("disconnect failed");}
+  @Override public void setRequestProperty(String k,String v){if(failSetup)throw new IllegalStateException("setup failed");super.setRequestProperty(k,v);}
   @Override public int getResponseCode()throws IOException{if(failStatus)throw new IOException("connection failed");return status;}
   @Override public InputStream getInputStream(){body=new Body();return body;}
  }
@@ -63,8 +65,13 @@ public class TmdbHarness {
   check(last.disconnected&&last.body.closed,"read failure closes body and disconnects");failRead=false;
   response="{\\"text\\":\\""+"я".repeat(12000)+"\\"}";h.get("/movie/7");
   check(last.disconnected&&last.body.closed,"response larger than buffer is read and closed");
-  java.util.List<HttpURLConnection> handles=new java.util.ArrayList<>();TmdbClient.get("/movie/8",handles::add);check(handles.size()==2&&handles.get(0)==last&&handles.get(1)==null,"transport registers active connection and clears it after completion");
-  try{TmdbClient.get("/movie/9",connection->{if(connection!=null)throw new java.util.concurrent.CancellationException();});throw new AssertionError("stale request accepted");}catch(java.util.concurrent.CancellationException expected){}check(last.disconnected&&last.body==null,"cancellation before connect still disconnects without response read");
+  java.util.List<HttpURLConnection> handles=new java.util.ArrayList<>();TmdbClient.get("/movie/8",new io.tvos.network.ConnectionObserver(){public void opened(HttpURLConnection c){handles.add(c);}public void closed(HttpURLConnection c){handles.add(c);}});check(handles.size()==2&&handles.get(0)==last&&handles.get(1)==last,"transport registers active connection and clears it after completion");
+  try{TmdbClient.get("/movie/9",new io.tvos.network.ConnectionObserver(){public void opened(HttpURLConnection c){throw new java.util.concurrent.CancellationException();}public void closed(HttpURLConnection c){check(c==last,"closed identity after rejected open");}});throw new AssertionError("stale request accepted");}catch(java.util.concurrent.CancellationException expected){}check(last.disconnected&&last.body==null,"cancellation before connect still disconnects without response read");
+  int[] closed={0};io.tvos.network.ConnectionObserver lifecycle=new io.tvos.network.ConnectionObserver(){public void opened(HttpURLConnection c){}public void closed(HttpURLConnection c){check(c==last,"close callback identity");closed[0]++;}};
+  failSetup=true;try{TmdbClient.get("/movie/setup",lifecycle);throw new AssertionError("setup accepted");}catch(IllegalStateException expected){}failSetup=false;
+  check(last.disconnected&&last.body==null&&closed[0]==1,"setup failure disconnects and releases registration");
+  failDisconnect=true;try{TmdbClient.get("/movie/disconnect",lifecycle);throw new AssertionError("disconnect failure ignored");}catch(IllegalStateException expected){}failDisconnect=false;
+  check(last.disconnected&&last.body.closed&&closed[0]==2,"close observer runs even when disconnect throws");
   System.out.println("PASS: Recs delegation, API key/token auth, URL encoding, timeouts, UTF-8, HTTP errors and response cleanup");
  }
 }

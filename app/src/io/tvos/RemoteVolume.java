@@ -44,7 +44,7 @@ final class RemoteVolume implements AutoCloseable {
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         runner.update(VolumeHoldStore.enabled(context.getFilesDir()) && power != null && power.isInteractive());
     }
-    void pause() { runner.update(false); }
+    void interrupted() { refresh(); }
     private synchronized void publish(String status) {
         if (!closed) writeStatus(status);
     }

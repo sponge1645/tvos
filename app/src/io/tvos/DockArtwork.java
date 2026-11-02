@@ -1,6 +1,7 @@
 package io.tvos;
 
 import org.json.JSONArray;
+import io.tvos.network.ConnectionObserver;
 import org.json.JSONObject;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -15,24 +16,18 @@ final class DockArtwork {
     private int id;
     private volatile boolean logoLoaded;
 
-    static DockArtwork find(String title, String poster, String year) throws IOException, org.json.JSONException {
-        DockArtwork result = lookup(title, poster, year, connection -> {});
-        loadLogo(result, connection -> {});
-        return result;
-    }
-
     static DockArtwork lookup(String title, String poster, String year,
-            java.util.function.Consumer<java.net.HttpURLConnection> opened) throws IOException, org.json.JSONException {
+            ConnectionObserver observer) throws IOException, org.json.JSONException {
         DockArtwork result = new DockArtwork();
         if (!TmdbClient.hasKey() || title.isEmpty()) return result;
         AppLanguage requestedLanguage = AppLanguage.current();
         String language = requestedLanguage.apiTag;
         String key = language + "\n" + year + "\n" + poster + "\n" + title;
         synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) return cached; }
-        JSONObject match = search(title, poster, year, language, opened);
+        JSONObject match = search(title, poster, year, language, observer);
         // Providers may keep Russian titles/posters even when the launcher requests English metadata.
         if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
-            match = search(title, poster, year, "ru-RU", opened);
+            match = search(title, poster, year, "ru-RU", observer);
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
@@ -53,23 +48,23 @@ final class DockArtwork {
     }
 
     private static JSONObject search(String title, String poster, String year, String language,
-            java.util.function.Consumer<java.net.HttpURLConnection> opened) throws IOException, org.json.JSONException {
+            ConnectionObserver observer) throws IOException, org.json.JSONException {
         String[] variants = titles(title);
         for (int i = variants.length - 1; i >= 0; i--) {
             JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
-                    + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", opened).optJSONArray("results");
+                    + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", observer).optJSONArray("results");
             JSONObject matched = match(items, title, poster, year);
             if (matched != null) return matched;
         }
         return null;
     }
 
-    static void loadLogo(DockArtwork result, java.util.function.Consumer<java.net.HttpURLConnection> opened) {
+    static void loadLogo(DockArtwork result, ConnectionObserver observer) {
         if (result.logoLoaded || result.id <= 0) return;
         try {
             JSONObject images = TmdbClient.get("/" + result.kind + "/" + result.id
                     + "/images?include_image_language=" + result.languageCode + ",en,null"
-                    + (result.originalLanguage.isEmpty() ? "" : "," + result.originalLanguage), opened);
+                    + (result.originalLanguage.isEmpty() ? "" : "," + result.originalLanguage), observer);
             result.logo = image(logo(images.optJSONArray("logos"), result.languageCode, result.originalLanguage), "w500");
             result.logoLoaded = true;
         } catch (IOException | org.json.JSONException e) {

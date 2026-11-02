@@ -116,7 +116,7 @@ final class DockContinue {
             worker.execute(() -> {
                 if (token != generation) return;
                 String url = "";
-                try { url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, "", connection -> {}).backdrop; }
+                try { url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, "", io.tvos.network.ConnectionObserver.NONE).backdrop; }
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
                     AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }

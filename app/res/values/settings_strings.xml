@@ -189,7 +189,7 @@
     <string name="settings_service_selected" formatted="false">Selected</string>
     <string name="settings_help_default_service" formatted="false">Open movies and shows using the selected service.</string>
     <string name="settings_manual" formatted="false">Manually</string>
-    <string name="settings_help_auto_region" formatted="false">Automatically determine the weather city using the connection outside VPN. If unavailable, keep the last saved location.</string>
+    <string name="settings_help_auto_region" formatted="false">Determine the weather city. With the selected Incy VPN, the VPN is temporarily turned off for the entire TV and traffic uses the direct connection. Restoration is requested afterward. If lookup fails, the saved city is kept.</string>
     <string name="settings_mi_button" formatted="false">MI Button</string>
     <string name="settings_could_not_open_tv_settings" formatted="false">Could not open TV settings</string>
     <string name="settings_home_screen" formatted="false">Home Screen</string>

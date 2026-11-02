@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B158)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B159)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -399,3 +399,17 @@ volume only, keeps the native first step and targets the tested 400/50 ms timing
 A six-second/100-step hold guard and heartbeat/EOF handling bound lost-release or
 connection failures. App-key accessibility filtering stays unchanged. See
 DEVELOPMENT-NOTES.md for measured prototype results and remaining device checks.
+
+
+### Final audit and bounded cleanup (1B159)
+
+See FINAL-AUDIT.md for the feature ledger, verification scope and remaining device
+checks. Fix accessibility-feedback interruption so the enabled volume listener
+reconnects rather than staying paused. Use explicit network/ConnectionObserver
+open/close callbacks with connection identity for TMDB/Dock; setup/disconnect
+failures release tracking and stale opens/closes cannot replace/clear a new one.
+PosterRenderer reuses two independent marquee fade states (title and metadata),
+invalidating geometry/edge changes and releasing them on clear. Remove the
+test-only DockArtwork.find wrapper and retired host-per-step volume prototype/
+its duplicate test. The current standalone device runner remains a build tool
+and diagnostic; production depends on its compiler. No further broad splitting.

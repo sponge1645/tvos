@@ -90,7 +90,7 @@ and changing the filter resets dispatcher input state. Compatibility remains ope
 
 Keep the existing accessibility app-key assignments enabled. Instead of replacing
 that backend, observe only raw EV_KEY volume DOWN/UP through ADB and add missing
-volume steps after a hold delay. `tools/test-volume-hold.py` is a temporary host-side
+volume steps after a hold delay. `tools/test-volume-hold.py` (retired in 1B159) was a temporary host-side
 experiment, not a background TV service or a universal Android 9+ fix.
 
 Run with Python 3 and the ordinary `adb` on the Mac/PC, one connected device. It
@@ -215,9 +215,9 @@ broadcast applies changes to :keys and refreshes visible settings; no new signin
 keys or runtime permission prompts are created by that permission.
 
 The bound RemoteKeyService owns RemoteVolume; it starts only when the setting is
-enabled and the screen is interactive. Disable, interruption, screen off, unbind
-and destruction cancel its connection. Screen on/setting changes restart it as
-appropriate. A single worker serializes opening/streaming. It retries a failure
+enabled and the screen is interactive. Disable, screen off, unbind and destruction
+cancel its connection. System interruption refreshes the connection immediately
+when still enabled and interactive; screen on/setting changes also refresh it. A single worker serializes opening/streaming. It retries a failure
 burst at most five times with 1/2/5/10-second backoff; only a stable 30-second run
 resets the burst budget. Permission/readiness failure remains visible. No infinite
 restart loop, per-key disk read, network request or shell-command launch is added
@@ -251,3 +251,13 @@ The noninteractive `shell:command` transport was also checked against Android 9
 ADB services.cpp: it defaults to raw I/O without the shell-v2 framing protocol.
 The dedicated stream therefore carries heartbeat lines directly to app_process,
 without a PTY or an additional protocol parser.
+
+## Final audit — 1B159
+
+See FINAL-AUDIT.md for the feature ledger and verification limits. Fix recovery
+after accessibility interruption and explicit TMDB connection lifetime, including
+setup/disconnect failures and stale Dock callbacks. Cache the two marquee masks
+independently, retaining their original geometry. Retire the superseded host
+volume prototype and its test; keep the device helper builder used by build.sh.
+Clarify the existing system-wide Incy pause in localized help. No VPN behavior,
+preferences, signing policy or Android versionCode changes.

@@ -54,17 +54,29 @@ public class HomeRenderHarness {
   Recs recs=new Recs();PosterRenderer p=new PosterRenderer(recs,new Shadows(),new RoundedImages(Ui.LEGACY),8);Paint title=paint(31),meta=paint(25);RectF base=new RectF(80,262,318,619);Recs.Pick pick=new Recs.Pick();pick.id=42;pick.title="A very long title that should scroll across the card";pick.kind="movie";pick.movieOrigin="2024, US";pick.duration="120 min";pick.meta="Drama";pick.rating=8;
   p.focus(0,0,1,100);p.begin(1,0,1,0,false,true,title,meta);SystemClock.now=100;Canvas c=new Canvas();p.draw(c,pick,base,1,0);check(entries(c,"bitmap").size()==1&&c.depth==0,"poster and balanced layer");text(c,"8.0");check(!p.marqueeActive(1099)&&p.nextDelay(100)==1000,"one-second marquee dwell");
   SystemClock.now=1600;p.begin(1,0,1,0,false,true,title,meta);c=new Canvas();p.draw(c,pick,base,1,0);check(p.marqueeActive(1600)&&p.nextDelay(1600)==50,"marquee wakes at existing cadence");check(entries(c,"rect").stream().anyMatch(e->e.mode!=null),"letter edge mask");
+  Shader steadyMask=entries(c,"rect").stream().filter(e->e.mode!=null).findFirst().get().shader;int steadyGradients=LinearGradient.allocations;
+  for(int frame=0;frame<100;frame++){SystemClock.now=1600+frame;p.begin(1,0,1,0,false,true,title,meta);Canvas same=new Canvas();p.draw(same,pick,base,1,0);check(entries(same,"rect").stream().filter(e->e.mode!=null).findFirst().get().shader==steadyMask,"steady scrolling reuses actual fade shader");}
+  check(LinearGradient.allocations==steadyGradients,"steady marquee allocates no gradients");
+  SystemClock.now=1100;Canvas leading=new Canvas();p.begin(1,0,1,0,false,true,title,meta);p.draw(leading,pick,base,1,0);LinearGradient leadingMask=(LinearGradient)entries(leading,"rect").stream().filter(e->e.mode!=null).findFirst().get().shader;
+  check(leadingMask!=steadyMask&&leadingMask.colors[0]==0xFFFFFFFF&&leadingMask.colors[3]==0x00FFFFFF,"fade sides invalidate at the leading edge");
+  RectF shifted=new RectF(base.left+8,base.top,base.right+8,base.bottom);Canvas relocated=new Canvas();p.draw(relocated,pick,shifted,1,0);Shader relocatedMask=entries(relocated,"rect").stream().filter(e->e.mode!=null).findFirst().get().shader;check(relocatedMask!=leadingMask,"position invalidates fade");
+  p.clear();Canvas cleared=new Canvas();p.draw(cleared,pick,shifted,1,0);check(entries(cleared,"rect").stream().filter(e->e.mode!=null).findFirst().get().shader!=relocatedMask,"clear releases fade resource");
   p.focus(-1,0,1,1700);p.begin(1,1,1,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(!p.marqueeActive(9999)&&p.nextDelay(9999)==1000,"losing focus stops marquee");
   recs.missing=true;p.begin(.5f,1,0,0,false,false,title,meta);c=new Canvas();p.draw(c,pick,base,0,0);check(entries(c,"bitmap").isEmpty()&&entries(c,"round").size()>0,"missing poster placeholder");
   Recs.Pick question=new Recs.Pick();question.id=-1;question.kind="movie";question.title="Random Movie";c=new Canvas();p.draw(c,question,base,0,0);text(c,"?");text(c,"Random Movie");
   pick.watchingKey="kinopub:42";pick.meta="16 min left";c=new Canvas();p.draw(c,pick,base,0,0);
   check(entries(c,"text").stream().anyMatch(e->e.text.equals("16 min left"))&&!entries(c,"text").stream().anyMatch(e->e.text.equals("8.0")),"Watch Next caption bypasses TMDB metadata and rating badge");
+  pick.meta="12345678901234567890";p.focus(0,0,1,100);p.begin(1,0,1,0,false,true,title,meta);SystemClock.now=1600;Canvas watched=new Canvas();p.draw(watched,pick,base,1,0);int watchGradients=LinearGradient.allocations;
+  for(int frame=0;frame<50;frame++){SystemClock.now=1600+frame;p.begin(1,0,1,0,false,true,title,meta);p.draw(new Canvas(),pick,base,1,0);}
+  check(LinearGradient.allocations==watchGradients,"independent title/resume-caption fade states do not evict each other");
   p.clear();check(((Map<?,?>)field(field(p,"posterText"),"entries")).isEmpty(),"poster text cache released");check(title.getTextSize()==31&&meta.getTextSize()==25,"caller fonts unmodified");
  }
  static HomeAppsRenderer.Frame appsFrame(){
   HomeAppsRenderer.Frame f=new HomeAppsRenderer.Frame();f.k=1;f.w=1920;f.h=1080;f.dockLiftIndex=-1;f.platterRect=new RectF(40,780,700,980);f.weatherCard=new RectF(80,708,1840,1008);f.focusedCell=new RectF();
   HomeApps.Item a=new HomeApps.Item("watch.kino"),b=new HomeApps.Item("com.seena.app");a.logo=new Bitmap(10);b.logo=new Bitmap(11);f.shelf=new ArrayList<>(Arrays.asList(a,b));f.tileRects=new RectF[]{new RectF(80,814,304,940),new RectF(352,814,576,940)};f.tileFocus=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,1)};f.dockSlide=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,0)};
   HomeApps.Item input=new HomeApps.Item("HDMI");input.kind=HomeApps.INPUT;input.connected=false;f.drawerItems=Arrays.asList(input);f.drawerInputs=1;f.drawerRects=new RectF[]{new RectF(80,540,250,666)};f.drawerFocus=new Spring[]{new Spring(.3f,1,0)};f.weatherBottom=true;f.others=Arrays.asList(a,b);f.gridFocus=new Spring[]{new Spring(.3f,1,0),new Spring(.3f,1,1)};f.sheetOpen=true;f.gridIndex=1;return f;
+
+
  }
  static void apps()throws Exception{
   HomeWidgets weather=new HomeWidgets();HomeAppsRenderer a=new HomeAppsRenderer(new Context(),new Scene(),new Shadows(),weather,new RoundedImages(Ui.LEGACY));a.resize(1);HomeAppsRenderer.Frame f=appsFrame();Canvas c=new Canvas();a.drawTiles(c,f);check(entries(c,"logo").size()==2&&entries(c,"logo").get(1).text.equals("com.seena.app"),"focused Dock item drawn last");check(entries(c,"path").size()==4&&c.depth==0,"two highlight strokes per tile");
