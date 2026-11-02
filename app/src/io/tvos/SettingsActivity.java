@@ -23,6 +23,9 @@ import static io.tvos.SettingsValues.*;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.os.Build;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Canvas;
@@ -52,6 +55,12 @@ import java.util.List;
 public class SettingsActivity extends Activity {
     private SettingsView view;
     private SettingsPreview preview;
+    private final BroadcastReceiver volumeStatus = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            Prefs.reloadVolumeHold();
+            if (view != null) view.invalidate();
+        }
+    };
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,6 +75,10 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        IntentFilter volumeFilter = new IntentFilter(RemoteVolume.STATUS);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(volumeStatus, volumeFilter, RemoteVolume.PERMISSION, null, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(volumeStatus, volumeFilter, RemoteVolume.PERMISSION, null);
+        Prefs.reloadVolumeHold();
         view.resume();
         // From ADB: am start -n io.tvos/.SettingsActivity --ez screensaver true (straight to the preview).
         if (!preview.hasDream() && getIntent().getBooleanExtra("screensaver", false)) {
@@ -81,6 +94,7 @@ public class SettingsActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        unregisterReceiver(volumeStatus);
         preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
         super.onPause();
@@ -345,6 +359,7 @@ public class SettingsActivity extends Activity {
                 case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
                 case PICKER: return listWindow.visibleRows(pickLabels.size());
                 case SHELF_EDIT: return listWindow.visibleRows(dockEditor.size());
+                case REMOTE_KEYS: return Prefs.KEYS.length + 1;
                 default: return Prefs.KEYS.length;
             }
         }
@@ -698,9 +713,18 @@ public class SettingsActivity extends Activity {
             return SettingsActions.canAdjust(screen, focus, buttonEditor.size());
         }
 
+        private void toggleVolumeHold() {
+            Context c = getContext();
+            if (Prefs.setVolumeHold(!Prefs.volumeHold())) {
+                c.sendBroadcast(new Intent(RemoteVolume.CHANGE).setPackage(c.getPackageName()));
+            }
+            invalidate();
+        }
+
         private void adjustMenu(int dir) {
             switch (SettingsActions.adjustment(screen, focus)) {
                 case HOME: adjust(dir); return;
+                case VOLUME_HOLD: toggleVolumeHold(); return;
                 case WEATHER: toggleWeather(focus == 0); return;
                 case DATE: toggleDateTime(); return;
                 case DREAM_SOURCE: cycleDreamSource(dir); return;
@@ -884,7 +908,7 @@ public class SettingsActivity extends Activity {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 setApprovedRowRect(i);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
-                boolean chevron = keys || (settingsGroup != SYSTEM && i == CITY_ROW);
+                boolean chevron = keys ? i < REMOTE_VOLUME_ROW : (settingsGroup != SYSTEM && i == CITY_ROW);
                 row.marker = chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
                 row.markerAfterValue = true;
@@ -945,6 +969,7 @@ public class SettingsActivity extends Activity {
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
+                case VOLUME_HOLD: toggleVolumeHold(); invalidate(); return;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;
                 case HOME_ADJUST: adjust(1); invalidate(); return;

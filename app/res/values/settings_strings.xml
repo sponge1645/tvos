@@ -195,4 +195,9 @@
     <string name="settings_home_screen" formatted="false">Home Screen</string>
     <string name="settings_home_recommendations" formatted="false">Recommendations</string>
     <string name="settings_help_home_screen" formatted="false">Used when all Home categories are turned off. Choose service recommendations or selectable Continue Watching cards.</string>
+    <string name="settings_volume_hold" formatted="false">Volume hold fix (ADB)</string>
+    <string name="settings_help_volume_hold" formatted="false">Restores held volume buttons while remote button assignments remain active. Requires USB debugging, ADB authorization and the tvOS accessibility service. Enable only if volume hold is broken. External audio equipment may behave differently.</string>
+    <string name="settings_volume_unavailable" formatted="false">Unavailable: check ADB</string>
+    <string name="settings_volume_starting" formatted="false">Connecting…</string>
+    <string name="settings_volume_waiting" formatted="false">Waiting for service</string>
 </resources>

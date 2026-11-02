@@ -176,17 +176,23 @@ final class SettingsValues {
 
     static String[] keyLabels() {
         return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button)};
+                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_volume_hold)};
     }
 
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {
-        String[] v = new String[Prefs.KEYS.length];
-        for (int i = 0; i < v.length; i++) {
+        String[] v = new String[Prefs.KEYS.length + 1];
+        for (int i = 0; i < Prefs.KEYS.length; i++) {
             String pkg = Prefs.keyApp(Prefs.KEYS[i]);
             int at = appPkgs.indexOf(pkg);
             v[i] = pkg != null && !pkg.isEmpty() && at >= 0 ? appLabels.get(at)
                     : AppStrings.get(R.string.settings_not_configured);
         }
+        String state = Prefs.volumeHoldStatus();
+        v[Prefs.KEYS.length] = !Prefs.volumeHold() ? AppStrings.get(R.string.settings_off)
+                : "READY".equals(state) ? AppStrings.get(R.string.settings_on)
+                : "ERROR".equals(state) ? AppStrings.get(R.string.settings_volume_unavailable)
+                : "STARTING".equals(state) ? AppStrings.get(R.string.settings_volume_starting)
+                : AppStrings.get(R.string.settings_volume_waiting);
         return v;
     }
 

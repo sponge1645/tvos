@@ -2,6 +2,9 @@ package io.tvos.tools;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.HashSet;
@@ -23,6 +26,7 @@ public final class VolumeHoldDevice {
         private boolean blocked;
 
         synchronized void event(String device, int scan, int value, long now) {
+            notifyAll();
             String key = device + ":" + scan;
             if (value == 0) {
                 pressed.remove(key);
@@ -48,7 +52,7 @@ public final class VolumeHoldDevice {
 
         synchronized int take(long now) {
             if (active == null) return 0;
-            if (now - started >= 4000 || count >= 40) {
+            if (now - started >= 6000 || count >= 100) {
                 active = null;
                 blocked = true;
                 return 0;
@@ -59,7 +63,10 @@ public final class VolumeHoldDevice {
             return code;
         }
 
-        synchronized void stop() { active = null; blocked = true; }
+        synchronized void stop() { active = null; blocked = true; notifyAll(); }
+        synchronized void pause(long now) throws InterruptedException {
+            wait(active == null ? 250 : Math.max(1, Math.min(250, due - now)));
+        }
     }
 
     static int[] parse(String line) {
@@ -179,11 +186,22 @@ public final class VolumeHoldDevice {
     private static long now() { return System.nanoTime() / 1000000; }
 
     public static void main(String[] args) throws Exception {
+        // A process death releases this lock. Never unlink the lock inode while a peer may own it.
+        try (RandomAccessFile owner = new RandomAccessFile("/data/local/tmp/io.tvos-volume.lock", "rw");
+             FileChannel channel = owner.getChannel(); FileLock lease = channel.tryLock()) {
+            if (lease == null) throw new IllegalStateException("Volume helper already running");
+            run(args);
+        }
+    }
+
+    private static void run(String[] args) throws Exception {
         final Session session = new Session();
-        if (args.length > 1 || (args.length == 1 && !"audio".equals(args[0]))) {
+        if (args.length > 2 || (args.length > 0 && !"audio".equals(args[0]))
+                || (args.length == 2 && !"quiet".equals(args[1]))) {
             throw new IllegalArgumentException("Expected optional audio mode");
         }
-        final boolean audio = args.length == 1;
+        final boolean audio = args.length > 0;
+        final boolean quiet = args.length == 2;
         final Stepper injector = audio ? new AudioStepper() : new Injector();
         // Fail before opening input on unsupported firmware.
         final Process input = new ProcessBuilder("/system/bin/getevent", "-t")
@@ -219,7 +237,7 @@ public final class VolumeHoldDevice {
                         Matcher match = EVENT.matcher(line);
                         if (!match.find()) continue;
                         session.hold.event(match.group(1), parsed[0], parsed[1], now());
-                        System.out.println("RAW " + match.group(1) + " " + parsed[0] + " " + parsed[1]);
+                        if (!quiet) System.out.println("RAW " + match.group(1) + " " + parsed[0] + " " + parsed[1]);
                     }
                 } catch (Exception error) {
                     System.out.println("INPUT ERROR " + error.getClass().getSimpleName());
@@ -231,15 +249,15 @@ public final class VolumeHoldDevice {
         try {
             controls.start();
             events.start();
-            System.out.println("READY device helper mode=" + (audio ? "audio" : "input") + ": delay=400ms interval=50ms; max=4s/40 steps; heartbeat=3s");
+            System.out.println("READY device helper mode=" + (audio ? "audio" : "input") + ": delay=400ms interval=50ms; max=6s/100 steps; heartbeat=3s");
             while (!session.stopped && !session.expired(now())) {
                 int code = session.hold.take(now());
                 if (code != 0 && !session.stopped && !session.expired(now())) {
                     long start = now();
                     injector.press(code);
-                    System.out.println("EXTRA " + code + (audio ? " audio-submit=" : " inject=") + (now() - start) + "ms");
+                    if (!quiet) System.out.println("EXTRA " + code + (audio ? " audio-submit=" : " inject=") + (now() - start) + "ms");
                 }
-                Thread.sleep(5);
+                if (!session.stopped && !session.expired(now())) session.hold.pause(now());
             }
         } finally {
             session.stop();

@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B157)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B158)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -377,3 +377,25 @@ The 1B156 volume-only trace remained empty on the user's TV although a shell log
 probe was visible and the service was bound. Recording arrows alongside volume
 will distinguish a silent service boundary from unexpected firmware key codes.
 No key text, event injection, volume changes or service-flag changes are added.
+
+
+### Integrated opt-in volume-hold compatibility (1B158)
+
+`remote/VolumeHoldStore` owns atomic cross-process preference/status files (default
+off). `remote/VolumeHoldRunner` owns one serialized connection, cancellation generations
+and a bounded retry burst; Android bindings stay in `RemoteVolume`, owned by the
+existing `RemoteKeyService`. No remote app-key policy or IDs change. Settings add
+one footer row after the five existing assignments, with live localized connection
+status and a signature-protected cross-process notification. Only status/preference
+transitions touch storage; drawing and onKeyEvent do not read the helper/ADB stream.
+
+The separate `tools/volume-hold/VolumeHoldDevice.java` shell artifact is built by
+build.sh into out/assets/volume-hold.jar before resource packaging. It is not part
+of the app class loader. The app transfers the APK-bundled artifact over its existing
+loopback ADB client and starts it in quiet audio mode; no runtime download or new
+signing identity is introduced. The shell owns its temporary directory and cleanup.
+One file lock prevents duplicate helpers. The helper waits while idle, observes raw
+volume only, keeps the native first step and targets the tested 400/50 ms timing.
+A six-second/100-step hold guard and heartbeat/EOF handling bound lost-release or
+connection failures. App-key accessibility filtering stays unchanged. See
+DEVELOPMENT-NOTES.md for measured prototype results and remaining device checks.

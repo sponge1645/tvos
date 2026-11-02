@@ -8,7 +8,7 @@ public final class SettingsActions {
 
     public enum Action {
         NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
-        KEY_PICKER, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
+        KEY_PICKER, VOLUME_HOLD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
@@ -25,12 +25,13 @@ public final class SettingsActions {
 
     public enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL
+        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, VOLUME_HOLD
     }
 
     public static boolean canAdjust(int screen, int row, int buttonCount) {
         switch (screen) {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
+            case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW;
             case MEDIA: return false;
             case GENERAL: return row == 1 || row == 2 || row == 4 || row == 5 || row == 6;
             case SCREENSAVER: return row >= 0 && row < 4;
@@ -45,6 +46,7 @@ public final class SettingsActions {
     public static Adjustment adjustment(int screen, int row) {
         switch (screen) {
             case HOME_SETTINGS: return Adjustment.HOME;
+            case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW ? Adjustment.VOLUME_HOLD : Adjustment.NONE;
             case WEATHER: return Adjustment.WEATHER;
             case DATE_TIME: return Adjustment.DATE;
             case SCREENSAVER:
@@ -72,7 +74,7 @@ public final class SettingsActions {
             case PICKER: return pickFor == PICK_CITY ? Action.SELECT_CITY : pickFor == PICK_VPN ? Action.SELECT_VPN : Action.SELECT_KEY;
             case CATEGORY_EDIT: return Action.CATEGORY;
             case SHELF_EDIT: return Action.SHELF;
-            case REMOTE_KEYS: return Action.KEY_PICKER;
+            case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW ? Action.VOLUME_HOLD : Action.KEY_PICKER;
             case HOME_SETTINGS: return citySetting ? Action.CITY_PICKER : Action.HOME_ADJUST;
             case MAIN:
                 switch (row) {

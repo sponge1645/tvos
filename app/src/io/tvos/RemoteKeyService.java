@@ -12,10 +12,14 @@ import android.view.accessibility.AccessibilityEvent;
  * system waits for it on every key (up to half a second), so it runs in a process of its own and does next to nothing.
  */
 public class RemoteKeyService extends AccessibilityService {
+    private RemoteVolume volume;
     private static final String TRACE_TAG = "tvOS-Volume";
 
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
+        if (volume != null) volume.close();
+        volume = new RemoteVolume(this);
+        volume.start();
         if (Log.isLoggable(TRACE_TAG, Log.DEBUG)) {
             android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
             Log.d(TRACE_TAG, "CONNECTED build=" + SoftwareBuild.SEQUENCE
@@ -24,11 +28,13 @@ public class RemoteKeyService extends AccessibilityService {
     }
 
     @Override public boolean onUnbind(Intent intent) {
+        if (volume != null) { volume.close(); volume = null; }
         traceLifecycle("UNBIND");
         return super.onUnbind(intent);
     }
 
     @Override public void onDestroy() {
+        if (volume != null) { volume.close(); volume = null; }
         traceLifecycle("DESTROY");
         super.onDestroy();
     }
@@ -56,5 +62,8 @@ public class RemoteKeyService extends AccessibilityService {
         ChiqBootGuard.onWindowEvent(this, event);
     }
 
-    @Override public void onInterrupt() { traceLifecycle("INTERRUPT"); }
+    @Override public void onInterrupt() {
+        if (volume != null) volume.pause();
+        traceLifecycle("INTERRUPT");
+    }
 }

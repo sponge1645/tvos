@@ -28,10 +28,10 @@ public class DeviceHarness {
   h.event("a",114,1,1000);check(h.take(1400)==25);h.event("a",114,2,1401);check(h.take(1600)==0);
   h.event("a",114,0,1700);h.event("a",115,1,2000);h.event("b",114,1,2001);check(h.take(2500)==0);
   h.event("b",114,0,2501);check(h.take(2600)==0);h.event("a",115,0,2601);
-  h.event("a",115,1,3000);check(h.take(7000)==0);h.event("a",115,0,7100);
-  h.event("a",114,1,8000);for(int i=0;i<40;i++)check(h.take(8400+i*50)==25);check(h.take(10400)==0);
-  h.event("a",114,0,11000);h.event("a",115,1,12000);check(h.take(13000)==24);check(h.take(13000)==0);
-  h.event("a",115,1,13001);check(h.take(13500)==0);h.stop();check(h.take(14000)==0);
+  h.event("a",115,1,3000);check(h.take(9000)==0);h.event("a",115,0,9100);
+  h.event("a",114,1,10000);for(int i=0;i<100;i++)check(h.take(10400+i*50)==25);check(h.take(15400)==0);
+  h.event("a",114,0,16000);h.event("a",115,1,17000);check(h.take(18000)==24);check(h.take(18000)==0);
+  h.event("a",115,1,18001);check(h.take(18500)==0);h.stop();check(h.take(19000)==0);
   VolumeHoldDevice.Session s=new VolumeHoldDevice.Session();s.heartbeat=100;check(!s.expired(3099)&&s.expired(3100));s.stop();check(s.stopped);
   VolumeHoldDevice.Injector injector=new VolumeHoldDevice.Injector();injector.press(24);check(Recorder.events.equals("24:0;24:1;"));
   Recorder.events="";Recorder.rejectDown=true;boolean failed=false;try{injector.press(25);}catch(IllegalStateException expected){failed=true;}

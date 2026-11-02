@@ -12,19 +12,23 @@ def method(signature):
     while depth:
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[start:end]
-body=''.join(method(s) for s in ['        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels(', '        private String[] menuButtonLabels(', '        private String menuButtonLabel('])
+body=''.join(method(s) for s in ['        private void toggleVolumeHold(', '        private boolean canAdjustMenu(', '        private void adjustMenu(', '        private void toggleWeather(', '        private boolean weatherVisible(', '        private void toggleDateTime(', '        private String[] menuLabels(', '        private String[] menuButtonLabels(', '        private String menuButtonLabel('])
 header=r'''package io.tvos;
 import java.util.*;
 import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsActions;
 public class SettingsHarness {
  static class Ui {static boolean ru;}
- static class Prefs {static boolean random;static boolean randomMovie(){return random;}static void setRandomMovie(boolean v){random=v;}static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
+ static class Prefs {static boolean hold,writeFailed;static boolean volumeHold(){return hold;}static boolean setVolumeHold(boolean value){if(writeFailed)return false;hold=value;return true;}static boolean random;static boolean randomMovie(){return random;}static void setRandomMovie(boolean v){random=v;}static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
+ static class RemoteVolume {static final String CHANGE="io.tvos.VOLUME_HOLD_CHANGE";}
+ static class Intent {final String action;String pkg;Intent(String a){action=a;}Intent setPackage(String p){pkg=p;return this;}}
+ static class Context {final List<Intent> sent=new ArrayList<>();String getPackageName(){return "io.tvos";}void sendBroadcast(Intent i){sent.add(i);}}
+ final Context context=new Context();
  static class HomeData {static HomeData get(Object c){return new HomeData();}void settingsChanged(){}}
  static class Store extends android.content.SharedPreferences {Map<String,Object> m=new HashMap<>();public boolean contains(String k){return m.containsKey(k);}public boolean getBoolean(String k,boolean d){return m.containsKey(k)?(Boolean)m.get(k):d;}public int getInt(String k,int d){return m.containsKey(k)?(Integer)m.get(k):d;}public Store edit(){return this;}public Store putBoolean(String k,boolean v){m.put(k,v);return this;}public Store putInt(String k,int v){m.put(k,v);return this;}public void apply(){}}
  List<Integer> buttonEditor=new ArrayList<>(Arrays.asList(0,1,3,5,4,2));
  Store store=new Store();final SettingsPreferenceEditor preferenceEditor=new SettingsPreferenceEditor(store,()->HomeData.get(getContext()).settingsChanged(),this::invalidate);int screen,focus,adjusted,moved;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
- Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Object getContext(){return this;}void invalidate(){}
+ Store localPrefs(){return store;}boolean localFlag(String k){return store.getBoolean(k,false);}void setLocalFlag(String k,boolean v){store.putBoolean(k,v);}Context getContext(){return context;}void invalidate(){}
  String tr(String r,String e){return Ui.ru?r:e;}void adjust(int dir){adjusted++;}void cycleDreamSource(int dir){}void cycleDelay(String k,int d,int dir){}void toggleAutomaticUpdates(){}boolean vpnTopEnabled(){return false;}void toggleAutomaticRegion(){}void toggleMenuButton(){}void moveMenuButton(int dir){moved+=dir;}
  void arrow(int direction){if(canAdjustMenu())adjustMenu(direction);}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
@@ -67,6 +71,9 @@ tests=r'''
   Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Network")&&h.menuLabels()[6].equals("VPN"),"Menu Bar labels follow saved rows");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Сеть"),"network button has Russian label");
   h.screen=MAIN;Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[7].equals("Dock"),"Dock naming matches both languages");
+  h.screen=REMOTE_KEYS;h.focus=REMOTE_VOLUME_ROW;h.arrow(1);check(Prefs.hold&&h.context.sent.size()==1,"actual footer writes and notifies");
+  check(h.context.sent.get(0).action.equals(RemoteVolume.CHANGE)&&h.context.sent.get(0).pkg.equals("io.tvos"),"volume change targets only own package");
+  h.arrow(-1);check(!Prefs.hold&&h.context.sent.size()==2,"footer toggles off");Prefs.writeFailed=true;h.arrow(1);check(!Prefs.hold&&h.context.sent.size()==2,"failed save never broadcasts an unapplied setting");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");
  }
 }

@@ -197,3 +197,57 @@ claim of identical TV/CEC key-down/up semantics. Keep this experimental and opt-
 Tests execute both real adapters against 9/13-shaped interfaces, checking method
 selection, shell attribution/flags, complete TV pairs and absence of retry after
 denial; the host Ctrl+C test also verifies --audio reaches the remote command.
+
+
+## Integrated opt-in setting — 1B158
+
+The user confirmed the direct-audio prototype behaves better, reporting 0–2 ms
+submission times, no extra log lines after physical UP and no extras on short taps.
+This confirms that prototype on the tested device, not universal OEM/CEC behavior.
+
+Add Remotes and Devices → Volume hold fix (ADB), default off. The five existing
+assignment IDs, picker ordering and accessibility return values are preserved.
+Settings show Off / Connecting / On / Waiting for service / Unavailable (check ADB),
+localized in Russian and English. A cross-process atomic preference file preserves
+the setting independently of SharedPreferences caches; cached settings values reload
+on resume/status broadcasts rather than during every draw. A signature-protected
+broadcast applies changes to :keys and refreshes visible settings; no new signing
+keys or runtime permission prompts are created by that permission.
+
+The bound RemoteKeyService owns RemoteVolume; it starts only when the setting is
+enabled and the screen is interactive. Disable, interruption, screen off, unbind
+and destruction cancel its connection. Screen on/setting changes restart it as
+appropriate. A single worker serializes opening/streaming. It retries a failure
+burst at most five times with 1/2/5/10-second backoff; only a stable 30-second run
+resets the burst budget. Permission/readiness failure remains visible. No infinite
+restart loop, per-key disk read, network request or shell-command launch is added
+to onKeyEvent. The five-attempt persistent VPN recovery behavior is unchanged.
+
+Build the tested standalone helper into the APK assets; no Mac process is needed
+after installation/setup. Use the existing on-device ADB key/127.0.0.1:5555 transport,
+transfer at most 64 KiB as base64 into a generated temporary shell directory and
+start one app_process in `audio quiet` mode. Shell traps clean that directory;
+heartbeat/EOF stops the helper on lost connection or app process death. An exclusive
+shell-side file lock prevents two current helpers from controlling volume together.
+The lock inode is intentionally retained (empty, non-executable) to avoid unlink
+races. Do not run an older standalone prototype concurrently during installation.
+ADB streaming honors WRTE/OKAY flow control, sends heartbeats without buffering an
+unbounded input queue, rejects unexpected channels/messages, and closes on a
+five-second missing-ACK deadline or fifteen-second readiness deadline. Closing the
+socket unblocks reads. Physical release is still observed independently of ADB.
+The helper's idle path now waits rather than polling every 5 ms. For longer normal
+holds the watchdog is six seconds / 100 extra steps, then it waits for release.
+
+New tests execute the actual store/retry runner, Android adapter with SDK28/33
+fixtures, key-service ownership, settings toggle/status/localization, raw/synthetic
+volume behavior and ADB stream framing over loopback sockets (fragmentation, flow
+control, cancellation, timeout and thread cleanup). APK integration checks compare
+the signed APK asset with the staged helper and check the transfer bound and DEX
+version; the helper remains strictly compiled with Java-8 compatibility, also tested
+on JDK 25. Real integrated-APK checks on TV (including sleep, process death, reboot,
+ADB authorization/availability and HDMI-CEC/audio equipment) remain outstanding.
+
+The noninteractive `shell:command` transport was also checked against Android 9
+ADB services.cpp: it defaults to raw I/O without the shell-v2 framing protocol.
+The dedicated stream therefore carries heartbeat lines directly to app_process,
+without a PTY or an additional protocol parser.

@@ -29,11 +29,27 @@ final class Prefs {
     /** Bumped by every change: screens compare it to know when to redraw. */
     static volatile int version;
 
+    private static boolean volumeHold;
+    private static String volumeHoldStatus = "";
+    static boolean volumeHold() { return volumeHold; }
+    static String volumeHoldStatus() { return volumeHoldStatus; }
+    static void reloadVolumeHold() {
+        volumeHold = io.tvos.remote.VolumeHoldStore.enabled(app.getFilesDir());
+        volumeHoldStatus = io.tvos.remote.VolumeHoldStore.status(app.getFilesDir());
+    }
+    static boolean setVolumeHold(boolean enabled) {
+        try {
+            io.tvos.remote.VolumeHoldStore.setEnabled(app.getFilesDir(), enabled);
+            reloadVolumeHold(); version++; return true;
+        } catch (IOException error) { AppLog.w("volume preference: " + error.getMessage()); return false; }
+    }
+
     private static Context app;
 
     static void init(Context c) {
         app = c.getApplicationContext();
         AppStrings.init(app);
+        reloadVolumeHold();
         migrateKeys();   // before anything reads the button choices
         removeRetiredWidgetData();
         Ui.applyLanguage();   // the language picked on the TV, now that it can be read

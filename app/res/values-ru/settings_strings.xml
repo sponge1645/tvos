@@ -200,4 +200,9 @@
     <string name="settings_home_screen" formatted="false">Экран «Домой»</string>
     <string name="settings_home_recommendations" formatted="false">Рекомендации</string>
     <string name="settings_help_home_screen" formatted="false">Используется, когда отключены все разделы на экране «Домой». Выберите рекомендации сервиса или карточки для продолжения просмотра.</string>
+    <string name="settings_volume_hold" formatted="false">Удержание громкости (ADB)</string>
+    <string name="settings_help_volume_hold" formatted="false">Исправляет удержание громкости, сохраняя назначения кнопок пульта. Нужны USB-отладка, разрешённое подключение ADB и служба tvOS в специальных возможностях. Включайте, если удержание не работает. На внешней аудиосистеме поведение может отличаться.</string>
+    <string name="settings_volume_unavailable" formatted="false">Недоступно: проверьте ADB</string>
+    <string name="settings_volume_starting" formatted="false">Подключение…</string>
+    <string name="settings_volume_waiting" formatted="false">Ожидание службы</string>
 </resources>

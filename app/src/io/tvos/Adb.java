@@ -139,6 +139,66 @@ final class Adb implements Closeable {
         }
     }
 
+    /** One dedicated streaming shell. The owner closes this connection to cancel blocked reads. */
+    interface Stream {
+        boolean active();
+        void output(byte[] bytes) throws IOException;
+    }
+
+    void stream(String command, Stream stream) throws IOException {
+        final int local = nextLocalId++;
+        final java.util.concurrent.atomic.AtomicInteger remote = new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicBoolean pending = new java.util.concurrent.atomic.AtomicBoolean(true);
+        final java.util.concurrent.atomic.AtomicBoolean finished = new java.util.concurrent.atomic.AtomicBoolean();
+        final java.util.concurrent.atomic.AtomicLong pendingSince = new java.util.concurrent.atomic.AtomicLong(System.nanoTime());
+        socket.setSoTimeout(0);
+        send(OPEN, local, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
+        Thread heartbeat = new Thread(() -> {
+            try {
+                while (!finished.get() && stream.active()) {
+                    if (pending.get() && System.nanoTime() - pendingSince.get() >= 5000000000L) {
+                        close(); return;
+                    }
+                    if (remote.get() != 0 && pending.compareAndSet(false, true)) {
+                        pendingSince.set(System.nanoTime());
+                        send(WRTE, local, remote.get(), "PING\n".getBytes(StandardCharsets.US_ASCII));
+                    }
+                    Thread.sleep(500);
+                }
+                if (!finished.get()) close(); // EOF / heartbeat watchdog stops the remote helper.
+            } catch (IOException error) {
+                close();
+            } catch (InterruptedException stopped) {
+                Thread.currentThread().interrupt();
+            }
+        }, "tvos-volume-heartbeat");
+        heartbeat.setDaemon(true);
+        heartbeat.start();
+        try {
+            while (stream.active()) {
+                Message message = read();
+                if (message.arg1 != local) throw new IOException("Unexpected streaming ADB channel");
+                if (message.command == OKAY) {
+                    remote.set(message.arg0);
+                    pending.set(false);
+                } else if (message.command == WRTE) {
+                    stream.output(message.data);
+                    send(OKAY, local, message.arg0, null);
+                } else if (message.command == CLSE) {
+                    finished.set(true);
+                    send(CLSE, local, message.arg0, null);
+                    return;
+                } else throw new IOException("Unexpected streaming ADB message");
+            }
+        } finally {
+            finished.set(true);
+            heartbeat.interrupt();
+            close();
+            try { heartbeat.join(1000); }
+            catch (InterruptedException stopped) { Thread.currentThread().interrupt(); }
+        }
+    }
+
     @Override public void close() {
         try { socket.close(); } catch (IOException ignored) {}
     }
@@ -161,7 +221,7 @@ final class Adb implements Closeable {
         return m;
     }
 
-    private void send(int command, int arg0, int arg1, byte[] data) throws IOException {
+    private synchronized void send(int command, int arg0, int arg1, byte[] data) throws IOException {
         int length = data == null ? 0 : data.length;
         int sum = 0;
         if (data != null) for (byte x : data) sum += x & 0xff;

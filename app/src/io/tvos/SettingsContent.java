@@ -121,7 +121,7 @@ final class SettingsContent {
                 info = AppStrings.get(R.string.settings_help_reset, language);
                 break;
             case REMOTE_KEYS:
-                info = AppStrings.get(R.string.settings_help_remote, language);
+                info = AppStrings.get(focus == REMOTE_VOLUME_ROW ? R.string.settings_help_volume_hold : R.string.settings_help_remote, language);
                 break;
         }
         return info;
