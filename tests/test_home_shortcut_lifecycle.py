@@ -14,7 +14,7 @@ class Base {protected void onNewIntent(Intent i){}protected void onPause(){}publ
 class RemoteShortcuts {boolean handled;void cancel(){Test.log.add("cancel");}boolean onKey(KeyEvent e){Test.log.add("shortcut");return handled;}}
 class RemoteKeys {static boolean handled;static boolean onKey(Object c,KeyEvent e){Test.log.add("legacy");return handled;}}
 class Home {boolean onKey(KeyEvent e){Test.log.add("home-key");return false;}void pause(){Test.log.add("home-pause");}void reset(boolean b){Test.log.add("reset");}}
-class Dream {void paused(){Test.log.add("dream-pause");}}
+class Dream {void focused(boolean f){}void paused(){Test.log.add("dream-pause");}}
 class SelfUpdate {static SelfUpdate get(Object c){return new SelfUpdate();}void removeListener(Object l){}}
 class HomeData {static HomeData get(Object c){return new HomeData();}void settingsChanged(){Test.log.add("changed");}}
 class HomeHarness extends Base {RemoteShortcuts shortcuts=new RemoteShortcuts();Home home=new Home();Dream dreamReturn=new Dream();Object updateListener=new Object();boolean probe;boolean runWatchNextProbe(Intent i){return probe;}

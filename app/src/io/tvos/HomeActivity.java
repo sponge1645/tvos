@@ -63,6 +63,7 @@ public class HomeActivity extends Activity {
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus && shortcuts != null) shortcuts.cancel();
         if (dreamReturn != null) dreamReturn.focused(hasFocus);
     }
 
@@ -135,11 +136,6 @@ public class HomeActivity extends Activity {
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         if (level >= TRIM_MEMORY_COMPLETE) Recs.get(this).trim();
-    }
-
-    @Override public void onWindowFocusChanged(boolean focused) {
-        super.onWindowFocusChanged(focused);
-        if (!focused && shortcuts != null) shortcuts.cancel();
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
