@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B151)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B152)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -288,3 +288,29 @@ Regression checks execute the real generic policy and actual asynchronous Recs a
 URLs/live locale, two-page cap, suffix order/termination, malformed rows, replacement
 order, partial transport/mapper failures, queued/in-flight/late cancellation, random page
 bounds, ID marking before mapping, complete-page threshold and existing error handling.
+
+
+### Dock provider and image boundaries (1B152)
+
+`watching/DockPrograms` reads recommendation channels/programs into candidate title,
+year, poster and landscape URLs. It retains stable channel priority, exclusion of history,
+four-channel/six-candidate bounds, Watch Next fallback and publisher/service aliases.
+Provider/resource authorization is an injected predicate receiving the publishing package;
+title-only candidates remain eligible for metadata fallback. Fixed query projections are
+reused, without new arrays on each channel read.
+
+`artwork/DockImageLoader` owns HTTPS/provider/resource reading, atomic part-file publication,
+16 MiB limit, six-file cache and sampled landscape/logo decode. A small request-lifetime
+interface preserves token checks and explicit connection open/close ownership, without
+per-image callback allocation. Existing cache names/paths, timeout selection, aspect checks,
+corrupt-file recovery and eviction behavior remain intact. URLs are authorized by provider
+or metadata adapters before entering the loader.
+
+`DockBackdrop` retains focus debounce, generation/cancel state, permission request, service
+banners, two-second loading deadline, metadata resolution, staged photo/caption delivery
+and UI notification. Full-loader tests still execute those adapters, now with real service
+aliases. Independent loader tests use actual temp files and controlled streams/connections
+for cancellation, size limits, sampling, cache hits/eviction and partial cleanup.
+
+Deferred product work is recorded in `docs/DEVELOPMENT-NOTES.md`; volume-key hold is
+explicitly deferred and no accessibility key handling changed in this pass.
