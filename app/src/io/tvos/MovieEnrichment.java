@@ -1,7 +1,6 @@
 package io.tvos;
 
 import io.tvos.Recs.Pick;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;

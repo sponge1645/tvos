@@ -136,7 +136,7 @@ public class SettingsActivity extends Activity {
         private final SettingsUpdateDialog updateDialog;
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private final SettingsModeMonitor modeMonitor;
-        private int screen = MAIN, focus, settingsGroup = GENERAL, returnFocus = 0;
+        private int screen = MAIN, focus, settingsGroup = GENERAL;
         private final SettingsTransitions transitions = new SettingsTransitions();
         private final java.util.function.IntUnaryOperator transitionParent = this::parentScreen;
         private final SettingsTransitions.ScreenPainter transitionPainter = this::drawTransitionScreen;

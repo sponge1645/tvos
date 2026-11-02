@@ -8,7 +8,6 @@ import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -450,11 +449,6 @@ final class HomeApps {
         } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {}
     }
 
-    private static Item special(Context c, int kind, String key, String label, String symbol) {
-        Item it = shortcut(kind, key, label, symbol);
-        it.tile = AppArtwork.symbolTile(c, key, symbol);
-        return it;
-    }
 
     /** Opens the item with the system zoom transition growing out of the card (the app starts opening right away). */
     static boolean open(Activity a, Item it, View from, int x, int y, int w, int h) {

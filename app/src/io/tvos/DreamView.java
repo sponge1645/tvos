@@ -42,9 +42,8 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private static final float ZOOM = 0.1f;
     /** Photos 10% larger than the screen (the zoom goes up to 1.1 without upscaling). */
     private static final int PW = 2112, PH = 1188;
-    private static final float MARGIN = 80, RIGHT = 1840;
+    private static final float RIGHT = 1840;
     private static final float DATE_BASE = 92, CLOCK_TOP = 120, CLOCK_SIZE = 200;
-    private static final double DRIFT_PERIOD_S = 600;
 
     /** One photo on screen: the image, its motion (zooming in or out, toward a corner) and its caption. */
     private static final class Slide {
@@ -94,7 +93,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     // Offline fallback: four soft, slowly drifting gradient spheres.
     private final Paint[] orbPaint = new Paint[4];
     private final Paint fallbackBase = new Paint();
-    private final Paint fallbackClock = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fallbackShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float[] orbX = {0.16f, 0.79f, 0.47f, 0.87f};
     private final float[] orbY = {0.70f, 0.22f, 0.49f, 0.85f};
@@ -114,19 +112,19 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private final Paint shadowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint glassPaint = new Paint();
     private RuntimeShader glassShader;
-    private boolean running, dirty = true, chromeDirty = true;
+    private boolean running, chromeDirty = true;
     private boolean fallback;       // the aurora with the clock (no photos)
     private boolean decoding;
     private int generation, slides;
     private Slide current, incoming, prepared;
     private Glass glass;
     private String glassFor = "";
-    private long startedAt, firstAt, lastFrame, lastSky;
+    private long startedAt, firstAt, lastFrame;
     private int w, h;
     private float k = 1;
     private long minute = -1;
     private String clock = "", date = "";
-    private Paint datePaint, clockPaint, weatherPaint, weatherDim;
+    private Paint datePaint, clockPaint;
     private Paint cornerDate, cornerClock;
 
     private final Runnable tick = new Runnable() {
@@ -134,7 +132,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             if (!running) return;
             data.refreshIfStale();
             gallery.refresh(() -> { if (running) { prepareNext(); invalidate(); } });
-            dirty = true;
             chromeDirty = true;
             prepareNext();
             handler.postDelayed(this, 60_000);
@@ -228,7 +225,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     }
 
     @Override public void onData() {
-        dirty = true;
         chromeDirty = true;
         invalidate();
     }
@@ -255,8 +251,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         clockPaint = Ui.numbers(Ui.thin, 280 * k, 0xF2FFFFFF);
         clockPaint.setTextAlign(Paint.Align.CENTER);
         clockPaint.setLetterSpacing(-0.01f);
-        weatherPaint = Ui.numbers(Ui.medium, 30 * k, 0xC7FFFFFF);
-        weatherDim = Ui.numbers(Ui.regular, 28 * k, 0x80FFFFFF);
         // With photos: the corner date and clock.
         cornerDate = Ui.numbers(Ui.semibold, 30 * k, 0xEBFFFFFF);
         cornerClock = Ui.numbers(Ui.displaySemibold, CLOCK_SIZE * k, 0xF2FFFFFF);
@@ -265,7 +259,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             p.setShadowLayer(18 * k, 0, 2 * k, 0x66000000);
         }
         glassFor = "";
-        dirty = true;
         chromeDirty = true;
     }
 
@@ -412,7 +405,6 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             minute = now / 60_000;
             clock = Ui.clock(now);
             date = Ui.date(now);
-            dirty = true;
             chromeDirty = true;
         }
         if (running) advance(up);

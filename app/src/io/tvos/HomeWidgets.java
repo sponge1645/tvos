@@ -17,7 +17,6 @@ final class HomeWidgets {
     private float k=1,night;
     private Paint cardTitle,cardText,cardDim,bigTemp,hourPaint,hourTemp;
     private final Paint fill=new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final RectF tmp=new RectF();
     HomeWidgets(Context context,HomeData data){this.context=context.getApplicationContext();this.data=data;}
     void resize(float scale){k=scale;
         cardTitle = Ui.text(Ui.semibold, 25 * k, 0xB3FFFFFF);

@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B153)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B154)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -335,3 +335,13 @@ request generations, history program reads/ranking, source selection and UI deli
 Complete-catalog regressions compile all extracted production components and also exercise
 intent cleanup, ownership/size limits, channel matching/order and cursor lifecycle directly.
 The existing per-source quotas, row-error boundaries and history refresh behavior remain.
+
+
+### Structural baseline and final audit (1B154)
+
+The broad package/component separation phase is complete for the current feature set.
+See `docs/REFACTORING-AUDIT.md` for the ownership map, verified dead-code cleanup and
+remaining device-validation work. HomeView and SettingsActivity remain Android UI
+coordinators; their size alone is not a reason to introduce additional Host interfaces
+or duplicate navigation state. Future extraction should follow a concrete independently
+owned responsibility, not a target file/line count.
