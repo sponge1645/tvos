@@ -48,12 +48,12 @@ public class RemoteShortcutSettingsActivity extends Activity {
     @Override protected void onPause() { resumed = false; super.onPause(); }
     private void render() {
         List<String> rows = new ArrayList<>();
-        rows.add(text(R.string.remote_add));
-        rows.add(text(R.string.remote_volume_method) + ": " + text(VolumeHoldStore.system(getFilesDir())
-                ? R.string.remote_system_method : R.string.remote_adb_method));
-        rows.add(text(R.string.remote_grant_volume));
-        rows.add(text(R.string.remote_accessibility));
-        for (Binding b : bindings) rows.add(name(b) + " — " + text(b.global ? R.string.remote_global : R.string.remote_home));
+        rows.add(text(R.string.settings_remote_add));
+        rows.add(text(R.string.settings_remote_volume_method) + ": " + text(VolumeHoldStore.system(getFilesDir())
+                ? R.string.settings_remote_system_method : R.string.settings_remote_adb_method));
+        rows.add(text(R.string.settings_remote_grant_volume));
+        rows.add(text(R.string.settings_remote_accessibility));
+        for (Binding b : bindings) rows.add(name(b) + " — " + text(b.global ? R.string.settings_remote_global : R.string.settings_remote_home));
         list.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, rows) {
             @Override public android.view.View getView(int at, android.view.View view, android.view.ViewGroup parent) {
                 TextView text = (TextView) super.getView(at, view, parent);
@@ -63,15 +63,15 @@ public class RemoteShortcutSettingsActivity extends Activity {
     }
     private String name(Binding b) { return KeyEvent.keyCodeToString(b.code) + " (" + b.device + ")"; }
     private void capture() {
-        AlertDialog capture = dialog(R.string.remote_press).setMessage(text(R.string.remote_capture_help))
-                .setNegativeButton(text(R.string.remote_cancel), null).create();
+        AlertDialog capture = dialog(R.string.settings_remote_press).setMessage(text(R.string.settings_remote_capture_help))
+                .setNegativeButton(text(R.string.settings_remote_cancel), null).create();
         capture.setOnKeyListener((d, code, event) -> {
             if (code == KeyEvent.KEYCODE_BACK) return false;
             if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() != 0) return true;
             if (!RemoteBindings.allowed(code)
                     || (event.getSource() & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                     || (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) {
-                Toast.makeText(this, text(R.string.remote_reserved), Toast.LENGTH_SHORT).show(); return true;
+                Toast.makeText(this, text(R.string.settings_remote_reserved), Toast.LENGTH_SHORT).show(); return true;
             }
             String device = RemoteShortcuts.device(event);
             if (device.length() > 128) return true;
@@ -88,40 +88,40 @@ public class RemoteShortcutSettingsActivity extends Activity {
     private void edit(int at) {
         if (at < 0 || at >= bindings.size()) return;
         Binding b = bindings.get(at); String[] a = b.actions();
-        String[] rows = {text(R.string.remote_scope) + ": " + text(b.global ? R.string.remote_global : R.string.remote_home),
-                "1× — " + label(a[0]), "2× — " + label(a[1]), "3× — " + label(a[2]), text(R.string.remote_delete)};
-        dialog(R.string.remote_edit).setItems(rows, (d, row) -> {
+        String[] rows = {text(R.string.settings_remote_scope) + ": " + text(b.global ? R.string.settings_remote_global : R.string.settings_remote_home),
+                "1× — " + label(a[0]), "2× — " + label(a[1]), "3× — " + label(a[2]), text(R.string.settings_remote_delete)};
+        dialog(R.string.settings_remote_edit).setItems(rows, (d, row) -> {
             if (busy) return;
             if (row == 0) scope(at);
             else if (row == 4) { bindings.remove(at); save(); }
             else actions(at, row - 1);
-        }).setNeutralButton(text(R.string.remote_help), (d, w) -> dialog(R.string.remote_help)
-                .setMessage(text(R.string.remote_gesture_help)).setPositiveButton(android.R.string.ok, (x, y) -> edit(at)).show())
-                .setNegativeButton(text(R.string.remote_done), null).show();
+        }).setNeutralButton(text(R.string.settings_remote_help), (d, w) -> dialog(R.string.settings_remote_help)
+                .setMessage(text(R.string.settings_remote_gesture_help)).setPositiveButton(android.R.string.ok, (x, y) -> edit(at)).show())
+                .setNegativeButton(text(R.string.settings_remote_done), null).show();
     }
     private void scope(int at) {
         Binding b = bindings.get(at);
-        dialog(R.string.remote_scope).setSingleChoiceItems(new String[] {text(R.string.remote_home), text(R.string.remote_global)},
+        dialog(R.string.settings_remote_scope).setSingleChoiceItems(new String[] {text(R.string.settings_remote_home), text(R.string.settings_remote_global)},
                 b.global ? 1 : 0, (d, row) -> {
                     if (row == 1 && RemoteBindings.ok(b.code)) {
-                        Toast.makeText(this, text(R.string.remote_ok_home), Toast.LENGTH_LONG).show(); return;
+                        Toast.makeText(this, text(R.string.settings_remote_ok_home), Toast.LENGTH_LONG).show(); return;
                     }
                     bindings.set(at, new Binding(b.code, b.scan, b.device, row == 1, b.actions()));
                     save(); d.dismiss(); edit(at);
-                }).setNegativeButton(text(R.string.remote_cancel), null).show();
+                }).setNegativeButton(text(R.string.settings_remote_cancel), null).show();
     }
     private static final String[] ACTIONS = {"none", "vpn", "settings", "play", "next", "previous", "mute"};
     private String label(String action) {
         switch (action) {
-            case "default": return text(R.string.remote_original);
-            case "vpn": return text(R.string.remote_vpn);
-            case "settings": return text(R.string.remote_settings);
-            case "play": return text(R.string.remote_play);
-            case "next": return text(R.string.remote_next);
-            case "previous": return text(R.string.remote_previous);
-            case "mute": return text(R.string.remote_mute);
-            case "": return text(R.string.remote_unassigned);
-            case "none": return text(R.string.remote_none);
+            case "default": return text(R.string.settings_remote_original);
+            case "vpn": return text(R.string.settings_remote_vpn);
+            case "settings": return text(R.string.settings_remote_settings);
+            case "play": return text(R.string.settings_remote_play);
+            case "next": return text(R.string.settings_remote_next);
+            case "previous": return text(R.string.settings_remote_previous);
+            case "mute": return text(R.string.settings_remote_mute);
+            case "": return text(R.string.settings_remote_unassigned);
+            case "none": return text(R.string.settings_remote_none);
             default:
                 try { return String.valueOf(getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(action.substring(4), 0))); }
                 catch (android.content.pm.PackageManager.NameNotFoundException | RuntimeException error) { return action; }
@@ -130,13 +130,13 @@ public class RemoteShortcutSettingsActivity extends Activity {
     private void actions(int at, int tap) {
         Binding b = bindings.get(at);
         List<String> ids = new ArrayList<>(); List<String> names = new ArrayList<>();
-        if (tap == 0 && !b.global && RemoteBindings.ok(b.code)) { ids.add("default"); names.add(text(R.string.remote_original)); }
-        if (tap > 0) { ids.add(""); names.add(text(R.string.remote_unassigned)); }
+        if (tap == 0 && !b.global && RemoteBindings.ok(b.code)) { ids.add("default"); names.add(text(R.string.settings_remote_original)); }
+        if (tap > 0) { ids.add(""); names.add(text(R.string.settings_remote_unassigned)); }
         for (String a : ACTIONS) { ids.add(a); names.add(label(a)); }
-        names.add(text(R.string.remote_app));
-        dialog(R.string.remote_action).setItems(names.toArray(new String[0]), (d, row) -> {
+        names.add(text(R.string.settings_remote_app));
+        dialog(R.string.settings_remote_action).setItems(names.toArray(new String[0]), (d, row) -> {
             if (row == ids.size()) chooseApp(at, tap); else assign(at, tap, ids.get(row));
-        }).setNegativeButton(text(R.string.remote_cancel), null).show();
+        }).setNegativeButton(text(R.string.settings_remote_cancel), null).show();
     }
     private void assign(int at, int tap, String action) {
         Binding b = bindings.get(at); String[] a = b.actions();
@@ -160,8 +160,8 @@ public class RemoteShortcutSettingsActivity extends Activity {
             runOnUiThread(() -> {
                 busy = false; if (!resumed || isFinishing() || isDestroyed()) return;
                 String[] names = new String[apps.size()]; for (int i = 0; i < names.length; i++) names[i] = apps.get(i)[1];
-                dialog(R.string.remote_app).setItems(names, (d, row) -> assign(at, tap, "app:" + apps.get(row)[0]))
-                        .setNegativeButton(text(R.string.remote_cancel), null).show();
+                dialog(R.string.settings_remote_app).setItems(names, (d, row) -> assign(at, tap, "app:" + apps.get(row)[0]))
+                        .setNegativeButton(text(R.string.settings_remote_cancel), null).show();
             });
         });
     }
@@ -176,22 +176,22 @@ public class RemoteShortcutSettingsActivity extends Activity {
             runOnUiThread(() -> {
                 busy = false; if (!resumed || isFinishing() || isDestroyed()) return;
                 if (!saved) { bindings.clear(); bindings.addAll(RemoteBindings.read(getFilesDir()));
-                    Toast.makeText(this, text(R.string.remote_save_failed), Toast.LENGTH_LONG).show(); }
+                    Toast.makeText(this, text(R.string.settings_remote_save_failed), Toast.LENGTH_LONG).show(); }
                 render();
             });
         });
     }
     private void volumeMode() {
-        dialog(R.string.remote_volume_method).setSingleChoiceItems(new String[] {text(R.string.remote_adb_method), text(R.string.remote_system_method)},
+        dialog(R.string.settings_remote_volume_method).setSingleChoiceItems(new String[] {text(R.string.settings_remote_adb_method), text(R.string.settings_remote_system_method)},
                 VolumeHoldStore.system(getFilesDir()) ? 1 : 0, (d, row) -> {
                     try {
                         VolumeHoldStore.setSystem(getFilesDir(), row == 1);
                         sendBroadcast(new Intent(RemoteVolume.CHANGE).setPackage(getPackageName()));
-                    } catch (java.io.IOException error) { Toast.makeText(this, text(R.string.remote_save_failed), Toast.LENGTH_LONG).show(); }
+                    } catch (java.io.IOException error) { Toast.makeText(this, text(R.string.settings_remote_save_failed), Toast.LENGTH_LONG).show(); }
                     d.dismiss(); render();
-                    if (row == 1) dialog(R.string.remote_system_method).setMessage(text(R.string.remote_system_help))
+                    if (row == 1) dialog(R.string.settings_remote_system_method).setMessage(text(R.string.settings_remote_system_help))
                             .setPositiveButton(android.R.string.ok, null).show();
-                }).setNegativeButton(text(R.string.remote_cancel), null).show();
+                }).setNegativeButton(text(R.string.settings_remote_cancel), null).show();
     }
     private void grantVolume() {
         busy = true;
@@ -203,7 +203,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
                 busy = false; if (!resumed || isFinishing() || isDestroyed()) return;
                 boolean granted = checkSelfPermission(SystemVolume.PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
                 sendBroadcast(new Intent(RemoteVolume.CHANGE).setPackage(getPackageName()));
-                Toast.makeText(this, text(granted ? R.string.remote_granted : R.string.remote_grant_failed), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, text(granted ? R.string.settings_remote_granted : R.string.settings_remote_grant_failed), Toast.LENGTH_LONG).show();
             });
         });
     }

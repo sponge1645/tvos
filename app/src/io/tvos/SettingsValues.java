@@ -176,7 +176,7 @@ final class SettingsValues {
 
     static String[] keyLabels() {
         return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_volume_hold), AppStrings.get(R.string.remote_shortcuts)};
+                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_volume_hold), AppStrings.get(R.string.settings_remote_shortcuts)};
     }
 
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {
@@ -193,7 +193,7 @@ final class SettingsValues {
                 : "ERROR".equals(state) ? AppStrings.get(R.string.settings_volume_unavailable)
                 : "STARTING".equals(state) ? AppStrings.get(R.string.settings_volume_starting)
                 : AppStrings.get(R.string.settings_volume_waiting);
-        v[Prefs.KEYS.length + 1] = AppStrings.get(R.string.remote_taps);
+        v[Prefs.KEYS.length + 1] = AppStrings.get(R.string.settings_remote_taps);
         return v;
     }
 
