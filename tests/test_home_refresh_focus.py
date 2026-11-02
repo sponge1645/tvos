@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
-source='''package io.tvos;import java.util.*;
+source='''package io.tvos;import io.tvos.home.HomePosterWindow;import java.util.*;
 public class RefreshTest {
  static final int Z_CARDS=5,Z_SHELF=1;int zone=Z_CARDS,cardPage,cardIndex=4,tab=2;boolean searchMode,running=true,heroDirty;Object lTab=new Object();
  static class Prefs {static int firstCategory(){return 2;}}
@@ -16,7 +16,7 @@ public class RefreshTest {
  List<Recs.Pick> currentCatalog(){return catalog;}
  void retarget(boolean snap){for(int i=0;i<cardFocus.length;i++)cardFocus[i].target=zone==Z_CARDS&&i==cardIndex?1:0;}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
-'''+block(home,'    private static boolean samePicks(')+block(home,'    private void updateCards(')+'''
+'''+block(home,'    private void updateCards(')+'''
  public static void main(String[] args){
   RefreshTest t=new RefreshTest();for(int i=0;i<5;i++)t.catalog.add(new Recs.Pick());t.cards=new ArrayList<>(t.catalog);
   t.catalog=new ArrayList<>(t.catalog.subList(0,2));t.updateCards();
@@ -28,6 +28,6 @@ public class RefreshTest {
  }
 }'''
 with tempfile.TemporaryDirectory() as tmp:
- p=Path(tmp);(p/'RefreshTest.java').write_text(source);(p/'Spring.java').write_text(Path('app/src/io/tvos/Spring.java').read_text())
+ p=Path(tmp);(p/'HomePosterWindow.java').write_text(Path('app/src/io/tvos/home/HomePosterWindow.java').read_text());(p/'RefreshTest.java').write_text(source);(p/'Spring.java').write_text(Path('app/src/io/tvos/Spring.java').read_text())
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,p.glob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.RefreshTest'],check=True)

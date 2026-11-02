@@ -5,6 +5,7 @@ import io.tvos.home.dock.HomeDockEditor;
 
 import io.tvos.home.HomeLayout;
 import io.tvos.home.HomeGeometry;
+import io.tvos.home.HomePosterWindow;
 import io.tvos.home.HomeFocusPolicy;
 import io.tvos.home.HomeReveal;
 import io.tvos.watching.WatchingSources;
@@ -106,7 +107,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Spring searchHeadingOpacity = new Spring(0.42f, 1f, 0);
     private String searchQuery = "";
     private List<Recs.Pick> searchResults = new ArrayList<>();
-    private int workEpoch;
+    private final HomeAppWork appWork;
     private final SearchController searchWork;
     private final RouletteController rouletteWork;
     private final RouletteRenderer rouletteRenderer;
@@ -175,7 +176,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private float k = 1;
     private String clockText = "", dateText = "";
     private long clockMinute = -1;
-    private boolean okDown, backDown, vpnPress, vpnBusy;
+    private boolean okDown, backDown, vpnPress;
     private final Spring vpnColor = new Spring(.35f, 1f, 0);
     private final Runnable vpnHold = this::openVpnOnHold;
 
@@ -198,20 +199,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void toggleVpn() {
         String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
         if (!VpnControl.PACKAGE.equals(pkg)) { openVpnApp(); return; }
-        if (vpnBusy) return;
-        vpnBusy = true;
-        int epoch = workEpoch;
-        Context context = activity.getApplicationContext();
-        LOADER.execute(() -> {
-            boolean failed = false;
-            try { VpnControl.toggle(context); }
-            catch (java.io.IOException | RuntimeException e) { AppLog.w("VPN toggle failed: " + e.getClass().getSimpleName()); failed = true; }
-            final boolean error = failed;
-            handler.post(() -> {
-                vpnBusy = false;
-                if (error && running && epoch == workEpoch) showToast(AppStrings.get(R.string.home_vpn_toggle_failed));
-            });
-        });
+        appWork.toggleVpn();
     }
     private void beginDockEdit() {
         dockLiftIndex = shelfIndex;
@@ -297,6 +285,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     HomeView(Activity a) {
         super(a);
         activity = a;
+        appWork = new HomeAppWork(a.getApplicationContext(), LOADER, handler, () -> running,
+                (shelf, drawer, others) -> {
+                    setShelf(shelf);
+                    setDrawerItems(drawer);
+                    if (!sheetOpen) setOthers(others);
+                }, () -> showToast(AppStrings.get(R.string.home_vpn_toggle_failed)));
         data = HomeData.get(a);
         widgets = new HomeWidgets(a,data);
         header = new HomeHeaderRenderer(a, data, actionSurface, shadows);
@@ -328,7 +322,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         rouletteRenderer = new RouletteRenderer(rouletteWork, recs, scene, shadows, actionSurface, images);
         movieApps = new MovieAppLauncher(a, this, LOADER, handler, new MovieAppLauncher.Host() {
             @Override public boolean running() { return running; }
-            @Override public int epoch() { return workEpoch; }
+            @Override public int epoch() { return appWork.epoch(); }
             @Override public void toast(String text) { showToast(text); }
         });
         dockEditor = new HomeDockEditor<>(handler, new HomeDockEditor.Host<HomeApps.Item>() {
@@ -405,7 +399,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         updatePalette();
         // First time: right away (a cold start opens with the apps already there); missing logos come from reload().
         setShelf(HomeApps.shelf(a, false));
-        setDrawerItems(drawerList(a));
+        setDrawerItems(HomeAppWork.drawerItems(a));
     }
 
     // MARK: - Lifecycle (called by HomeActivity)
@@ -524,7 +518,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         updateMotion();
         networkStatus.stop();
         handler.removeCallbacks(vpnHold); vpnPress = false;
-        workEpoch++;
+        appWork.invalidate();
         searchWork.pause(searchMode);
         cancelRouletteWork();
         dockEditor.pause();
@@ -923,14 +917,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         scene.applyPalette();
     }
 
-    // MARK: - Recommendations: hero and background
-
-    private static boolean samePicks(List<Recs.Pick> a, List<Recs.Pick> b) {
-        if (a.size() != b.size()) return false;
-        for (int i = 0; i < a.size(); i++) if (a.get(i) != b.get(i)) return false;
-        return true;
-    }
-
     // MARK: - Night look
 
     /** How dark it is: 0 = day, 1 = night (in between during the transition). */
@@ -1010,12 +996,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     // MARK: - Bottom drawer
-
-    private static List<HomeApps.Item> drawerList(Context c) {
-        List<HomeApps.Item> list = HomeApps.allInputs(c);
-        list.addAll(HomeApps.drawerShortcuts());
-        return list;
-    }
 
     private void setDrawerItems(List<HomeApps.Item> list) {
         int inputs = 0;
@@ -1157,21 +1137,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // MARK: - Lists (in the background, so returning to the home screen isn't delayed)
 
-    private void reload() {
-        final int epoch = workEpoch;
-        final Context c = getContext().getApplicationContext();
-        LOADER.execute(() -> {
-            final List<HomeApps.Item> s = HomeApps.shelf(c, true);
-            final List<HomeApps.Item> d = drawerList(c);
-            final List<HomeApps.Item> o = HomeApps.others(c);
-            handler.post(() -> {
-                if (!running || epoch != workEpoch) return;
-                setShelf(s);
-                setDrawerItems(d);
-                if (!sheetOpen) setOthers(o);
-            });
-        });
-    }
+    private void reload() { appWork.load(); }
 
     // MARK: - Keys: only the arrows, OK and Back (system keys pass through to the system)
 
@@ -1721,11 +1687,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         List<Recs.Pick> all = currentCatalog();
         int perPage = 5;
-        int pages = Math.max(1, (all.size() + perPage - 1) / perPage);
-        cardPage = Math.min(cardPage, pages - 1);
-        int from = Math.min(all.size(), cardPage * perPage);
-        List<Recs.Pick> list = new ArrayList<>(all.subList(from, Math.min(all.size(), from + perPage)));
-        if (!samePicks(list, cards)) {
+        cardPage = HomePosterWindow.clampPage(cardPage, all.size(), perPage);
+        int from = HomePosterWindow.start(cardPage, all.size(), perPage);
+        List<Recs.Pick> list = HomePosterWindow.select(all, from, perPage, cards);
+        if (list != cards) {
             cards = list;
             cardIndex = Math.min(cardIndex, Math.max(0, list.size() - 1));
             if (zone == Z_CARDS && list.isEmpty() && !searchMode) zone = Z_SHELF;
@@ -1733,9 +1698,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             retarget(false);
         }
         // Current page first, then the next two and previous page. Drop work from the old window.
-        int ahead = Math.min(all.size(), from + perPage * 3);
-        List<Recs.Pick> posterWindow = new ArrayList<>(all.subList(from, ahead));
-        posterWindow.addAll(all.subList(Math.max(0, from - perPage), from));
+        List<Recs.Pick> posterWindow = HomePosterWindow.prefetch(all, from, perPage);
         recs.setPosterWindow(running ? posterWindow : java.util.Collections.emptyList());
         if (running) for (Recs.Pick pick : posterWindow) recs.poster(pick);
         if (running) {

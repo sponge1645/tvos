@@ -61,9 +61,9 @@ tests = r'''
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-language-test-') as directory:
     root = Path(directory)
+    (root/'HomePosterWindow.java').write_text(Path('app/src/io/tvos/home/HomePosterWindow.java').read_text())
     body = ''.join(method(s) for s in ['    private boolean fetchList(', '    private static void add(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
-    view = Path('app/src/io/tvos/HomeView.java').read_text()
-    body += method('    private static boolean samePicks(', view).replace('Recs.Pick', 'Pick')
+    body += 'static boolean samePicks(java.util.List<Pick> a,java.util.List<Pick> b){return io.tvos.home.HomePosterWindow.select(a,0,Math.max(1,a.size()),b)==b;}'
     (root/'CatalogHarness.java').write_text(header+body+tests)
     dependencies=files()
     for name in ['CatalogBuilder','TmdbSource']:dependencies['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()

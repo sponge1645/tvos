@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B145)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B146)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -158,3 +158,20 @@ and two search-position buffers rather than allocating them on every use.
 Validation covers 720p/1080p/4K, Dock counts 0–8, drawer groups, compact layout,
 all 720 action orders x 64 visibility masks, live clock/font changes, measurement
 object reuse, search coordinates and exact invalidation/lifecycle guards.
+
+`HomeAppWork` is the application adapter for Dock/drawer/All Apps IO and VPN
+commands. It receives the application Context, existing shared Executor, Handler
+and small delivery callbacks. It owns delivery generation and VPN command busy
+state; MovieAppLauncher reads the same generation, and pause invalidates it.
+Queued IO is not cancelled or reordered. Delivery checks current activity and
+generation on the UI queue, while HomeView retains sheet visibility and binding.
+A VPN completion always clears busy state, including stale or inactive results;
+only current active failures display the existing localized notice.
+
+`home/HomePosterWindow` handles page bounds, page item identity and prefetch
+priority (current, next two, previous). It has no Android or application-type
+dependencies and stores no page/selection state. Unchanged item references reuse
+the current page list; new localized objects replace it even when IDs match.
+Changed pages remain independent mutable snapshots. HomeView retains focus,
+animations, catalog selection and image requests. Regression tests execute both
+components with controlled worker/UI queues and exhaustive page/window cases.
