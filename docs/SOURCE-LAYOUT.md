@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B152)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B153)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -314,3 +314,24 @@ for cancellation, size limits, sampling, cache hits/eviction and partial cleanup
 
 Deferred product work is recorded in `docs/DEVELOPMENT-NOTES.md`; volume-key hold is
 explicitly deferred and no accessibility key handling changed in this pass.
+
+
+### History row and resume boundaries (1B153)
+
+`WatchingCardReader` adapts Android rows to the existing Recs.Pick model, including source
+identity, movie/episode inference, remaining time, portrait authorization and KinoPub's
+resume JSON/URI fallbacks. It remains an Android/model adapter in the root package;
+common intent policy does not depend on launcher preferences or the card model.
+Numeric item/path checks reuse a compiled pattern, preserving ASCII-digit semantics.
+
+`watching/ResumeIntentPolicy` parses provider links, verifies publishing-package ownership
+and removes selector/clip/grant flags while preserving the original URI and extras.
+`watching/HistoryChannels` discovers exact Seena and Lampa history channels, retaining
+Seena insertion order, Lampa continued-before-history merging and null-cursor early return.
+The channel projection is reused; no titles, timestamps or playback positions are invented.
+
+`WatchingCatalog` retains permission/observer lifecycle, worker scheduling, coalescing,
+request generations, history program reads/ranking, source selection and UI delivery.
+Complete-catalog regressions compile all extracted production components and also exercise
+intent cleanup, ownership/size limits, channel matching/order and cursor lifecycle directly.
+The existing per-source quotas, row-error boundaries and history refresh behavior remain.

@@ -11,7 +11,7 @@ f.update({
 'android/content/Intent.java':'''package android.content;import java.util.*;import android.net.Uri;public class Intent {
  public static final int URI_INTENT_SCHEME=1,FLAG_ACTIVITY_NEW_TASK=0x10000000;
  public static final Map<String,Intent> data=new HashMap<>();public ComponentName component;public String owner,extra;public int flags;public Object selector,clip;public Uri uri;
- public static Intent parseUri(String link,int flags)throws java.net.URISyntaxException {Intent original=data.get(link);if(original==null)throw new java.net.URISyntaxException(link,"bad");Intent i=new Intent();i.component=original.component;i.extra=original.extra;i.uri=original.uri;return i;}
+ public static Intent parseUri(String link,int flags)throws java.net.URISyntaxException {Intent original=data.get(link);if(original==null)throw new java.net.URISyntaxException(link,"bad");Intent i=new Intent();i.component=original.component;i.extra=original.extra;i.uri=original.uri;i.flags=original.flags;i.selector=original.selector;i.clip=original.clip;return i;}
  public ComponentName getComponent(){return component;}public Intent setSelector(Object o){selector=o;return this;}public Intent setPackage(String p){owner=p;return this;}public void setClipData(Object o){clip=o;}public Intent setFlags(int f){flags=f;return this;}public String getStringExtra(String key){return extra;}public Uri getData(){return uri;}
 }''',
 'android/content/Context.java':'''package android.content;public class Context {public boolean permitted;public final ContentResolver resolver=new ContentResolver();public Context getApplicationContext(){return this;}public int checkSelfPermission(String p){return permitted?0:-1;}public ContentResolver getContentResolver(){return resolver;}public android.content.pm.PackageManager getPackageManager(){return new android.content.pm.PackageManager();}}''',
@@ -31,17 +31,32 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),chann
 f['io/tvos/SeenaChannelRefresh.java']='package io.tvos;class SeenaChannelRefresh {static void request(Object c){}}'
 f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static boolean homeContinue(){return false;}static int categoryCount(){return 0;}static boolean categoryEnabled(int i){return true;}static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
 f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('private final Map<String,Object> m=new HashMap<>();','''public static final Map<String,JSONObject> encoded=new HashMap<>();private final Map<String,Object> m=new HashMap<>();public JSONObject(){}public JSONObject(String s)throws JSONException{JSONObject value=encoded.get(s);if(value==null)throw new JSONException("bad JSON");m.putAll(value.m);}''')
-for name in ['WatchingCatalog','WatchingItems','WatchingText']:
+for name in ['ResumeIntentPolicy','HistoryChannels']:
+ f['io/tvos/watching/'+name+'.java']=Path('app/src/io/tvos/watching/'+name+'.java').read_text()
+for name in ['WatchingCatalog','WatchingItems','WatchingText','WatchingCardReader']:
  f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 f['io/tvos/WatchingHarness.java']='''package io.tvos;
 import java.util.*;import java.util.concurrent.Executor;import android.content.*;import android.os.Handler;import android.net.Uri;import org.json.JSONObject;
 public class WatchingHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static class Worker implements Executor {ArrayDeque<Runnable> tasks=new ArrayDeque<>();public void execute(Runnable r){tasks.add(r);}void drain(){while(!tasks.isEmpty())tasks.remove().run();}}
- static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
+ static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.flags=0x7fffffff;intent.selector=new Object();intent.clip=new Object();intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
  static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3};}
  static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
  public static void main(String[] args){
+  String safe=link("safe-policy","com.seena.app","payload");Intent original=Intent.data.get(safe);Intent cleaned=io.tvos.watching.ResumeIntentPolicy.parse(safe,"com.seena.app");
+  check(cleaned!=original&&cleaned.owner.equals("com.seena.app")&&cleaned.flags==Intent.FLAG_ACTIVITY_NEW_TASK&&cleaned.selector==null&&cleaned.clip==null&&cleaned.extra.equals("payload")&&cleaned.uri.toString().equals(original.uri.toString()),"resume policy strips grants/selector/clip while preserving URI/extras and owner");
+  check(original.flags==0x7fffffff&&original.selector!=null&&original.clip!=null,"resume parsing never edits original provider data");
+  check(io.tvos.watching.ResumeIntentPolicy.parse(safe,"other")==null&&io.tvos.watching.ResumeIntentPolicy.parse(safe,"io.tvos")==null&&io.tvos.watching.ResumeIntentPolicy.parse(safe,"")==null&&io.tvos.watching.ResumeIntentPolicy.parse(safe,null)==null&&io.tvos.watching.ResumeIntentPolicy.parse(null,"com.seena.app")==null&&io.tvos.watching.ResumeIntentPolicy.parse("malformed","com.seena.app")==null,"foreign/self/empty owner and invalid URI rejection");
+  String max="x".repeat(262144);Intent.data.put(max,original);check(io.tvos.watching.ResumeIntentPolicy.parse(max,"com.seena.app")!=null&&io.tvos.watching.ResumeIntentPolicy.parse(max+"x","com.seena.app")==null,"resume URI size boundary retained");
+  android.content.Context historyContext=new android.content.Context();io.tvos.watching.HistoryChannels discovery=new io.tvos.watching.HistoryChannels(historyContext);check(discovery.find()==null,"null channel cursor preserves early return");
+  historyContext.resolver.channels.add(new Object[]{3L,"top.rootu.lampa","ignored","History","lampa://top.rootu.lampa/update_channel/history"});
+  historyContext.resolver.channels.add(new Object[]{2L,"com.seena.app","seena_tv_history","History",null});
+  historyContext.resolver.channels.add(new Object[]{4L,"top.rootu.lampa","ignored","Continue","lampa://top.rootu.lampa/update_channel/continued"});
+  historyContext.resolver.channels.add(new Object[]{1L,"com.seena.app","seena_tv_history","History",null});
+  historyContext.resolver.channels.add(new Object[]{5L,"other.app","seena_tv_history","Spoof","lampa://top.rootu.lampa/update_channel/history"});
+  historyContext.resolver.channels.add(new Object[]{6L,"top.rootu.lampa","ignored","Near match","lampa://top.rootu.lampa/update_channel/history?extra"});
+  Map<Long,String> discovered=discovery.find();check(new ArrayList<>(discovered.keySet()).equals(Arrays.asList(2L,1L,4L,3L)),"Seena insertion order then Lampa continued/history; no foreign or near-link channels");check(historyContext.resolver.queries==historyContext.resolver.closes,"channel discovery closes cursor");
   Ui.language("ru");
   Recs.Pick caption=new Recs.Pick();caption.pkg="top.rootu.lampa";caption.kind="movie";
   check(WatchingText.caption(caption).equals("Lampa"),"missing playback time shows service name");
