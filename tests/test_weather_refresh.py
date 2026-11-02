@@ -20,15 +20,15 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
      static class AppLog {static void w(String s){} }
      static class Worker {List<Runnable> q=new ArrayList<>();void execute(Runnable r){q.add(r);}void drain(){while(!q.isEmpty())q.remove(0).run();} }
      static class Cache {Map<String,Object> values=new HashMap<>();Cache edit(){return this;}Cache putString(String k,String v){values.put(k,v);return this;}Cache putLong(String k,long v){values.put(k,v);return this;}void apply(){} }
-     static class Weather {String body;Weather(String s){body=s;} }
+     static class WeatherForecast {String body;WeatherForecast(String s){body=s;} }
      static final long WEATHER_EVERY=1800000;
      static final String WEATHER_QUERY="&forecast";
      final Worker io=new Worker();final Cache cache=new Cache();int settingsEpoch,notices,calls;
      boolean fetchingWeather;
-     long weatherAt,weatherFailedAt;Weather weather=new Weather("initial");
+     long weatherAt,weatherFailedAt;WeatherForecast weather=new WeatherForecast("initial");
      Runnable onGet;String requested;
      String get(String url){calls++;requested=url;if(onGet!=null)onGet.run();return url;}
-     Weather parseWeather(String body){return new Weather(body);}
+     class Parser {WeatherForecast parse(String body){return new WeatherForecast(body);}}final Parser WEATHER_PARSER=new Parser();
      void notifyListeners(){notices++;}
     '''
     tests='''

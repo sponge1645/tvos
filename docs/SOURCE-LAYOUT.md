@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current display is `1.1.1 (1B148)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current display is `1.1.1 (1B149)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -230,3 +230,21 @@ Tests execute complete drawer/session/backing components with actual View adapte
 0–10 drawer entries, leading groups, same-count/shrink/connection changes, remote
 and TalkBack routing, search debounce/stale callbacks/Done/reopen/heading reversal,
 backing coordinates/material/night colors, retained resources and 720p/1080p/4K.
+
+### Weather parsing and city lookup (1B149)
+
+`weather/WeatherForecast` is the shared mutable forecast snapshot, preserving Celsius units,
+NaN/code defaults and mutable hourly lists. `weather/WeatherParser` decodes Open-Meteo with
+an injected clock. Its date formatter is local to each response, preserving lenient parsing,
+response/device timezone behavior and at most six strictly future hours in provider order.
+The clock is sampled once after required hourly arrays are read, as before.
+`weather/CityGeocoder` receives a text transport and explicit language search order; it owns
+search labels/deduplication, coordinate formatting, stable-ID verification and legacy ID
+migration. It avoids the temporary admin/country array per result.
+
+`HomeData` remains the Android adapter: preferences and cache keys, refresh/retry deadlines,
+HTTP transport, worker scheduling, settings epochs, stale-response guards, localization
+persistence and listener delivery stay there. Home, weather widgets, accessibility and both
+screensavers consume the same forecast type. The city and widget adapters compile against
+the real new components; parser coverage includes DST, lenient dates, hourly boundaries,
+clock timing, malformed responses and concurrent response isolation.

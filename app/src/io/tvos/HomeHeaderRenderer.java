@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+
 import io.tvos.home.HomeLayout;
 
 import android.content.Context;
@@ -62,7 +64,7 @@ final class HomeHeaderRenderer {
 
     void drawDateWeather(Canvas c, Frame frame) {
         this.frame = frame;
-        HomeData.Weather wx = data.weather;
+        WeatherForecast wx = data.weather;
         boolean weather = frame.weatherTop && !Double.isNaN(wx.temp);
         String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
         if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);

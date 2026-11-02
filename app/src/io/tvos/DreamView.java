@@ -1,6 +1,8 @@
 // TVOS_WEATHER_FADE_V1
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
@@ -498,7 +500,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         try {
             float right = (w + cornerClock.measureText(clock)) / 2f;
             float x = RIGHT * k;
-            HomeData.Weather wx = data.weather;
+            WeatherForecast wx = data.weather;
             if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
                 weatherBadge.setWeather(Symbols.weather(wx.code, wx.isDay), HomeData.degrees(wx.temp));
                 weatherBadge.drawRightAligned(c, x, DATE_BASE * k);
@@ -674,7 +676,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         }
 
         // Identical upper-right weather rendering and shared visibility preference.
-        HomeData.Weather wx = data.weather;
+        WeatherForecast wx = data.weather;
         if (!Double.isNaN(wx.temp) && settings.getBoolean("screensaver_show_weather", false)) {
             weatherBadge.setWeather(Symbols.weather(wx.code, wx.isDay), HomeData.degrees(wx.temp));
             weatherBadge.drawRightAligned(canvas, RIGHT * k, DATE_BASE * k);

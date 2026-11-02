@@ -6,6 +6,7 @@ from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
 source=Path('app/src/io/tvos/HomeAccessibility.java').read_text()
 files={
+ 'io/tvos/weather/WeatherForecast.java':Path('app/src/io/tvos/weather/WeatherForecast.java').read_text(),
  'android/content/Context.java':'''package android.content;public class Context {public static final String ACCESSIBILITY_SERVICE="access";public android.view.accessibility.AccessibilityManager manager=new android.view.accessibility.AccessibilityManager();public Object getSystemService(String name){return manager;}}''',
  'android/accessibilityservice/AccessibilityServiceInfo.java':'package android.accessibilityservice;public class AccessibilityServiceInfo {public static final int FEEDBACK_SPOKEN=1;}',
  'android/view/accessibility/AccessibilityManager.java':'''package android.view.accessibility;import java.util.*;public class AccessibilityManager {public boolean enabled;public List<Object> services=new ArrayList<>();public boolean isEnabled(){return enabled;}public List<Object> getEnabledAccessibilityServiceList(int feedback){return services;}}''',
@@ -16,7 +17,7 @@ files={
  'io/tvos/Recs.java':'package io.tvos;class Recs {static class Pick {String title,meta,app;Pick(String t,String m,String a){title=t;meta=m;app=a;}}static String serviceName(Pick p){return p.app;}}',
  'io/tvos/NetworkStatus.java':'package io.tvos;class NetworkStatus {static final int WIFI=1,ETHERNET=2;int value;int state(){return value;}}',
  'io/tvos/Prefs.java':'''package io.tvos;class Prefs {static String city="";static String city(){return city;}static int[] categories={3,0,4},buttons={5,4,3};static int[] categoryOrder(){return categories;}static int[] topButtonOrder(){return buttons;}static int categoryPosition(int id){for(int i=0;i<categories.length;i++)if(categories[i]==id)return i+1;return 0;}static int categoryCount(){return categories.length;}}''',
- 'io/tvos/HomeData.java':'''package io.tvos;import java.util.*;class HomeData {Weather weather=new Weather();static class Weather {double temp=10,max=20,min=5;int code;boolean isDay=true;long sunrise=1,sunset=2;List<Long> hours=Arrays.asList(9L);List<Double> hourTemp=Arrays.asList(11.0);}static String degrees(double n){return (int)n+"°";}static String hour(long n){return "09:00";}static String condition(int c,boolean d){return "Clear";}}''',
+ 'io/tvos/HomeData.java':'''package io.tvos;import java.util.*;class HomeData {io.tvos.weather.WeatherForecast weather=forecast();static io.tvos.weather.WeatherForecast forecast(){io.tvos.weather.WeatherForecast w=new io.tvos.weather.WeatherForecast();w.temp=10;w.max=20;w.min=5;w.code=0;w.sunrise=1;w.sunset=2;w.hours.add(9L);w.hourTemp.add(11.0);return w;}static String degrees(double n){return (int)n+"°";}static String hour(long n){return "09:00";}static String condition(int c,boolean d){return "Clear";}}''',
  'io/tvos/Ui.java':'package io.tvos;class Ui {static String time(long n){return n==1?"06:00":"18:00";}}',
  'io/tvos/RouletteRenderer.java':'package io.tvos;import io.tvos.home.HomeLayout;import android.graphics.RectF;class RouletteRenderer {'+block(Path('app/src/io/tvos/RouletteRenderer.java').read_text(),'    static void buttonBounds(').replace('(MARGIN + CONTENT_R)','(80 + 1840)')+'}',
  'io/tvos/HomeAccessibility.java':source,

@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+
 import io.tvos.artwork.RoundedImages;
 import io.tvos.home.dock.HomeDockEditor;
 
@@ -847,7 +849,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void updatePalette() {
-        HomeData.Weather wx = data.weather;
+        WeatherForecast wx = data.weather;
         Shaders.sky(scene.palette, System.currentTimeMillis(), wx.sunrise, wx.sunset);
         scene.applyPalette();
     }

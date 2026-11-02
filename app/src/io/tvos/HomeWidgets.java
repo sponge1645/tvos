@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -43,7 +45,7 @@ final class HomeWidgets {
     private float dark(){return night;}
     private int tone(int light,int dark){return blend(light,dark,night);}
     private int drawerInk(float alpha){return Ui.alpha(tone(L_INK,0xFFFFFFFF),alpha);}
-    private HomeData.Weather textWeather;
+    private WeatherForecast textWeather;
     private int textPrefs = -1;
     private String textLanguage;
     private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText;
@@ -54,7 +56,7 @@ final class HomeWidgets {
         refreshDrawerText();
         float x = r.left + 34 * k;
         c.drawText(weatherTitle, x, r.top + 54 * k, cardTitle);
-        HomeData.Weather wx = textWeather;
+        WeatherForecast wx = textWeather;
         if (Double.isNaN(wx.temp)) {
             c.drawText(AppStrings.get(R.string.home_no_weather_data_right_now), x, r.top + 120 * k, cardDim);
             return;
@@ -88,7 +90,7 @@ final class HomeWidgets {
     }
 
     private void refreshDrawerText() {
-        HomeData.Weather wx = data.weather;
+        WeatherForecast wx = data.weather;
         boolean settings = Prefs.version != textPrefs || !Ui.language.equals(textLanguage);
         textPrefs = Prefs.version;
         textLanguage = Ui.language;

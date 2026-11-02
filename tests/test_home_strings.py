@@ -16,22 +16,21 @@ methods+=block(access,'    private String weatherText()')
 methods+=block(access,'    private static String networkLabel(').replace('private static String networkLabel(int networkState)', 'private String networkLabel()').replace('networkState ==', 'networkStatus.state() ==')
 methods+=block(Path('app/src/io/tvos/HomeWidgets.java').read_text(),'    private void refreshDrawerText()')
 harness='''package io.tvos;
-import java.util.*;
+import java.util.*;import io.tvos.weather.WeatherForecast;
 public class HomeStringsHarness {
  static class Ui {static boolean ru;static String language="en";static Locale locale(){return ru?new Locale("ru","RU"):Locale.US;}
   static String time(long at){return at==1?"06:00":"18:00";}}
  static class Prefs {static int version;static String city="";static String city(){return city;}}
  static class NetworkStatus {static final int WIFI=1,ETHERNET=2;int current;int state(){return current;}}
  static class HomeData {
-  Weather weather=new Weather();
-  static class Weather {double temp=10,max=20,min=5;int code;boolean isDay=true;long sunrise=1,sunset=2;
-   List<Long> hours=new ArrayList<>(Collections.singletonList(9L));List<Double> hourTemp=new ArrayList<>(Collections.singletonList(11.0));}
+  io.tvos.weather.WeatherForecast weather=forecast();
+  static io.tvos.weather.WeatherForecast forecast(){io.tvos.weather.WeatherForecast w=new io.tvos.weather.WeatherForecast();w.temp=10;w.max=20;w.min=5;w.code=0;w.sunrise=1;w.sunset=2;w.hours.add(9L);w.hourTemp.add(11.0);return w;}
   static String degrees(double n){return (int)n+"°";}static String hour(long h){return String.format(Locale.US,"%02d:00",h);}
   static String condition(int code,boolean day){return Ui.ru?"Ясно":"Clear";}
  }
  static class Genres {int resource;Genres(int r){resource=r;}String selected;String label(){return selected==null?AppStrings.get(resource):selected;}}final Genres genres=new Genres(R.string.home_tab_movies),tvGenres=new Genres(R.string.home_tab_shows);
  final HomeData data=new HomeData();final NetworkStatus networkStatus=new NetworkStatus();
- int textPrefs=-1;String textLanguage="";HomeData.Weather textWeather;long unusedTime=-1;
+ int textPrefs=-1;String textLanguage="";io.tvos.weather.WeatherForecast textWeather;long unusedTime=-1;
  String weatherTitle,nowTemp,highLow,sunriseText,sunsetText;
  final String[] hourText=new String[6],hourTempText=new String[6];
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
@@ -41,7 +40,7 @@ public class HomeStringsHarness {
   String[] english=null,russian=null;
   for(boolean ru:new boolean[]{false,true,false,true}){
    Ui.ru=ru;AppLanguage.select(Ui.ru?"ru":"en");Ui.language=ru?"ru":"en";Prefs.city="";Prefs.version++;
-   h.data.weather=new HomeData.Weather();
+   h.data.weather=HomeData.forecast();
    String[] labels=h.tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Я смотрю","Сериалы","🎲"}:new String[]{"New","Movies","Watching","Shows","🎲"}),"tab order/copy");
    if(ru){if(russian==null)russian=labels;else check(labels==russian,"Russian array reused after language switch");}
    else{if(english==null)english=labels;else check(labels==english,"English array reused after language switch");}
@@ -58,7 +57,7 @@ public class HomeStringsHarness {
    String prepared=h.highLow;for(int i=0;i<1000;i++){h.refreshDrawerText();check(h.highLow==prepared,"weather template formatted only on source/settings change");}
    check(h.weatherText().equals(ru?"Погода. 10°, Ясно. Максимум 20°, минимум 5°. Ближайшие часы: 09:00 11°. Восход 06:00. Закат 18:00.":"Weather. 10°, Clear. High 20°, low 5°. Next hours: 09:00 11°. Sunrise 06:00. Sunset 18:00."),"weather spoken punctuation and spaces");
    Prefs.city="Tokyo";Prefs.version++;h.refreshDrawerText();check(h.weatherTitle.equals("Tokyo")&&h.weatherText().startsWith("Tokyo."),"user-selected city preserved");
-   HomeData.Weather fresh=new HomeData.Weather();fresh.max=22;h.data.weather=fresh;h.refreshDrawerText();
+   io.tvos.weather.WeatherForecast fresh=HomeData.forecast();fresh.max=22;h.data.weather=fresh;h.refreshDrawerText();
    check(h.highLow.equals(ru?"Макс. 22°   Мин. 5°":"H:22°   L:5°"),"new weather snapshot refreshes text");
    Prefs.city="";fresh.temp=Double.NaN;check(h.weatherText().equals(ru?"Погода. Сейчас нет данных о погоде.":"Weather. No weather data right now."),"missing weather fallback");
 
@@ -73,6 +72,6 @@ public class HomeStringsHarness {
 }
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-home-strings-') as tmp:
- root=Path(tmp);write_strings(root);(root/'HomeStringsHarness.java').write_text(harness)
+ root=Path(tmp);write_strings(root);(root/'WeatherForecast.java').write_text(Path('app/src/io/tvos/weather/WeatherForecast.java').read_text());(root/'HomeStringsHarness.java').write_text(harness)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.HomeStringsHarness'],check=True)

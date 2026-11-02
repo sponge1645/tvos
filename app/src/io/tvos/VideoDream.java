@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Canvas;
@@ -469,7 +471,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
             aerialWeather.setVisibility(View.GONE);
             return;
         }
-        HomeData.Weather wx = weatherData.weather;
+        WeatherForecast wx = weatherData.weather;
         if (Double.isNaN(wx.temp)) {
             aerialWeather.setVisibility(View.GONE);
             return;

@@ -12,7 +12,7 @@ public class WidgetsHarness {
   Prefs.city="Test City";Prefs.version++;c=new Canvas();widgets.weather(c,r,1);check(c.contains("Test City"),"region title refreshed");Ui.language="ru";AppLanguage.select("ru");c=new Canvas();widgets.weather(c,r,.5f);check(c.contains("Макс. 20°   Мин. 5°"),"language invalidates text");
   Ui.LEGACY=true;widgets.weather(c,r,0);Bitmap first=c.shown;int count=Bitmap.allocations;for(int i=0;i<100;i++)widgets.weather(c,r,0);check(Bitmap.allocations==count&&c.shown==first,"legacy snapshot reused");data.weatherAt++;widgets.weather(c,r,0);check(Bitmap.allocations==count,"data change repaints existing bitmap");widgets.clear();widgets.weather(c,r,0);check(Bitmap.allocations==count+1&&c.shown!=first,"pause drops snapshot");
   Ui.LEGACY=false;
-  data.weather=new HomeData.Weather();data.weather.temp=Double.NaN;Prefs.version++;c=new Canvas();widgets.weather(c,r,0);check(c.contains(AppStrings.get(R.string.home_no_weather_data_right_now)),"missing weather fallback");System.out.println("PASS: production widgets, geometry, data/locale changes, snapshots and missing-data fallback");
+  data.weather=new io.tvos.weather.WeatherForecast();data.weather.temp=Double.NaN;Prefs.version++;c=new Canvas();widgets.weather(c,r,0);check(c.contains(AppStrings.get(R.string.home_no_weather_data_right_now)),"missing weather fallback");System.out.println("PASS: production widgets, geometry, data/locale changes, snapshots and missing-data fallback");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-home-widgets-') as tmp:

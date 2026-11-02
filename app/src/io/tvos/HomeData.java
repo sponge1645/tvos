@@ -1,26 +1,24 @@
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+import io.tvos.weather.WeatherParser;
+import io.tvos.weather.CityGeocoder;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,18 +45,8 @@ final class HomeData {
         weatherFailedAt = 0;
     }
 
-    static final class Weather {
-        double temp = Double.NaN, max = Double.NaN, min = Double.NaN;
-        int code = -1;
-        boolean isDay = true;
-        long sunrise, sunset;   // today's, in epoch ms
-        // Next hours (starting at the next full hour): time, temperature, code and day/night.
-        final List<Long> hours = new ArrayList<>();
-        final List<Double> hourTemp = new ArrayList<>();
-        final List<Integer> hourCode = new ArrayList<>();
-        final List<Boolean> hourDay = new ArrayList<>();
-    }
-
+    private static final WeatherParser WEATHER_PARSER = new WeatherParser(System::currentTimeMillis);
+    private static final CityGeocoder CITIES = new CityGeocoder(HomeData::get);
     private static HomeData instance;
 
     static synchronized HomeData get(Context c) {
@@ -67,7 +55,7 @@ final class HomeData {
     }
 
     volatile long weatherAt;
-    volatile Weather weather = new Weather();
+    volatile WeatherForecast weather = new WeatherForecast();
 
     private final SharedPreferences cache;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -84,7 +72,7 @@ final class HomeData {
             String w = cache.getString("weather", null);
             // The cached forecast is for the city it was fetched for; another city means fetch again.
             if (w != null && weatherPlace().equals(cache.getString("weatherPlace", ""))) {
-                weather = parseWeather(w);
+                weather = WEATHER_PARSER.parse(w);
                 weatherAt = cache.getLong("weatherAt", 0);
             }
         } catch (Exception ignored) {}
@@ -108,7 +96,7 @@ final class HomeData {
                 try {
                     if (token != settingsEpoch || !place.equals(weatherPlace())) return;
                     String body = get(url);
-                    Weather fresh = parseWeather(body);
+                    WeatherForecast fresh = WEATHER_PARSER.parse(body);
                     synchronized (this) {
                         // A late response must not label the old city's forecast as the new city's cache.
                         if (token != settingsEpoch || !place.equals(weatherPlace())) return;
@@ -137,44 +125,6 @@ final class HomeData {
         main.post(() -> { for (Listener l : new ArrayList<>(listeners)) l.onData(); });
     }
 
-    private static Weather parseWeather(String body) throws Exception {
-        JSONObject o = new JSONObject(body);
-        TimeZone zone = TimeZone.getTimeZone(o.optString("timezone", TimeZone.getDefault().getID()));
-        Weather w = new Weather();
-        JSONObject current = o.getJSONObject("current");
-        w.temp = current.getDouble("temperature_2m");
-        w.code = current.getInt("weather_code");
-        w.isDay = current.optInt("is_day", 1) == 1;
-        JSONObject daily = o.getJSONObject("daily");
-        w.max = daily.getJSONArray("temperature_2m_max").getDouble(0);
-        w.min = daily.getJSONArray("temperature_2m_min").getDouble(0);
-        w.sunrise = localTime(daily.getJSONArray("sunrise").getString(0), zone);
-        w.sunset = localTime(daily.getJSONArray("sunset").getString(0), zone);
-        JSONObject hourly = o.optJSONObject("hourly");
-        if (hourly != null) {
-            JSONArray times = hourly.getJSONArray("time");
-            JSONArray temps = hourly.getJSONArray("temperature_2m");
-            JSONArray codes = hourly.getJSONArray("weather_code");
-            JSONArray days = hourly.optJSONArray("is_day");
-            long now = System.currentTimeMillis();
-            for (int i = 0; i < times.length() && w.hours.size() < 6; i++) {
-                long at = localTime(times.getString(i), zone);
-                if (at <= now) continue;
-                w.hours.add(at);
-                w.hourTemp.add(temps.getDouble(i));
-                w.hourCode.add(codes.getInt(i));
-                w.hourDay.add(days == null || days.optInt(i, 1) == 1);
-            }
-        }
-        return w;
-    }
-
-    private static long localTime(String iso, TimeZone zone) throws ParseException {
-        SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
-        f.setTimeZone(zone);
-        return f.parse(iso).getTime();
-    }
-
     /** Localized labels are cached independently of the forecast and of the current UI language. */
     synchronized void localizeCity(String language) {
         if (Prefs.hasCityName(language) || Prefs.cityRaw().isEmpty()) return;
@@ -186,7 +136,8 @@ final class HomeData {
         io.execute(() -> {
             String[] found = null;
             try {
-                if (place.equals(weatherPlace())) found = findCityName(name, latitude, longitude, id, language);
+                if (place.equals(weatherPlace())) found = CITIES.localize(name, latitude, longitude, id, language,
+                        id > 0 ? null : AppLanguage.searchOrder(language));
             } catch (Exception e) { AppLog.w("city localization: " + e.getMessage()); }
             final String[] result = found;
             main.post(() -> {
@@ -197,60 +148,8 @@ final class HomeData {
         });
     }
 
-    private static String[] findCityName(String name, String latitude, String longitude,
-                                          long id, String language) throws Exception {
-        double lat = Double.parseDouble(latitude), lon = Double.parseDouble(longitude);
-        if (id > 0) {
-            JSONObject city = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/get?id=" + id
-                    + "&language=" + language));
-            if (city.optString("name", "").isEmpty()
-                    || Math.abs(city.getDouble("latitude") - lat) > 0.25
-                    || Math.abs(city.getDouble("longitude") - lon) > 0.25) return null;
-            return new String[] {city.getString("name"), Long.toString(id)};
-        }
-        // Existing installations have a name and coordinates but no GeoNames ID yet.
-        String[] nearest = null;
-        double distance = 0.25 * 0.25;
-        // Search indexes may not match a Cyrillic query when English results are requested.
-        // Discover the stable ID in either supported language, then translate through /get.
-        for (String searchLanguage : AppLanguage.searchOrder(language)) {
-            for (String[] city : findCity(name, searchLanguage)) {
-                double dy = Double.parseDouble(city[2]) - lat, dx = Double.parseDouble(city[3]) - lon;
-                double candidate = dy * dy + dx * dx;
-                if (candidate < distance) { distance = candidate; nearest = city; }
-            }
-            if (nearest != null) break;
-        }
-        if (nearest == null) return null;
-        long foundId = Long.parseLong(nearest[4]);
-        if (foundId > 0) return findCityName(name, latitude, longitude, foundId, language);
-        return language.equals(nearest[5]) ? new String[] {nearest[1], nearest[4]} : null;
-    }
-
     static List<String[]> findCity(String name) throws Exception {
-        return findCity(name, Prefs.language());
-    }
-
-    private static List<String[]> findCity(String name, String lang) throws Exception {
-        JSONObject o = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=10&format=json&language=" + lang
-                + "&name=" + URLEncoder.encode(name.trim(), "UTF-8")));
-        JSONArray results = o.optJSONArray("results");
-        List<String[]> out = new ArrayList<>();
-        java.util.Set<String> seen = new java.util.HashSet<>();   // places with the same name, state and country read the same
-        for (int i = 0; results != null && i < results.length(); i++) {
-            JSONObject r = results.getJSONObject(i);
-            String city = r.optString("name", "");
-            if (city.isEmpty() || !r.has("latitude") || !r.has("longitude")) continue;
-            StringBuilder label = new StringBuilder(city);
-            for (String part : new String[] {r.optString("admin1", ""), r.optString("country", "")}) {
-                if (!part.isEmpty() && !part.equals(city)) label.append(", ").append(part);
-            }
-            if (!seen.add(label.toString())) continue;
-            out.add(new String[] {label.toString(), city,
-                    String.format(Locale.US, "%.4f", r.getDouble("latitude")), String.format(Locale.US, "%.4f", r.getDouble("longitude")),
-                    Long.toString(r.optLong("id", 0)), lang});
-        }
-        return out;
+        return CITIES.search(name, Prefs.language());
     }
 
     private static String get(String url) throws IOException {

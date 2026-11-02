@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.weather.WeatherForecast;
+
 import io.tvos.home.HomeLayout;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
@@ -206,7 +208,7 @@ final class HomeAccessibility implements Spoken.Source {
 
     private String weatherText() {
         StringBuilder s = new StringBuilder(Prefs.city().isEmpty() ? AppStrings.get(R.string.home_weather) : Prefs.city());
-        HomeData.Weather wx = data.weather;
+        WeatherForecast wx = data.weather;
         if (Double.isNaN(wx.temp)) return s.append(". ").append(AppStrings.get(R.string.home_no_weather_data_right_now)).toString();
         s.append(". ").append(HomeData.degrees(wx.temp)).append(", ").append(HomeData.condition(wx.code, wx.isDay))
                 .append(AppStrings.get(R.string.home_spoken_high)).append(HomeData.degrees(wx.max))

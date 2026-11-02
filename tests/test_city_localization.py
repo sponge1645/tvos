@@ -29,13 +29,14 @@ public class CityLocalizationHarness {
 prefbody=''.join(method(prefs,s) for s in ['    static void setLanguage(', '    static String cityRaw(', '    private static String cityPlace(', '    static long cityId(', '    static boolean hasCityName(', '    static String city()', '    static String latitude()', '    static String longitude()', '    static void setCity(String name, String latitude, String longitude)', '    static void setCity(String name, String latitude, String longitude, long id, String nameLanguage)', '    static boolean cacheCityName(', '    static boolean automaticRegion(', '    static long regionGeneration(', '    static String manualCity(', '    static void setAutomaticRegion(', '    static boolean applyAutomaticCity('])
 mid='''}
  static class HomeData {
+  static final io.tvos.weather.CityGeocoder CITIES=new io.tvos.weather.CityGeocoder(HomeData::get);
   static HomeData current=new HomeData();static HomeData get(Object context){return current;}
   final Set<String> cityNameRequests=new HashSet<>();Queue io=new Queue(),main=new Queue();int notices;
   static List<String> urls=new ArrayList<>();static Runnable onGet;static boolean fail;
   void settingsChanged(){}void notifyListeners(){notices++;}
   static String get(String url)throws Exception {urls.add(url);if(onGet!=null){Runnable r=onGet;onGet=null;r.run();}if(fail)throw new IOException("offline");if(url.contains("/search?") && url.contains("language=en") && url.contains("%D0%91%D0%B5%D1%80%D0%BB%D0%B8%D0%BD"))return "empty";return (url.contains("/get?")?"id-":"search-")+(url.contains("language=ru")?"ru":"en");}
 '''
-databody=''.join(method(data,s) for s in ['    private static String weatherPlace()', '    synchronized void localizeCity(', '    private static String[] findCityName(', '    static List<String[]> findCity(String name)', '    private static List<String[]> findCity(String name, String lang)'])
+databody=''.join(method(data,s) for s in ['    private static String weatherPlace()', '    synchronized void localizeCity(', '    static List<String[]> findCity(String name)'])
 tests='''}
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
  static void fixture(String lang,String name){JSONObject city=new JSONObject().put("id",2950159L).put("name",name).put("latitude",52.52437).put("longitude",13.41053);JSONObject.all.put("id-"+lang,city);JSONObject.all.put("search-"+lang,new JSONObject().put("results",new JSONArray().put(city)));}
@@ -63,11 +64,28 @@ tests='''}
   h.localizeCity(Prefs.language());h.io.drain();h.main.drain();
   check(Prefs.city().equals("Berlin") && HomeData.urls.size()==3,"Cyrillic legacy name migrates via Russian search and English ID lookup on resume");
   check(HomeData.urls.get(0).contains("language=en") && HomeData.urls.get(1).contains("language=ru") && HomeData.urls.get(2).contains("/get?"),"fallback query order matches real geocoder failure");
-  check(HomeData.findCityName("Berlin","1","2",0,"ru")==null,"same-named distant result rejected");
+  check(HomeData.CITIES.localize("Berlin","1","2",0,"ru",AppLanguage.searchOrder("ru"))==null,"same-named distant result rejected");
   reset();h=HomeData.current;Prefs.store.putString("city","Berlin").putString("latitude","52.5244").putString("longitude","13.4105").putString("city_name_en","Berlin").putString("city_names_place","52.5244,13.4105").putLong("city_id",2950159L).apply();
   check(!Prefs.automaticRegion(),"existing installs remain manual");Prefs.setAutomaticRegion(true);long generation=Prefs.regionGeneration();check(Prefs.automaticRegion()&&Prefs.manualCity().equals("Berlin"),"enabling auto snapshots manual city");
   check(Prefs.applyAutomaticCity("Paris","48.85","2.35","en",generation)&&Prefs.cityRaw().equals("Paris"),"auto coordinates feed real weather preferences");check(Prefs.manualCity().equals("Berlin"),"automatic lookup never overwrites manual selection");
   Prefs.setAutomaticRegion(false);check(Prefs.city().equals("Berlin")&&Prefs.latitude().equals("52.5244")&&Prefs.cityId()==2950159L,"disabling auto restores city, coordinates, ID and localized cache");check(!Prefs.applyAutomaticCity("Late","1","2","en",generation),"late reply after disabling rejected");Prefs.setAutomaticRegion(true);check(!Prefs.applyAutomaticCity("Late","1","2","en",generation),"old request rejected after off/on cycle");Prefs.setAutomaticRegion(false);
+  // Use the production geocoder through an independent text source, without HomeData policy.
+  List<String> requests=new ArrayList<>();String[] response={"custom"};io.tvos.weather.CityGeocoder geocoder=new io.tvos.weather.CityGeocoder(url->{requests.add(url);return response[0];});
+  JSONObject first=new JSONObject().put("name","Paris").put("admin1","Paris").put("country","France").put("latitude",48.85661).put("longitude",2.35221).put("id",7L);
+  JSONObject duplicate=new JSONObject().put("name","Paris").put("admin1","Paris").put("country","France").put("latitude",1).put("longitude",2).put("id",8L);
+  JSONObject second=new JSONObject().put("name","Paris").put("admin1","Texas").put("country","USA").put("latitude",33.6609).put("longitude",-95.5555);
+  JSONObject.all.put("custom",new JSONObject().put("results",new JSONArray().put(first).put(duplicate).put(new JSONObject().put("name","Missing coordinates")).put(new JSONObject().put("latitude",0).put("longitude",0)).put(second)));
+  Locale previous=Locale.getDefault();Locale.setDefault(Locale.GERMANY);List<String[]> cities=geocoder.search("  Бельцы & Café  ","ru");Locale.setDefault(previous);
+  check(requests.get(0).equals("https://geocoding-api.open-meteo.com/v1/search?count=10&format=json&language=ru&name=%D0%91%D0%B5%D0%BB%D1%8C%D1%86%D1%8B+%26+Caf%C3%A9"),"trimmed UTF-8 query and URL policy unchanged");
+  check(cities.size()==2&&Arrays.equals(cities.get(0),new String[]{"Paris, France","Paris","48.8566","2.3522","7","ru"})&&cities.get(1)[0].equals("Paris, Texas, USA")&&cities.get(1)[4].equals("0"),"source order, duplicate labels, missing data and coordinate format retained");
+  JSONObject.all.put("custom",new JSONObject().put("name","Bound").put("latitude",1.25).put("longitude",2.25));
+  check(geocoder.localize("Bound","1","2",9,"ru",new String[]{"ru","en"})[1].equals("9")&&requests.get(requests.size()-1).equals("https://geocoding-api.open-meteo.com/v1/get?id=9&language=ru"),"stable ID permits coordinate boundary and preserves lookup URL");
+  JSONObject.all.put("custom",new JSONObject().put("name","Far").put("latitude",1.251).put("longitude",2));check(geocoder.localize("Far","1","2",9,"ru",new String[]{"ru"})==null,"stable ID outside coordinate tolerance rejected");
+  JSONObject.all.put("custom",new JSONObject().put("name","").put("latitude",1).put("longitude",2));check(geocoder.localize("Empty","1","2",9,"ru",new String[]{"ru"})==null,"empty localized name rejected");
+  JSONObject near=new JSONObject().put("name","Near").put("latitude",1.01).put("longitude",2.01);JSONObject.all.put("custom",new JSONObject().put("results",new JSONArray().put(near)));requests.clear();
+  check(geocoder.localize("Near","1","2",0,"ru",new String[]{"ru","en"})[0].equals("Near")&&requests.size()==1,"ID-less result uses its language and stops at first matching language");
+  check(geocoder.localize("Near","1","2",0,"en",new String[]{"ru"})==null,"ID-less foreign-language result is not cached under requested language");
+  io.tvos.weather.CityGeocoder failing=new io.tvos.weather.CityGeocoder(url->{throw new IOException("offline");});boolean propagated=false;try{failing.search("City","en");}catch(IOException expected){propagated=true;}check(propagated,"transport errors remain caller-owned");
   System.out.println("PASS: RU/EN cache, legacy migration, stable ID, unchanged coordinates, offline switching, deduplication, stale responses, retry");
  }
 }'''
@@ -75,7 +93,7 @@ json='''package org.json;import java.util.*;public class JSONObject {public stat
 array='''package org.json;import java.util.*;public class JSONArray {List<JSONObject> values=new ArrayList<>();public JSONArray put(JSONObject o){values.add(o);return this;}public int length(){return values.size();}public JSONObject getJSONObject(int n){return values.get(n);}}'''
 shared='''package android.content;public interface SharedPreferences {interface Editor {Editor putBoolean(String k,boolean v);Editor putString(String k,String v);Editor putLong(String k,long v);Editor remove(String k);void apply();}}'''
 with tempfile.TemporaryDirectory() as tmp:
- root=Path(tmp);sources={'CityLocalizationHarness.java':header+prefbody+mid+databody+tests,'JSONObject.java':json,'JSONArray.java':array,'SharedPreferences.java':shared}
+ root=Path(tmp);sources={'CityGeocoder.java':Path('app/src/io/tvos/weather/CityGeocoder.java').read_text(),'CityLocalizationHarness.java':header+prefbody+mid+databody+tests,'JSONObject.java':json,'JSONArray.java':array,'SharedPreferences.java':shared}
 
 
  write_strings(root)
