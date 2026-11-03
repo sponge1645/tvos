@@ -86,8 +86,8 @@ public final class HomeGeometry {
 
     public void posters(RectF[] cardRects, boolean compact, float contentTop, float contentBottom, Paint lCardMeta, float k) {
         float regularW = ((CONTENT_R - MARGIN) * k - 5 * 18 * k) / 6f;
-        // Keep compact-header posters 10% larger; center poster + all captions as one block.
-        float posterW = regularW * (compact ? 1.10f : 1f);
+        // Use the larger poster size with every header configuration; center captions with the poster.
+        float posterW = regularW * 1.10f;
         float posterH = posterW * 1.5f;
         float captionHeight = HomeLayout.POSTER_META_BASELINE * k + lCardMeta.descent() + 1.5f * k;
         float top = HomeLayout.centeredTop(contentTop, contentBottom, posterH + captionHeight);
