@@ -95,6 +95,15 @@ final class MovieAppLauncher {
                 .show();
     }
 
+    /** Explicit title-page selection bypasses the default service and the generic chooser. */
+    void openIn(Recs.Pick pick, String pkg, String label) {
+        if (HomeApps.launchIntent(activity.getPackageManager(), pkg) == null) {
+            host.toast(AppStrings.get(R.string.home_couldn_t_open_app));
+            return;
+        }
+        open(pick, pkg, label);
+    }
+
     private void open(Recs.Pick pick, String pkg, String label) {
         if ("top.rootu.lampa".equals(pkg)) {
             try {

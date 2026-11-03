@@ -1325,12 +1325,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void openSearch() {
-        if (searchInput.showing()) return;
-        beginSearch();
-        zone = Z_TOP;
-        topIndex = availableTopButton(5);
-        refreshSearch(true);
-        searchInput.open(search.query,background.night()>.5f,L_BUTTON_CY*k);
+        AppLaunch.start(activity, new android.content.Intent(activity, SearchActivity.class), "Search screen");
     }
 
     private void searchQueryChanged(String query) {

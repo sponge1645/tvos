@@ -48,6 +48,11 @@ public class MovieLauncherHarness implements MovieAppLauncher.Host {
    JSONArray.response=Arrays.asList(item(81,"Тест (2024)","movie"));direct.launcher.choose(pick());direct.worker();direct.handler.drain();
    check(direct.activity.launched!=null&&direct.activity.launched.pkg.equals(pkg)&&AlertDialog.labels==null,"preferred service bypasses chooser and keeps route: "+service);
   }
+  MovieLauncherHarness selected=app("com.seena.app");selected.activity.prefs.strings.put(MovieService.KEY,"kinopub");AlertDialog.labels=null;
+  selected.launcher.openIn(pick(),"com.seena.app","Seena");
+  check(selected.activity.starts==1&&selected.activity.launched.pkg.equals("com.seena.app")&&AlertDialog.labels==null,"title page uses the selected provider regardless of default");
+  MovieLauncherHarness removed=new MovieLauncherHarness();removed.launcher.openIn(pick(),"com.seena.app","Seena");
+  check(removed.activity.starts==0&&removed.toasts==1,"provider removed while title page open is reported safely");
   MovieLauncherHarness fallback=app("com.seena.app");fallback.activity.prefs.strings.put(MovieService.KEY,"lampa");fallback.launcher.choose(pick());check(fallback.toasts==1&&fallback.activity.starts==1,"missing preferred app falls back to installed chooser");
   check(MovieService.index("unknown")==0&&MovieService.id(99).equals(""),"invalid stored service returns Ask Every Time");
   MovieLauncherHarness missing=new MovieLauncherHarness();missing.launcher.choose(pick());check(missing.toasts==1&&missing.activity.starts==0,"empty providers");

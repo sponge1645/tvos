@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_voice">Голосовой поиск</string>
+    <string name="search_hint">Поиск приложений, фильмов и сериалов</string>
+    <string name="search_recent">Недавние запросы</string>
+    <string name="search_trending">Популярное</string>
+    <string name="search_apps">Приложения</string>
+    <string name="search_titles">Фильмы и сериалы</string>
+    <string name="search_empty">Ничего не найдено. Попробуйте другое название.</string>
+    <string name="search_minimum">Введите не менее 3 символов</string>
+    <string name="search_loading">Поиск…</string>
+    <string name="search_series">Сериал</string>
+    <string name="search_movie">Фильм</string>
+    <string name="search_runtime">%1$d мин.</string>
+    <string name="search_how">КАК СМОТРЕТЬ</string>
+    <string name="search_watch_in">Смотреть в %1$s</string>
+    <string name="search_no_apps">Для просмотра установите KinoPub, Seena, Lampa или VK Видео.</string>
+    <string name="search_no_overview">Описание отсутствует</string>
+    <string name="search_detail_unavailable">Не удалось загрузить описание. Проверьте подключение.</string>
+    <string name="search_voice_unavailable">Голосовой поиск недоступен. Воспользуйтесь клавиатурой.</string>
+</resources>
