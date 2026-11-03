@@ -22,7 +22,7 @@
     <string name="settings_show_in_menu_bar" formatted="false">Показывать на верхней панели</string>
     <string name="settings_show_in_bottom_menu" formatted="false">Показывать на нижней панели</string>
     <string name="settings_update_software" formatted="false">Обновление ПО</string>
-    <string name="settings_automatically_update" formatted="false">Автоматическое обновление</string>
+    <string name="settings_automatically_update" formatted="false">Проверять обновления автоматически</string>
     <string name="settings_restart_tvos" formatted="false">Перезагрузить tvOS</string>
     <string name="settings_clear_cache" formatted="false">Очистить кеш</string>
     <string name="settings_reset_tvos" formatted="false">Сброс tvOS</string>
@@ -241,4 +241,42 @@
     <string name="settings_remote_grant_failed" formatted="false">Разрешение не выдано. Проверьте авторизацию ADB на телевизоре.</string>
     <string name="settings_remote_system_help" formatted="false">Сначала выдайте разрешение через ADB, затем включите «Удержание громкости» на предыдущем экране. После выдачи разрешения этому способу не нужен постоянный ADB. Регистрация слушателя не гарантирует получение кнопок прошивкой. Если удержание не работает, вернитесь к помощнику ADB.</string>
     <string name="settings_remote_gesture_help" formatted="false">Назначения включаются только для добавленных кнопок. Интервал между нажатиями — до 300 мс. Двойное и тройное нажатие задерживают обычное действие. Удержание OK с обычным действием передаётся экрану «Домой» после 500 мс; его меню удержания появится позже. Во всех приложениях назначенная кнопка полностью перехватывается и требует включённой службы tvOS. OK доступен только на «Домой». Стрелки, Назад, Home, питание и громкость не переназначаются. Действие VPN управляет только INCY.</string>
+    <string name="settings_setup_repeat" formatted="false">Повторить начальную настройку</string>
+    <string name="settings_setup_welcome" formatted="false">Добро пожаловать. Нажмите OK, чтобы настроить tvOS.</string>
+    <string name="settings_setup_language" formatted="false">Выберите язык</string>
+    <string name="settings_setup_language_hint" formatted="false">На первой установке предлагается язык Android. Если он не поддерживается, используется English.</string>
+    <string name="settings_setup_continue" formatted="false">Продолжить</string>
+    <string name="settings_setup_finish" formatted="false">Готово</string>
+    <string name="settings_setup_skip" formatted="false">Настроить позже</string>
+    <string name="settings_setup_back" formatted="false">Назад</string>
+    <string name="settings_setup_region_hint" formatted="false">Город для погоды определяется по IP. Здесь VPN не отключается: если он включён, выберите город вручную или отключите VPN сами.</string>
+    <string name="settings_setup_detecting" formatted="false">Определяем…</string>
+    <string name="settings_setup_lookup_failed" formatted="false">Не удалось определить город. Повторите попытку, выберите вручную или настройте позже.</string>
+    <string name="settings_setup_wifi" formatted="false">Сведения о Wi-Fi</string>
+    <string name="settings_setup_wifi_hint" formatted="false">Android требует доступ к местоположению для названия подключённой сети Wi-Fi. Это необязательно: без разрешения лаунчер продолжит работать. GPS для погоды не используется.</string>
+    <string name="settings_setup_permission_granted" formatted="false">Разрешение уже выдано</string>
+    <string name="settings_setup_permission_optional" formatted="false">Доступ можно предоставить сейчас или позже</string>
+    <string name="settings_setup_allow" formatted="false">Предоставить доступ</string>
+    <string name="settings_setup_updates" formatted="false">Обновления tvOS</string>
+    <string name="settings_setup_updates_hint" formatted="false">tvOS будет проверять новые версии и предлагать «Загрузить и установить». Скачивание начнётся после подтверждения. Установку завершает Android.</string>
+    <string name="settings_setup_updates_yes" formatted="false">Сообщать о новых версиях автоматически</string>
+    <string name="settings_setup_updates_no" formatted="false">Проверять только вручную</string>
+    <string name="settings_setup_tv" formatted="false">Приложение для телеканалов</string>
+    <string name="settings_setup_tv_hint" formatted="false">По умолчанию используется обнаруженное системное ТВ-приложение. Можно выбрать другое приложение для кнопки ТВ.</string>
+    <string name="settings_setup_tv_choose" formatted="false">Выбрать приложение</string>
+    <string name="settings_setup_tv_not_found" formatted="false">Системное ТВ-приложение не найдено</string>
+    <string name="settings_setup_home" formatted="false">Домашний экран по умолчанию</string>
+    <string name="settings_setup_home_hint" formatted="false">Выберите tvOS в системном окне Android. Можно оставить текущий лаунчер и вернуться к этому шагу позже. Системные приложения не отключаются.</string>
+    <string name="settings_setup_home_selected" formatted="false">tvOS выбран домашним экраном</string>
+    <string name="settings_setup_home_not_selected" formatted="false">Пока используется другой домашний экран</string>
+    <string name="settings_setup_home_choose" formatted="false">Выбрать домашний экран</string>
+    <string name="settings_setup_update_offer" formatted="false">Доступна новая версия tvOS:</string>
+    <string name="settings_setup_download_install" formatted="false">Загрузить и установить</string>
+    <string name="settings_setup_install" formatted="false">Установить</string>
+    <string name="settings_setup_later" formatted="false">Позже</string>
+    <string name="settings_setup_downloading" formatted="false">Загрузка обновления…</string>
+    <string name="settings_setup_background" formatted="false">Продолжить в фоне</string>
+    <string name="settings_setup_retry" formatted="false">Повторить загрузку</string>
+    <string name="settings_setup_hello_en" formatted="false">hello</string>
+    <string name="settings_setup_hello_ru" formatted="false">привет</string>
 </resources>

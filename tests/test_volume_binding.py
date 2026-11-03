@@ -34,10 +34,11 @@ final class Adb implements Closeable {
  final CountDownLatch stopped=new CountDownLatch(1);boolean closed;String command;
  interface Stream {boolean active();void output(byte[] b)throws IOException;}
  static Adb connect(android.content.Context c,int timeout,Object approval){Adb a=new Adb();links.add(a);return a;}
+ // Match real Adb.stream: callbacks run outside the connection monitor.
  void stream(String c,Stream s)throws IOException {
   command=c;int count=live.incrementAndGet();max.set(Math.max(max.get(),count));
   try {s.output("READY device helper mode=".getBytes(StandardCharsets.US_ASCII));s.output("audio: ready\\n".getBytes(StandardCharsets.US_ASCII));
-   synchronized(this){while(!closed&&s.active())try{wait(100);}catch(InterruptedException e){Thread.currentThread().interrupt();break;}}
+   while(s.active()){synchronized(this){if(closed)break;try{wait(100);}catch(InterruptedException e){Thread.currentThread().interrupt();break;}}}
   }finally {live.decrementAndGet();stopped.countDown();}
  }
  public synchronized void close(){closed=true;notifyAll();}

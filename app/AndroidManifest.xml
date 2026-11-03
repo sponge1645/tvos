@@ -70,6 +70,8 @@
             android:exported="false" />
 
         <!-- The app's icon opens the settings (switch between tvOS and the original home screen). -->
+        <activity android:name=".SetupActivity" android:process=":home" android:exported="false" android:launchMode="singleTask"
+            android:screenOrientation="landscape" android:theme="@style/TvOS.Home" />
         <activity android:name=".RemoteShortcutSettingsActivity" android:process=":home"
             android:exported="false" android:screenOrientation="landscape" android:theme="@style/TvOS.Home" />
         <activity

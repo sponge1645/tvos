@@ -11,6 +11,7 @@ final class WifiPermission {
     private WifiPermission() {}
 
     static void requestOnce(Activity activity) {
+        if (SetupGate.pending(activity)) return;
         if (Build.VERSION.SDK_INT < 23 ||
                 activity.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) return;
         android.content.SharedPreferences sp = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);

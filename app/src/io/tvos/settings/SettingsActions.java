@@ -8,7 +8,7 @@ public final class SettingsActions {
 
     public enum Action {
         NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
-        KEY_PICKER, ADVANCED_KEYS, VOLUME_HOLD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
+        KEY_PICKER, ADVANCED_KEYS, SETUP, VOLUME_HOLD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
@@ -95,7 +95,7 @@ public final class SettingsActions {
             case HOME_SCREEN: return Action.SELECT_HOME_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
-            case GENERAL: return row == 7 ? Action.HOME_SCREEN_MODE_SCREEN : row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
+            case GENERAL: return row == 8 ? Action.SETUP : row == 7 ? Action.HOME_SCREEN_MODE_SCREEN : row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
             case UPDATES: return row == 0 ? Action.CHECK_UPDATE : row == 1 ? Action.AUTO_UPDATE : Action.NONE;
             case MENU_BUTTONS: return row == buttonCount ? (vpnEnabled ? Action.VPN_PICKER : Action.NONE) : Action.MENU_BUTTON;

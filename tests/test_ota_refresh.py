@@ -8,11 +8,12 @@ def method(sig):
  while d:
   d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-body=''.join(method(s)for s in ['    void maybeAutomatic(', '    void check(', '    private static boolean sameRelease(', '    private String readManifest(', '    private static HttpURLConnection connection('])
+body=''.join(method(s)for s in ['    private void restoreOffer(', '    void maybeAutomatic(', '    void check(', '    private static boolean sameRelease(', '    private String readManifest(', '    private static HttpURLConnection connection('])
 stubs={
 'android/content/SharedPreferences.java':'''package android.content;import java.util.*;public class SharedPreferences {
  public Map<String,Object> values=new HashMap<>();public boolean getBoolean(String k,boolean d){return (Boolean)values.getOrDefault(k,d);}
- public long getLong(String k,long d){return (Long)values.getOrDefault(k,d);}public SharedPreferences edit(){return this;}
+ public String getString(String k,String d){return (String)values.getOrDefault(k,d);}public long getLong(String k,long d){return (Long)values.getOrDefault(k,d);}public Editor edit(){return new Editor(this);}
+ public static class Editor {final SharedPreferences p;Editor(SharedPreferences p){this.p=p;}public Editor putLong(String k,long v){p.values.put(k,v);return this;}public Editor putString(String k,String v){p.values.put(k,v);return this;}public Editor remove(String k){p.values.remove(k);return this;}public void apply(){}}
  public SharedPreferences putLong(String k,long v){values.put(k,v);return this;}public void apply(){} }''',
 'org/json/JSONObject.java':'''package org.json;import java.util.*;public class JSONObject {
  public static Map<String,Map<String,Object>> fixtures=new HashMap<>();Map<String,Object> data;
@@ -24,6 +25,7 @@ public class OtaRefreshHarness {
  static final int IDLE=0,CHECKING=1,CURRENT=2,AVAILABLE=3,DOWNLOADING=4,READY=5,ERROR=6;
  static final long AUTO_INTERVAL=24*60*60_000L;
  static class Status {int kind;UpdateRelease release;Status(int k,UpdateRelease r,int p,String m){kind=k;release=r;}}
+ static class AppLog {static void w(String s){}}
  static class PackageInfo {long code=2;long getLongVersionCode(){return code;}}
  static class PackageManager {PackageInfo installed=new PackageInfo();PackageInfo getPackageInfo(String p,int f){return installed;}}
  static class Context {
@@ -55,6 +57,11 @@ public class OtaRefreshHarness {
   check(h.status.kind==AVAILABLE&&h.status.release.versionCode==3,"first check sees offered 1.0.1");
   for(Response r:requests){check(!r.getUseCaches(),"cache disabled on every redirect hop");check("no-cache".equals(r.getRequestProperty("Cache-Control")),"revalidation on each hop");check(r.disconnected,"responses closed");}
   check(requests.get(0).getURL().getQuery().startsWith("check="),"latest redirect receives cache-busting query");
+  check(h.context.prefs.getString("self_update_offer", "").equals("old"),"available offer persists before UI delivery");
+  OtaRefreshHarness restored=new OtaRefreshHarness();restored.context.prefs=h.context.prefs;restored.restoreOffer();check(restored.status.kind==AVAILABLE&&restored.status.release.versionCode==3,"offer survives process death without waiting for daily check");
+  OtaRefreshHarness installed=new OtaRefreshHarness();installed.context.prefs=h.context.prefs;installed.context.pm.installed.code=3;installed.restoreOffer();check(installed.status.kind==IDLE&&h.context.prefs.getString("self_update_offer", "").isEmpty(),"installed offer is removed");
+  restored.context.prefs.values.put("self_update_offer","bad");restored.status=new Status(IDLE,null,-1,"");restored.restoreOffer();check(restored.status.kind==IDLE&&restored.context.prefs.getString("self_update_offer", "").isEmpty(),"corrupt offer fails closed");
+  h.context.prefs.values.put("self_update_offer", "old");
   UpdateRelease old=h.status.release;File apk=new File(h.context.dir,"tvos-update.apk");try(RandomAccessFile f=new RandomAccessFile(apk,"rw")){f.setLength(old.size);}
   h.status=new Status(READY,old,100,"");int count=requests.size();h.check(false);h.drain();
   check(requests.size()>count&&h.status.kind==READY,"manual refresh reaches server and retains matching ready file");
@@ -64,7 +71,7 @@ public class OtaRefreshHarness {
   h.context.prefs.values.put("auto_update",true);h.context.prefs.values.put("self_update_attempt",1L);h.status=new Status(READY,old,100,"");
   count=requests.size();h.maybeAutomatic(false);h.drain();check(requests.size()>count&&h.status.kind==READY&&h.downloads==0,"automatic checks revalidate ready release without duplicate download");
   offered="new";h.context.prefs.values.put("self_update_attempt",1L);h.maybeAutomatic(false);h.drain();
-  check(h.downloads==1,"newer automatic offer downloads once");
+  check(h.downloads==0&&h.status.kind==AVAILABLE,"newer automatic offer waits for download/install consent");
   count=requests.size();h.maybeAutomatic(false);h.drain();check(requests.size()==count,"daily automatic throttle preserved");
   check(apk.delete(),"remove cached APK");offered="old";h.status=new Status(READY,old,100,"");h.check(false);h.drain();
   check(h.status.kind==AVAILABLE,"missing ready file is not reused");

@@ -506,6 +506,15 @@ final class HomeApps {
      * be HDMI, so its explicit activity receives the tuner URI. Other TV apps keep the standard channel-list request.
      */
     static Intent liveTv(Context c) {
+        String selected = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("live_tv_app", "");
+        if (!selected.isEmpty()) {
+            Intent intent = launchIntent(c.getPackageManager(), selected);
+            if (intent != null) return intent;
+        }
+        return automaticLiveTv(c);
+    }
+
+    static Intent automaticLiveTv(Context c) {
         PackageManager pm = c.getPackageManager();
 
         // Ya OS: штатное открытие телеканалов.

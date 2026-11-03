@@ -55,6 +55,7 @@ import java.util.List;
 public class SettingsActivity extends Activity {
     private SettingsView view;
     private SettingsPreview preview;
+    private HomeUpdatePrompt automaticUpdates;
     private final BroadcastReceiver volumeStatus = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             Prefs.reloadVolumeHold();
@@ -70,6 +71,8 @@ public class SettingsActivity extends Activity {
         view = new SettingsView(this);
         preview = new SettingsPreview(this, view, view::resume);
         setContentView(preview.host());
+        automaticUpdates = new HomeUpdatePrompt(this, () -> hasWindowFocus() && !preview.active()
+                && !view.updateDialog.visible() && !SetupGate.blocking(this));
         WifiPermission.requestOnce(this);
     }
 
@@ -80,6 +83,8 @@ public class SettingsActivity extends Activity {
         else registerReceiver(volumeStatus, volumeFilter, RemoteVolume.PERMISSION, null);
         Prefs.reloadVolumeHold();
         view.resume();
+        SetupGate.route(this);
+        if (automaticUpdates != null) automaticUpdates.resume();
         // From ADB: am start -n io.tvos/.SettingsActivity --ez screensaver true (straight to the preview).
         if (!preview.hasDream() && getIntent().getBooleanExtra("screensaver", false)) {
             getIntent().removeExtra("screensaver");
@@ -94,10 +99,16 @@ public class SettingsActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        if (automaticUpdates != null) automaticUpdates.pause();
         unregisterReceiver(volumeStatus);
         preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
         super.onPause();
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (focused && automaticUpdates != null) automaticUpdates.changed();
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
@@ -292,6 +303,7 @@ public class SettingsActivity extends Activity {
         }
 
         void resume() {
+            systemHome = HomeDefault.selected(activity);
             if (running) return;
             running = true;
             valueSource.clearAppCache();
@@ -347,7 +359,8 @@ public class SettingsActivity extends Activity {
 
         private boolean busy() { return modeMonitor.busy(); }
 
-        private boolean freeActive() { return modeMonitor.freeActive(); }
+        private boolean systemHome;
+        private boolean freeActive() { return systemHome || modeMonitor.freeActive(); }
 
         private int rowCount() {
             int fixed = SettingsScreen.fixedRows(screen);
@@ -970,6 +983,7 @@ public class SettingsActivity extends Activity {
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
                 case VOLUME_HOLD: toggleVolumeHold(); invalidate(); return;
+                case SETUP: activity.startActivity(new Intent(activity, SetupActivity.class).putExtra("replay", true)); break;
                 case ADVANCED_KEYS: activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class)); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;

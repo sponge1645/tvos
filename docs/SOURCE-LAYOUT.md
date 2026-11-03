@@ -20,7 +20,7 @@ Java files recursively. Tests compile the actual package paths.
   focus and screen lifecycle.
 - `io.tvos.version`: numeric version comparison and build display identity.
 
-The current testing display is `1.1.2 (1B161)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
+The current testing display is `1.1.2 (1B162)`. Major version is numeric; minor version uses A=0, B=1, …, Z=25, AA=26. The three-digit sequence is maintained explicitly in `version/SoftwareBuild.java` and is not incremented by a local rebuild. Keep it increasing across patch versions within a major/minor series. APK versionName and OTA tags remain numeric; Android installation ordering still uses versionCode, which must increase for releases.
 
 Brand presentation mappings and rating badge caches now live in `artwork/` alongside image source policy.
 
@@ -424,3 +424,13 @@ RemoteShortcutSettingsActivity owns capture/editor dialogs. SettingsActivity
 adds one entry while retaining all five legacy assignments and the volume toggle.
 SystemVolume is an opt-in privileged long-press listener: no DUMP polling or
 global hidden-API policy changes. The existing bounded ADB helper remains default.
+
+### First-run setup and update offers (1B162)
+
+setup/SetupState owns first-run/upgrade decisions and stable wizard steps.
+SetupGate adapts checkpoint/completion/migration preferences; SetupActivity owns
+welcome, native choice/permission UI and cancellable lookups on a single worker.
+HomeDefault uses Android Home-role/settings UI without disabling packages.
+HomeUpdatePrompt owns foreground offers, snooze, download/install intent and a
+sparse timer; SelfUpdate retains transport, SHA/signature checks and offer cache.
+See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.

@@ -60,6 +60,19 @@ final class SelfUpdate {
     private SelfUpdate(Context context) {
         this.context = context;
         context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().remove("fake_update").apply();
+        restoreOffer();
+    }
+    private void restoreOffer() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+        String cached = prefs.getString("self_update_offer", "");
+        if (cached.isEmpty()) return;
+        try {
+            if (cached.length() > 65536) throw new IOException("Cached manifest too large");
+            UpdateRelease release = UpdateRelease.parse(new JSONObject(cached));
+            long installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).getLongVersionCode();
+            if (release.versionCode > installed) { status = new Status(AVAILABLE, release, -1, ""); return; }
+        } catch (Exception error) { AppLog.w("Cached update offer unavailable"); }
+        prefs.edit().remove("self_update_offer").apply();
     }
     Status status() { return status; }
     void addListener(Listener listener) { if (!listeners.contains(listener)) listeners.add(listener); }
@@ -73,7 +86,8 @@ final class SelfUpdate {
         android.content.SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
         if (!prefs.getBoolean("auto_update", false) || busy.get()) return;
         long now = System.currentTimeMillis(), last = prefs.getLong("self_update_attempt", 0);
-        if (!force && last != 0 && now >= last && now - last < AUTO_INTERVAL) return;
+        long interval = status.kind == ERROR || status.kind == IDLE ? 60 * 60_000L : AUTO_INTERVAL;
+        if (!force && last != 0 && now >= last && now - last < interval) return;
         check(true);
     }
 
@@ -85,17 +99,20 @@ final class SelfUpdate {
         publish(CHECKING, null, -1, "");
         io.execute(() -> {
             try {
-                UpdateRelease release = UpdateRelease.parse(new JSONObject(readManifest()));
+                String manifest = readManifest();
+                UpdateRelease release = UpdateRelease.parse(new JSONObject(manifest));
                 PackageInfo installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
                 boolean newer = release.versionCode > installed.getLongVersionCode();
+                android.content.SharedPreferences.Editor saved = context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit();
+                if (newer) saved.putString("self_update_offer", manifest); else saved.remove("self_update_offer");
+                saved.apply();
                 File ready = new File(context.getCacheDir(), "tvos-update.apk");
                 boolean reuseReady = previous.kind == READY && sameRelease(previous.release, release)
                         && ready.isFile() && ready.length() == release.size;
                 main.post(() -> {
                     busy.set(false);
                     publish(newer ? (reuseReady ? READY : AVAILABLE) : CURRENT, release, reuseReady ? 100 : -1, "");
-                    if (newer && !reuseReady && automatic && context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                            .getBoolean("auto_update", false)) download();
+
                 });
             } catch (Exception e) { fail(e); }
         });

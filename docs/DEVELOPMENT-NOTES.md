@@ -268,3 +268,15 @@ INCY rolling `latest` metadata now supplies the required file SHA-256 instead of
 a stale fixed hash; preserve package/certificate verification and fail closed on
 missing/malformed digest or unexpected asset URL. Light-theme unfocused settings
 capsules use #C9E4F7; focus geometry and dark palette are unchanged.
+
+## First-run wizard and update offers — 1B162
+
+See SETUP-AND-UPDATES.md. Replace toast-only ready notification and unsolicited
+auto download with foreground Download and install / Later offers; persist valid
+offer metadata across process death, retain SHA/signature checks, and cancel
+installer intent when leaving the foreground. Add resumable optional setup with
+licensed handwritten greeting, system-language suggestion, region preview/manual
+search, Wi-Fi permission, update consent, TV app and native default-Home selection.
+Keep existing installs/settings, allow replay from General, and preserve production
+release/OTA. Correct the volume adapter test double to invoke active callbacks
+outside its connection monitor, matching the real Adb.stream lock behavior.

@@ -84,6 +84,8 @@ final class Prefs {
         version++;
     }
 
+    static void setLiveTvApp(String pkg) { put("live_tv_app", pkg); }
+
     static boolean homeContinue() {
         if (app == null) return false;
         return "continue".equals(sp().getString("home_screen_mode",

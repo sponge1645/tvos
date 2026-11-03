@@ -18,16 +18,8 @@ public class HomeActivity extends Activity {
     private HomeView home;
     private RemoteShortcuts shortcuts;
     private HomeDreamReturn dreamReturn;
-    private final SelfUpdate.Listener updateListener = this::noticeUpdate;
+    private HomeUpdatePrompt updates;
 
-    private void noticeUpdate() {
-        SelfUpdate.Status update = SelfUpdate.get(this).status();
-        if (update.kind != SelfUpdate.READY || update.release == null || isFinishing() || isDestroyed()) return;
-        android.content.SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
-        if (prefs.getLong("self_update_notified", 0) == update.release.versionCode) return;
-        prefs.edit().putLong("self_update_notified", update.release.versionCode).apply();
-        android.widget.Toast.makeText(this, AppStrings.get(R.string.runtime_tvos_update_downloaded_install_it_in_software_updates), android.widget.Toast.LENGTH_LONG).show();
-    }
     private int prefsVersion = Prefs.version;   // settings changed while we were away: start over
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +41,7 @@ public class HomeActivity extends Activity {
         }
         Ui.init(this);
         home = new HomeView(this);
+        updates = new HomeUpdatePrompt(this, () -> hasWindowFocus() && !SetupGate.blocking(this));
         shortcuts = new RemoteShortcuts(this, false, event -> { if (home != null) home.onKey(event); });
         setContentView(home);
         dreamReturn = new HomeDreamReturn(this, home::prepareDreamReturn, home::revealFromDream, home::cancelDreamReturn);
@@ -65,6 +58,7 @@ public class HomeActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if (!hasFocus && shortcuts != null) shortcuts.cancel();
         if (dreamReturn != null) dreamReturn.focused(hasFocus);
+        if (hasFocus && updates != null) updates.changed();
     }
 
     @Override protected void onStop() {
@@ -86,16 +80,15 @@ public class HomeActivity extends Activity {
             HomeData.get(this).localizeCity(Prefs.language());
             home.resume();
             if (dreamReturn != null) dreamReturn.resumed();
-            SelfUpdate.get(this).addListener(updateListener);
-            noticeUpdate();
-            SelfUpdate.get(this).maybeAutomatic(false);
+            if (updates != null) updates.resume();
         }
+        SetupGate.route(this);
     }
 
     @Override protected void onPause() {
         if (shortcuts != null) shortcuts.cancel();
         if (dreamReturn != null) dreamReturn.paused();
-        SelfUpdate.get(this).removeListener(updateListener);
+        if (updates != null) updates.pause();
         if (home != null) home.pause();
         super.onPause();
     }
@@ -127,6 +120,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (updates != null) updates.pause();
         if (shortcuts != null) shortcuts.close();
         if (dreamReturn != null) dreamReturn.close();
         if (home != null) home.destroy();

@@ -22,7 +22,7 @@
     <string name="settings_show_in_menu_bar" formatted="false">Show in Menu Bar</string>
     <string name="settings_show_in_bottom_menu" formatted="false">Show in Bottom Menu</string>
     <string name="settings_update_software" formatted="false">Update Software</string>
-    <string name="settings_automatically_update" formatted="false">Automatically Update</string>
+    <string name="settings_automatically_update" formatted="false">Check for updates automatically</string>
     <string name="settings_restart_tvos" formatted="false">Restart tvOS</string>
     <string name="settings_clear_cache" formatted="false">Clear cache</string>
     <string name="settings_reset_tvos" formatted="false">Reset tvOS</string>
@@ -236,4 +236,42 @@
     <string name="settings_remote_grant_failed" formatted="false">Permission was not granted. Check ADB authorization on the TV.</string>
     <string name="settings_remote_system_help" formatted="false">Grant permission through ADB first, then enable Volume hold fix on the previous screen. This method needs no persistent ADB connection after the grant. Listener registration does not guarantee firmware event delivery. If hold does not work, select the ADB helper again.</string>
     <string name="settings_remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require the enabled tvOS service. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls INCY only.</string>
+    <string name="settings_setup_repeat" formatted="false">Run setup again</string>
+    <string name="settings_setup_welcome" formatted="false">Welcome. Press OK to set up tvOS.</string>
+    <string name="settings_setup_language" formatted="false">Choose your language</string>
+    <string name="settings_setup_language_hint" formatted="false">On first install, the Android language is suggested. Unsupported languages use English.</string>
+    <string name="settings_setup_continue" formatted="false">Continue</string>
+    <string name="settings_setup_finish" formatted="false">Finish</string>
+    <string name="settings_setup_skip" formatted="false">Set up later</string>
+    <string name="settings_setup_back" formatted="false">Back</string>
+    <string name="settings_setup_region_hint" formatted="false">Your weather city is detected by IP. VPN is not disabled here: if it is active, choose a city manually or disconnect VPN yourself.</string>
+    <string name="settings_setup_detecting" formatted="false">Looking up…</string>
+    <string name="settings_setup_lookup_failed" formatted="false">Could not determine the city. Retry, choose manually or set it up later.</string>
+    <string name="settings_setup_wifi" formatted="false">Wi-Fi information</string>
+    <string name="settings_setup_wifi_hint" formatted="false">Android requires location access to show the connected Wi-Fi name. This is optional: the launcher still works without it. GPS is not used for weather.</string>
+    <string name="settings_setup_permission_granted" formatted="false">Permission already granted</string>
+    <string name="settings_setup_permission_optional" formatted="false">You can grant access now or later</string>
+    <string name="settings_setup_allow" formatted="false">Grant access</string>
+    <string name="settings_setup_updates" formatted="false">tvOS updates</string>
+    <string name="settings_setup_updates_hint" formatted="false">tvOS will check for new versions and offer Download and install. Downloads start after confirmation. Android completes installation.</string>
+    <string name="settings_setup_updates_yes" formatted="false">Notify me about new versions automatically</string>
+    <string name="settings_setup_updates_no" formatted="false">Check only manually</string>
+    <string name="settings_setup_tv" formatted="false">Live TV app</string>
+    <string name="settings_setup_tv_hint" formatted="false">The detected system TV app is used by default. You can choose another app for the TV shortcut.</string>
+    <string name="settings_setup_tv_choose" formatted="false">Choose an app</string>
+    <string name="settings_setup_tv_not_found" formatted="false">No system TV app detected</string>
+    <string name="settings_setup_home" formatted="false">Default Home screen</string>
+    <string name="settings_setup_home_hint" formatted="false">Choose tvOS in the Android system dialog. You can keep your current launcher and return later. System apps are not disabled.</string>
+    <string name="settings_setup_home_selected" formatted="false">tvOS is selected as Home</string>
+    <string name="settings_setup_home_not_selected" formatted="false">Another Home screen is currently selected</string>
+    <string name="settings_setup_home_choose" formatted="false">Choose Home screen</string>
+    <string name="settings_setup_update_offer" formatted="false">A new tvOS version is available:</string>
+    <string name="settings_setup_download_install" formatted="false">Download and install</string>
+    <string name="settings_setup_install" formatted="false">Install</string>
+    <string name="settings_setup_later" formatted="false">Later</string>
+    <string name="settings_setup_downloading" formatted="false">Downloading update…</string>
+    <string name="settings_setup_background" formatted="false">Continue in background</string>
+    <string name="settings_setup_retry" formatted="false">Retry download</string>
+    <string name="settings_setup_hello_en" formatted="false">hello</string>
+    <string name="settings_setup_hello_ru" formatted="false">привет</string>
 </resources>

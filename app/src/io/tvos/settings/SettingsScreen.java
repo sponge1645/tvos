@@ -18,7 +18,8 @@ public final class SettingsScreen {
             case SYSTEM: return 4;
             case SCREENSAVER: return 5;
             case APPS_DOWNLOADS: return 7;
-            case GENERAL: case ABOUT: return 8;
+            case GENERAL: return 9;
+            case ABOUT: return 8;
             default: return -1;
         }
     }
@@ -47,7 +48,7 @@ public final class SettingsScreen {
     public static boolean hasChevron(int screen, int row, boolean automaticRegion) {
         switch (screen) {
             case MEDIA: return row == 0;
-            case GENERAL: return row == 0 || row == 3 || row == 7;
+            case GENERAL: return row == 0 || row == 3 || row == 7 || row == 8;
             case SCREENSAVER: case ACCESSIBILITY: case WEATHER: case DATE_TIME:
             case HOME_SCREEN: case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
             case SYSTEM: return row != 3;
