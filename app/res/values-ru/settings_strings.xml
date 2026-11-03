@@ -284,7 +284,7 @@
     <string name="settings_setup_history_line1">Продолжение просмотра</string>
     <string name="settings_setup_history_line2">на экране «Домой».</string>
     <string name="settings_setup_deny">Не разрешать</string>
-    <string name="settings_setup_tv_title">ТВ-приложение</string>
+    <string name="settings_setup_tv_title">Есть телепровайдер?</string>
     <string name="settings_setup_tv_description">Выберите приложение для просмотра ТВ.\nЕго можно изменить позже.</string>
     <string name="settings_setup_home_title">Изменить главный\nэкран</string>
     <string name="settings_setup_home_description">tvOS будет открываться\nпри нажатии кнопки «Домой».</string>
