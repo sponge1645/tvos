@@ -248,10 +248,6 @@
     <string name="settings_setup_permission_granted" formatted="false">Permission already granted</string>
     <string name="settings_setup_permission_optional" formatted="false">You can grant access now or later</string>
     <string name="settings_setup_allow" formatted="false">Grant access</string>
-    <string name="settings_setup_updates" formatted="false">tvOS updates</string>
-    <string name="settings_setup_updates_hint" formatted="false">tvOS will check for new versions and offer Download and install. Downloads start after confirmation. Android completes installation.</string>
-    <string name="settings_setup_updates_yes" formatted="false">Notify me about new versions automatically</string>
-    <string name="settings_setup_updates_no" formatted="false">Check only manually</string>
     <string name="settings_setup_tv" formatted="false">Live TV app</string>
     <string name="settings_setup_tv_hint" formatted="false">The detected system TV app is used by default. You can choose another app for the TV shortcut.</string>
     <string name="settings_setup_tv_choose" formatted="false">Choose an app</string>
@@ -283,4 +279,10 @@
     <string name="settings_setup_history_line1">Show Continue Watching</string>
     <string name="settings_setup_history_line2">on your Home screen.</string>
     <string name="settings_setup_deny">Do not allow</string>
+    <string name="settings_setup_tv_title">TV app</string>
+    <string name="settings_setup_tv_description">Choose an app to watch TV.\nYou can change it later.</string>
+    <string name="settings_setup_home_title">Change your Home\nscreen</string>
+    <string name="settings_setup_home_description">Open tvOS whenever you press\nthe Home button.</string>
+    <string name="settings_setup_set_home">Set tvOS as Home</string>
+    <string name="settings_setup_not_now">Not now</string>
 </resources>

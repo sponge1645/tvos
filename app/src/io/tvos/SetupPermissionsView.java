@@ -8,6 +8,7 @@ import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.View;
 import io.tvos.settings.SettingsBackground;
+import io.tvos.setup.SetupArtwork;
 import io.tvos.settings.SettingsRowRenderer;
 
 /** Three short access explanations and two optional choices, drawn in the setup palette. */
@@ -18,7 +19,7 @@ final class SetupPermissionsView extends View {
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint card = new Paint(Paint.ANTI_ALIAS_FLAG), icon = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
-    private final Path[] icons = {new Path(), new Path(), new Path()};
+    private final Path[] icons = {SetupArtwork.location(), SetupArtwork.remote(), SetupArtwork.tv()};
     private final Spring[] focus = {new Spring(.28f, .85f, 1), new Spring(.28f, .85f, 0)};
     private final Runnable allow, deny;
     private final String title, intro, summary;
@@ -39,13 +40,6 @@ final class SetupPermissionsView extends View {
         for (int i = 0; i < names.length; i++) spoken.append(". ").append(names[i]).append(": ").append(first[i]).append(' ').append(second[i]);
         summary = spoken.toString();
         reduced = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
-        // Location pointer, remote, TV/play. Geometry is created once, not every frame.
-        icons[0].moveTo(0, 0); icons[0].lineTo(48, -24); icons[0].lineTo(26, 28); icons[0].lineTo(18, 8); icons[0].close();
-        rect.set(0,-26,30,30); icons[1].addRoundRect(rect,7,7,Path.Direction.CW);
-        rect.set(6,-20,24,-2); icons[1].addOval(rect,Path.Direction.CCW);
-        rect.set(-4,-24,50,18); icons[2].addRoundRect(rect,5,5,Path.Direction.CW);
-        icons[2].moveTo(14,-13); icons[2].lineTo(14,8); icons[2].lineTo(33,-2); icons[2].close();
-        icons[1].setFillType(Path.FillType.EVEN_ODD); icons[2].setFillType(Path.FillType.EVEN_ODD);
         setFocusable(true); setFocusableInTouchMode(true); describe(); setOnClickListener(v -> confirm());
     }
     private void describe() { setContentDescription(summary + ", " + choices[selected]); }
@@ -55,12 +49,12 @@ final class SetupPermissionsView extends View {
         background.draw(c, getWidth(), getHeight(), light);
         float k = Math.min(getWidth()/1920f,getHeight()/1080f);
         int saved = c.save(); c.translate((getWidth()-1920*k)/2,(getHeight()-1080*k)/2); c.scale(k,k);
-        int color = light ? 0xFF8897AC : 0xFF55646B;
+        int color = light ? 0xFF6E7E94 : 0xFF95B3BE;
         text.setColor(color); text.setTypeface(Ui.displayBold); text.setTextAlign(Paint.Align.CENTER); text.setTextSize(80);
         c.drawText(title,960,225,text); text.setTypeface(Ui.displaySemibold); text.setTextSize(36); c.drawText(intro,960,310,text);
         for (int i=0;i<3;i++) {
-            float x=270+i*470; rect.set(x,405,x+440,690); card.setColor(light?0x228897AC:0x3355646B); c.drawRoundRect(rect,26,26,card);
-            icon.setColor(color); int mark=c.save(); c.translate(x+35,470); c.drawPath(icons[i],icon); c.restoreToCount(mark);
+            float x=270+i*470; rect.set(x,405,x+440,690); card.setColor(light?0x226E7E94:0x3395B3BE); c.drawRoundRect(rect,26,26,card);
+            icon.setColor(color); int mark=c.save(); c.translate(x+35,430); float symbolScale = i == 0 ? 56/237f : i == 1 ? 64/275f : 60/310f; c.scale(symbolScale,symbolScale); c.drawPath(icons[i],icon); c.restoreToCount(mark);
             text.setTextAlign(Paint.Align.LEFT); text.setColor(color); text.setTextSize(32); c.drawText(names[i],x+30,540,text);
             text.setTextSize(28); line(c, first[i], x+30, 595); line(c, second[i], x+30, 635);
         }

@@ -443,3 +443,6 @@ See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.
 
 ### 1B167 permissions
 `SetupPermissionsView` draws optional access cards and animated choices. `setup/SetupPermissionPlan` computes runtime grants without platform/UI dependencies. `SetupActivity` owns the Android permission/accessibility handoff. Language/Region reuse SettingsListViewport and Spring directly. Stable wizard indices are preserved.
+
+### 1B168 setup finish/artwork
+`SetupFinishView` shares the two-action TV/Home layout. `setup/SetupArtwork` owns cached vector contour factories with editable SVG references in docs/design/setup. SetupState skips the retired updates index while preserving other stored step values.

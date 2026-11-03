@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp)
  for name,code in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(code)
- for f in ['SetupLanguageView.java','setup/SetupRemoteRenderer.java','setup/SetupCountries.java','Spring.java']:
+ for f in ['SetupLanguageView.java','setup/SetupRemoteRenderer.java','setup/SetupCountries.java','setup/SetupArtwork.java','Spring.java']:
   p=root/'io/tvos'/f;p.parent.mkdir(parents=True,exist_ok=True);p.write_text((Path('app/src/io/tvos')/f).read_text())
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.LanguageTest'],check=True,timeout=15)

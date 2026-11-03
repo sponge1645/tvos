@@ -253,10 +253,6 @@
     <string name="settings_setup_permission_granted" formatted="false">Разрешение уже выдано</string>
     <string name="settings_setup_permission_optional" formatted="false">Доступ можно предоставить сейчас или позже</string>
     <string name="settings_setup_allow" formatted="false">Предоставить доступ</string>
-    <string name="settings_setup_updates" formatted="false">Обновления tvOS</string>
-    <string name="settings_setup_updates_hint" formatted="false">tvOS будет проверять новые версии и предлагать «Загрузить и установить». Скачивание начнётся после подтверждения. Установку завершает Android.</string>
-    <string name="settings_setup_updates_yes" formatted="false">Сообщать о новых версиях автоматически</string>
-    <string name="settings_setup_updates_no" formatted="false">Проверять только вручную</string>
     <string name="settings_setup_tv" formatted="false">Приложение для телеканалов</string>
     <string name="settings_setup_tv_hint" formatted="false">По умолчанию используется обнаруженное системное ТВ-приложение. Можно выбрать другое приложение для кнопки ТВ.</string>
     <string name="settings_setup_tv_choose" formatted="false">Выбрать приложение</string>
@@ -288,4 +284,10 @@
     <string name="settings_setup_history_line1">Продолжение просмотра</string>
     <string name="settings_setup_history_line2">на экране «Домой».</string>
     <string name="settings_setup_deny">Не разрешать</string>
+    <string name="settings_setup_tv_title">ТВ-приложение</string>
+    <string name="settings_setup_tv_description">Выберите приложение для просмотра ТВ.\nЕго можно изменить позже.</string>
+    <string name="settings_setup_home_title">Изменить главный\nэкран</string>
+    <string name="settings_setup_home_description">tvOS будет открываться\nпри нажатии кнопки «Домой».</string>
+    <string name="settings_setup_set_home">Установить tvOS главным экраном</string>
+    <string name="settings_setup_not_now">Не сейчас</string>
 </resources>

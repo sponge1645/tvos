@@ -24,7 +24,7 @@ final class SetupLanguageView extends View {
     private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final RectF row = new RectF();
-    private final Shader dark = new LinearGradient(0, 1, 1, 0, 0xFF51595B, 0xFF55646B, Shader.TileMode.CLAMP);
+    private final Shader dark = new LinearGradient(0, 1, 1, 0, 0xFF95B3BE, 0xFF95B3BE, Shader.TileMode.CLAMP);
     private final Matrix matrix = new Matrix();
     private final AppLanguage[] languages = AppLanguage.values();
     private final Shadows shadows = new Shadows();
@@ -91,8 +91,8 @@ final class SetupLanguageView extends View {
         int saved = canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha));
         canvas.translate(ox, oy); canvas.scale(k, k);
         matrix.setScale(1920, -1080); matrix.postTranslate(0, 1080); dark.setLocalMatrix(matrix);
-        ink.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); ink.setShader(light ? null : dark);
-        text.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); text.setShader(light ? null : dark);
+        ink.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); ink.setShader(light ? null : dark);
+        text.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); text.setShader(light ? null : dark);
         text.setTypeface(Ui.displayBold); text.setTextSize(80); canvas.drawText(title, 600, 225, text);
         text.setTypeface(Ui.displaySemibold);
         long now = SystemClock.uptimeMillis();
@@ -103,7 +103,7 @@ final class SetupLanguageView extends View {
         }
         if (region) {
             if (!detected.isEmpty()) drawRow(canvas, 0, 335, light);
-            text.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); text.setShader(light ? null : dark);
+            text.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); text.setShader(light ? null : dark);
             boolean suggestion = !detected.isEmpty() || !status.isEmpty();
             if (detected.isEmpty() && !status.isEmpty()) {
                 text.setTextSize(28); canvas.drawText(status, 600, 335, text);
@@ -136,8 +136,8 @@ final class SetupLanguageView extends View {
         if (amount > .001f) {
             row.set(208.44444f, cy - 30, 924, cy + 30);
             focusRow.draw(canvas, row, 1, light, amount);
-            text.setShader(null); text.setColor(io.tvos.settings.SettingsListRenderer.blend(light ? 0xFF8897AC : 0xFF55646B, 0xFF1C1C1E, amount));
-        } else { text.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); text.setShader(light ? null : dark); }
+            text.setShader(null); text.setColor(io.tvos.settings.SettingsListRenderer.blend(light ? 0xFF6E7E94 : 0xFF95B3BE, 0xFF1C1C1E, amount));
+        } else { text.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); text.setShader(light ? null : dark); }
         text.setTextSize(40); float width = text.measureText(names[index]);
         if (width > 600) text.setTextSize(40 * 600 / width);
         canvas.drawText(names[index], 600, cy + 14, text);

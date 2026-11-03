@@ -24,7 +24,7 @@ final class SetupWelcomeView extends View {
     private final Path segment = new Path();
     private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
-    private final Shader dark = new LinearGradient(0, 1, 1, 0, 0xFF51595B, 0xFF55646B, Shader.TileMode.CLAMP);
+    private final Shader dark = new LinearGradient(0, 1, 1, 0, 0xFF95B3BE, 0xFF95B3BE, Shader.TileMode.CLAMP);
     private final Matrix shaderMatrix = new Matrix();
     private final Runnable next;
     private final String[] hints;
@@ -115,8 +115,8 @@ final class SetupWelcomeView extends View {
         super.onDraw(canvas);
         boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
         background.draw(canvas, getWidth(), getHeight(), light);
-        ink.setShader(light ? null : dark); ink.setColor(light ? 0xFF8897AC : 0xFFFFFFFF);
-        hint.setShader(light ? null : dark); hint.setColor(light ? 0xFF8897AC : 0xFFFFFFFF);
+        ink.setShader(light ? null : dark); ink.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF);
+        hint.setShader(light ? null : dark); hint.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF);
         long now = SystemClock.uptimeMillis();
         if (exitStart >= 0 && now - exitStart >= 220) {
             if (running) { stop(); post(next); } return;

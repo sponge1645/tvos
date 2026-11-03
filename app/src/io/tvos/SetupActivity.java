@@ -3,19 +3,12 @@ package io.tvos;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Gravity;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import io.tvos.setup.SetupState;
 import io.tvos.setup.SetupCountries;
 import io.tvos.setup.SetupPermissionPlan;
@@ -32,30 +25,27 @@ public class SetupActivity extends Activity {
     private UiRequest request;
     private int page, epoch;
     private volatile boolean active;
-    private boolean updates;
     private boolean permissionFlow, pendingAccessibility;
-    private LinearLayout body;
     private SetupLanguageView regionPicker;
     private String detectedCountry = "";
     private SetupWelcomeView welcome;
     private String regionStatus = "";
     private String tvPackage;
     private String autoTvLabel = "";
-    private Button autoTvChoice, tvChoice;
+    private SetupFinishView finishView;
     private final List<String[]> tvApps = new ArrayList<>();
     private String text(int id) { return AppStrings.get(id); }
     private SharedPreferences settings() { return getSharedPreferences("settings", MODE_PRIVATE); }
     private SharedPreferences setup() { return getSharedPreferences("setup", MODE_PRIVATE); }
-    private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved); Ui.init(this); SetupGate.restart();
         if (getIntent().getBooleanExtra("replay", false)) {
-            getIntent().removeExtra("replay"); setup().edit().putBoolean("complete", false).putInt("step", 0).apply();
+            getIntent().removeExtra("replay"); setup().edit().putBoolean("complete", false).putInt("step", 0).remove("home_request").apply();
         }
         setup().edit().putBoolean("started", true).apply();
         if (!settings().contains("language")) Prefs.setLanguage(SetupState.language(getResources().getConfiguration().getLocales().get(0).getLanguage()));
         page = SetupState.step(setup().getInt("step", 0));
-        updates = settings().getBoolean("auto_update", true);
+
         tvPackage = settings().getString("live_tv_app", "");
 
     }
@@ -63,11 +53,16 @@ public class SetupActivity extends Activity {
         super.onNewIntent(intent); setIntent(intent);
         if (intent.getBooleanExtra("replay", false)) {
             intent.removeExtra("replay"); permissionFlow = pendingAccessibility = false; page = SetupState.HELLO; SetupGate.restart();
-            setup().edit().putBoolean("complete", false).putBoolean("started", true).putInt("step", page).apply();
+            setup().edit().putBoolean("complete", false).putBoolean("started", true).putInt("step", page).remove("home_request").apply();
             if (active) render();
         }
     }
-    @Override protected void onResume() { super.onResume(); active = true; render(); if (pendingAccessibility) main.post(this::continuePermissionFlow); }
+    @Override protected void onResume() { super.onResume(); active = true;
+        if (page == SetupState.HOME && setup().getBoolean("home_request", false)) {
+            setup().edit().remove("home_request").apply();
+            if (HomeDefault.selected(this)) { skip(); return; }
+        }
+        render(); if (pendingAccessibility) main.post(this::continuePermissionFlow); }
     @Override protected void onPause() { active = false; cancelWork(); stopHello(); super.onPause(); }
     @Override protected void onDestroy() { cancelWork(); io.shutdownNow(); super.onDestroy(); }
     private void stopHello() { if (welcome != null) { welcome.stop(); welcome = null; } }
@@ -82,17 +77,6 @@ public class SetupActivity extends Activity {
             main.post(() -> { if (active && token == epoch && pending.active()) { request = null; delivery.run(); } });
         });
     }
-    private TextView label(String value, int size) {
-        TextView text = new TextView(this); text.setText(value); text.setTextSize(size); text.setTextColor(0xFFF5F5F7);
-        text.setGravity(Gravity.CENTER); text.setPadding(dp(12), dp(8), dp(12), dp(8));
-        body.addView(text, new LinearLayout.LayoutParams(-1, -2)); return text;
-    }
-    private Button button(String value, Runnable action) {
-        Button b = new Button(this); b.setText(value); b.setTextSize(19); b.setAllCaps(false);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.setMargins(dp(60), dp(5), dp(60), dp(5));
-        body.addView(b, params); b.setOnClickListener(v -> action.run()); return b;
-    }
-    private Button nextButton;
     private void render() {
         cancelWork(); stopHello(); regionPicker = null;
         if (page == SetupState.HELLO) {
@@ -118,30 +102,17 @@ public class SetupActivity extends Activity {
             });
             setContentView(permissions); permissions.requestFocus(); return;
         }
-        ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
-        scroll.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF142C45, 0xFF080B14}));
-        body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); body.setGravity(Gravity.CENTER);
-        body.setPadding(dp(80), dp(20), dp(80), dp(20)); scroll.addView(body); setContentView(scroll);
-        label("tvOS", 23);
-        switch (page) {
-            case SetupState.UPDATES:
-                label(text(R.string.settings_setup_updates), 34); label(text(R.string.settings_setup_updates_hint), 21);
-                button((updates ? "✓ " : "") + text(R.string.settings_setup_updates_yes), () -> { updates = true; render(); });
-                button((!updates ? "✓ " : "") + text(R.string.settings_setup_updates_no), () -> { updates = false; render(); }); break;
-            case SetupState.TV:
-                label(text(R.string.settings_setup_tv), 34); label(text(R.string.settings_setup_tv_hint), 20);
-                autoTvChoice = button((tvPackage.isEmpty() ? "✓ " : "") + text(R.string.settings_automatic) + (autoTvLabel.isEmpty() ? "" : ": " + autoTvLabel),
-                        () -> { tvPackage = ""; render(); });
-                tvChoice = button(text(R.string.settings_setup_tv_choose) + (tvPackage.isEmpty() ? "" : ": " + appLabel(tvPackage)), this::chooseTv);
-                tvChoice.setEnabled(!tvApps.isEmpty()); loadTv(); break;
-            default:
-                label(text(R.string.settings_setup_home), 34); label(text(R.string.settings_setup_home_hint), 21);
-                label(text(HomeDefault.selected(this) ? R.string.settings_setup_home_selected : R.string.settings_setup_home_not_selected), 22);
-                button(text(R.string.settings_setup_home_choose), () -> HomeDefault.request(this)); break;
+        if (page == SetupState.TV) {
+            finishView = new SetupFinishView(this, true, tvLabel(), this::chooseTv, this::next);
+            setContentView(finishView); finishView.requestFocus(); loadTv(); return;
         }
-        nextButton = button(text(page == SetupState.HOME ? R.string.settings_setup_finish : R.string.settings_setup_continue), this::next);
-        if (page != SetupState.HELLO) button(text(R.string.settings_setup_skip), this::skip);
-        nextButton.requestFocus();
+        finishView = new SetupFinishView(this, false, "", () -> {
+            setup().edit().putBoolean("home_request", true).apply(); HomeDefault.request(this);
+        }, this::skip);
+        setContentView(finishView); finishView.requestFocus();
+    }
+    private String tvLabel() {
+        return tvPackage.isEmpty() ? text(R.string.settings_automatic) + ": " + (autoTvLabel.isEmpty() ? text(R.string.settings_setup_detecting) : autoTvLabel) : appLabel(tvPackage);
     }
     private void updateRegionText() { if (regionPicker != null) regionPicker.status(regionStatus); }
     private void detectCountry() {
@@ -166,11 +137,12 @@ public class SetupActivity extends Activity {
     }
     private void loadTv() {
         task(() -> {
+            try {
             List<String[]> apps = new ArrayList<>();
             Intent query = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
             for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(query, 0)) {
                 if (info.activityInfo != null) {
-                    String pkg = info.activityInfo.packageName; boolean seen = false;
+                    String pkg = info.activityInfo.packageName; if (pkg.equals(getPackageName())) continue; boolean seen = false;
                     for (String[] old : apps) if (old[0].equals(pkg)) { seen = true; break; }
                     if (!seen) apps.add(new String[]{pkg, String.valueOf(info.loadLabel(getPackageManager()))});
                 }
@@ -186,36 +158,42 @@ public class SetupActivity extends Activity {
             final String detectedLabel = pkg == null ? text(R.string.settings_setup_tv_not_found) : appLabel(pkg);
             return () -> {
                 tvApps.clear(); tvApps.addAll(apps);
-                if (tvChoice != null) tvChoice.setEnabled(!tvApps.isEmpty());
                 autoTvLabel = detectedLabel;
-                if (autoTvChoice != null) autoTvChoice.setText((tvPackage.isEmpty() ? "✓ " : "") + text(R.string.settings_automatic) + ": " + autoTvLabel);
+                if (finishView != null && page == SetupState.TV) finishView.application(tvLabel());
             };
+            } catch (RuntimeException unavailable) {
+                return () -> { autoTvLabel = text(R.string.settings_setup_tv_not_found); if (finishView != null && page == SetupState.TV) finishView.application(tvLabel()); };
+            }
         });
     }
     private void chooseTv() {
-        String[] names = new String[tvApps.size()]; for (int i = 0; i < names.length; i++) names[i] = tvApps.get(i)[1];
+        List<String[]> choices = new ArrayList<>(tvApps);
+        String[] names = new String[choices.size() + 1];
+        names[0] = text(R.string.settings_automatic) + ": " + autoTvLabel;
+        for (int i = 0; i < choices.size(); i++) names[i + 1] = choices.get(i)[1];
         new AlertDialog.Builder(this).setTitle(text(R.string.settings_setup_tv_choose)).setItems(names, (d, at) -> {
-            tvPackage = tvApps.get(at)[0]; render();
+            if (page != SetupState.TV) return;
+            tvPackage = at == 0 ? "" : choices.get(at - 1)[0];
+            if (finishView != null) finishView.application(tvLabel());
         }).setNegativeButton(text(R.string.settings_setup_back), null).show();
     }
     private void next() {
-        if (page == SetupState.UPDATES) settings().edit().putBoolean("auto_update", updates).apply();
-        else if (page == SetupState.TV) Prefs.setLiveTvApp(tvPackage);
+        if (page == SetupState.TV) Prefs.setLiveTvApp(tvPackage);
         skip();
     }
     private void skip() {
         permissionFlow = pendingAccessibility = false;
         cancelWork(); stopHello();
         if (page == SetupState.HOME) {
-            setup().edit().putBoolean("complete", true).putBoolean("started", false).remove("step").apply();
+            setup().edit().putBoolean("complete", true).putBoolean("started", false).remove("step").remove("home_request").apply();
             startActivity(new Intent(this, HomeDefault.selected(this) ? HomeActivity.class : SettingsActivity.class)); finish(); return;
         }
-        page++; setup().edit().putInt("step", page).apply(); render();
+        page = SetupState.next(page); setup().edit().putInt("step", page).apply(); render();
     }
     @SuppressWarnings("deprecation") // Android 9-compatible TV Back handling.
     @Override public void onBackPressed() {
         permissionFlow = pendingAccessibility = false;
-        if (page > SetupState.HELLO) { page--; setup().edit().putInt("step", page).apply(); render(); }
+        if (page > SetupState.HELLO) { page = SetupState.previous(page); setup().edit().putInt("step", page).apply(); render(); }
         else { SetupGate.defer(); finish(); }
     }
     private void markPermissionChoice() {

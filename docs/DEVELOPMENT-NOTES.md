@@ -295,3 +295,6 @@ Settings shadows for setup focus capsules, Language/Язык title, 20% tighter 
 
 ### 1B167
 Optional Permissions replaces the old Wi-Fi-only step without changing its stored index. Add coarse/fine request pairing on Android12+, conditional TV-listings requests and separate manual accessibility handoff. Denial continues and avoids duplicate automatic prompts. Titles Bold80, Settings focus/scroll springs and shared edge fading on language/region lists. Native consent/policy regressions added; OEM UI review pending.
+
+### 1B168
+New setup palette, supplied permission icon vectors and full remote symbols. Remove update-consent page without changing update preferences; migrate the retired step. Native TV app selection/Continue and optional system Home handoff replace old generic widget screens. Preserve package fallback, keys and signing. Add native finish/input and retired-step regression coverage.

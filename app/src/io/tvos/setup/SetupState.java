@@ -7,6 +7,8 @@ public final class SetupState {
     public static boolean needed(boolean complete, boolean started, boolean upgrade, boolean configured) {
         return !complete && (started || !upgrade || !configured);
     }
-    public static int step(int value) { return Math.max(HELLO, Math.min(HOME, value)); }
+    public static int step(int value) { int step = Math.max(HELLO, Math.min(HOME, value)); return step == UPDATES ? TV : step; }
+    public static int next(int value) { return step(value + 1); }
+    public static int previous(int value) { return value == TV ? WIFI : Math.max(HELLO, value - 1); }
     public static String language(String system) { return system != null && system.toLowerCase(java.util.Locale.ROOT).startsWith("ru") ? "ru" : "en"; }
 }
