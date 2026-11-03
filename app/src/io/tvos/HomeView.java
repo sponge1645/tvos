@@ -152,6 +152,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private String clockText = "", dateText = "";
     private long clockMinute = -1;
     private boolean okDown, backDown, vpnPress;
+    private final Spring weatherFocus = new Spring(.26f, .85f, 0);
     private final Spring vpnColor = new Spring(.35f, 1f, 0);
     private final Runnable vpnHold = this::openVpnOnHold;
 
@@ -174,7 +175,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void toggleVpn() {
         String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
         if (!VpnControl.PACKAGE.equals(pkg)) { openVpnApp(); return; }
-        appWork.toggleVpn();
+        appWork.toggleVpn(); networkStatus.checkSoon();
     }
     private void beginDockEdit() {
         dock.begin(SystemClock.uptimeMillis());
@@ -241,6 +242,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         @Override public void run() {
             if (!running) return;
             wake();
+            networkStatus.rescan();
             data.refreshIfStale();
             recs.refreshIfStale();
             SelfUpdate.get(getContext()).maybeAutomatic(false);
@@ -363,6 +365,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             spoken.readAgain();
             wake();
         });
+        appWork.onVpnChanged(networkStatus::checkSoon);
         makeLightButtons();
         recs.setLight(true);
         background.checkNight(data.isNight(System.currentTimeMillis()), false);
@@ -770,8 +773,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         vpnColor.target = networkStatus.vpn() ? 1 : 0;
         if (reducedDreamMotion()) vpnColor.snap(vpnColor.target);
         boolean vpnMoving = vpnColor.step(dt);
+        weatherFocus.target = zone == Z_WEATHER ? 1 : 0;
+        if (reducedDreamMotion()) weatherFocus.snap(weatherFocus.target);
+        boolean weatherMoving = weatherFocus.step(dt);
         boolean topMoving = step(topFocus, dt), cardsMoving = step(cardFocus, dt) | rouletteButtonFocus.step(dt);
-        if (topMoving || vpnMoving) status.invalidate();
+        if (topMoving || vpnMoving || weatherMoving) status.invalidate();
         boolean bannerMoving = Prefs.categoryCount() == 0 && !search.active && dockBanner.tick(up);
         boolean heroMoving = topMoving | cardsMoving | bannerMoving;
         boolean drawerItemsMoving = step(drawer.focus, dt);
@@ -805,7 +811,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // Busy: something is moving, or the sheet or the drawer is open.
         boolean busy = tilesMoving || heroMoving || drawerItemsMoving || gridMoving || drawerMoving
                 || sheetMoving || toastFading || bgFading || nightMoving || searchHeadingMoving
-                || vpnMoving || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
+                || vpnMoving || weatherMoving || notices.busy() || rouletteWork.spinning() || dockMoving || revealing;
         idle = !busy;
         if (busy) Choreographer.getInstance().postFrameCallback(this);
         else {
@@ -1634,7 +1640,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = search.query;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
         headingFrame.lDate = lDate; headingFrame.lTab = lTab; headingFrame.lTabOn = lTabOn;
-        headingFrame.weatherFocused = zone == Z_WEATHER;
+        headingFrame.weatherFocused = zone == Z_WEATHER; headingFrame.weatherAmount = Ui.clamp(weatherFocus.value);
         headingFrame.showDate = showHeaderPart("show_date"); headingFrame.weatherTop = weatherTop();
         headingFrame.searchMode = search.active; headingFrame.largePostersWithoutWidgets = largePostersWithoutWidgets;
         return headingFrame;

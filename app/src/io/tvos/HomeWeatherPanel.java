@@ -100,6 +100,10 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             int ink = night ? 0xFFF5F5F7 : 0xFF1D1D1F, muted = night ? 0xFFB7B9C1 : 0xFF5E6570;
             fill.setShader(null); fill.setColor(0x33000000); c.drawRect(0, 0, getWidth(), getHeight(), fill);
             panel.set(40*k, 50*k, 740*k, 1000*k);
+            if (android.os.Build.VERSION.SDK_INT < 33) {
+                fill.setColor(night ? 0xF21C242F : 0xF2E8F1F8);
+                c.drawRoundRect(panel, 36*k, 36*k, fill);
+            }
             scene.setOffset(0, 0);
             scene.liquid(c, panel, 36*k, night ? 0xFF111113 : 0xFFFFFFFF,
                     night ? .38f : .78f, .035f, 30*k, 24*k, .75f, 1);

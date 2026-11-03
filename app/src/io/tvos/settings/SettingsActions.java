@@ -25,15 +25,17 @@ public final class SettingsActions {
 
     public enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, CLICKS, VOLUME_HOLD
+        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, TEMPERATURE, CLICKS, VOLUME_HOLD
     }
 
     public static boolean canAdjust(int screen, int row, int buttonCount) {
         switch (screen) {
-            case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
+            case HOME_SETTINGS: case DATE_TIME: return true;
+            case WEATHER: return row != 1;
+            case TOP_PANEL: return row == 2;
             case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW;
             case MEDIA: return row == 1;
-            case GENERAL: return row == 1 || row == 5 || row == 6;
+            case GENERAL: return row == 1 || row == 4;
             case SCREENSAVER: return row >= 0 && row < 4;
             case UPDATES: return row == 1;
             case ACCESSIBILITY: return row < 2;
@@ -47,7 +49,8 @@ public final class SettingsActions {
         switch (screen) {
             case HOME_SETTINGS: return Adjustment.HOME;
             case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW ? Adjustment.VOLUME_HOLD : Adjustment.NONE;
-            case WEATHER: return Adjustment.WEATHER;
+            case WEATHER: return row == 2 ? Adjustment.TEMPERATURE : row == 0 ? Adjustment.WEATHER : Adjustment.NONE;
+            case TOP_PANEL: return row == 2 ? Adjustment.DATE : Adjustment.NONE;
             case DATE_TIME: return Adjustment.DATE;
             case SCREENSAVER:
                 switch (row) {
@@ -97,15 +100,15 @@ public final class SettingsActions {
             case HOME_SCREEN: return Action.SELECT_HOME_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
-            case GENERAL: return row == 7 ? Action.HOME_SCREEN_MODE_SCREEN : row == 4 ? Action.CITY_SCREEN : row == 3 ? Action.OPEN_REGION : row == 2 ? Action.LANGUAGE_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
+            case GENERAL: return row == 3 ? Action.OPEN_REGION : row == 2 ? Action.LANGUAGE_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
             case UPDATES: return row == 0 ? Action.CHECK_UPDATE : row == 1 ? Action.AUTO_UPDATE : Action.NONE;
             case MENU_BUTTONS: return row == buttonCount ? (vpnEnabled ? Action.VPN_PICKER : Action.NONE) : Action.MENU_BUTTON;
             case CITY: return row == 0 ? Action.REGION_TOGGLE : citySetting ? Action.NONE : Action.CITY_PICKER;
             case DATE_TIME: return Action.DATE_TOGGLE;
-            case WEATHER: return Action.WEATHER_TOGGLE;
+            case WEATHER: return row == 1 ? Action.CITY_SCREEN : row == 0 ? Action.WEATHER_TOGGLE : Action.MENU_ADJUST;
             case SCREENSAVER: return row == 4 ? Action.PREVIEW : row >= 0 && row < 4 ? Action.MENU_ADJUST : Action.NONE;
-            case TOP_PANEL: return row == 0 ? Action.CATEGORY_EDITOR : row == 1 ? Action.BUTTON_EDITOR : row == 2 ? Action.WIDGETS_SCREEN : Action.NONE;
+            case TOP_PANEL: return row == 0 ? Action.CATEGORY_EDITOR : row == 1 ? Action.BUTTON_EDITOR : row == 2 ? Action.DATE_TOGGLE : row == 3 ? Action.WEATHER_SCREEN : row == 4 ? Action.HOME_SCREEN_MODE_SCREEN : Action.NONE;
             case ACCESSIBILITY: return row == 0 || row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_SETTINGS : Action.NONE;
             case RESET: return Action.RESET_CONFIRM;
             case SYSTEM: return row == 0 ? Action.UPDATES_SCREEN : row == 1 ? Action.RESET_SCREEN : row == 2 ? Action.HOME_CHOICE : row == 3 ? Action.RESTART : Action.NONE;
@@ -125,12 +128,15 @@ public final class SettingsActions {
             case PICKER: return new Target(parent, pickFor == PICK_REGION ? 3 : pickFor == PICK_TV ? 2 : pickFor == PICK_CITY ? 1
                     : pickFor == PICK_VPN ? buttonCount : pickFor - 1);
             case MOVIE_SERVICE: case ABOUT: case CATEGORY_EDIT: case UPDATES:
-            case HOME_SETTINGS: case WEATHER: return new Target(parent, 0);
-            case MEDIA: case MENU_BUTTONS: case RESET: case DATE_TIME: return new Target(parent, 1);
+            case HOME_SETTINGS: return new Target(parent, 0);
+            case WEATHER: return new Target(parent, 3);
+            case MEDIA: case MENU_BUTTONS: case RESET: return new Target(parent, 1);
+            case DATE_TIME: return new Target(parent, 2);
             case HOME_CHOICE: case SCREENSAVER: case WIDGETS: return new Target(parent, 2);
-            case HOME_SCREEN: case SHELF_EDIT: return new Target(parent, 7);
+            case HOME_SCREEN: return new Target(parent, 4);
+            case SHELF_EDIT: return new Target(parent, 7);
             case REMOTE_KEYS: return new Target(parent, 4);
-            case CITY: return new Target(parent, 4);
+            case CITY: return new Target(parent, 1);
             case LANGUAGE: return new Target(parent, 2);
             case APPS_DOWNLOADS: return new Target(parent, 6);
             default: return new Target(MAIN, screen == GENERAL ? 0 : screen == ACCESSIBILITY ? 5 : screen == TOP_PANEL ? 8 : screen == SYSTEM ? 9 : 0);

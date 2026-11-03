@@ -18,6 +18,8 @@ final class HomeAppWork {
     private final Runnable vpnFailed;
     private int epoch;
     private boolean vpnBusy;
+    private Runnable vpnChanged = () -> { };
+    void onVpnChanged(Runnable callback) { vpnChanged = callback; }
 
     HomeAppWork(Context context, Executor executor, Handler handler, BooleanSupplier active, Lists lists, Runnable vpnFailed) {
         this.context = context;
@@ -65,6 +67,7 @@ final class HomeAppWork {
             final boolean error = failed;
             handler.post(() -> {
                 vpnBusy = false;
+                if (active.getAsBoolean() && generation == epoch) vpnChanged.run();
                 if (error && active.getAsBoolean() && generation == epoch) vpnFailed.run();
             });
         });

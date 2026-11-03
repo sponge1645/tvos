@@ -14,7 +14,7 @@ import java.util.List;
 /** Header date/weather, tabs, search heading, clock/profile and action buttons. */
 final class HomeHeaderRenderer {
     static final class Frame {
-        float k, night, headingOpacity, vpnTint;
+        float k, night, headingOpacity, vpnTint, weatherAmount;
         int tab, networkState;
         int wifiLevel = -1;
         int hiddenTab = -1;
@@ -88,9 +88,13 @@ final class HomeHeaderRenderer {
         widgetsCapsule.set(left, HomeLayout.TOP * k, left + 2 * pad + dateWidth + gap + weatherWidth,
                 (HomeLayout.TOP + HomeLayout.BUTTON) * k);
         // The home exposes this capsule as a weather action when forecast data is available.
-        actionSurface.draw(c, widgetsCapsule, frame.weatherFocused ? 1 : 0, frame.night, k);
-        int ink = ActionSurface.ink(frame.night, frame.weatherFocused ? 1 : 0);
+        actionSurface.draw(c, widgetsCapsule, frame.weatherAmount, frame.night, k);
+        int ink = ActionSurface.ink(frame.night, frame.weatherAmount);
         datePaint.setColor(ink); weatherPaint.setColor(ink);
+        int contentSave = c.save();
+        float grow = 1 + .1f * Ui.clamp(frame.weatherAmount);
+        c.translate(widgetsCapsule.centerX(), widgetsCapsule.centerY()); c.scale(grow, grow);
+        c.translate(-widgetsCapsule.centerX(), -widgetsCapsule.centerY());
         float x = left + pad;
         if (!date.isEmpty()) {
             c.drawText(date, x - Ui.leftBearing(datePaint, date), cy + Ui.halfCap(datePaint), datePaint);
@@ -100,6 +104,7 @@ final class HomeHeaderRenderer {
             Symbols.draw(context, c, symbol, x + sw / 2, cy, iconSize, weatherPaint.getColor());
             c.drawText(temperature, x + sw + 8 * k, cy + Ui.halfCap(weatherPaint), weatherPaint);
         }
+        c.restoreToCount(contentSave);
     }
 
     private float drawActionSurface(Canvas c, RectF bounds, float focus) {

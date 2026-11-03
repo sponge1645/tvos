@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_weather_view">View</string>
+    <string name="settings_weather_home">On Home Screen</string>
+    <string name="settings_weather_bottom">On Bottom Panel</string>
+    <string name="settings_weather_both">Both</string>
+    <string name="settings_weather_home_help">Show weather only on the Home Screen.</string>
+    <string name="settings_weather_bottom_help">Show weather only on the bottom panel.</string>
+    <string name="settings_weather_both_help">Show weather on the Home Screen and on the bottom panel.</string>
+    <string name="settings_date_home_help">Show the date on the Home Screen.</string>
+</resources>

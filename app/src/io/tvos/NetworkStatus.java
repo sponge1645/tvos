@@ -21,6 +21,16 @@ final class NetworkStatus {
     private boolean running, allRegistered, defaultRegistered, vpn;
     private int state = OFFLINE;
     private final Runnable refresh = this::refreshNow;
+    private int checks;
+    private final Runnable convergence = new Runnable() {
+        @Override public void run() {
+            if (!running) return;
+            refreshNow();
+            if (--checks > 0) handler.postDelayed(this, 500);
+        }
+    };
+    void checkSoon() { if (!running) return; checks = 20; handler.removeCallbacks(convergence); handler.postDelayed(convergence, 0); }
+    void rescan() { refreshNow(); }
 
     private void refreshNow() {
         if (!running) return;
@@ -93,7 +103,7 @@ final class NetworkStatus {
         if (!running) return;
         running = false;
         signal.stop();
-        handler.removeCallbacks(refresh);
+        handler.removeCallbacks(refresh); handler.removeCallbacks(convergence);
         if (allRegistered) {
             try { manager.unregisterNetworkCallback(all); } catch (RuntimeException ignored) {}
             allRegistered = false;

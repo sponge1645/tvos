@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_weather_view">Вид</string>
+    <string name="settings_weather_home">На экране «Домой»</string>
+    <string name="settings_weather_bottom">На нижней панели</string>
+    <string name="settings_weather_both">Оба</string>
+    <string name="settings_weather_home_help">Показывать погоду только на экране «Домой».</string>
+    <string name="settings_weather_bottom_help">Показывать погоду только на нижней панели.</string>
+    <string name="settings_weather_both_help">Показывать погоду на экране «Домой» и на нижней панели.</string>
+    <string name="settings_date_home_help">Отображение даты на экране «Домой».</string>
+</resources>

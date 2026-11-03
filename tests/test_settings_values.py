@@ -25,10 +25,10 @@ public class ValuesHarness {
    check(v.menu(MEDIA,3)[0].equals(ru?"Спрашивать каждый раз":"Ask Every Time"),"default service initially asks every time");
    check(v.menu(LANGUAGE,2)[ru?0:1].equals(AppStrings.get(R.string.settings_service_selected)),"language list marks saved choice");check(v.menu(MEDIA,3)[2].equals(AppStrings.get(R.string.settings_tv_unselected)),"empty TV provider shows not selected");
    a.prefs.data.put(MovieService.KEY,"seena");check(v.menu(MEDIA,3)[0].equals("Seena")&&v.menu(MOVIE_SERVICE,5)[3].equals(ru?"Выбрано":"Selected"),"service value and accessible selected state");a.prefs.data.remove(MovieService.KEY);
-   check(v.menu(HOME_SCREEN,2)[0].equals(ru?"Выбрано":"Selected"),"recommendations selected by default");Prefs.home=true;check(v.menu(HOME_SCREEN,2)[1].equals(ru?"Выбрано":"Selected"),"continue mode selected");check(v.menu(GENERAL,8)[7].equals(AppStrings.get(R.string.home_continue_watching)),"General displays current Home mode");Prefs.home=false;
-   String[] general=v.menu(GENERAL,8);check(general.length==8&&general[0].isEmpty()&&general[4].equals("City"),"general ordering");
+   check(v.menu(HOME_SCREEN,2)[0].equals(ru?"Выбрано":"Selected"),"recommendations selected by default");Prefs.home=true;check(v.menu(HOME_SCREEN,2)[1].equals(ru?"Выбрано":"Selected"),"continue mode selected");check(v.menu(TOP_PANEL,5)[4].equals(AppStrings.get(R.string.home_continue_watching)),"General displays current Home mode");Prefs.home=false;
+   String[] general=v.menu(GENERAL,5);check(general.length==5&&general[0].isEmpty()&&!general[3].isEmpty(),"general ordering");
    check(general[2].equals(AppLanguage.current().nativeName)&&general[1].equals(ru?"Авто":"Automatic"),"live language and theme");
-   Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,8);check(general[5].equals("°C")&&general[6].equals(ru?"24 ч":"24 h"),"units/hour");
+   Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,5);check(v.menu(WEATHER,3)[2].equals("°C")&&general[4].equals(ru?"24 ч":"24 h"),"units/hour");
    Prefs.unit="auto";Prefs.theme="auto";Prefs.h24=false;
    free[0]=true;check(v.menu(SYSTEM,4)[2].equals("tvOS"),"current launcher callback");
    check(v.menu(ACCESSIBILITY,3)[2].isEmpty(),"TV Settings action has no misplaced launcher value");
@@ -37,7 +37,7 @@ public class ValuesHarness {
    a.prefs.data.put("self_update_attempt",1700000000000L);check(v.updateDetailsText().equals("tvOS installed\\n"+SettingsValues.formatLastUpdateCheck(1700000000000L,AppLanguage.current())),"new check timestamp refreshes details");
    a.prefs.data.put("auto_update",true);check(v.menu(UPDATES,2)[1].equals(SettingsValues.onOff(true)),"auto update value");
    a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,5);check(saver[0].equals("National Geographic")&&saver[4].isEmpty(),"saver source and action row");
-   check(v.menu(WEATHER,2)[0].equals(SettingsValues.onOff(true))&&v.menu(WEATHER,2)[1].equals(SettingsValues.onOff(false)),"independent weather callback");
+   check(v.menu(WEATHER,3)[0].equals(AppStrings.get(R.string.settings_weather_home))&&v.menu(WEATHER,3)[1].equals("City"),"independent weather callback");
    check(v.menu(MENU_BUTTONS,3)[0].equals("#4")&&v.menu(MENU_BUTTONS,3)[1].equals(SettingsValues.onOff(false))&&v.menu(MENU_BUTTONS,3)[2].isEmpty(),"button order and VPN footer");
    status[0]="Searching";check(v.menu(CITY,2)[1].equals("Searching"),"Region exposes pending/error lookup status");check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
    check(v.settings().length==6&&SettingsValues.randomRow()==5,"stable category rows without quote/coin controls");

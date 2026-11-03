@@ -57,10 +57,17 @@ final class SettingsPreferenceEditor {
         setFlag(key, !preferences.getBoolean(key, true));
     }
 
+    void temperature(int dir) { Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir)); changed.run(); }
+    void cycleWeather(int dir) {
+        int current = (weatherVisible(true) ? 1 : 0) | (weatherVisible(false) ? 2 : 0);
+        int next = 1 + Math.floorMod(Math.max(1, current) - 1 + dir, 3);
+        preferences.edit().putBoolean("weather_show_top", (next & 1) != 0)
+                .putBoolean("weather_show_bottom", (next & 2) != 0).putInt("weather_placement", next).apply();
+        Prefs.setWeather(true); changed.run(); refresh.run();
+    }
     void general(int row, int dir) {
         if (row == 1) Prefs.setTheme(step(THEMES, Prefs.theme(), dir));
-        else if (row == 5) Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir));
-        else if (row == 6) Prefs.setHour24(!Prefs.hour24());
+        else if (row == 4) Prefs.setHour24(!Prefs.hour24());
         changed.run();
     }
 

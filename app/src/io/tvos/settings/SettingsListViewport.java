@@ -14,7 +14,7 @@ public final class SettingsListViewport {
     }
 
     private final Paint mask = new Paint();
-    private float left, top, scale = -1;
+    private float left, top, scale = -1, fadeTop = -1, fadeBottom = -1;
     private int width, height;
 
     public SettingsListViewport() {
@@ -27,15 +27,19 @@ public final class SettingsListViewport {
 
     /** Same edge fade for setup's left-hand column. Coordinates are caller-owned. */
     public void resize(float left, float top, int width, int height, float scale) {
-        if (this.width == width && this.height == height && this.left == left && this.top == top && this.scale == scale) return;
+        resize(left, top, width, height, scale, 38, 64);
+    }
+    public void resize(float left, float top, int width, int height, float scale, float fadeTop, float fadeBottom) {
+        if (this.width == width && this.height == height && this.left == left && this.top == top && this.scale == scale && this.fadeTop == fadeTop && this.fadeBottom == fadeBottom) return;
+        this.fadeTop = fadeTop; this.fadeBottom = fadeBottom;
         this.scale = scale;
         this.width = width;
         this.height = height;
         this.left = left;
         this.top = top;
         float span = Math.max(1f, height - top);
-        float topStop = Math.min(0.25f, 38 * scale / span);
-        float bottomStop = Math.max(topStop, 1f - 64 * scale / span);
+        float topStop = Math.min(0.25f, fadeTop * scale / span);
+        float bottomStop = Math.max(topStop, 1f - fadeBottom * scale / span);
         mask.setShader(new LinearGradient(0, top, 0, height,
                 new int[] {0x00FFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00FFFFFF},
                 new float[] {0f, topStop, bottomStop, 1f}, Shader.TileMode.CLAMP));

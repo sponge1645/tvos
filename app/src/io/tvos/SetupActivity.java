@@ -30,6 +30,18 @@ public class SetupActivity extends Activity {
     private String detectedCountry = "";
     private SetupWelcomeView welcome;
     private String regionStatus = "";
+    private boolean homeRequested;
+    private final SettingsModeMonitor homeMode = new SettingsModeMonitor(this, main, () -> active, () -> false,
+            value -> android.widget.Toast.makeText(this, value, android.widget.Toast.LENGTH_LONG).show(), this::homeModeChanged);
+    private void homeModeChanged() {
+        if (!active || page != SetupState.HOME || !homeRequested) return;
+        if (homeMode.freeActive()) skip();
+        else if (!homeMode.busy() && finishView != null) finishView.retryHome();
+    }
+    private void installHome() {
+        if (homeMode.busy()) return;
+        homeRequested = true; HomeMode.request(this, HomeMode.FREE); homeMode.markPending();
+    }
     private String tvPackage;
     private String autoTvLabel = "";
     private SetupFinishView finishView;
@@ -65,13 +77,13 @@ public class SetupActivity extends Activity {
             if (active) render();
         }
     }
-    @Override protected void onResume() { super.onResume(); active = true;
+    @Override protected void onResume() { super.onResume(); active = true; homeMode.start();
         if (page == SetupState.HOME && setup().getBoolean("home_request", false)) {
             setup().edit().remove("home_request").apply();
             if (HomeDefault.selected(this)) { skip(); return; }
         }
         render(); if (pendingAccessibility) main.post(this::continuePermissionFlow); }
-    @Override protected void onPause() { active = false; transitionEpoch++; transitioning = false; leaveScene = null; citySearch.cancel(); dismissCityDialog(); cancelWork(); stopHello(); super.onPause(); }
+    @Override protected void onPause() { homeMode.stop(); active = false; transitionEpoch++; transitioning = false; leaveScene = null; citySearch.cancel(); dismissCityDialog(); cancelWork(); stopHello(); super.onPause(); }
     @Override protected void onDestroy() { citySearch.cancel(); dismissCityDialog(); cancelWork(); io.shutdownNow(); super.onDestroy(); }
     private void stopHello() { if (welcome != null) { welcome.stop(); welcome = null; } }
     private void cancelWork() { epoch++; if (request != null) { request.cancel(); request = null; } }
@@ -122,7 +134,7 @@ public class SetupActivity extends Activity {
             leaveScene = finishView::leave; setContentView(finishView); finishView.requestFocus(); loadTv(); return;
         }
         finishView = new SetupFinishView(this, false, "", () -> {
-            setup().edit().putBoolean("home_request", true).apply(); HomeDefault.request(this);
+            installHome();
         }, this::skip);
         leaveScene = finishView::leave; setContentView(finishView); finishView.requestFocus();
     }

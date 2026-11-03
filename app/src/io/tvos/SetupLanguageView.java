@@ -159,7 +159,7 @@ final class SetupLanguageView extends View {
         int offset = region && !detected.isEmpty() ? 1 : 0;
         scroll.target = region ? Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3)) : 0;
         if (reduced) scroll.snap(scroll.target); else moving |= scroll.step(dt);
-        viewport.resize(190, rowStart - 74, 1020, Math.round((getHeight() - oy) / k), 1);
+        viewport.resize(190, rowStart - SetupLayout.BUTTON_HEIGHT / 2 - 8, 1020, Math.round((getHeight() - oy) / k), 1, 8, 64);
         // The viewport fades the shadow as well as the rows. An extra clip here
         // cuts through the blurred shadow and produces a visible horizontal seam.
         viewport.draw(canvas, rows);
@@ -173,7 +173,7 @@ final class SetupLanguageView extends View {
     private void drawRows(Canvas canvas) {
         int offset = region && !detected.isEmpty() ? 1 : 0;
         int first = region ? Math.max(offset, (int) Math.floor(scroll.value) - 1) : 0;
-        int end = region ? Math.min(codes.length, first + 9) : codes.length;
+        int end = region ? Math.min(codes.length, (int)Math.ceil(scroll.value + (1080 - rowStart) / 80f) + 3) : codes.length;
         for (int i = first; i < end; i++) drawRow(canvas, i, rowStart + (i - scroll.value) * 80, light);
     }
     private void drawRow(Canvas canvas, int index, float cy, boolean light) {

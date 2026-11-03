@@ -23,36 +23,37 @@ final class LiveTvTargets {
     static List<String[]> load(Context context) {
         PackageManager pm = context.getPackageManager();
         LinkedHashMap<String,String[]> choices = new LinkedHashMap<>();
-        for (PackageInfo pkg : pm.getInstalledPackages(PackageManager.GET_ACTIVITIES | PackageManager.GET_SERVICES)) {
+        for (PackageInfo pkg : pm.getInstalledPackages(0)) {
             if (pkg == null || pkg.packageName == null) continue;
             ApplicationInfo app = pkg.applicationInfo;
             if (app == null || pkg.packageName.equals(context.getPackageName())) continue;
             String name;
             try { name = String.valueOf(app.loadLabel(pm)); } catch (RuntimeException unavailable) { name = pkg.packageName; }
-            choices.put(pkg.packageName, new String[]{pkg.packageName, name + " · " + pkg.packageName});
-            if (pkg.activities != null) for (ActivityInfo activity : pkg.activities) {
-                if (activity == null || activity.name == null || !activity.exported || !activity.enabled) continue;
-                String key = ACTIVITY + new ComponentName(pkg.packageName, activity.name).flattenToString();
-                choices.put(key, new String[]{key, name + " · " + activity.name});
-            }
-            if (pkg.services != null) for (ServiceInfo service : pkg.services) {
-                if (service == null || service.name == null) continue;
-                String key = SERVICE + new ComponentName(pkg.packageName, service.name).flattenToString();
-                choices.put(key, new String[]{key, name + " · " + service.name});
-            }
+            Intent launch = AppLaunch.launchIntent(pm, pkg.packageName);
+            Intent channels = new Intent("yandex.intent.action.TV_CHANNEL").setPackage(pkg.packageName);
+            if (launch == null && channels.resolveActivity(pm) == null) continue;
+            choices.put(pkg.packageName, new String[]{pkg.packageName, name});
         }
         for (TvInputInfo input : inputs(context)) {
-            if (input == null || input.getId() == null) continue;
+            if (input == null || input.getId() == null || input.isPassthroughInput()) continue;
             ServiceInfo service = input.getServiceInfo();
-            if (service == null) continue;
+            if (service == null || choices.containsKey(service.packageName)) continue;
             String key = INPUT + input.getId();
             String label;
             try { label = String.valueOf(input.loadLabel(context)); } catch (RuntimeException unavailable) { label = input.getId(); }
-            choices.put(key, new String[]{key, label + " · " + input.getId()});
+            choices.put(key, new String[]{key, label});
         }
         List<String[]> result = new ArrayList<>(choices.values());
-        result.sort((a,b) -> a[1].compareToIgnoreCase(b[1]));
+        result.sort((a,b) -> {
+            int tierA = tvRank(a), tierB = tvRank(b);
+            return tierA != tierB ? Integer.compare(tierA, tierB) : a[1].compareToIgnoreCase(b[1]);
+        });
         return result;
+    }
+    private static int tvRank(String[] item) {
+        String value = (item[0] + " " + item[1]).toLowerCase(java.util.Locale.ROOT);
+        return item[0].startsWith(INPUT) || value.contains("iptv") || value.contains("live")
+                || value.contains("channel") || value.contains("tv") || value.contains("телев") ? 0 : 1;
     }
     private static List<TvInputInfo> inputs(Context context) {
         try {

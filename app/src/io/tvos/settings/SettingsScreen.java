@@ -13,13 +13,14 @@ public final class SettingsScreen {
             case MAIN: return 10;
             case DATE_TIME: return 1;
             case MEDIA: return 3;
-            case HOME_SCREEN: case WIDGETS: case WEATHER: case RESET: case CITY:
+            case HOME_SCREEN: case WIDGETS: case RESET: case CITY:
             case UPDATES: case HOME_CHOICE: return 2;
-            case TOP_PANEL: case ACCESSIBILITY: return 3;
+            case WEATHER: case ACCESSIBILITY: return 3;
+            case TOP_PANEL: return 5;
             case SYSTEM: return 4;
             case SCREENSAVER: return 5;
             case APPS_DOWNLOADS: return 7;
-            case GENERAL: return 8;
+            case GENERAL: return 5;
             case LANGUAGE: return 2;
             case ABOUT: return 8;
             default: return -1;
@@ -31,14 +32,15 @@ public final class SettingsScreen {
             case MEDIA: case GENERAL: case SCREENSAVER: case REMOTE_KEYS: case ACCESSIBILITY: case APPS_DOWNLOADS:
             case SHELF_EDIT: case TOP_PANEL: case SYSTEM:
                 return MAIN;
-            case HOME_SCREEN: return GENERAL;
+            case HOME_SCREEN: return TOP_PANEL;
             case MOVIE_SERVICE: return MEDIA;
             case ABOUT: return GENERAL;
             case HOME_CHOICE: return SYSTEM;
             case MENU_BUTTONS: case CATEGORY_EDIT: return TOP_PANEL;
-            case CITY: case LANGUAGE: return GENERAL;
+            case CITY: return WEATHER;
+            case LANGUAGE: return GENERAL;
             case WIDGETS: return TOP_PANEL;
-            case WEATHER: case DATE_TIME: return WIDGETS;
+            case WEATHER: case DATE_TIME: return TOP_PANEL;
             case UPDATES: case RESET: return SYSTEM;
             case HOME_SETTINGS: return group == SYSTEM ? TOP_PANEL : group;
             case PICKER: return picker == PICK_REGION ? GENERAL : picker == PICK_TV ? MEDIA : picker == PICK_CITY ? CITY
@@ -50,8 +52,10 @@ public final class SettingsScreen {
     public static boolean hasChevron(int screen, int row, boolean automaticRegion) {
         switch (screen) {
             case MEDIA: return row != 1;
-            case GENERAL: return row == 0 || row == 2 || row == 3 || row == 4 || row == 7;
-            case LANGUAGE: case SCREENSAVER: case ACCESSIBILITY: case WEATHER: case DATE_TIME:
+            case GENERAL: return row == 0 || row == 2 || row == 3;
+            case TOP_PANEL: return row != 2;
+            case WEATHER: return row == 1;
+            case LANGUAGE: case SCREENSAVER: case ACCESSIBILITY: case DATE_TIME:
             case HOME_SCREEN: case MOVIE_SERVICE: case APPS_DOWNLOADS: case RESET: case UPDATES: case ABOUT: return false;
             case SYSTEM: return row != 3;
             case CITY: return row == 1 && !automaticRegion;

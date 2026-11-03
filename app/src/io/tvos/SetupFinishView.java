@@ -54,6 +54,7 @@ final class SetupFinishView extends View {
  void application(String value){choices[0]=value;describe();invalidate();}
  private void describe(){setContentDescription(title+". "+description+", "+choices[selected]);}
  private void confirm(){if(kind==Kind.WEATHER){if(selected==0)first.run();else second.run();return;}if(completed||(leaving&&selected==0))return;if(selected==0){if(!television)leaving=true;first.run();}else{completed=true;leaving=true;second.run();}}
+    void retryHome() { if(kind==Kind.HOME&&!completed)leaving=false; }
     private long exitStart = -1;
     private Runnable afterExit;
     void leave(Runnable action) {

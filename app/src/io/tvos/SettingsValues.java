@@ -82,10 +82,7 @@ final class SettingsValues {
             v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
             v[2] = settings()[0];
             v[3] = io.tvos.setup.SetupCountries.name(Prefs.recommendationRegion(), AppLanguage.current().locale);
-            v[4] = Prefs.city();
-            v[5] = settings()[1];
-            v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
-            v[7] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
+            v[4] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
 
         } else if (screen == LANGUAGE) {
             v["ru".equals(Prefs.language()) ? 0 : 1] = AppStrings.get(R.string.settings_service_selected);
@@ -110,12 +107,17 @@ final class SettingsValues {
             v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
             v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
+        } else if (screen == TOP_PANEL) {
+            v[2] = onOff(localPrefs().getBoolean("show_date", true));
+            v[4] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
         } else if (screen == WIDGETS) {
             // Date is a submenu; its switch is shown inside DATE_TIME.
         } else if (screen == DATE_TIME) {
             v[0] = onOff(localPrefs().getBoolean("show_date", true));
         } else if (screen == WEATHER) {
-            v[0] = onOff(weatherVisible.test(true)); v[1] = onOff(weatherVisible.test(false));
+            boolean top = weatherVisible.test(true), bottom = weatherVisible.test(false);
+            v[0] = AppStrings.get(top && bottom ? R.string.settings_weather_both : bottom ? R.string.settings_weather_bottom : R.string.settings_weather_home);
+            v[1] = Prefs.city(); v[2] = settings()[1];
         } else if (screen == ABOUT) {
             v[0] = android.os.Build.MODEL == null || android.os.Build.MODEL.trim().isEmpty()
                     ? AppStrings.get(R.string.settings_unknown) : android.os.Build.MODEL.trim();

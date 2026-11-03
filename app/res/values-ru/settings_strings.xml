@@ -3,15 +3,15 @@
     <string name="settings_weather" formatted="false">Погода</string>
     <string name="settings_date" formatted="false">Дата</string>
     <string name="settings_reset" formatted="false">Сброс</string>
-    <string name="settings_menu_bar" formatted="false">Верхняя панель</string>
+    <string name="settings_menu_bar" formatted="false">Пункт управления и экран «Домой»</string>
     <string name="settings_accessibility" formatted="false">Универсальный доступ</string>
     <string name="settings_apps" formatted="false">Приложения</string>
-    <string name="settings_buttons" formatted="false">Кнопки</string>
+    <string name="settings_buttons" formatted="false">Пункт управления</string>
     <string name="settings_software_updates" formatted="false">Обновления ПО</string>
     <string name="settings_screen_saver" formatted="false">Заставка</string>
     <string name="settings_default_launcher" formatted="false">Домашний экран</string>
     <string name="settings_remotes_and_devices" formatted="false">Пульты и устройства</string>
-    <string name="settings_categories" formatted="false">Категории</string>
+    <string name="settings_categories" formatted="false">Разделы рекомендаций</string>
     <string name="settings_about" formatted="false">Об этом устройстве</string>
     <string name="settings_appearance" formatted="false">Оформление</string>
     <string name="settings_language" formatted="false">Язык</string>

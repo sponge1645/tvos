@@ -464,7 +464,7 @@ public class SettingsActivity extends Activity {
         private void cycleDreamSource(int direction) { preferenceEditor.cycleDreamSource(direction); }
         // Two independent switches. Old four-state preference is read as a migration fallback.
         private boolean weatherVisible(boolean top) { return preferenceEditor.weatherVisible(top); }
-        private void toggleWeather(boolean top) { preferenceEditor.toggleWeather(top); }
+        private void toggleWeather(boolean top) { preferenceEditor.cycleWeather(1); }
         private boolean vpnTopEnabled() { return Prefs.topButtonEnabled(2); }
         private void toggleAutomaticRegion() { citySearch.cancel(); Prefs.setAutomaticRegion(!Prefs.automaticRegion()); AutoRegion.enter(getContext()); invalidate(); }
         private void setApprovedRowRect(int i) { SettingsListRenderer.approvedBounds(rowRect, i, k); }
@@ -555,7 +555,10 @@ public class SettingsActivity extends Activity {
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
         private void drawTileDescription(Canvas c) {
-            String info = screen == UPDATES ? updateDetailsText()
+            String info = screen == WEATHER && focus == 0 ? AppStrings.get(
+                    preferenceEditor.weatherVisible(true) && preferenceEditor.weatherVisible(false) ? R.string.settings_weather_both_help
+                    : preferenceEditor.weatherVisible(false) ? R.string.settings_weather_bottom_help : R.string.settings_weather_home_help)
+                    : screen == UPDATES ? updateDetailsText()
                     : SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size());
             if (screen == UPDATES && updateProgress.active()) {
                 updateProgress.draw(c, k, lightSettings());
@@ -738,7 +741,8 @@ public class SettingsActivity extends Activity {
             switch (SettingsActions.adjustment(screen, focus)) {
                 case HOME: adjust(dir); return;
                 case VOLUME_HOLD: toggleVolumeHold(); return;
-                case WEATHER: toggleWeather(focus == 0); return;
+                case WEATHER: preferenceEditor.cycleWeather(dir); return;
+                case TEMPERATURE: preferenceEditor.temperature(dir); return;
                 case DATE: toggleDateTime(); return;
                 case DREAM_SOURCE: cycleDreamSource(dir); return;
                 case DREAM_CLOCK: setLocalFlag("aerial_show_clock", !localPrefs().getBoolean("aerial_show_clock", false)); return;
@@ -971,7 +975,7 @@ public class SettingsActivity extends Activity {
                     return;
                 case SELECT_HOME_SCREEN:
                     Prefs.setHomeContinue(focus == 1);
-                    screen = GENERAL; focus = 7;
+                    screen = TOP_PANEL; focus = 4;
                     break;
                 case SELECT_MOVIE_SERVICE:
                     localPrefs().edit().putString(MovieService.KEY, MovieService.id(focus)).apply();

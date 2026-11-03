@@ -23,7 +23,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,CITY,SCREENSAVER,ABOUT,LANGUAGE};
-  int[] rows={10,3,5,2,8,2,2,1,2,4,2,3,7,3,2,5,8,2};
+  int[] rows={10,3,5,2,5,2,3,1,2,4,2,5,7,3,2,5,8,2};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -34,8 +34,8 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
-   for(int page:new int[]{HOME_SCREEN,SCREENSAVER,WEATHER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
-   h.screen=GENERAL;for(int row=0;row<8;row++)check(h.menuChevronVisible(row)==(row==0||row==2||row==3||row==4||row==7),"only General destinations have chevrons");
+   for(int page:new int[]{HOME_SCREEN,SCREENSAVER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
+   h.screen=GENERAL;for(int row=0;row<5;row++)check(h.menuChevronVisible(row)==(row==0||row==2||row==3),"only General destinations have chevrons");
    h.screen=CITY;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    Prefs.automatic=true;check(!h.menuChevronVisible(1),"automatic region hides manual picker arrow");Prefs.automatic=false;
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");
@@ -54,7 +54,7 @@ public class ContentHarness {
    h.screen=PICKER;h.pickFor=PICK_CITY;check(h.screenTitle().equals(russian?"Город":"City"),"city picker title");
    h.pickFor=PICK_VPN;check(h.screenTitle().equals(russian?"VPN-служба":"VPN"),"VPN picker title");
    h.pickFor=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
-   check(SettingsContent.description(GENERAL,4,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(PICKER,0,PICK_CITY,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"same weather region explanation");
+   check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"рекомендац":"recommend"),"country help describes recommendations");
    check(SettingsContent.description(GENERAL,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");
    check(SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"Регион":"Region"),"screensaver weather guidance");
    check(SettingsContent.description(UPDATES,0,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"dynamic update data stays with view");
@@ -64,7 +64,7 @@ public class ContentHarness {
     if(count>0)check(!SettingsContent.description(MENU_BUTTONS,0,0,0,count,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("VPN"),"ordinary button retains reorder guidance");
    }
    h.screen=HOME_SETTINGS;h.settingsGroup=WIDGETS;check(h.screenTitle().equals(russian?"Основные":"General"),"widget subgroup title");
-   h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Категории":"Categories"),"category subgroup title");
+   h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Разделы рекомендаций":"Recommendation Sections"),"category subgroup title");
    check(!SettingsContent.description(HOME_SETTINGS,0,0,SYSTEM,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(HOME_SETTINGS,0,0,GENERAL,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"subgroup-specific guidance");
    check(SettingsContent.description(MAIN,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");
    check(SettingsContent.description(MAIN,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("Dock"),"Dock description");

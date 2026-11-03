@@ -57,7 +57,7 @@ public class StatusHarness {
   m.networks.remove(vpn);m.callbacks.get(0).onLost(vpn);Handler.drain();
   check(!s.vpn()&&s.state()==1&&changes[0]==4,"disconnect updates icon while internet stays Wi-Fi");
   m.networks.add(vpn);m.callbacks.get(0).onAvailable(vpn);Handler.drain();
-  check(s.vpn()&&s.state()==1&&changes[0]==5,"connect updates icon without changing physical state");io.tvos.network.WifiSignal.value=1;m.callbacks.get(0).onCapabilitiesChanged(wifi,m.caps.get(wifi));Handler.drain();check(s.wifiLevel()==1&&changes[0]==6,"signal bucket alone redraws icon");m.callbacks.get(0).onAvailable(wifi);Handler.drain();check(changes[0]==6,"unchanged signal does not redraw");s.stop();check(io.tvos.network.WifiSignal.starts==2&&io.tvos.network.WifiSignal.stops==2,"RSSI listener follows visible lifecycle");
+  check(s.vpn()&&s.state()==1&&changes[0]==5,"connect updates icon without changing physical state");io.tvos.network.WifiSignal.value=1;m.callbacks.get(0).onCapabilitiesChanged(wifi,m.caps.get(wifi));Handler.drain();check(s.wifiLevel()==1&&changes[0]==6,"signal bucket alone redraws icon");m.callbacks.get(0).onAvailable(wifi);Handler.drain();check(changes[0]==6,"unchanged signal does not redraw");m.networks.remove(vpn);s.checkSoon();Handler.drain();check(!s.vpn(),"toggle convergence updates icon even without network callbacks");for(int i=0;i<25;i++)Handler.drain();check(Handler.pending.isEmpty(),"convergence polling stops after bounded checks");s.stop();check(io.tvos.network.WifiSignal.starts==2&&io.tvos.network.WifiSignal.stops==2,"RSSI listener follows visible lifecycle");
   System.out.println("PASS: three menu states, validation, dual transport, VPN, IPv6-only LAN, callback coalescing, pause/resume cleanup");
  }
 }'''
