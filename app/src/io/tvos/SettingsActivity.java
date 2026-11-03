@@ -201,7 +201,9 @@ public class SettingsActivity extends Activity {
             appLoader = new SettingsAppLoader(a.getApplicationContext(), handler, () -> running);
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this, updateProgress, this::drawSettingsContent);
-            valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status);
+            valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status,
+                    new SettingsValueLoader<>(handler::post, () -> running, this::invalidate),
+                    new SettingsValueLoader<>(handler::post, () -> running, this::invalidate));
             tvosClick = new Click(a);
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             updateAppearance(System.currentTimeMillis());
@@ -317,6 +319,7 @@ public class SettingsActivity extends Activity {
             running = false;
             remoteInput.reset();
             appLoader.cancel();
+            valueSource.pause();
             updateDialog.pause();
             citySearch.cancel();
             modeMonitor.stop();
@@ -1015,7 +1018,7 @@ public class SettingsActivity extends Activity {
                 case REMOTES:
                     activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class));
                     return;
-                case SHELF_EDITOR: openShelfEditor(); return;
+                case SHELF_EDITOR: openShelfEditor(); break;
                 case DOWNLOAD: AppDownloads.start(activity, focus); return;
                 case MENU_ADJUST: adjustMenu(1); break;
                 case CHECK_UPDATE:
@@ -1028,8 +1031,8 @@ public class SettingsActivity extends Activity {
                 case DATE_TOGGLE: toggleDateTime(); break;
                 case WEATHER_TOGGLE: toggleWeather(focus == 0); break;
                 case PREVIEW: pause(); activity.showPreview(); return;
-                case CATEGORY_EDITOR: openCategoryEditor(); return;
-                case BUTTON_EDITOR: openMenuButtonEditor(); return;
+                case CATEGORY_EDITOR: openCategoryEditor(); break;
+                case BUTTON_EDITOR: openMenuButtonEditor(); break;
                 case HOME_CHOICE: screen = HOME_CHOICE; focus = freeActive() ? 0 : 1; break;
                 case TV_SETTINGS: openTvSettings(); break;
                 case RESET_CONFIRM:

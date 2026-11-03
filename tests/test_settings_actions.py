@@ -55,6 +55,10 @@ public class ActionsTest {
   v=create(SCREENSAVER,4);v.activate();check(ActionView.events.equals(Arrays.asList("pause","preview")),"preview pauses view before opening");
   v=create(GENERAL,1);v.activate();check(!ActionView.events.contains("snap")&&ActionView.events.contains("theme:light"),"value change preserves current focus animation");
   v=create(GENERAL,0);v.activate();check(v.screen==ABOUT&&ActionView.events.contains("snap"),"page change resets focus springs");
+  for(int[] route:new int[][]{{TOP_PANEL,1,MENU_BUTTONS},{TOP_PANEL,0,CATEGORY_EDIT},{MAIN,7,SHELF_EDIT}}){
+   v=create(route[0],route[1]);v.activate();check(v.screen==route[2],"editor opens expected page");
+   check(ActionView.events.contains("snap")&&ActionView.events.contains("invalidate")&&ActionView.events.contains("spoken"),"editor starts transition immediately without waiting for another input or background event");
+  }
   v=create(SYSTEM,2);v.activate();check(v.screen==HOME_CHOICE,"System launcher row opens choice");
   check(SettingsActions.activation(ACCESSIBILITY,2,0,false,6,false)==SettingsActions.Action.TV_SETTINGS,"TV settings remains third accessibility row");
   v=create(RESET,0);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-cache")),"cache clear requires existing confirmation");

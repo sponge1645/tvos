@@ -18,6 +18,8 @@ import java.util.function.Supplier;
 final class SettingsValues {
     private static final int CITY_ROW = 4;
     private final Activity activity;
+    private final SettingsValueLoader<String> labels;
+    private final SettingsValueLoader<String[]> device;
     private String updateInstalledVersion, updateCheckShown;
     private long updateCheckAt = Long.MIN_VALUE;
     private AppLanguage updateCheckLanguage;
@@ -27,8 +29,10 @@ final class SettingsValues {
     private final Supplier<String> cityStatus;
 
     SettingsValues(Activity activity, SettingsOrderEditor buttonEditor, BooleanSupplier freeActive,
-                   Predicate<Boolean> weatherVisible, Supplier<String> cityStatus) {
+                   Predicate<Boolean> weatherVisible, Supplier<String> cityStatus,
+                   SettingsValueLoader<String> labels, SettingsValueLoader<String[]> device) {
         this.activity = activity;
+        this.labels = labels; this.device = device;
         this.buttonEditor = buttonEditor;
         this.freeActive = freeActive;
         this.weatherVisible = weatherVisible;
@@ -38,36 +42,35 @@ final class SettingsValues {
     String vpnApp() {
         String pkg = localPrefs().getString("vpn_app", "");
         if (pkg.isEmpty()) return AppStrings.get(R.string.settings_not_configured);
-        String language = AppLanguage.current().code;
-        if (pkg.equals(vpnPackage) && language.equals(vpnLanguage)) return vpnLabel;
-        try { vpnLabel = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
-        catch (android.content.pm.PackageManager.NameNotFoundException | SecurityException e) { vpnLabel = AppStrings.get(R.string.settings_not_found); }
-        vpnPackage = pkg; vpnLanguage = language;
-        return vpnLabel;
+        String missing = AppStrings.get(R.string.settings_not_found);
+        return labels.get("vpn:" + AppLanguage.current().code + ":" + pkg, "…", () -> {
+            try { return String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
+            catch (android.content.pm.PackageManager.NameNotFoundException | RuntimeException unavailable) { return missing; }
+        });
     }
-
-    private String tvTarget, tvLabel, tvLanguage;
     private String automaticTvLabel() {
-        try {
-            android.content.Intent intent = HomeApps.automaticLiveTv(activity);
-            android.content.pm.ResolveInfo info = intent == null ? null : activity.getPackageManager().resolveActivity(intent, 0);
-            if (info != null && info.activityInfo != null)
-                return String.valueOf(info.activityInfo.applicationInfo.loadLabel(activity.getPackageManager()));
-        } catch (RuntimeException unavailable) { AppLog.w("Automatic TV label unavailable"); }
-        return AppStrings.get(R.string.settings_tv_unselected);
+        String missing = AppStrings.get(R.string.settings_tv_unselected);
+        return labels.get("automatic-tv:" + AppLanguage.current().code, "…", () -> {
+            try {
+                android.content.Intent intent = HomeApps.automaticLiveTv(activity);
+                android.content.pm.ResolveInfo info = intent == null ? null : activity.getPackageManager().resolveActivity(intent, 0);
+                if (info != null && info.activityInfo != null)
+                    return String.valueOf(info.activityInfo.applicationInfo.loadLabel(activity.getPackageManager()));
+            } catch (RuntimeException unavailable) { AppLog.w("Automatic TV label unavailable"); }
+            return missing;
+        });
     }
     private String tvProviderLabel(String target) {
-        String language = AppLanguage.current().code;
-        if (target.equals(tvTarget) && language.equals(tvLanguage)) return tvLabel;
-        String pkg = LiveTvTargets.packageName(target);
-        String label = target;
-        if (!pkg.isEmpty()) try { label = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
-        catch (android.content.pm.PackageManager.NameNotFoundException | RuntimeException unavailable) { /* Keep explicit target. */ }
-        tvTarget = target; tvLanguage = language; tvLabel = label;
-        return label;
+        return labels.get("tv:" + AppLanguage.current().code + ":" + target, "…", () -> {
+            String pkg = LiveTvTargets.packageName(target);
+            if (!pkg.isEmpty()) try {
+                return String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0)));
+            } catch (android.content.pm.PackageManager.NameNotFoundException | RuntimeException unavailable) { /* Keep explicit target. */ }
+            return target;
+        });
     }
-    private String vpnPackage, vpnLanguage, vpnLabel;
-    void clearAppCache() { vpnPackage = vpnLanguage = vpnLabel = tvTarget = tvLabel = tvLanguage = null; }
+    void clearAppCache() { labels.clear(); device.clear(); }
+    void pause() { clearAppCache(); }
 
     private SharedPreferences localPrefs() { return activity.getSharedPreferences("settings", Context.MODE_PRIVATE); }
     private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
@@ -128,45 +131,57 @@ final class SettingsValues {
             v[0] = AppStrings.get(top && bottom ? R.string.settings_weather_both : bottom ? R.string.settings_weather_bottom : R.string.settings_weather_home);
             v[1] = Prefs.city(); v[2] = settings()[1];
         } else if (screen == ABOUT) {
-            v[0] = android.os.Build.MODEL == null || android.os.Build.MODEL.trim().isEmpty()
-                    ? AppStrings.get(R.string.settings_unknown) : android.os.Build.MODEL.trim();
-            v[1] = AppStrings.get(R.string.settings_unavailable);
-            try {
-                String serial = android.os.Build.getSerial();
-                if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
-            } catch (Exception ignored) {}
-            try {
-                v[2] = SoftwareBuild.display(activity.getPackageManager()
-                        .getPackageInfo(activity.getPackageName(), 0).versionName);
-            } catch (Exception e) { v[2] = "—"; }
-            v[3] = "Android " + android.os.Build.VERSION.RELEASE;
-            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
-            activity.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
-            v[4] = dm.widthPixels + " × " + dm.heightPixels;
-            v[5] = AppStrings.get(R.string.settings_network_unavailable);
-            v[6] = "—";
-            v[7] = localPrefs().getString("device_name", "ТВ");
-            LocalNetwork.Info network = LocalNetwork.read(activity);
-            if (network != null) {
-                v[6] = network.address;
-                if (network.ethernet) v[5] = "Ethernet";
-                else {
-                    v[5] = AppStrings.get(R.string.settings_wi_fi_name_unavailable);
-                    try {
-                        android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
-                                activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                        android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
-                        String ssid = wi == null ? null : wi.getSSID();
-                        if (ssid != null && !ssid.isEmpty() && !ssid.contains("unknown ssid"))
-                            v[5] = ssid.replace("\"", "");
-                    } catch (Exception ignored) {}
-                }
-            }
-            // Show device name first, preserving all other values.
-            String deviceName = v[7];
-            System.arraycopy(v, 0, v, 1, 7);
-            v[0] = deviceName;
+            String[] fallback = new String[rowCount]; java.util.Arrays.fill(fallback, "—");
+            v = device.get("about:" + AppLanguage.current().code + ":" + rowCount, fallback, () -> readDevice(rowCount)).clone();
+            v[0] = localPrefs().getString("device_name", "ТВ");
         }
+
+        return v;
+    }
+
+    /** One background snapshot per visit, instead of repeated Binder/network reads during focus animation. */
+    @SuppressWarnings("deprecation") // Keep the Android 9-compatible display and Wi-Fi APIs.
+    private String[] readDevice(int rowCount) {
+        String[] v = new String[rowCount];
+
+        v[0] = android.os.Build.MODEL == null || android.os.Build.MODEL.trim().isEmpty()
+                ? AppStrings.get(R.string.settings_unknown) : android.os.Build.MODEL.trim();
+        v[1] = AppStrings.get(R.string.settings_unavailable);
+        try {
+            String serial = android.os.Build.getSerial();
+            if (serial != null && !serial.isEmpty() && !"unknown".equalsIgnoreCase(serial)) v[1] = serial;
+        } catch (Exception ignored) {}
+        try {
+            v[2] = SoftwareBuild.display(activity.getPackageManager()
+                    .getPackageInfo(activity.getPackageName(), 0).versionName);
+        } catch (Exception e) { v[2] = "—"; }
+        v[3] = "Android " + android.os.Build.VERSION.RELEASE;
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        activity.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+        v[4] = dm.widthPixels + " × " + dm.heightPixels;
+        v[5] = AppStrings.get(R.string.settings_network_unavailable);
+        v[6] = "—";
+        v[7] = localPrefs().getString("device_name", "ТВ");
+        LocalNetwork.Info network = LocalNetwork.read(activity);
+        if (network != null) {
+            v[6] = network.address;
+            if (network.ethernet) v[5] = "Ethernet";
+            else {
+                v[5] = AppStrings.get(R.string.settings_wi_fi_name_unavailable);
+                try {
+                    android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
+                            activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
+                    String ssid = wi == null ? null : wi.getSSID();
+                    if (ssid != null && !ssid.isEmpty() && !ssid.contains("unknown ssid"))
+                        v[5] = ssid.replace("\"", "");
+                } catch (Exception ignored) {}
+            }
+        }
+        // Show device name first, preserving all other values.
+        String deviceName = v[7];
+        System.arraycopy(v, 0, v, 1, 7);
+        v[0] = deviceName;
         return v;
     }
 

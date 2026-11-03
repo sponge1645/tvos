@@ -23,7 +23,7 @@ sources={
 public class ValuesHarness {
  static void check(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
-  Activity a=new Activity();String[] status={""};boolean[] free={false};SettingsValues v=new SettingsValues(a,new SettingsOrderEditor(),()->free[0],top->top,()->status[0]);
+  Activity a=new Activity();String[] status={""};boolean[] free={false};SettingsValues v=new SettingsValues(a,new SettingsOrderEditor(),()->free[0],top->top,()->status[0],new SettingsValueLoader<>(),new SettingsValueLoader<>());
   for(String lang:new String[]{"en","ru"}){
    AppLanguage.select(lang);boolean ru=lang.equals("ru");
    check(v.menu(MEDIA,3)[0].equals(ru?"Спрашивать каждый раз":"Ask Every Time"),"default service initially asks every time");
@@ -65,6 +65,7 @@ public class ValuesHarness {
  }
 }'''
 }
+sources['io/tvos/SettingsValueLoader.java']='package io.tvos;class SettingsValueLoader<T> {T get(String key,T fallback,java.util.function.Supplier<T> read){return read.get();}void clear(){}}'
 sources['io/tvos/LiveTvTargets.java']='package io.tvos;class LiveTvTargets {static String packageName(String key){return key;}}'
 sources['io/tvos/setup/SetupCountries.java']=Path('app/src/io/tvos/setup/SetupCountries.java').read_text()
 for name in ['SettingsValues','SettingsContent']:sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
