@@ -18,6 +18,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import io.tvos.setup.SetupState;
 import io.tvos.setup.SetupCountries;
+import io.tvos.setup.SetupPermissionPlan;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -32,6 +33,7 @@ public class SetupActivity extends Activity {
     private int page, epoch;
     private volatile boolean active;
     private boolean updates;
+    private boolean permissionFlow, pendingAccessibility;
     private LinearLayout body;
     private SetupLanguageView regionPicker;
     private String detectedCountry = "";
@@ -60,12 +62,12 @@ public class SetupActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent); setIntent(intent);
         if (intent.getBooleanExtra("replay", false)) {
-            intent.removeExtra("replay"); page = SetupState.HELLO; SetupGate.restart();
+            intent.removeExtra("replay"); permissionFlow = pendingAccessibility = false; page = SetupState.HELLO; SetupGate.restart();
             setup().edit().putBoolean("complete", false).putBoolean("started", true).putInt("step", page).apply();
             if (active) render();
         }
     }
-    @Override protected void onResume() { super.onResume(); active = true; render(); }
+    @Override protected void onResume() { super.onResume(); active = true; render(); if (pendingAccessibility) main.post(this::continuePermissionFlow); }
     @Override protected void onPause() { active = false; cancelWork(); stopHello(); super.onPause(); }
     @Override protected void onDestroy() { cancelWork(); io.shutdownNow(); super.onDestroy(); }
     private void stopHello() { if (welcome != null) { welcome.stop(); welcome = null; } }
@@ -110,20 +112,18 @@ public class SetupActivity extends Activity {
             else detectCountry();
             return;
         }
+        if (page == SetupState.WIFI) {
+            SetupPermissionsView permissions = new SetupPermissionsView(this, this::allowPermissions, () -> {
+                markPermissionChoice(); skip();
+            });
+            setContentView(permissions); permissions.requestFocus(); return;
+        }
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
         scroll.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF142C45, 0xFF080B14}));
         body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); body.setGravity(Gravity.CENTER);
         body.setPadding(dp(80), dp(20), dp(80), dp(20)); scroll.addView(body); setContentView(scroll);
         label("tvOS", 23);
         switch (page) {
-            case SetupState.WIFI:
-                label(text(R.string.settings_setup_wifi), 34); label(text(R.string.settings_setup_wifi_hint), 21);
-                label(text(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                        ? R.string.settings_setup_permission_granted : R.string.settings_setup_permission_optional), 19);
-                button(text(R.string.settings_setup_allow), () -> {
-                    settings().edit().putBoolean("wifi_ssid_permission_requested", true).apply();
-                    requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 5041);
-                }); break;
             case SetupState.UPDATES:
                 label(text(R.string.settings_setup_updates), 34); label(text(R.string.settings_setup_updates_hint), 21);
                 button((updates ? "✓ " : "") + text(R.string.settings_setup_updates_yes), () -> { updates = true; render(); });
@@ -204,6 +204,7 @@ public class SetupActivity extends Activity {
         skip();
     }
     private void skip() {
+        permissionFlow = pendingAccessibility = false;
         cancelWork(); stopHello();
         if (page == SetupState.HOME) {
             setup().edit().putBoolean("complete", true).putBoolean("started", false).remove("step").apply();
@@ -213,10 +214,58 @@ public class SetupActivity extends Activity {
     }
     @SuppressWarnings("deprecation") // Android 9-compatible TV Back handling.
     @Override public void onBackPressed() {
+        permissionFlow = pendingAccessibility = false;
         if (page > SetupState.HELLO) { page--; setup().edit().putInt("step", page).apply(); render(); }
         else { SetupGate.defer(); finish(); }
     }
+    private void markPermissionChoice() {
+        settings().edit().putBoolean("wifi_ssid_permission_requested", true)
+                .putBoolean("dock_backdrop_permission_requested", true).apply();
+    }
+    private boolean granted(String permission) { return checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED; }
+    private void allowPermissions() {
+        if (permissionFlow) return; permissionFlow = true; markPermissionChoice();
+        boolean tvRuntime = false;
+        try {
+            android.content.pm.PermissionInfo info = getPackageManager().getPermissionInfo("android.permission.READ_TV_LISTINGS", 0);
+            tvRuntime = info.getProtection()
+                    == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS;
+        } catch (PackageManager.NameNotFoundException | RuntimeException unavailable) { /* No TV provider on this device. */ }
+        String[] pending = SetupPermissionPlan.runtime(android.os.Build.VERSION.SDK_INT,
+                granted(Manifest.permission.ACCESS_FINE_LOCATION),
+                tvRuntime, granted("android.permission.READ_TV_LISTINGS"));
+        if (pending.length == 0) { accessibilityPermission(); return; }
+        try { requestPermissions(pending, 5042); }
+        catch (RuntimeException unavailable) { accessibilityPermission(); }
+    }
+    @SuppressWarnings("deprecation") // Platform result API supports Android 9 without AndroidX.
+    private void accessibilityPermission() {
+        if (!active || page != SetupState.WIFI) { permissionFlow = false; return; }
+        android.content.ComponentName wanted = new android.content.ComponentName(this, RemoteKeyService.class);
+        String services = null;
+        try { services = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES); }
+        catch (RuntimeException unavailable) { /* Still offer the system accessibility screen. */ }
+        if (services != null) for (String service : services.split(":")) {
+            if (wanted.equals(android.content.ComponentName.unflattenFromString(service))) { permissionFlow = false; skip(); return; }
+        }
+        try { startActivityForResult(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS), 5043); }
+        catch (RuntimeException unavailable) { permissionFlow = false; skip(); }
+    }
+    @SuppressWarnings("deprecation") // Paired with the Android 9-compatible settings request.
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 5043 && page == SetupState.WIFI) { permissionFlow = false; skip(); }
+    }
+    private void continuePermissionFlow() {
+        if (active && pendingAccessibility && page == SetupState.WIFI && !isFinishing()) {
+            pendingAccessibility = false; accessibilityPermission();
+        }
+    }
     @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
-        super.onRequestPermissionsResult(code, permissions, results); if (code == 5041 && active) render();
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code == 5042 && page == SetupState.WIFI) {
+            // Runtime callbacks may arrive before onResume after the system dialog.
+            pendingAccessibility = true; main.post(this::continuePermissionFlow);
+        }
     }
 }

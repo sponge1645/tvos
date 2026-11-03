@@ -14,7 +14,7 @@ public final class SettingsListViewport {
     }
 
     private final Paint mask = new Paint();
-    private float left, top;
+    private float left, top, scale = -1;
     private int width, height;
 
     public SettingsListViewport() {
@@ -22,10 +22,17 @@ public final class SettingsListViewport {
     }
 
     public void resize(int width, int height, float scale) {
+        resize(960 * scale, 148 * scale, width, height, scale);
+    }
+
+    /** Same edge fade for setup's left-hand column. Coordinates are caller-owned. */
+    public void resize(float left, float top, int width, int height, float scale) {
+        if (this.width == width && this.height == height && this.left == left && this.top == top && this.scale == scale) return;
+        this.scale = scale;
         this.width = width;
         this.height = height;
-        left = 960 * scale;
-        top = 148 * scale;
+        this.left = left;
+        this.top = top;
         float span = Math.max(1f, height - top);
         float topStop = Math.min(0.25f, 38 * scale / span);
         float bottomStop = Math.max(topStop, 1f - 64 * scale / span);

@@ -271,4 +271,16 @@
     <string name="settings_setup_center_hint">Press the center button to continue.</string>
     <string name="settings_setup_language_title">Language</string>
     <string name="settings_setup_more_regions">MORE COUNTRIES AND REGIONS</string>
+    <string name="settings_setup_permissions">Permissions</string>
+    <string name="settings_setup_permissions_hint">You can change access later in Settings.</string>
+    <string name="settings_setup_location">Location</string>
+    <string name="settings_setup_remote_access">Remote buttons</string>
+    <string name="settings_setup_history_access">Watch history</string>
+    <string name="settings_setup_location_line1">Show your Wi-Fi network name.</string>
+    <string name="settings_setup_location_line2">Weather uses your chosen city.</string>
+    <string name="settings_setup_remote_line1">Accessibility lets you remap</string>
+    <string name="settings_setup_remote_line2">buttons across apps.</string>
+    <string name="settings_setup_history_line1">Show Continue Watching</string>
+    <string name="settings_setup_history_line2">on your Home screen.</string>
+    <string name="settings_setup_deny">Do not allow</string>
 </resources>

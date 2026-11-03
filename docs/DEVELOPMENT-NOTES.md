@@ -292,3 +292,6 @@ Welcome hint is 40px at 1080p with proportional scaling. Normalize both handwrit
 
 ### 1B166
 Settings shadows for setup focus capsules, Language/Язык title, 20% tighter row pitch. Add native country picker with localized ISO list, pinned automatic result, preserved navigation on late lookup and manual offline fallback. Remove obsolete wizard city-search UI; retain settings city search and preference compatibility.
+
+### 1B167
+Optional Permissions replaces the old Wi-Fi-only step without changing its stored index. Add coarse/fine request pairing on Android12+, conditional TV-listings requests and separate manual accessibility handoff. Denial continues and avoids duplicate automatic prompts. Titles Bold80, Settings focus/scroll springs and shared edge fading on language/region lists. Native consent/policy regressions added; OEM UI review pending.

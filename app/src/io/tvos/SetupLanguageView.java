@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import io.tvos.setup.SetupCountries;
 import io.tvos.settings.SettingsRowRenderer;
+import io.tvos.settings.SettingsListViewport;
 import java.util.function.Consumer;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
@@ -33,6 +34,14 @@ final class SetupLanguageView extends View {
     private String[] codes, names;
     private String detected = "", status = "";
     private boolean moved;
+    private Spring[] focus;
+    private final Spring scroll = new Spring(.30f, 1f, 0);
+    private final SettingsListViewport viewport = new SettingsListViewport();
+    private final SettingsListViewport.Content rows = this::drawRows;
+    private boolean light;
+    private long frame;
+    private float rowStart;
+    private boolean moving;
     private final String more;
     private final Runnable next;
     private final String title;
@@ -59,6 +68,9 @@ final class SetupLanguageView extends View {
         String current = region ? context.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("setup_country", "") : Prefs.language();
         for (int i = 0; i < codes.length; i++) if (codes[i].equals(current)) selected = i;
         moved = region && SetupCountries.valid(current);
+        focus = new Spring[codes.length];
+        for (int i = 0; i < focus.length; i++) focus[i] = new Spring(.28f, .85f, i == selected ? 1 : 0);
+        frame = SystemClock.uptimeMillis();
         text.setTypeface(Ui.displaySemibold); text.setTextAlign(Paint.Align.CENTER);
         setFocusable(true); setFocusableInTouchMode(true); describe();
         setOnClickListener(v -> confirm());
@@ -73,7 +85,7 @@ final class SetupLanguageView extends View {
         super.onDraw(canvas);
         float k = Math.min(getWidth() / 1920f, getHeight() / 1080f);
         float ox = (getWidth() - 1920 * k) / 2, oy = (getHeight() - 1080 * k) / 2;
-        boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
+        light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
         background.draw(canvas, getWidth(), getHeight(), light);
         float alpha = reduced ? 1 : Math.min(1, Math.max(0, (SystemClock.uptimeMillis() - start) / 260f));
         int saved = canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha));
@@ -81,7 +93,14 @@ final class SetupLanguageView extends View {
         matrix.setScale(1920, -1080); matrix.postTranslate(0, 1080); dark.setLocalMatrix(matrix);
         ink.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); ink.setShader(light ? null : dark);
         text.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); text.setShader(light ? null : dark);
-        text.setTextSize(64); canvas.drawText(title, 600, 225, text);
+        text.setTypeface(Ui.displayBold); text.setTextSize(80); canvas.drawText(title, 600, 225, text);
+        text.setTypeface(Ui.displaySemibold);
+        long now = SystemClock.uptimeMillis();
+        float dt = Math.min(.05f, Math.max(0, (now - frame) / 1000f)); frame = now; moving = false;
+        for (int i = 0; i < focus.length; i++) {
+            focus[i].target = i == selected ? 1 : 0;
+            if (reduced) focus[i].snap(focus[i].target); else moving |= focus[i].step(dt);
+        }
         if (region) {
             if (!detected.isEmpty()) drawRow(canvas, 0, 335, light);
             text.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); text.setShader(light ? null : dark);
@@ -92,23 +111,32 @@ final class SetupLanguageView extends View {
             text.setTextSize(40); float width = text.measureText(more);
             if (width > 800) text.setTextSize(40 * 800 / width);
             canvas.drawText(more, 600, suggestion ? 425 : 330, text);
-            int offset = detected.isEmpty() ? 0 : 1;
-            int first = Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3));
-            for (int i = first; i < Math.min(codes.length, first + 6); i++) drawRow(canvas, i,
-                    (suggestion ? 500 : 405) + (i - first) * 80, light);
-        } else for (int i = 0; i < codes.length; i++) drawRow(canvas, i, 420 + i * 80, light);
+            rowStart = suggestion ? 500 : 405;
+        } else rowStart = 420;
+        int offset = region && !detected.isEmpty() ? 1 : 0;
+        scroll.target = region ? Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3)) : 0;
+        if (reduced) scroll.snap(scroll.target); else moving |= scroll.step(dt);
+        viewport.resize(190, region ? rowStart - 55 : 280, 1020, 1040, 1);
+        viewport.draw(canvas, rows);
         // Keep the screen-space tile gradient unchanged through the remote's own transform.
         matrix.setScale(1920 * 660 / 650f, -1080 * 660 / 650f);
         matrix.postTranslate(-1370 * 660 / 650f, (1080 - 215) * 660 / 650f); dark.setLocalMatrix(matrix);
         remote.draw(canvas, 1370, 215, 650, ink);
         canvas.restoreToCount(saved);
-        if (alpha < 1 && hasWindowFocus()) postInvalidateOnAnimation();
+        if ((alpha < 1 || moving) && hasWindowFocus()) postInvalidateOnAnimation();
+    }
+    private void drawRows(Canvas canvas) {
+        int offset = region && !detected.isEmpty() ? 1 : 0;
+        int first = region ? Math.max(offset, (int) Math.floor(scroll.value) - 1) : 0;
+        int end = region ? Math.min(codes.length, first + 9) : codes.length;
+        for (int i = first; i < end; i++) drawRow(canvas, i, rowStart + (i - scroll.value) * 80, light);
     }
     private void drawRow(Canvas canvas, int index, float cy, boolean light) {
-        if (index == selected) {
-            row.set(206.66667f, cy - 30, 924, cy + 30);
-            focusRow.draw(canvas, row, 1, light, 1);
-            text.setShader(null); text.setColor(0xFF1C1C1E);
+        float amount = Math.max(0, Math.min(1, focus[index].value));
+        if (amount > .001f) {
+            row.set(208.44444f, cy - 30, 924, cy + 30);
+            focusRow.draw(canvas, row, 1, light, amount);
+            text.setShader(null); text.setColor(io.tvos.settings.SettingsListRenderer.blend(light ? 0xFF8897AC : 0xFF55646B, 0xFF1C1C1E, amount));
         } else { text.setColor(light ? 0xFF8897AC : 0xFFFFFFFF); text.setShader(light ? null : dark); }
         text.setTextSize(40); float width = text.measureText(names[index]);
         if (width > 600) text.setTextSize(40 * 600 / width);
@@ -124,6 +152,7 @@ final class SetupLanguageView extends View {
         System.arraycopy(codes, 0, codes, 1, at); System.arraycopy(names, 0, names, 1, at);
         codes[0] = code; names[0] = country; detected = code;
         selected = 0; if (moved) for (int i = 0; i < codes.length; i++) if (codes[i].equals(old)) selected = i;
+        for (int i = 0; i < focus.length; i++) focus[i].snap(i == selected ? 1 : 0);
         describe(); invalidate();
     }
     @Override public void onWindowFocusChanged(boolean focused) {

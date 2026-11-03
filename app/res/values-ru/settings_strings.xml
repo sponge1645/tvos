@@ -276,4 +276,16 @@
     <string name="settings_setup_center_hint">Чтобы продолжить, нажмите центральную кнопку.</string>
     <string name="settings_setup_language_title">Язык</string>
     <string name="settings_setup_more_regions">ДРУГИЕ СТРАНЫ И РЕГИОНЫ</string>
+    <string name="settings_setup_permissions">Разрешения</string>
+    <string name="settings_setup_permissions_hint">Доступ можно изменить позже в настройках.</string>
+    <string name="settings_setup_location">Геолокация</string>
+    <string name="settings_setup_remote_access">Кнопки пульта</string>
+    <string name="settings_setup_history_access">История просмотра</string>
+    <string name="settings_setup_location_line1">Для имени сети Wi-Fi.</string>
+    <string name="settings_setup_location_line2">Погода — по выбранному городу.</string>
+    <string name="settings_setup_remote_line1">Специальные возможности —</string>
+    <string name="settings_setup_remote_line2">для переназначения кнопок.</string>
+    <string name="settings_setup_history_line1">Продолжение просмотра</string>
+    <string name="settings_setup_history_line2">на экране «Домой».</string>
+    <string name="settings_setup_deny">Не разрешать</string>
 </resources>

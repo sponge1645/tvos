@@ -440,3 +440,6 @@ See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.
 
 ### 1B165 setup language
 `SetupLanguageView` draws the language picker; `setup/SetupRemoteRenderer` caches the compound remote path and transparent button holes. Welcome normalizes bilingual ink height/weight and performs exit fade before the Activity replaces its view.
+
+### 1B167 permissions
+`SetupPermissionsView` draws optional access cards and animated choices. `setup/SetupPermissionPlan` computes runtime grants without platform/UI dependencies. `SetupActivity` owns the Android permission/accessibility handoff. Language/Region reuse SettingsListViewport and Spring directly. Stable wizard indices are preserved.

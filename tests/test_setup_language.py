@@ -3,6 +3,9 @@ from pathlib import Path
 import runpy,tempfile,subprocess
 stubs=dict(runpy.run_path('tests/test_setup_welcome.py')['stubs'])
 stubs.pop('io/tvos/WelcomeTest.java')
+stubs['io/tvos/settings/SettingsListViewport.java']='package io.tvos.settings;import android.graphics.Canvas;public class SettingsListViewport {public interface Content{void draw(Canvas c);}public void resize(float l,float t,int w,int h,float k){}public void draw(Canvas c,Content content){content.draw(c);}}'
+stubs['io/tvos/settings/SettingsListRenderer.java']='package io.tvos.settings;public class SettingsListRenderer {public static int blend(int a,int b,float f){return f>.5f?b:a;}}'
+stubs['io/tvos/Ui.java']=stubs['io/tvos/Ui.java'].replace('static Object displaySemibold=new Object();','static Object displaySemibold=new Object(),displayBold=new Object();')
 stubs['io/tvos/Shadows.java']='package io.tvos;import android.graphics.*;class Shadows {void clear(){}void draw(Canvas c,RectF r,float radius,float blur,Paint p){}}'
 stubs['io/tvos/settings/SettingsRowRenderer.java']='package io.tvos.settings;import android.graphics.*;public class SettingsRowRenderer {public interface Shadow {void draw(Canvas c,RectF r,float a,float b,Paint p);}public SettingsRowRenderer(Shadow s){}public float draw(Canvas c,RectF r,float k,boolean l,float f){c.drawRoundRect(r,39,39,new Paint(1));return f;}}'
 stubs['android/content/Context.java']=stubs['android/content/Context.java'].replace('public boolean getBoolean(String k,boolean d)', 'public String getString(String k,String d){return d;}public boolean getBoolean(String k,boolean d)')
@@ -21,7 +24,7 @@ with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp)
  for name,code in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(code)
- for f in ['SetupLanguageView.java','setup/SetupRemoteRenderer.java','setup/SetupCountries.java']:
+ for f in ['SetupLanguageView.java','setup/SetupRemoteRenderer.java','setup/SetupCountries.java','Spring.java']:
   p=root/'io/tvos'/f;p.parent.mkdir(parents=True,exist_ok=True);p.write_text((Path('app/src/io/tvos')/f).read_text())
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.LanguageTest'],check=True,timeout=15)
