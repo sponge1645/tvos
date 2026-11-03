@@ -14,16 +14,16 @@ final class HomeUpdatePrompt {
     private final BooleanSupplier canShow;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final SelfUpdate updater;
-    private boolean active, installRequested, background;
+    private boolean active, installRequested, background, pollPosted;
     private AlertDialog dialog;
     private int dialogKind = -1;
     private long dialogVersion = -1;
     private final SelfUpdate.Listener listener = this::changed;
     private final Runnable poll = new Runnable() {
         @Override public void run() {
+            pollPosted = false;
             if (!active) return;
             updater.maybeAutomatic(false); changed();
-            if (prefs().getBoolean("auto_update", false)) handler.postDelayed(this, 60 * 60_000L);
         }
     };
     HomeUpdatePrompt(Activity activity, BooleanSupplier canShow) {
@@ -35,7 +35,7 @@ final class HomeUpdatePrompt {
         active = true; background = false; updater.addListener(listener); poll.run();
     }
     void pause() {
-        active = false; installRequested = false; updater.removeListener(listener); handler.removeCallbacks(poll); dismiss();
+        active = false; pollPosted = false; installRequested = false; updater.removeListener(listener); handler.removeCallbacks(poll); dismiss();
     }
     private void dismiss() {
         if (dialog != null) { dialog.setOnCancelListener(null); dialog.dismiss(); dialog = null; }
@@ -51,7 +51,11 @@ final class HomeUpdatePrompt {
         return prefs().getLong("update_offer_later_code", -1) == code && until > now && until - now <= 24 * 60 * 60_000L;
     }
     void changed() {
-        if (!active || activity.isFinishing() || activity.isDestroyed() || dialog == null && !canShow.getAsBoolean()) return;
+        if (!active) return;
+        boolean automatic = prefs().getBoolean("auto_update", false);
+        if (automatic && !pollPosted) { pollPosted = true; handler.postDelayed(poll, 60 * 60_000L); }
+        else if (!automatic && pollPosted) { handler.removeCallbacks(poll); pollPosted = false; }
+        if ( activity.isFinishing() || activity.isDestroyed() || dialog == null && !canShow.getAsBoolean()) return;
         SelfUpdate.Status status = updater.status();
         if (status.release == null) return;
         long code = status.release.versionCode;
