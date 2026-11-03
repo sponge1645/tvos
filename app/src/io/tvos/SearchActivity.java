@@ -58,7 +58,7 @@ public final class SearchActivity extends Activity {
     private RemoteShortcuts shortcuts;
     private SharedPreferences history;
     private Future<?> detailWork;
-    private boolean running, closed, focusAfterSearch;
+    private boolean running, closed, focusAfterSearch, initialInput = true;
     private int detailGeneration;
     private float scale;
     private String problem = "";
@@ -81,23 +81,22 @@ public final class SearchActivity extends Activity {
         GradientDrawable out = new GradientDrawable(); out.setColor(color); out.setCornerRadius(px(radius)); return out;
     }
     private void focusable(View view, boolean grow) {
-        view.setFocusable(true); view.setClickable(true);
+        view.setFocusable(true); view.setClickable(true); view.setDefaultFocusHighlightEnabled(false);
         view.setOnFocusChangeListener((v, focused) -> {
             v.animate().cancel(); v.animate().scaleX(focused && grow ? 1.07f : 1).scaleY(focused && grow ? 1.07f : 1).setDuration(180).start();
             if (v instanceof TextView) {
-                v.setBackground(rounded(focused ? 0xFFF5F5F7 : 0x403D434B, 40));
+                v.setBackground(rounded(focused ? 0xFFF5F5F7 : 0x283D434B, 40));
                 ((TextView) v).setTextColor(focused ? 0xFF17191E : 0xFFF4F4F6);
-            } else {
-                GradientDrawable rim = rounded(0xFF242A32, 20);
-                if (focused) rim.setStroke(px(3), 0xFFF4F4F6);
-                v.setBackground(rim); v.setElevation(focused ? px(14) : 0);
+            } else if (v instanceof Art) {
+                ((Art) v).focused = focused;
+                v.setElevation(focused ? px(14) : 0); v.invalidate();
             }
             windowImages();
         });
     }
     private TextView button(String value, Runnable action) {
         TextView out = label(value, 30); out.setGravity(Gravity.CENTER_VERTICAL);
-        out.setPadding(px(26), 0, px(26), 0); out.setBackground(rounded(0x403D434B, 40));
+        out.setPadding(px(26), 0, px(26), 0); out.setBackground(rounded(0x283D434B, 40));
         out.setMaxLines(1); out.setEllipsize(TextUtils.TruncateAt.END);
         focusable(out, true); out.setOnClickListener(v -> action.run()); return out;
     }
@@ -106,7 +105,7 @@ public final class SearchActivity extends Activity {
         scale = getResources().getDisplayMetrics().widthPixels / 1920f;
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         root = new FrameLayout(this); root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF17232C, 0xFF101419, 0xFF191519})); setContentView(root);
+                new int[]{0xFF383236, 0xFF24262E, 0xFF22272C})); setContentView(root);
         images = new PosterCache(this, () -> main.post(() -> {
             if (!closed) for (Art art : artwork) art.invalidate();
         }), artworkIo, AppLog::w);
@@ -120,27 +119,31 @@ public final class SearchActivity extends Activity {
             public void toast(String value) { Toast.makeText(SearchActivity.this, value, Toast.LENGTH_SHORT).show(); }
         });
         shortcuts = new RemoteShortcuts(this, true, null);
-        screen = column(); screen.setPadding(px(60), px(65), px(60), px(35));
+        screen = column(); screen.setPadding(px(60), px(50), px(60), px(24));
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
         android.widget.ImageButton voice = new android.widget.ImageButton(this);
+        voice.setDefaultFocusHighlightEnabled(false);
         voice.setImageResource(android.R.drawable.ic_btn_speak_now); voice.setImageTintList(android.content.res.ColorStateList.valueOf(0xFFFFFFFF));
-        voice.setContentDescription(text(R.string.search_voice)); voice.setBackground(rounded(0x403D434B, 40)); voice.setFocusable(true);
+        voice.setContentDescription(text(R.string.search_voice)); voice.setBackground(rounded(0x283D434B, 40)); voice.setFocusable(true);
         voice.setOnClickListener(v -> voice()); voice.setOnFocusChangeListener((v, focused) -> {
-            voice.setBackground(rounded(focused ? 0xFFF5F5F7 : 0x403D434B, 40));
+            voice.setBackground(rounded(focused ? 0xFFF5F5F7 : 0x283D434B, 40));
             voice.setImageTintList(android.content.res.ColorStateList.valueOf(focused ? 0xFF17191E : 0xFFFFFFFF));
             voice.animate().scaleX(focused ? 1.07f : 1).scaleY(focused ? 1.07f : 1).setDuration(180).start();
         });
         header.addView(voice, new LinearLayout.LayoutParams(px(76), px(76)));
-        query = new EditText(this); query.setSingleLine(true); query.setTypeface(Ui.displaySemibold);
-        query.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(46)); query.setTextColor(0xFFFFFFFF); query.setHintTextColor(0xFF8D939B);
+        query = new EditText(this); query.setDefaultFocusHighlightEnabled(false); query.setSingleLine(true); query.setTypeface(Ui.displaySemibold);
+        query.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(52)); query.setTextColor(0xFFFFFFFF); query.setHintTextColor(0xFF8D939B);
         query.setHint(text(R.string.search_hint)); query.setBackgroundColor(0x00000000);
         query.setPadding(px(32), 0, px(20), 0); query.setSelectAllOnFocus(false);
         query.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
         query.setInputType(android.text.InputType.TYPE_CLASS_TEXT); query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         header.addView(query, new LinearLayout.LayoutParams(0, px(84), 1)); screen.addView(header);
+        View divider = new View(this); divider.setBackgroundColor(0x26FFFFFF);
+        LinearLayout.LayoutParams line = new LinearLayout.LayoutParams(-1, px(1)); line.topMargin = px(26);
+        screen.addView(divider, line);
         ScrollView scroll = new ScrollView(this); scroll.setClipChildren(false); scroll.setFillViewport(true); scroll.setVerticalScrollBarEnabled(false);
-        results = column(); results.setPadding(0, px(40), 0, px(25)); scroll.addView(results);
+        results = column(); results.setPadding(0, px(12), 0, px(20)); scroll.addView(results);
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         query.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -153,7 +156,7 @@ public final class SearchActivity extends Activity {
         query.setOnEditorActionListener((v, action, event) -> { focusAfterSearch = true; search.flush(); remember(); hideKeyboard(); focusResult(); return true; });
         root.getViewTreeObserver().addOnScrollChangedListener(this::windowImages);
         if (saved != null) query.setText(saved.getString("query", ""));
-        render(); voice.requestFocus();
+        render(); query.requestFocus();
         loadSuggestions();
     }
     private void keyboard() {
@@ -191,8 +194,18 @@ public final class SearchActivity extends Activity {
         String value = query.getText().toString().trim();
         if (value.isEmpty()) {
             List<String> recent = recent();
-            if (!recent.isEmpty()) { heading(R.string.search_recent); LinearLayout row = row(116); for (String item : recent) chip(row, item, () -> setQuery(item)); }
-            if (!trending.isEmpty()) { heading(R.string.search_trending); LinearLayout row = row(116); for (Recs.Pick pick : trending) chip(row, pick.title, () -> setQuery(pick.title)); }
+            if (!recent.isEmpty()) {
+                LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
+                TextView title = label(text(R.string.search_recent), 30); title.setTextColor(0xFFB4B8BF);
+                header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+                TextView clear = button(text(R.string.search_clear), () -> {
+                    history.edit().remove("recent").apply(); render(); query.requestFocus();
+                });
+                header.addView(clear, new LinearLayout.LayoutParams(-2, px(58)));
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.topMargin = px(16); results.addView(header, params);
+                LinearLayout row = row(100); for (String item : recent) chip(row, item, () -> setQuery(item));
+            }
+            if (!trending.isEmpty()) { heading(R.string.search_trending); posters(trending); }
         } else {
             List<LocalApp> found = new ArrayList<>();
             String lower = value.toLowerCase(Ui.locale());
@@ -203,19 +216,25 @@ public final class SearchActivity extends Activity {
             if (matches.isEmpty()) {
                 TextView hint = label(!problem.isEmpty() ? problem : text(value.codePointCount(0, value.length()) < 3 ? R.string.search_minimum : R.string.search_loading), 28);
                 hint.setTextColor(0xFF959BA5); results.addView(hint);
-            } else {
-                LinearLayout row = row(455);
-                for (Recs.Pick pick : matches) {
-                    LinearLayout card = column(); card.setPadding(px(4), px(4), px(4), px(6)); card.setBackground(rounded(0xFF242A32, 20));
-                    Art art = new Art(pick.poster, 16); card.addView(art, new LinearLayout.LayoutParams(-1, px(342)));
-                    TextView title = label(pick.title, 26); title.setGravity(Gravity.CENTER); title.setMaxLines(1); title.setEllipsize(TextUtils.TruncateAt.END);
-                    LinearLayout.LayoutParams caption = new LinearLayout.LayoutParams(-1, px(52)); caption.topMargin = px(10); card.addView(title, caption);
-                    LinearLayout.LayoutParams box = new LinearLayout.LayoutParams(px(236), -2); box.rightMargin = px(34); row.addView(card, box);
-                    card.setContentDescription(pick.title); focusable(card, true); card.setOnClickListener(v -> showDetail(pick, card));
-                }
-            }
+            } else posters(matches);
         }
         results.post(this::windowImages);
+    }
+    /** Only the poster is a focus target; captions have no extra frame or focus padding. */
+    private void posters(List<Recs.Pick> picks) {
+        android.widget.GridLayout grid = new android.widget.GridLayout(this);
+        grid.setColumnCount(6); grid.setClipChildren(false); grid.setClipToPadding(false); grid.setPadding(px(14), px(16), px(14), px(16));
+        for (Recs.Pick pick : picks) {
+            LinearLayout card = column();
+            Art art = new Art(pick.poster, 20); card.addView(art, new LinearLayout.LayoutParams(-1, px(402)));
+            TextView title = label(pick.title, 27); title.setGravity(Gravity.CENTER); title.setMaxLines(1); title.setEllipsize(TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams caption = new LinearLayout.LayoutParams(-1, px(44)); caption.topMargin = px(10); card.addView(title, caption);
+            android.widget.GridLayout.LayoutParams box = new android.widget.GridLayout.LayoutParams();
+            box.width = px(268); box.height = -2; box.rightMargin = grid.getChildCount() % 6 == 5 ? 0 : px(32); box.bottomMargin = px(28);
+            grid.addView(card, box); art.setContentDescription(pick.title); focusable(art, true);
+            art.setOnClickListener(v -> showDetail(pick, art));
+        }
+        results.addView(grid, new LinearLayout.LayoutParams(-1, -2));
     }
     private void loadSuggestions() {
         metadataIo.execute(() -> {
@@ -304,6 +323,8 @@ public final class SearchActivity extends Activity {
     }
     private final class Art extends View {
         String path;
+        boolean focused;
+        private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final RectF bounds = new RectF();
         Art(String value, int radius) {
@@ -311,11 +332,25 @@ public final class SearchActivity extends Activity {
             setBackground(rounded(0xFF242A32, radius)); setClipToOutline(radius > 0);
         }
         @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas); Bitmap bitmap = images.poster(path); if (bitmap == null) return;
+            super.onDraw(canvas); Bitmap bitmap = images.poster(path);
+            if (bitmap != null) {
             float zoom = Math.max((float) getWidth() / bitmap.getWidth(), (float) getHeight() / bitmap.getHeight());
             float w = bitmap.getWidth() * zoom, h = bitmap.getHeight() * zoom;
             bounds.set((getWidth() - w) / 2, (getHeight() - h) / 2, (getWidth() + w) / 2, (getHeight() + h) / 2);
             canvas.drawBitmap(bitmap, null, bounds, paint);
+            }
+            if (focused) {
+                rim.setStyle(Paint.Style.STROKE); rim.setStrokeWidth(px(3)); rim.setColor(0xE6FFFFFF);
+                bounds.set(px(2), px(2), getWidth() - px(2), getHeight() - px(2));
+                canvas.drawRoundRect(bounds, px(19), px(19), rim);
+            }
+        }
+    }
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (focused && initialInput && detail == null) {
+            initialInput = false;
+            query.post(() -> { if (running && detail == null && query.hasFocus()) keyboard(); });
         }
     }
     @SuppressWarnings("deprecation")

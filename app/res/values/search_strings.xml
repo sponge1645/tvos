@@ -12,10 +12,11 @@
     <string name="search_series">Series</string>
     <string name="search_movie">Movie</string>
     <string name="search_runtime">%1$d min</string>
-    <string name="search_how">HOW TO WATCH</string>
+    <string name="search_how">WHERE TO WATCH</string>
     <string name="search_watch_in">Watch in %1$s</string>
     <string name="search_no_apps">Install KinoPub, Seena, Lampa or VK Video to watch.</string>
     <string name="search_no_overview">No description available</string>
     <string name="search_detail_unavailable">Could not load the description. Check your connection.</string>
     <string name="search_voice_unavailable">Voice search is unavailable. Use the keyboard.</string>
+    <string name="search_clear">Clear</string>
 </resources>

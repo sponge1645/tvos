@@ -12,10 +12,11 @@
     <string name="search_series">Сериал</string>
     <string name="search_movie">Фильм</string>
     <string name="search_runtime">%1$d мин.</string>
-    <string name="search_how">КАК СМОТРЕТЬ</string>
+    <string name="search_how">ГДЕ СМОТРЕТЬ</string>
     <string name="search_watch_in">Смотреть в %1$s</string>
     <string name="search_no_apps">Для просмотра установите KinoPub, Seena, Lampa или VK Видео.</string>
     <string name="search_no_overview">Описание отсутствует</string>
     <string name="search_detail_unavailable">Не удалось загрузить описание. Проверьте подключение.</string>
     <string name="search_voice_unavailable">Голосовой поиск недоступен. Воспользуйтесь клавиатурой.</string>
+    <string name="search_clear">Очистить</string>
 </resources>
