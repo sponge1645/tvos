@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_remote_input" formatted="false">Ввод и кнопки tvOS</string>
+    <string name="settings_remote_input" formatted="false">Клавиатура tvOS</string>
     <string name="settings_remote_input_enable" formatted="false">Включить</string>
     <string name="settings_remote_input_choose" formatted="false">Выбрать</string>
     <string name="settings_remote_input_help" formatted="false">Включите tvOS и Gboard в настройках клавиатур, затем выберите tvOS текущей клавиатурой. tvOS обрабатывает назначения кнопок, а для текста временно открывает другую клавиатуру. Для возврата после её закрытия нужен доступный локальный ADB. Клавиатуру для текста можно выбрать в назначениях кнопок. Громкостью управляет телевизор. Старую службу tvOS в специальных возможностях для кнопок отключите.</string>
     <string name="settings_remote_text_keyboard" formatted="false">Клавиатура для текста</string>
     <string name="settings_remote_keyboard_monitoring" formatted="false">Ввод текста активен. Нажмите, чтобы вернуть назначения кнопок tvOS.</string>
-    <string name="settings_remote_keyboard_failed" formatted="false">Не удалось переключить клавиатуру. Проверьте локальный ADB и включённые клавиатуры. Для возврата назначений выберите «Ввод и кнопки tvOS».</string>
+    <string name="settings_remote_keyboard_failed" formatted="false">Не удалось переключить клавиатуру. Проверьте локальный ADB и включённые клавиатуры. Для возврата назначений выберите «Клавиатура tvOS».</string>
 </resources>

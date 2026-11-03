@@ -5,7 +5,10 @@
 Home handles assignments locally. Across-app assignments use `RemoteInputMethod`,
 a standard Android input method, instead of an accessibility key filter. Enable
 **tvOS button input** in Android keyboard settings, then select it as the current
-keyboard. Enable Gboard (or another text keyboard) as well, but leave tvOS selected.
+keyboard. Its Android label is **tvOS Keyboard**. The IME metadata declares a
+standard keyboard subtype and no settingsActivity link: tapping its Android
+keyboard entry must not redirect into the button editor. Enable Gboard (or another
+text keyboard) as well, but leave tvOS selected.
 When an app requests the keyboard, tvOS starts a temporary foreground controller.
 The controller preflights local ADB and the IME visibility dump, then selects the
 text keyboard. Once the keyboard has been hidden for at least 700 ms it restores
@@ -33,7 +36,9 @@ CHiQ cold-boot guard and never requests keys. Setup and Home-mode jobs do not
 enable it automatically.
 
 Remotes and Devices opens a native tvOS-style editor: the shared settings gradient,
-logo tile, focus capsules, short row labels and checkmark pickers. Saved buttons
+logo tile, focus capsules, short row labels and checkmark pickers. The editor uses
+the same SettingsListRenderer, approved row geometry, 36 px typography, colors,
+edge fades and description renderer as the main Settings screens. Saved buttons
 appear first, followed by Add a Button and Input Settings. Adding a button learns
 one matching physical DOWN/UP pair; capture never runs existing assignments.
 The editor shows Works (Everywhere/Home), Single Press, Double Press, Triple Press

@@ -26,6 +26,9 @@ import io.tvos.settings.SettingsBackground;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRemoteInput;
 import io.tvos.settings.SettingsRowRenderer;
+import io.tvos.settings.SettingsListRenderer;
+import io.tvos.settings.SettingsListViewport;
+import io.tvos.settings.SettingsTextRenderer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -50,13 +53,14 @@ public class RemoteShortcutSettingsActivity extends Activity {
         final String label, value;
         final Runnable action;
         final boolean checked;
+        boolean picker = true;
         String shownLabel, shownValue;
         final Spring focus = new Spring(.26f, .85f, 0);
         Row(String label, String value, boolean checked, Runnable action) {
             this.label = label; this.value = value; this.checked = checked; this.action = action;
         }
     }
-    private Row row(String label, String value, Runnable action) { return new Row(label, value, false, action); }
+    private Row row(String label, String value, Runnable action) { Row row = new Row(label, value, false, action); row.picker = false; return row; }
     private Row row(int label, Runnable action) { return row(text(label), "", action); }
     private void show(String title, String hint, List<Row> rows, Runnable previous, int selected) {
         generation++; capturing = false; learned = null; captureBackDown = false; input.reset();
@@ -73,7 +77,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
     @Override protected void onResume() { super.onResume(); resumed = true; if (shortcuts != null) shortcuts.reload(); view.invalidate(); }
     @Override protected void onPause() {
         resumed = false; input.reset(); learned = null; captureBackDown = false;
-        if (shortcuts != null) shortcuts.cancel(); super.onPause();
+        if (shortcuts != null) shortcuts.cancel(); view.clearCaches(); super.onPause();
     }
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
@@ -293,17 +297,30 @@ public class RemoteShortcutSettingsActivity extends Activity {
         final SettingsLogoRenderer logo = new SettingsLogoRenderer();
         final Shadows shadows = new Shadows();
         final SettingsRowRenderer capsules = new SettingsRowRenderer(shadows::draw);
+        final SettingsTextRenderer typography = new SettingsTextRenderer();
+        final SettingsListViewport viewport = new SettingsListViewport();
+        final SettingsListRenderer.Row rowData = new SettingsListRenderer.Row();
+        final SettingsListRenderer renderer = new SettingsListRenderer(capsules, typography,
+                new SettingsListRenderer.Check() {
+                    @Override public float width(float size) { return Symbols.width(getContext(), "check", size); }
+                    @Override public void draw(Canvas c, float x, float y, float size, int color) {
+                        Symbols.draw(getContext(), c, "check", x, y, size, color);
+                    }
+                }, (c, x, y, scale, color) -> { });
+        final SettingsListViewport.Content rowsContent = this::drawRows;
         final RectF rect = new RectF();
-        final TextPaint titlePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG), labelPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG), valuePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG), hintPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        List<Row> rows = new ArrayList<>(); String title = "", hint = "", shownTitle = "", shownHint = "";
+        boolean drawLight, drawReduced, rowsMoving;
+        float drawDt;
+        final TextPaint titlePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG), labelPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG), valuePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        List<Row> rows = new ArrayList<>(); String title = "", hint = "", shownTitle = "";
         int focus, offset, touch = -1; float k = 1; long entered, last;
         final Spoken spoken;
         Menu() {
             super(RemoteShortcutSettingsActivity.this); setFocusable(true); setFocusableInTouchMode(true);
             spoken = new Spoken(this, new Spoken.Source() {
-                @Override public void items(List<Integer> out) { for (int i = offset; i < Math.min(rows.size(), offset + 8); i++) out.add(i + 1); }
+                @Override public void items(List<Integer> out) { for (int i = offset; i < Math.min(rows.size(), offset + 10); i++) out.add(i + 1); }
                 @Override public String text(int id) { if (id <= 0 || id > rows.size()) return ""; Row row = rows.get(id - 1); return row.label + (row.value.isEmpty() ? "" : ", " + row.value); }
-                @Override public boolean bounds(int id, Rect out) { int i = id - 1; if (i < offset || i >= Math.min(rows.size(), offset + 8)) return false;
+                @Override public boolean bounds(int id, Rect out) { int i = id - 1; if (i < offset || i >= Math.min(rows.size(), offset + 10)) return false;
                     rowBounds(i); rect.roundOut(out); return true; }
                 @Override public int focused() { return rows.isEmpty() ? -1 : focus + 1; }
                 @Override public void focus(int id) { if (id > 0 && id <= rows.size()) { focus = id - 1; reveal(); invalidate(); } }
@@ -316,58 +333,66 @@ public class RemoteShortcutSettingsActivity extends Activity {
             reveal(); fit(); entered = SystemClock.uptimeMillis(); last = entered;
             setContentDescription(title + (hint.isEmpty() ? "" : ", " + hint)); requestFocus(); invalidate(); spoken.focusMoved();
         }
-        void reveal() { offset = Math.max(0, Math.min(offset, focus)); if (focus >= offset + 8) offset = focus - 7; }
+        void reveal() { offset = Math.max(0, Math.min(offset, focus)); if (focus >= offset + 10) offset = focus - 9; }
         void move(int direction) { int next = Math.max(0, Math.min(rows.size() - 1, focus + direction)); if (next == focus || rows.isEmpty()) return;
             focus = next; reveal(); click.move(); invalidate(); spoken.focusMoved(); }
         void activate() { if (busy || rows.isEmpty() || focus >= rows.size()) return; click.open(); rows.get(focus).action.run(); }
-        @Override protected void onSizeChanged(int w, int h, int oldW, int oldH) { k = w / 1920f; background.clear(); fit(); }
+        void clearCaches() { background.clear(); shadows.clear(); typography.clear(); }
+        @Override protected void onSizeChanged(int w, int h, int oldW, int oldH) {
+            k = w / 1920f; clearCaches(); viewport.resize(w, h, k); fit();
+        }
         void fit() {
             titlePaint.setTypeface(Ui.displayBold); titlePaint.setTextSize(56 * k); titlePaint.setTextAlign(Paint.Align.CENTER);
-            labelPaint.setTypeface(Ui.medium); labelPaint.setTextSize(30 * k);
-            valuePaint.setTypeface(Ui.medium); valuePaint.setTextSize(27 * k); valuePaint.setTextAlign(Paint.Align.RIGHT);
-            hintPaint.setTypeface(Ui.medium); hintPaint.setTextSize(27 * k); hintPaint.setTextAlign(Paint.Align.CENTER);
+            labelPaint.setTypeface(Ui.displaySemibold); labelPaint.setTextSize(36 * k);
+            valuePaint.setTypeface(Ui.displayRegular); valuePaint.setTextSize(36 * k); valuePaint.setTextAlign(Paint.Align.RIGHT);
             shownTitle = TextUtils.ellipsize(title, titlePaint, 1740 * k, TextUtils.TruncateAt.END).toString();
-            shownHint = TextUtils.ellipsize(hint, hintPaint, 730 * k, TextUtils.TruncateAt.END).toString();
             for (Row row : rows) {
                 row.shownValue = TextUtils.ellipsize(row.value, valuePaint, 300 * k, TextUtils.TruncateAt.END).toString();
                 float valueWidth = valuePaint.measureText(row.shownValue);
                 row.shownLabel = TextUtils.ellipsize(row.label, labelPaint, (row.checked ? 620 : 650) * k - (valueWidth > 0 ? valueWidth + 30 * k : 0), TextUtils.TruncateAt.END).toString();
             }
         }
-        void rowBounds(int at) { float y = (214 + (at - offset) * 86) * k; rect.set(940 * k, y, 1750 * k, y + 62 * k); }
+        void rowBounds(int at) { SettingsListRenderer.approvedBounds(rect, at - offset, k); }
         @Override protected void onDraw(Canvas c) {
-            boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
-            background.draw(c, getWidth(), getHeight(), light); logo.draw(c, k, light, Ui.displaySemibold);
-            long now = SystemClock.uptimeMillis(); float alpha = Math.min(1, (now - entered) / 180f);
-            titlePaint.setColor(light ? 0xFF738190 : 0xFF5A676D);
+            drawLight = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
+            drawReduced = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false);
+            background.draw(c, getWidth(), getHeight(), drawLight); logo.draw(c, k, drawLight, Ui.displaySemibold);
+            long now = SystemClock.uptimeMillis();
+            float alpha = drawReduced ? 1 : Math.min(1, (now - entered) / 280f);
+            titlePaint.setColor(drawLight ? 0xFF738190 : 0xFF5A676D);
             int saved = c.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha));
-            c.drawText(shownTitle, getWidth() / 2f, 111 * k, titlePaint);
-            hintPaint.setColor(light ? 0xB33A5761 : 0xFF888D90);
-            c.drawText(shownHint, 522 * k, 845 * k, hintPaint);
+            typography.drawTracked(c, shownTitle, getWidth() / 2f, 111 * k, titlePaint, .02f);
+            typography.drawDescription(c, hint, k, drawLight, Ui.displaySemibold);
             if (capturing) {
-                labelPaint.setColor(light ? 0xFF738190 : 0xFF95B3BE);
-                c.drawText(text(R.string.settings_remote_press), 980 * k, 465 * k, labelPaint);
+                labelPaint.setColor(SettingsListRenderer.normalInk(drawLight));
+                typography.drawTracked(c, text(R.string.settings_remote_press), 1093 * k, 465 * k, labelPaint, .02f);
             }
-            float dt = Math.min(.05f, Math.max(0, now - last) / 1000f); last = now; boolean moving = alpha < 1;
-            for (int i = offset; i < Math.min(rows.size(), offset + 8); i++) {
+            drawDt = Math.min(.05f, Math.max(0, now - last) / 1000f); last = now; rowsMoving = false;
+            viewport.draw(c, rowsContent);
+            c.restoreToCount(saved);
+            if ((rowsMoving || alpha < 1) && resumed) postInvalidateOnAnimation();
+        }
+        private void drawRows(Canvas c) {
+            int end = Math.min(rows.size(), offset + 10);
+            for (int pass = 0; pass < end - offset; pass++) {
+                int i = SettingsListRenderer.paintRow(pass, offset, end, focus);
                 Row row = rows.get(i); row.focus.target = i == focus ? 1 : 0;
-                boolean reduced = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false);
-                if (reduced) row.focus.snap(row.focus.target); else moving |= row.focus.step(dt);
-                rowBounds(i); float amount = capsules.draw(c, rect, k, light, row.focus.value);
-                int ink = ActionSurface.blend(light ? 0xFF57707C : 0xFF93A9C2, 0xFF1C1C1E, amount);
-                labelPaint.setColor(ink); valuePaint.setColor(ink);
-                float baseline = rect.centerY() + Ui.halfCap(labelPaint);
-                c.drawText(row.shownLabel, 1031 * k, baseline, labelPaint);
-                c.drawText(row.shownValue, (row.checked ? 1690 : 1720) * k, baseline, valuePaint);
-                if (row.checked) Symbols.draw(getContext(), c, "check", 1720 * k, rect.centerY(), 25 * k, ink);
+                if (drawReduced) row.focus.snap(row.focus.target); else rowsMoving |= row.focus.step(drawDt);
+                rowBounds(i);
+                rowData.set(row.shownLabel, row.shownValue, row.focus.value);
+                rowData.kind = row.picker ? SettingsListRenderer.Kind.PICKER : SettingsListRenderer.Kind.NORMAL;
+                rowData.marker = row.checked ? SettingsListRenderer.Marker.PICKER_CHECK
+                        : row.picker ? SettingsListRenderer.Marker.NONE : SettingsListRenderer.Marker.CHEVRON;
+                rowData.fitValue = true; rowData.valueInset = 61; rowData.markerAfterValue = true;
+                rowData.showValue = !row.value.isEmpty();
+                renderer.draw(c, rect, k, rect.centerY() + Ui.halfCap(labelPaint), drawLight, labelPaint, valuePaint, rowData);
             }
-            c.restoreToCount(saved); if (moving && resumed) postInvalidateOnAnimation();
         }
         @Override public boolean onTouchEvent(MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_DOWN) { touch = hit(event.getX(), event.getY()); return true; }
             if (event.getAction() == MotionEvent.ACTION_UP) { int at = hit(event.getX(), event.getY()); if (at >= 0 && at == touch && !capturing) { focus = at; activate(); } touch = -1; return true; }
             if (event.getAction() == MotionEvent.ACTION_CANCEL) touch = -1; return true;
         }
-        int hit(float x, float y) { for (int i = offset; i < Math.min(rows.size(), offset + 8); i++) { rowBounds(i); if (rect.contains(x, y)) return i; } return -1; }
+        int hit(float x, float y) { for (int i = offset; i < Math.min(rows.size(), offset + 10); i++) { rowBounds(i); if (rect.contains(x, y)) return i; } return -1; }
     }
 }

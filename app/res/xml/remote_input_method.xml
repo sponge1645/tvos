@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:settingsActivity="io.tvos.RemoteShortcutSettingsActivity"
-    android:supportsSwitchingToNextInputMethod="true" />
+    android:supportsSwitchingToNextInputMethod="true">
+    <subtype android:imeSubtypeMode="keyboard" android:isAsciiCapable="true" />
+</input-method>

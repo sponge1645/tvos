@@ -37,3 +37,11 @@ assert 'onCreateCandidatesView() { return null; }' in ime
 assert 'onEvaluateInputViewShown() { return false; }' in ime
 assert 'out.touchableRegion.setEmpty()' in ime
 assert 'return RemoteKeyboardBridge.request(this)' in ime
+
+# Android keyboard rows must enable/select the IME, rather than launch the shortcut editor.
+import xml.etree.ElementTree as ET
+a='{http://schemas.android.com/apk/res/android}'
+metadata=ET.parse('app/res/xml/remote_input_method.xml').getroot()
+assert metadata.get(a+'settingsActivity') is None
+subtypes=metadata.findall('subtype')
+assert any(s.get(a+'imeSubtypeMode')=='keyboard' and s.get(a+'isAsciiCapable')=='true' for s in subtypes)
