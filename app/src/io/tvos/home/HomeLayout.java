@@ -6,7 +6,7 @@ public final class HomeLayout {
     public static final float WIDTH = 1920, HEIGHT = 1080, EDGE = 40, RIGHT = WIDTH - EDGE;
     public static final float TOP = 50, DOCK_BOTTOM = 60, BUTTON_SCALE = 0.9f;
     public static final float BUTTON = 68 * BUTTON_SCALE, HEADER_CY = TOP + BUTTON / 2;
-    public static final float TAB_TOP = 158, TAB_HEIGHT = 68;
+    public static final float TAB_TOP = TOP, TAB_HEIGHT = BUTTON;
     public static final float POSTER_TITLE_BASELINE = 46, POSTER_META_BASELINE = 85;
     public static final float DOCK_PAD = 40, DOCK_GAP = 48, DOCK_ASPECT = 5f / 3;
     public static final int FULL_DOCK_COUNT = 6;

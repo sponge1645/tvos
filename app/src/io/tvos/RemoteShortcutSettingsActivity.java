@@ -36,7 +36,8 @@ public class RemoteShortcutSettingsActivity extends Activity {
             if (busy) return;
             if (at == 0) capture();
             else if (at == 1) RemoteInputMethod.choose(this);
-            else edit(at - 2);
+            else if (at == 2) RemoteKeyboardBridge.chooseKeyboard(this);
+            else edit(at - 3);
         });
         setContentView(list); render();
     }
@@ -46,6 +47,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         List<String> rows = new ArrayList<>();
         rows.add(text(R.string.settings_remote_add));
         rows.add(text(R.string.settings_remote_input));
+        rows.add(text(R.string.settings_remote_text_keyboard));
         for (Binding b : bindings) rows.add(name(b) + " — " + text(b.global ? R.string.settings_remote_global : R.string.settings_remote_home));
         list.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, rows) {
             @Override public android.view.View getView(int at, android.view.View view, android.view.ViewGroup parent) {

@@ -561,6 +561,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return HomeFocusPolicy.next(current, direction, Prefs.categoryOrder(), Prefs.topButtonOrder(), visibleTop);
     }
 
+    private int firstTopControl() {
+        for (int id : Prefs.categoryOrder()) if (topControlVisible(id)) return id;
+        return availableTopButton(5);
+    }
+
     private int availableTopButton(int preferred) {
         return HomeFocusPolicy.available(preferred, Prefs.topButtonOrder(), enabledTop, topFallback);
     }
@@ -598,6 +603,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     @Override public void onData() {
         wake();
         updatePalette();
+        layoutLight();
         background.checkNight(data.isNight(System.currentTimeMillis()), running);
         heroDirty = statusDirty = drawerDirty = true;
         platter.invalidate();
@@ -793,6 +799,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         drawerWasMoving = drawerMoving;
         tilesDirty = statusDirty = heroDirty = drawerDirty = gridDirty = motionDirty = false;
         if (updateClock()) {
+            layoutLight();
             status.invalidate();
             heroLayer.invalidate(); // the header date/time changes even when recommendations are enabled
         }
@@ -1458,8 +1465,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void layoutLight() {
         if (lTab == null) return;
         largePostersWithoutWidgets = noTopWidgets();
-        contentTop = geometry.tabs(topRects, Prefs.categoryOrder(), enabledTabs, tabs(), lTab, lTabOn, largePostersWithoutWidgets, k);
         layoutTopActions(L_BUTTON * k, CONTENT_R * k, L_BUTTON_CY * k);
+        header.measureDateWeather(headerFrame());
+        RectF weather = header.weatherBounds();
+        float left = weather.isEmpty() ? MARGIN * k : weather.right + 16 * k;
+        float right = CONTENT_R * k;
+        for (int i = 5; i < topRects.length; i++) if (!topRects[i].isEmpty()) right = Math.min(right, topRects[i].left - 28 * k);
+        contentTop = geometry.tabs(topRects, Prefs.categoryOrder(), enabledTabs, tabs(), lTab, lTabOn,
+                largePostersWithoutWidgets, k, left, right);
+        if (search.active) contentTop += 70 * k;
         contentBottom = platterRect.top;
         geometry.posters(cardRects, largePostersWithoutWidgets, contentTop, contentBottom, lCardMeta, k);
         heroDirty = statusDirty = true;
@@ -1600,8 +1614,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean moveLight(int dx, int dy) {
         switch (zone) {
             case Z_WEATHER:
-                if (dy > 0 || dx > 0 || !canOpenWeather()) {
-                    zone = Z_TOP; topIndex = dx > 0 ? availableTopButton(5) : search.active || !picksOn() ? availableTopButton(5) : tab;
+                if (dy > 0 && canOpenWeather()) {
+                    if (picksOn() && !cards.isEmpty()) { zone = Z_CARDS; cardIndex = 0; }
+                    else zone = Z_SHELF;
+                } else if (dx > 0 || !canOpenWeather()) {
+                    zone = Z_TOP; topIndex = firstTopControl();
                     status.invalidate();
                 } else return true;
                 break;
@@ -1658,6 +1675,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (dy < 0 && canOpenWeather()) {
                     zone = Z_WEATHER; status.invalidate();
                 } else if (dx != 0) {
+                    if (dx < 0 && canOpenWeather() && topIndex == firstTopControl()) {
+                        zone = Z_WEATHER; status.invalidate(); break;
+                    }
                     int next = nextTopControl(topIndex, dx);
                     if (next == topIndex) return true;
                     topIndex = next;

@@ -8,16 +8,15 @@ import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 /** Hardware-button assignments through Android's IME pipeline; volume stays with firmware. */
 public class RemoteInputMethod extends InputMethodService {
     private RemoteShortcuts shortcuts;
     private String targetPackage = "";
-    private boolean russian;
 
     static void choose(Activity activity) {
         new AlertDialog.Builder(activity)
@@ -34,7 +33,6 @@ public class RemoteInputMethod extends InputMethodService {
     @Override public void onCreate() {
         super.onCreate();
         shortcuts = new RemoteShortcuts(this, true, null);
-        russian = "ru".equals(Prefs.language());
     }
     @Override public void onStartInput(EditorInfo info, boolean restarting) {
         super.onStartInput(info, restarting);
@@ -61,51 +59,29 @@ public class RemoteInputMethod extends InputMethodService {
     }
     @Override public boolean onEvaluateFullscreenMode() { return false; }
 
-    // A real input method must still support search/text entry while it is selected.
+    @Override public boolean onEvaluateInputViewShown() { return true; }
+    @Override public boolean onShowInputRequested(int flags, boolean configChange) {
+        if (RemoteKeyboardBridge.coolingDown()) return false;
+        RemoteKeyboardBridge.request(this);
+        return true;
+    }
     @Override public View onCreateInputView() {
-        LinearLayout keyboard = new LinearLayout(this);
-        keyboard.setOrientation(LinearLayout.VERTICAL);
-        keyboard.setPadding(12, 8, 12, 8);
-        keyboard.setBackgroundColor(0xFF202B39);
-        String[] lines = russian
-                ? new String[]{"1234567890", "йцукенгшщзхъ", "фывапролджэ", "ячсмитьбюё"}
-                : new String[]{"1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm.,"};
-        for (String line : lines) {
-            LinearLayout row = row(keyboard);
-            for (int i = 0; i < line.length(); i++) {
-                final String value = line.substring(i, i + 1);
-                key(row, value, () -> { InputConnection input = getCurrentInputConnection(); if (input != null) input.commitText(value, 1); });
-            }
-        }
-        LinearLayout row = row(keyboard);
-        key(row, russian ? "EN" : "RU", () -> { russian = !russian; setInputView(onCreateInputView()); });
-        key(row, "⇧", () -> {
-            // Toggle caps on the currently shown alphabet without changing stored text.
-            caps = !caps; setInputView(onCreateInputView());
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(24, 12, 24, 12);
+        panel.setBackgroundColor(0xFF202B39);
+        TextView message = new TextView(this);
+        message.setText(AppStrings.get(R.string.settings_remote_keyboard_connecting));
+        message.setTextColor(0xFFFFFFFF); message.setTextSize(18);
+        panel.addView(message);
+        Button picker = new Button(this);
+        picker.setText(AppStrings.get(R.string.settings_remote_input_choose));
+        picker.setOnClickListener(v -> {
+            InputMethodManager manager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (manager != null) manager.showInputMethodPicker();
         });
-        key(row, "␣", () -> { InputConnection input = getCurrentInputConnection(); if (input != null) input.commitText(" ", 1); });
-        key(row, "⌫", () -> { InputConnection input = getCurrentInputConnection(); if (input != null) input.deleteSurroundingText(1, 0); });
-        key(row, "OK", () -> { if (!sendDefaultEditorAction(true)) sendKeyChar('\n'); });
-        key(row, "⌨", () -> { InputMethodManager manager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE); if (manager != null) manager.showInputMethodPicker(); });
-        return keyboard;
-    }
-    private boolean caps;
-    private LinearLayout row(LinearLayout keyboard) {
-        LinearLayout row = new LinearLayout(this);
-        keyboard.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        return row;
-    }
-    private void key(LinearLayout row, String label, Runnable action) {
-        Button button = new Button(this);
-        button.setText(caps && label.length() == 1 ? label.toUpperCase(java.util.Locale.ROOT) : label);
-        button.setAllCaps(false);
-        button.setOnClickListener(v -> {
-            if (caps && label.length() == 1 && Character.isLetter(label.charAt(0))) {
-                InputConnection input = getCurrentInputConnection();
-                if (input != null) input.commitText(label.toUpperCase(java.util.Locale.ROOT), 1);
-            } else action.run();
-        });
-        row.addView(button, new LinearLayout.LayoutParams(0, -2, 1));
+        panel.addView(picker);
+        return panel;
     }
     @Override public void onDestroy() {
         if (shortcuts != null) { shortcuts.close(); shortcuts = null; }

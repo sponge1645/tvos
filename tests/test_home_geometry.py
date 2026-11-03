@@ -12,6 +12,8 @@ public class GeometryHarness {
  g.actions(rects,new int[]{5,4,0},id->id!=4,"12:34",narrow,60,1780,100,12,1);check(rects[9].width()==0,"disabled clock clears old bounds");near(rects[5].right,1780);near(rects[10].right,1708);
  g.actions(rects,order,id->false,"12:34",narrow,60,1780,100,12,1);for(int id:order)check(rects[5+id].width()==0,"hidden actions clear geometry");
  Paint normal=new Paint(),active=new Paint();String[] labels={"A","Long"};g.tabs(rects,new int[]{1,0},id->true,labels,normal,active,false,1);near(rects[1].left,40);near(rects[0].left,40+60+52+4);g.tabs(rects,new int[]{1,0},id->id==0,labels,normal,active,true,1);check(rects[1].width()==0,"hidden tab clears old bounds");near(rects[0].top,50);
+ g.tabs(rects,new int[]{1,0},id->true,new String[]{"A much longer genre label","Another very long title"},normal,active,false,1,350,650);
+ near(rects[1].left,350);near(rects[0].right,650);near(rects[0].top,HomeLayout.TOP);near(rects[0].height(),HomeLayout.BUTTON);check(rects[1].right+4<=rects[0].left+.01f,"constrained labels keep the gap and cannot overlap corner actions");
  check(Paint.allocations==paints+2&&Paint.FontMetrics.allocations==metrics,"measurement objects remain retained across updates");
  System.out.println("PASS: geometry responds to text/typeface/order/visibility/compact inputs without repeated Paint or FontMetrics allocation");}}
 '''

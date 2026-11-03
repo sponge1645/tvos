@@ -7,6 +7,7 @@
     <permission android:name="io.tvos.permission.REMOTE_CONTROL" android:protectionLevel="signature" />
     <uses-permission android:name="io.tvos.permission.REMOTE_CONTROL" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
@@ -21,6 +22,7 @@
          returns null). The shelf and streaming apps, the live TV apps and, through the <intent>, every TV app
          (for "All Apps"). -->
     <queries>
+        <intent><action android:name="android.view.InputMethod" /></intent>
         <package android:name="watch.kino" />
         <package android:name="watch.kino.mod" />
         <package android:name="com.netflix.ninja" />
@@ -161,6 +163,7 @@
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!-- Input method for button assignments; optional accessibility component only guards CHiQ cold boot. -->
+        <service android:name=".RemoteKeyboardBridge" android:process=":keys" android:exported="false" />
         <service android:name=".RemoteInputMethod" android:process=":keys"
             android:exported="true" android:label="@string/settings_remote_input"
             android:permission="android.permission.BIND_INPUT_METHOD">

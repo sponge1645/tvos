@@ -10,7 +10,6 @@ public final class HomeGeometry {
     private static final float MARGIN = HomeLayout.EDGE, CONTENT_R = HomeLayout.RIGHT;
     private static final float SHELF_PAD = HomeLayout.DOCK_PAD, TILE_GAP = HomeLayout.DOCK_GAP;
     private static final float ROW_TOP = 540, ROW_H = 126, CARDS_H = HomeLayout.WEATHER_HEIGHT;
-    private static final float L_TABBAR_TOP = HomeLayout.TAB_TOP, L_TABBAR_H = HomeLayout.TAB_HEIGHT, L_BUTTON = HomeLayout.BUTTON;
     private final Paint clockMeasure = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint.FontMetrics clockMetrics = new Paint.FontMetrics();
 
@@ -51,19 +50,39 @@ public final class HomeGeometry {
     }
 
     public float tabs(RectF[] topRects, int[] order, IntPredicate enabled, String[] labels, Paint lTab, Paint lTabOn, boolean compact, float k) {
-        // Align the resting tab capsule with the common outer edge; text keeps its inner padding.
-        float pad = 26 * k;
-        float tabTop = (compact ? HomeLayout.TOP : L_TABBAR_TOP) * k;
-        float tabBottom = tabTop + L_TABBAR_H * k;
-        float x = MARGIN * k;
+        return tabs(topRects, order, enabled, labels, lTab, lTabOn, compact, k, MARGIN * k, CONTENT_R * k);
+    }
+
+    /** One shared header row. Long genre labels yield space before the corner controls. */
+    public float tabs(RectF[] topRects, int[] order, IntPredicate enabled, String[] labels,
+            Paint lTab, Paint lTabOn, boolean compact, float k, float left, float right) {
+        float pad = 26 * k, gap = 4 * k;
+        float total = 0; int count = 0;
         for (int i : order) {
             if (!enabled.test(i)) { topRects[i].setEmpty(); continue; }
-            float tw = Math.max(lTabOn.measureText(labels[i]), lTab.measureText(labels[i]));
-            topRects[i].set(x, tabTop, x + tw + 2 * pad, tabBottom);
-            x = topRects[i].right + 4 * k;
+            tabWidths[i] = Math.max(lTabOn.measureText(labels[i]), lTab.measureText(labels[i])) + 2 * pad;
+            total += tabWidths[i]; count++;
         }
-        return Math.max(tabBottom, (HomeLayout.TOP + L_BUTTON) * k);
+        float available = Math.max(0, right - left - Math.max(0, count - 1) * gap);
+        float cap = Float.MAX_VALUE;
+        if (total > available) {
+            float low = 0, high = total;
+            for (int n = 0; n < 20; n++) {
+                float mid = (low + high) / 2, sum = 0;
+                for (int i : order) if (enabled.test(i)) sum += Math.min(tabWidths[i], mid);
+                if (sum > available) high = mid; else low = mid;
+            }
+            cap = low;
+        }
+        float x = left, top = HomeLayout.TOP * k;
+        for (int i : order) if (enabled.test(i)) {
+            float width = Math.min(tabWidths[i], cap);
+            topRects[i].set(x, top, x + width, top + HomeLayout.BUTTON * k);
+            x += width + gap;
+        }
+        return (HomeLayout.TOP + HomeLayout.BUTTON) * k;
     }
+    private final float[] tabWidths = new float[5];
 
     public void posters(RectF[] cardRects, boolean compact, float contentTop, float contentBottom, Paint lCardMeta, float k) {
         float regularW = ((CONTENT_R - MARGIN) * k - 5 * 18 * k) / 6f;

@@ -18,7 +18,8 @@ public class HomeLayoutHarness {
  static class DockState {final List<HomeApps.Item> items=new ArrayList<>();RectF[] rects=new RectF[0];}final DockState dock=new DockState();
  float k=1,contentTop,contentBottom;int w=1920,h=1080;boolean motionDirty,drawerDirty,heroDirty,statusDirty,largePostersWithoutWidgets,compact;
  Paint lTab=Ui.text(Ui.medium,30,0),lTabOn=Ui.text(Ui.semibold,30,0),lCardMeta=Ui.text(Ui.medium,25,0);String clockText="12:34";
- static class Cache {void clear(){}}final Cache appSurfaces=new Cache();static class Header {void clearFrame(){}}final Header header=new Header();
+ static class Cache {void clear(){}}final Cache appSurfaces=new Cache();static class Header {final RectF weather=new RectF();void clearFrame(){}void measureDateWeather(Object f){}RectF weatherBounds(){return weather;}}final Header header=new Header();
+ Object headerFrame(){return null;}static class Search {boolean active;}final Search search=new Search();
  static class Prefs {static int[] order={0,1,2,3,5,4};static int mask=63;static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}}
  boolean noTopWidgets(){return compact;}boolean tabEnabled(int id){return true;}boolean topButtonEnabled(int id){return (Prefs.mask&(1<<id))!=0;}
  String[] tabs(){return new String[]{"New","Movies","","Shows","Dice"};}
@@ -62,6 +63,11 @@ public class HomeLayoutHarness {
    }
    for(int mask=0;mask<64;mask++){Prefs.mask=mask;t.layoutLight();for(int i=5;i<11;i++)if(t.topButtonEnabled(i-5))near(t.topRects[i].top,50*t.k,"all action combinations keep top edge");}
    Prefs.mask=63;
+   t.header.weather.set(40*t.k,50*t.k,350*t.k,(50+HomeLayout.BUTTON)*t.k);t.layoutLight();
+   near(t.topRects[0].left,366*t.k,"categories follow date/weather with a gap");
+   float actionLeft=Float.MAX_VALUE;for(int i=5;i<11;i++)actionLeft=Math.min(actionLeft,t.topRects[i].left);
+   for(int id:Prefs.categoryOrder()){near(t.topRects[id].top,50*t.k,"categories and widgets share top");near(t.topRects[id].height(),HomeLayout.BUTTON*t.k,"categories and actions share height");check(t.topRects[id].right<=actionLeft-28*t.k+.03,"category cannot overlap corner actions");}
+   t.header.weather.setEmpty();
   }
   float grid=HomeLayout.APP_COLUMNS*HomeLayout.APP_WIDTH+(HomeLayout.APP_COLUMNS-1)*HomeLayout.APP_GAP;near((1920-grid)/2,40,"All Apps shares horizontal edge");
   System.out.println("PASS: actual Dock/drawer/poster/action layout, counts 0–8, 5:3, full width at six, 40px sides / 50px top / 60px Dock bottom, equal poster group gaps, 10% smaller buttons, unchanged button gaps, compact header, 64 masks and 720p/1080p/4K");

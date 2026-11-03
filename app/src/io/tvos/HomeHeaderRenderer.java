@@ -26,7 +26,7 @@ final class HomeHeaderRenderer {
         List<HomeApps.Item> lightButtons;
         Paint lDate, lTab, lTabOn;
     }
-    private static final float MARGIN = HomeLayout.EDGE, L_TABBAR_TOP = HomeLayout.TAB_TOP, SHADOW_BLUR = 26;
+    private static final float MARGIN = HomeLayout.EDGE, SHADOW_BLUR = 26;
     private static final int L_INK = 0xFF1D1D1F, WHITE = 0xFFF5F5F7;
     private final Context context;
     private final HomeData data;
@@ -64,47 +64,66 @@ final class HomeHeaderRenderer {
 
     RectF weatherBounds() { return widgetsCapsule; }
 
+    void measureDateWeather(Frame frame) {
+        WeatherForecast wx = data.weather;
+        boolean weather = frame.weatherTop && !Double.isNaN(wx.temp);
+        String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
+        if (date.isEmpty() && !weather) { widgetsCapsule.setEmpty(); return; }
+        float k = frame.k;
+        headerDateScratch.set(frame.lDate); headerDateScratch.setTextSize(29 * k);
+        headerWeatherScratch.set(headerDateScratch); headerWeatherScratch.setTextSize(27 * k);
+        String symbol = weather ? Symbols.weather(wx.code, wx.isDay) : "";
+        float width = 40 * k + headerDateScratch.measureText(date)
+                + (!date.isEmpty() && weather ? 16 * k : 0)
+                + (weather ? Symbols.width(context, symbol, 28 * k) + 8 * k
+                        + headerWeatherScratch.measureText(HomeData.degrees(wx.temp)) : 0);
+        widgetsCapsule.set(MARGIN * k, HomeLayout.TOP * k, MARGIN * k + width,
+                (HomeLayout.TOP + HomeLayout.BUTTON) * k);
+    }
+
     void drawDateWeather(Canvas c, Frame frame) {
         this.frame = frame;
+        measureDateWeather(frame);
+        if (widgetsCapsule.isEmpty()) return;
         WeatherForecast wx = data.weather;
         boolean weather = frame.weatherTop && !Double.isNaN(wx.temp);
         String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
         if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
-        if (date.isEmpty() && !weather) { widgetsCapsule.setEmpty(); return; }
-        float k = frame.k, pad = 20 * k, gap = !date.isEmpty() && weather ? 16 * k : 0;
-        float cy = HomeLayout.HEADER_CY * k;
-        Paint datePaint = headerDateScratch;
-        datePaint.set(frame.lDate);
-        datePaint.setTextSize(29 * k);
-        datePaint.setColor(ActionSurface.ink(frame.night, 0));
-        Paint weatherPaint = headerWeatherScratch;
-        weatherPaint.set(datePaint); weatherPaint.setTextSize(27 * k);
-        String temperature = weather ? HomeData.degrees(wx.temp) : "";
-        String symbol = weather ? Symbols.weather(wx.code, wx.isDay) : "";
-        float iconSize = 28 * k, sw = weather ? Symbols.width(context, symbol, iconSize) : 0;
-        float dateWidth = datePaint.measureText(date);
-        float weatherWidth = weather ? sw + 8 * k + weatherPaint.measureText(temperature) : 0;
-        float left = MARGIN * k;
-        widgetsCapsule.set(left, HomeLayout.TOP * k, left + 2 * pad + dateWidth + gap + weatherWidth,
-                (HomeLayout.TOP + HomeLayout.BUTTON) * k);
-        // The home exposes this capsule as a weather action when forecast data is available.
-        actionSurface.draw(c, widgetsCapsule, frame.weatherAmount, frame.night, k);
-        int ink = ActionSurface.ink(frame.night, frame.weatherAmount);
+        float k = frame.k, cy = widgetsCapsule.centerY();
+        float grow = drawTextSurface(c, widgetsCapsule, frame.weatherAmount);
+        int ink = blend(frame.lTab.getColor(), L_INK, Ui.clamp(frame.weatherAmount));
+        Paint datePaint = headerDateScratch, weatherPaint = headerWeatherScratch;
+        datePaint.setTypeface(Ui.medium); weatherPaint.setTypeface(Ui.medium);
         datePaint.setColor(ink); weatherPaint.setColor(ink);
-        int contentSave = c.save();
-        float grow = 1 + .1f * Ui.clamp(frame.weatherAmount);
-        c.translate(widgetsCapsule.centerX(), widgetsCapsule.centerY()); c.scale(grow, grow);
-        c.translate(-widgetsCapsule.centerX(), -widgetsCapsule.centerY());
-        float x = left + pad;
+        int saved = c.save();
+        c.scale(grow, grow, widgetsCapsule.centerX(), cy);
+        float x = widgetsCapsule.left + 20 * k;
         if (!date.isEmpty()) {
             c.drawText(date, x - Ui.leftBearing(datePaint, date), cy + Ui.halfCap(datePaint), datePaint);
-            x += dateWidth + gap;
+            x += datePaint.measureText(date) + (weather ? 16 * k : 0);
         }
         if (weather) {
-            Symbols.draw(context, c, symbol, x + sw / 2, cy, iconSize, weatherPaint.getColor());
-            c.drawText(temperature, x + sw + 8 * k, cy + Ui.halfCap(weatherPaint), weatherPaint);
+            String symbol = Symbols.weather(wx.code, wx.isDay);
+            float iconSize = 28 * k, sw = Symbols.width(context, symbol, iconSize);
+            Symbols.draw(context, c, symbol, x + sw / 2, cy, iconSize, ink);
+            c.drawText(HomeData.degrees(wx.temp), x + sw + 8 * k, cy + Ui.halfCap(weatherPaint), weatherPaint);
         }
-        c.restoreToCount(contentSave);
+        c.restoreToCount(saved);
+    }
+
+    /** Text buttons have no resting surface; weather and categories share this focus treatment. */
+    private float drawTextSurface(Canvas c, RectF bounds, float amount) {
+        float focus = Ui.clamp(amount), scale = 1 + .05f * focus;
+        if (focus <= .01f) return scale;
+        cell.set(bounds.centerX() - bounds.width() * scale / 2, bounds.centerY() - bounds.height() * scale / 2,
+                bounds.centerX() + bounds.width() * scale / 2, bounds.centerY() + bounds.height() * scale / 2);
+        float radius = cell.height() / 2;
+        tmp.set(cell); tmp.offset(0, 8 * frame.k * focus);
+        shadow.setColor(Ui.alpha(0xFF000000, tone(.22f, .4f) * focus));
+        shadows.draw(c, tmp, radius, SHADOW_BLUR * frame.k, shadow);
+        fill.setShader(null); fill.setColor(Ui.alpha(0xFFFFFFFF, focus));
+        c.drawRoundRect(cell, radius, radius, fill);
+        return scale;
     }
 
     private float drawActionSurface(Canvas c, RectF bounds, float focus) {
@@ -185,31 +204,23 @@ final class HomeHeaderRenderer {
         for (int i = 0; i < 5 && !frame.searchMode; i++) {
             if (!Prefs.categoryEnabled(i) || i == frame.hiddenTab) continue;
             RectF r = frame.topRects[i];
-            if (i == frame.tab && focus > 0.01f) {
-                float s = 1 + 0.05f * focus;
-                cell.set(r.centerX() - r.width() * s / 2, r.centerY() - r.height() * s / 2,
-                        r.centerX() + r.width() * s / 2, r.centerY() + r.height() * s / 2);
-                float rr = cell.height() / 2;
-                if (focus > 0.01f) {
-                    tmp.set(cell);
-                    tmp.offset(0, 8 * frame.k * focus);
-                    shadow.setColor(Ui.alpha(0xFF000000, tone(0.22f, 0.4f) * focus));
-                    shadows.draw(c, tmp, rr, SHADOW_BLUR * frame.k, shadow);
-                }
-                fill.setShader(null);
-                fill.setColor(Ui.alpha(0xFFFFFFFF, focus));
-                c.drawRoundRect(cell, rr, rr, fill);
-            }
+            if (r.isEmpty()) continue;
+            float grow = drawTextSurface(c, r, i == frame.tab ? focus : 0);
             Paint p = i == frame.tab ? frame.lTabOn : frame.lTab;
             if (i == frame.tab) frame.lTabOn.setColor(blend(tone(L_INK, WHITE), L_INK, focus));   // always dark on the white pill
-            c.drawText(frame.tabs[i], r.centerX() - p.measureText(frame.tabs[i]) / 2, r.centerY() + Ui.halfCap(p), p);
+            float width = p.measureText(frame.tabs[i]);
+            float textScale = Math.min(1, Math.max(0, r.width() - 24 * frame.k) / Math.max(1, width));
+            int saved = c.save();
+            c.scale(textScale * grow, textScale * grow, r.centerX(), r.centerY());
+            c.drawText(frame.tabs[i], r.centerX() - width / 2, r.centerY() + Ui.halfCap(p), p);
+            c.restoreToCount(saved);
         }
         if (frame.searchMode && frame.headingOpacity > 0.001f) {
             Paint heading = searchHeadingScratch;
             heading.set(frame.lTabOn);
             heading.setColor(Ui.alpha(tone(L_INK, WHITE), Ui.clamp(frame.headingOpacity)));
             c.drawText((AppStrings.get(R.string.home_search_heading_prefix)) + frame.searchQuery, MARGIN * frame.k,
-                    (frame.largePostersWithoutWidgets ? HomeLayout.TOP + 48 : L_TABBAR_TOP + 48) * frame.k, heading);
+                    (HomeLayout.TOP + HomeLayout.BUTTON + 64) * frame.k, heading);
         }
     }
 }
