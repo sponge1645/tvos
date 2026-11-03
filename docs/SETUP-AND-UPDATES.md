@@ -71,3 +71,6 @@ Native drawing/input/timeline boundaries are covered by `test_setup_welcome.py`.
 
 ## Language screen and greeting sizes (1B165)
 The greeting prompt is 40px at 1920×1080 (scaled proportionally); both vector words share visible height and stroke width, with natural individual widths and a joint viewport limit. The language screen uses the Settings background/tile palette, a native remote compound path with transparent holes, and only one focused capsule. Up/Down changes focus; OK persists and advances, Back returns to greeting. Welcome content fades completely to the common background before language content fades in; Reduced Motion skips both.
+
+## Country picker (1B166)
+Language uses the Settings capsule/shadow renderer, 80px row pitch and the title Language/Язык. Region reuses the native remote/choice surface: detected country first, then a 40px Semibold uppercase heading and a localized alphabetic ISO country catalog with bounded visible rows. Late lookup preserves manual navigation. Network failure/VPN leaves the manual list available and never disables VPN. The selected ISO code is stored as `setup_country`; country selection does not change weather coordinates or the existing automatic-city/VPN policy. Both automatic and manual country choices retain the existing weather location. The previous city search remains available in regular settings.

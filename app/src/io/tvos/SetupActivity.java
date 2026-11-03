@@ -13,11 +13,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import io.tvos.setup.SetupState;
+import io.tvos.setup.SetupCountries;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -31,12 +31,11 @@ public class SetupActivity extends Activity {
     private UiRequest request;
     private int page, epoch;
     private volatile boolean active;
-    private boolean automatic, updates;
+    private boolean updates;
     private LinearLayout body;
-    private TextView regionText;
+    private SetupLanguageView regionPicker;
+    private String detectedCountry = "";
     private SetupWelcomeView welcome;
-    private AutoRegion.Result detected;
-    private String[] manual;
     private String regionStatus = "";
     private String tvPackage;
     private String autoTvLabel = "";
@@ -54,7 +53,7 @@ public class SetupActivity extends Activity {
         setup().edit().putBoolean("started", true).apply();
         if (!settings().contains("language")) Prefs.setLanguage(SetupState.language(getResources().getConfiguration().getLocales().get(0).getLanguage()));
         page = SetupState.step(setup().getInt("step", 0));
-        automatic = settings().getBoolean("region_auto", true); updates = settings().getBoolean("auto_update", true);
+        updates = settings().getBoolean("auto_update", true);
         tvPackage = settings().getString("live_tv_app", "");
 
     }
@@ -93,13 +92,23 @@ public class SetupActivity extends Activity {
     }
     private Button nextButton;
     private void render() {
-        cancelWork(); stopHello(); regionText = null;
+        cancelWork(); stopHello(); regionPicker = null;
         if (page == SetupState.HELLO) {
             welcome = new SetupWelcomeView(this, () -> { if (active && page == SetupState.HELLO) next(); }); setContentView(welcome); welcome.requestFocus(); return;
         }
         if (page == SetupState.LANGUAGE) {
-            SetupLanguageView language = new SetupLanguageView(this, () -> { detected = null; regionStatus = ""; next(); });
+            SetupLanguageView language = new SetupLanguageView(this, () -> { detectedCountry = ""; regionStatus = ""; next(); });
             setContentView(language); language.requestFocus(); return;
+        }
+        if (page == SetupState.REGION) {
+            regionPicker = new SetupLanguageView(this, () -> { }, code -> {
+                settings().edit().putString("setup_country", code).apply();
+                skip();
+            });
+            setContentView(regionPicker); regionPicker.requestFocus();
+            if (!detectedCountry.isEmpty()) regionPicker.detectedCountry(detectedCountry);
+            else detectCountry();
+            return;
         }
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
         scroll.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF142C45, 0xFF080B14}));
@@ -107,14 +116,6 @@ public class SetupActivity extends Activity {
         body.setPadding(dp(80), dp(20), dp(80), dp(20)); scroll.addView(body); setContentView(scroll);
         label("tvOS", 23);
         switch (page) {
-            case SetupState.REGION:
-                label(text(R.string.settings_region), 34);
-                label(text(R.string.settings_setup_region_hint), 18);
-                label(text(R.string.settings_help_auto_region), 16);
-                button((automatic ? "✓ " : "") + text(R.string.settings_automatic), () -> { automatic = true; detected = null; regionStatus = ""; render(); });
-                button((!automatic ? "✓ " : "") + text(R.string.settings_manual), () -> { automatic = false; regionStatus = ""; render(); searchCity(); });
-                regionText = label("", 22); updateRegionText();
-                if (automatic && detected == null) detectCity(); break;
             case SetupState.WIFI:
                 label(text(R.string.settings_setup_wifi), 34); label(text(R.string.settings_setup_wifi_hint), 21);
                 label(text(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -142,40 +143,22 @@ public class SetupActivity extends Activity {
         if (page != SetupState.HELLO) button(text(R.string.settings_setup_skip), this::skip);
         nextButton.requestFocus();
     }
-    private void updateRegionText() {
-        if (regionText == null) return;
-        regionText.setText(automatic ? detected != null ? detected.city : regionStatus
-                : !regionStatus.isEmpty() ? regionStatus : manual == null ? Prefs.city() : manual[1]);
-    }
-    private void detectCity() {
+    private void updateRegionText() { if (regionPicker != null) regionPicker.status(regionStatus); }
+    private void detectCountry() {
         regionStatus = text(R.string.settings_setup_detecting); updateRegionText();
         final String language = Prefs.language();
         task(() -> {
             android.net.ConnectivityManager manager = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
             if (NetworkStatus.detectVpn(manager)) throw new java.io.IOException("VPN active");
-            AutoRegion.Result found = AutoRegion.parse(ApkTransfer.json(
-                    "https://ipwho.is/?fields=success,city,latitude,longitude&lang=" + language, () -> !active || Thread.currentThread().isInterrupted()));
+            String response = ApkTransfer.json(
+                    "https://ipwho.is/?fields=success,country_code&lang=" + language, () -> !active || Thread.currentThread().isInterrupted());
+            org.json.JSONObject json = new org.json.JSONObject(response);
+            String country = json.optString("country_code", "").toUpperCase(java.util.Locale.ROOT);
+            if (!json.optBoolean("success", false) || !SetupCountries.valid(country))
+                throw new java.io.IOException("Invalid country response");
             if (NetworkStatus.detectVpn(manager)) throw new java.io.IOException("VPN changed");
-            return () -> { detected = found; regionStatus = ""; updateRegionText(); };
+            return () -> { detectedCountry = country; regionStatus = ""; if (regionPicker != null) { regionPicker.status(""); regionPicker.detectedCountry(country); } };
         });
-    }
-    private void searchCity() {
-        EditText input = new EditText(this); input.setSingleLine(true); input.setHint(text(R.string.settings_city_name_hint));
-        new AlertDialog.Builder(this).setTitle(text(R.string.settings_city)).setView(input)
-                .setPositiveButton(text(R.string.settings_find_city), (d, w) -> {
-                    regionStatus = text(R.string.settings_setup_detecting); updateRegionText();
-                    String query = input.getText().toString().trim();
-                    task(() -> {
-                        List<String[]> cities = HomeData.findCity(query);
-                        return () -> {
-                            if (cities.isEmpty()) { regionStatus = text(R.string.settings_setup_lookup_failed); updateRegionText(); return; }
-                            String[] names = new String[cities.size()]; for (int i = 0; i < names.length; i++) names[i] = cities.get(i)[0];
-                            new AlertDialog.Builder(this).setTitle(text(R.string.settings_city)).setItems(names, (x, at) -> {
-                                manual = cities.get(at); regionStatus = ""; updateRegionText();
-                            }).setNegativeButton(text(R.string.settings_setup_back), null).show();
-                        };
-                    });
-                }).setNegativeButton(text(R.string.settings_setup_back), null).show();
     }
     private String appLabel(String pkg) {
         try { return String.valueOf(getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0))); }
@@ -216,16 +199,7 @@ public class SetupActivity extends Activity {
         }).setNegativeButton(text(R.string.settings_setup_back), null).show();
     }
     private void next() {
-        if (page == SetupState.REGION) {
-            if (automatic) {
-                if (detected == null) { android.widget.Toast.makeText(this, text(R.string.settings_setup_lookup_failed), android.widget.Toast.LENGTH_LONG).show(); return; }
-                Prefs.setAutomaticRegion(true);
-                Prefs.applyAutomaticCity(detected.city, detected.latitude, detected.longitude, Prefs.language(), Prefs.regionGeneration());
-            } else {
-                Prefs.setAutomaticRegion(false);
-                if (manual != null) Prefs.setCity(manual[1], manual[2], manual[3], Long.parseLong(manual[4]), manual[5]);
-            }
-        } else if (page == SetupState.UPDATES) settings().edit().putBoolean("auto_update", updates).apply();
+        if (page == SetupState.UPDATES) settings().edit().putBoolean("auto_update", updates).apply();
         else if (page == SetupState.TV) Prefs.setLiveTvApp(tvPackage);
         skip();
     }

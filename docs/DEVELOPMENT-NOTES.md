@@ -289,3 +289,6 @@ Double welcome hint size (bounded to viewport), increase handwriting stroke 60�
 
 ### 1B165
 Welcome hint is 40px at 1080p with proportional scaling. Normalize both handwriting SVGs to equal visible height and stroke weight, fitting width jointly. Add native language screen with focus-only capsule and programmatic remote silhouette. Welcome content fades out completely before language content fades in; Reduced Motion skips fades. Language choice commits only on uncanceled OK.
+
+### 1B166
+Settings shadows for setup focus capsules, Language/Язык title, 20% tighter row pitch. Add native country picker with localized ISO list, pinned automatic result, preserved navigation on late lookup and manual offline fallback. Remove obsolete wizard city-search UI; retain settings city search and preference compatibility.
