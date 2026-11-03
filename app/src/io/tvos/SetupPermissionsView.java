@@ -27,7 +27,8 @@ final class SetupPermissionsView extends View {
     private final boolean reduced;
     private int selected;
     private boolean pressed, confirmed;
-    private long frame = SystemClock.uptimeMillis();
+    private final long start = SystemClock.uptimeMillis();
+    private long frame = start;
     SetupPermissionsView(Context c, Runnable allow, Runnable deny) {
         super(c); this.allow = allow; this.deny = deny;
         title = AppStrings.get(R.string.settings_setup_permissions);
@@ -48,7 +49,8 @@ final class SetupPermissionsView extends View {
         super.onDraw(c); boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
         background.draw(c, getWidth(), getHeight(), light);
         float k = Math.min(getWidth()/1920f,getHeight()/1080f);
-        int saved = c.save(); c.translate((getWidth()-1920*k)/2,(getHeight()-1080*k)/2); c.scale(k,k);
+        float alpha = reduced ? 1 : Math.min(1, Math.max(0, (SystemClock.uptimeMillis() - start) / 260f));
+        int saved = c.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha)); c.translate((getWidth()-1920*k)/2,(getHeight()-1080*k)/2); c.scale(k,k);
         int color = light ? 0xFF6E7E94 : 0xFF95B3BE;
         text.setColor(color); text.setTypeface(Ui.displayBold); text.setTextAlign(Paint.Align.CENTER); text.setTextSize(80);
         c.drawText(title,960,225,text); text.setTypeface(Ui.displaySemibold); text.setTextSize(36); c.drawText(intro,960,310,text);
@@ -63,10 +65,10 @@ final class SetupPermissionsView extends View {
         for(int i=0;i<2;i++) {
             focus[i].target=i==selected?1:0;if(reduced)focus[i].snap(focus[i].target);else moving|=focus[i].step(dt);
             float f=Math.max(0,Math.min(1,focus[i].value)),cy=800+i*100;
-            if(f>.001f){rect.set(568.4444f,cy-30,1284,cy+30);buttons.draw(c,rect,1,light,f);}
+            if(f>.001f){rect.set(568.4444f,cy-30,1284,cy+30);buttons.drawFocused(c,rect,1,light,f);}
             text.setColor(io.tvos.settings.SettingsListRenderer.blend(color,0xFF1C1C1E,f));c.drawText(choices[i],960,cy+14,text);
         }
-        c.restoreToCount(saved);if(moving&&hasWindowFocus())postInvalidateOnAnimation();
+        c.restoreToCount(saved);if((moving||alpha<1)&&hasWindowFocus())postInvalidateOnAnimation();
     }
     private void line(Canvas canvas, String value, float x, float y) {
         text.setTextSize(28); float width = text.measureText(value);
@@ -76,7 +78,7 @@ final class SetupPermissionsView extends View {
     @Override public void onWindowFocusChanged(boolean f){super.onWindowFocusChanged(f);pressed=false;if(f)invalidate();}
     @Override protected void onDetachedFromWindow(){background.clear();shadows.clear();super.onDetachedFromWindow();}
     @Override public boolean onKeyDown(int key,KeyEvent e){
-        if(key==KeyEvent.KEYCODE_DPAD_UP||key==KeyEvent.KEYCODE_DPAD_DOWN){selected=key==KeyEvent.KEYCODE_DPAD_UP?0:1;describe();invalidate();return true;}
+        if(key==KeyEvent.KEYCODE_DPAD_UP||key==KeyEvent.KEYCODE_DPAD_DOWN){int next=key==KeyEvent.KEYCODE_DPAD_UP?0:1;if(next!=selected){focus[selected].snap(0);selected=next;}describe();invalidate();return true;}
         if(key==KeyEvent.KEYCODE_DPAD_CENTER||key==KeyEvent.KEYCODE_ENTER||key==KeyEvent.KEYCODE_NUMPAD_ENTER){if(e.getRepeatCount()==0)pressed=true;return true;}return super.onKeyDown(key,e);
     }
     @Override public boolean onKeyUp(int key,KeyEvent e){

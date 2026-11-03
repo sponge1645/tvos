@@ -298,3 +298,6 @@ Optional Permissions replaces the old Wi-Fi-only step without changing its store
 
 ### 1B168
 New setup palette, supplied permission icon vectors and full remote symbols. Remove update-consent page without changing update preferences; migrate the retired step. Native TV app selection/Continue and optional system Home handoff replace old generic widget screens. Preserve package fallback, keys and signing. Add native finish/input and retired-step regression coverage.
+
+### 1B169
+Remove outgoing setup focus capsules immediately and draw incoming focus without the Settings inactive base. Preview language titles through SettingsTransitions without persisting navigation. Lists extend to the screen edge, Permissions content fades in over the common background. Russian glyph height increases 20%; horizontal replacement feather increases 10%, hint timing unchanged. Trace supplied Provider/Sync Apps vectors; Home action opens default-launcher settings directly with a system-settings fallback.

@@ -67,7 +67,10 @@ final class SetupWelcomeView extends View {
         wordStroke = 90 * originalScale;
         wordHeight = (english.height() - 60) * originalScale;
         float widestWord = 0;
-        for (RectF b : bounds) widestWord = Math.max(widestWord, (b.width() - 60) * wordHeight / (b.height() - 60) + wordStroke);
+        for (int i = 0; i < bounds.length; i++) {
+            RectF b = bounds[i];
+            widestWord = Math.max(widestWord, (b.width() - 60) * wordHeight * (i == 1 ? 1.2f : 1f) / (b.height() - 60) + wordStroke);
+        }
         float fit = Math.min(1, getWidth() * .8f / widestWord);
         wordHeight *= fit; wordStroke *= fit; wipeHalfWidth = widestWord * fit / 2 + 12 * scale;
         float widest = Math.max(hint.measureText(hints[0]), hint.measureText(hints[1]));
@@ -76,7 +79,7 @@ final class SetupWelcomeView extends View {
     private void word(Canvas canvas, int language, float progress, float alpha) {
         if (alpha <= 0 || progress <= 0) return;
         RectF b = bounds[language];
-        float s = wordHeight / (b.height() - 60);
+        float s = wordHeight * (language == 1 ? 1.2f : 1f) / (b.height() - 60);
         int save = canvas.save(); canvas.translate(getWidth() / 2f, getHeight() * .47f);
         canvas.scale(s, s); canvas.translate(-b.centerX(), -b.centerY());
         shaderMatrix.setScale(getWidth() / s, -getHeight() / s);
@@ -96,7 +99,7 @@ final class SetupWelcomeView extends View {
     private void replacement(Canvas canvas, int language, float progress) {
         float left = getWidth() / 2f - wipeHalfWidth;
         float right = getWidth() / 2f + wipeHalfWidth;
-        float feather = 32 * scale;
+        float feather = 35.2f * scale;
         float edge = left - feather + (right - left + 2 * feather) * progress;
         int save = canvas.save();
         canvas.clipRect(edge + feather, 0, getWidth(), getHeight());

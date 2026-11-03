@@ -1,0 +1,20 @@
+"""Execute the actual Home settings handoff, selection detection and OEM fallback."""
+from pathlib import Path
+import subprocess,tempfile
+sources={
+'android/content/Intent.java':'''package android.content;public class Intent {public static final String ACTION_MAIN="main",CATEGORY_HOME="home";public final String action;public Intent(String action){this.action=action;}public Intent addCategory(String category){return this;}}''',
+'android/content/Context.java':'''package android.content;import android.content.pm.PackageManager;public class Context {public final PackageManager pm=new PackageManager();public PackageManager getPackageManager(){return pm;}public String getPackageName(){return "io.tvos";}}''',
+'android/content/pm/ResolveInfo.java':'''package android.content.pm;public class ResolveInfo {public ActivityInfo activityInfo;public static class ActivityInfo {public String packageName;}}''',
+'android/content/pm/PackageManager.java':'''package android.content.pm;public class PackageManager {public static final int MATCH_DEFAULT_ONLY=1;public ResolveInfo selected;public boolean fail;public ResolveInfo resolveActivity(android.content.Intent intent,int flags){if(fail)throw new IllegalStateException();return selected;}}''',
+'android/app/Activity.java':'''package android.app;import android.content.*;import java.util.*;public class Activity extends Context {public final List<String> opened=new ArrayList<>();public int failures;public void startActivity(Intent intent){opened.add(intent.action);if(failures-->0)throw new IllegalStateException();}}''',
+'android/provider/Settings.java':'''package android.provider;public class Settings {public static final String ACTION_HOME_SETTINGS="home-settings",ACTION_SETTINGS="settings";}''',
+'io/tvos/AppLog.java':'''package io.tvos;class AppLog {static int warnings;static void w(String value){warnings++;}}''',
+'io/tvos/HomeDefaultTest.java':'''package io.tvos;import android.app.Activity;import android.content.pm.ResolveInfo;class HomeDefaultTest {static void check(boolean b,String s){if(!b)throw new AssertionError(s);}public static void main(String[] args){Activity a=new Activity();HomeDefault.request(a);check(a.opened.toString().equals("[home-settings]"),"opens default launcher settings directly");Activity fallback=new Activity();fallback.failures=1;HomeDefault.request(fallback);check(fallback.opened.toString().equals("[home-settings, settings]"),"OEM missing Home settings falls back to system settings");Activity unavailable=new Activity();unavailable.failures=2;HomeDefault.request(unavailable);check(AppLog.warnings==1,"unavailable system UI does not crash");check(!HomeDefault.selected(a),"missing default stays optional");ResolveInfo r=new ResolveInfo();r.activityInfo=new ResolveInfo.ActivityInfo();a.pm.selected=r;r.activityInfo.packageName="other.launcher";check(!HomeDefault.selected(a),"another launcher not mistaken for tvOS");r.activityInfo.packageName="io.tvos";check(HomeDefault.selected(a),"actual default detected");a.pm.fail=true;check(!HomeDefault.selected(a),"package query failure is recoverable");System.out.println("PASS: direct launcher settings, OEM fallback and actual default selection");}}'''
+}
+with tempfile.TemporaryDirectory() as tmp:
+ root=Path(tmp)
+ sources['io/tvos/HomeDefault.java']=Path('app/src/io/tvos/HomeDefault.java').read_text()
+ for name,code in sources.items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(code)
+ subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','-cp',tmp,'io.tvos.HomeDefaultTest'],check=True,timeout=15)

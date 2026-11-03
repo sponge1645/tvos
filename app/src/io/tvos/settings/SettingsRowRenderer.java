@@ -43,13 +43,22 @@ public final class SettingsRowRenderer {
     }
 
     public float draw(Canvas c, RectF row, float k, boolean light, float focus) {
+        return draw(c, row, k, light, focus, true);
+    }
+
+    /** Setup lists show a capsule only on the focused row. */
+    public float drawFocused(Canvas c, RectF row, float k, boolean light, float focus) {
+        return draw(c, row, k, light, focus, false);
+    }
+
+    private float draw(Canvas c, RectF row, float k, boolean light, float focus, boolean base) {
         resize(k);
         float f = Math.max(0, Math.min(1, focus));
         float labelX = row.left + row.width() * 0.10f + 10 * k;
         bounds.set(labelX - 30 * k, row.top - 5 * k, row.right + 16 * k, row.bottom + 5 * k);
         float radius = bounds.height() / 2f;
         capsule.setColor(light ? 0xFFC9E4F7 : 0xFF31444B);
-        c.drawRoundRect(bounds, radius, radius, capsule);
+        if (base) c.drawRoundRect(bounds, radius, radius, capsule);
         if (f > 0.01f) {
             float grow = 1f + 0.012f * f;
             float cx = bounds.centerX(), cy = bounds.centerY();

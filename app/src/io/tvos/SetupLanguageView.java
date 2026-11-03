@@ -44,7 +44,10 @@ final class SetupLanguageView extends View {
     private boolean moving;
     private final String more;
     private final Runnable next;
-    private final String title;
+    private final String regionTitle;
+    private final io.tvos.settings.SettingsTransitions transitions = new io.tvos.settings.SettingsTransitions();
+    private final io.tvos.settings.SettingsTextRenderer titleText = new io.tvos.settings.SettingsTextRenderer();
+    private final String[] languageTitles;
     private final boolean reduced;
     private final long start = SystemClock.uptimeMillis();
     private int selected;
@@ -54,7 +57,9 @@ final class SetupLanguageView extends View {
     }
     SetupLanguageView(Context context, Runnable next, Consumer<String> choose) {
         super(context); this.next = next; this.choose = choose; region = choose != null;
-        title = AppStrings.get(region ? R.string.settings_region : R.string.settings_setup_language_title);
+        regionTitle = AppStrings.get(region ? R.string.settings_region : R.string.settings_setup_language_title);
+        languageTitles = new String[languages.length];
+        for (int i = 0; i < languages.length; i++) languageTitles[i] = AppStrings.get(R.string.settings_setup_language_title, languages[i]);
         more = AppStrings.get(R.string.settings_setup_more_regions);
         if (region) {
             codes = SetupCountries.codes(AppLanguage.current().locale);
@@ -75,7 +80,8 @@ final class SetupLanguageView extends View {
         setFocusable(true); setFocusableInTouchMode(true); describe();
         setOnClickListener(v -> confirm());
     }
-    private void describe() { setContentDescription(title + ", " + names[selected]); }
+    private String title() { return region ? regionTitle : languageTitles[selected]; }
+    private void describe() { setContentDescription(title() + ", " + names[selected]); }
     private void confirm() {
         if (confirmed) return; confirmed = true;
         if (region) choose.accept(codes[selected]);
@@ -93,10 +99,11 @@ final class SetupLanguageView extends View {
         matrix.setScale(1920, -1080); matrix.postTranslate(0, 1080); dark.setLocalMatrix(matrix);
         ink.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); ink.setShader(light ? null : dark);
         text.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); text.setShader(light ? null : dark);
-        text.setTypeface(Ui.displayBold); text.setTextSize(80); canvas.drawText(title, 600, 225, text);
+        text.setTypeface(Ui.displayBold); text.setTextSize(80);
+        boolean titleMoving = transitions.drawTitle(canvas, title(), SystemClock.uptimeMillis(), reduced, 600, 225, text, titleText);
         text.setTypeface(Ui.displaySemibold);
         long now = SystemClock.uptimeMillis();
-        float dt = Math.min(.05f, Math.max(0, (now - frame) / 1000f)); frame = now; moving = false;
+        float dt = Math.min(.05f, Math.max(0, (now - frame) / 1000f)); frame = now; moving = titleMoving;
         for (int i = 0; i < focus.length; i++) {
             focus[i].target = i == selected ? 1 : 0;
             if (reduced) focus[i].snap(focus[i].target); else moving |= focus[i].step(dt);
@@ -116,7 +123,7 @@ final class SetupLanguageView extends View {
         int offset = region && !detected.isEmpty() ? 1 : 0;
         scroll.target = region ? Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3)) : 0;
         if (reduced) scroll.snap(scroll.target); else moving |= scroll.step(dt);
-        viewport.resize(190, region ? rowStart - 55 : 280, 1020, 1040, 1);
+        viewport.resize(190, region ? rowStart - 55 : 280, 1020, Math.round((getHeight() - oy) / k), 1);
         viewport.draw(canvas, rows);
         // Keep the screen-space tile gradient unchanged through the remote's own transform.
         matrix.setScale(1920 * 660 / 650f, -1080 * 660 / 650f);
@@ -135,7 +142,7 @@ final class SetupLanguageView extends View {
         float amount = Math.max(0, Math.min(1, focus[index].value));
         if (amount > .001f) {
             row.set(208.44444f, cy - 30, 924, cy + 30);
-            focusRow.draw(canvas, row, 1, light, amount);
+            focusRow.drawFocused(canvas, row, 1, light, amount);
             text.setShader(null); text.setColor(io.tvos.settings.SettingsListRenderer.blend(light ? 0xFF6E7E94 : 0xFF95B3BE, 0xFF1C1C1E, amount));
         } else { text.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); text.setShader(light ? null : dark); }
         text.setTextSize(40); float width = text.measureText(names[index]);
@@ -158,10 +165,11 @@ final class SetupLanguageView extends View {
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused); pressed = false; if (focused) invalidate();
     }
-    @Override protected void onDetachedFromWindow() { background.clear(); shadows.clear(); super.onDetachedFromWindow(); }
+    @Override protected void onDetachedFromWindow() { background.clear(); shadows.clear(); titleText.clear(); super.onDetachedFromWindow(); }
     @Override public boolean onKeyDown(int key, KeyEvent event) {
         if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) {
-            selected = Math.max(0, Math.min(codes.length - 1, selected + (key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1)));
+            int next = Math.max(0, Math.min(codes.length - 1, selected + (key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1)));
+            if (next != selected) { focus[selected].snap(0); selected = next; }
             moved = true; describe(); invalidate(); return true;
         }
         if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER || key == KeyEvent.KEYCODE_NUMPAD_ENTER) {

@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp)
  for name,code in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(code)
- for name in ['SetupFinishView.java','Spring.java']:
+ for name in ['SetupFinishView.java','setup/SetupArtwork.java','Spring.java']:
   p=root/'io/tvos'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text((Path('app/src/io/tvos')/name).read_text())
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.FinishTest'],check=True,timeout=15)

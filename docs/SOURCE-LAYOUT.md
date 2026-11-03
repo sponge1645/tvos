@@ -446,3 +446,6 @@ See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.
 
 ### 1B168 setup finish/artwork
 `SetupFinishView` shares the two-action TV/Home layout. `setup/SetupArtwork` owns cached vector contour factories with editable SVG references in docs/design/setup. SetupState skips the retired updates index while preserving other stored step values.
+
+### 1B169 setup polish
+SetupLanguageView reuses SettingsTransitions/SettingsTextRenderer for localized focus-preview titles; shared SettingsRowRenderer.drawFocused omits the inactive base without changing Settings rows. SetupArtwork adds provider/sync_apps contours and matching SVG sources. HomeDefault now opens ACTION_HOME_SETTINGS directly; regression covers OEM fallback and actual default detection.

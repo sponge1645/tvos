@@ -26,6 +26,11 @@ public class SettingsShadowHarness {
    if(f==0){check(entries(c,"shadow").isEmpty(),"no focus shadow at rest");continue;}
    Canvas.Entry shadow=entries(c,"shadow").get(0),pill=entries(c,"round").get(1);near(shadow.t-pill.t,15*k*f,"shadow points down");near(shadow.l,pill.l,"no horizontal displacement");near(shadow.blur,40*k,"requested blur in both themes/scales");check((shadow.color>>>24)==Math.round(255*.4f*f),"focus-weighted 40 percent opacity");near(pill.r-pill.l,(824*.9f+36)*k*(1+.012f*f),"focused pill geometry retained");
   }
+  for(float f:new float[]{0,.25f,1}){
+   Canvas setup=new Canvas();h.rowRenderer.drawFocused(setup,h.rowRect,1,true,f);
+   check(entries(setup,"round").size()==(f==0?0:1),"setup draws no inactive base capsule");
+   if(f>0)check(entries(setup,"round").get(0).alpha==Math.round(255*f),"setup capsule alpha follows incoming focus");
+  }
   for(boolean light:new boolean[]{false,true}){h.light=light;check(h.valueInk(0)==(light?0xFF758390:0xFF999999),"unfocused value palette");check(h.valueInk(1)==0xFF999999,"focused value palette");}
   h.light=false;for(float f:new float[]{0,.25f,.5f,.75f,1})check(h.valueInk(f)==0xFF999999,"dark values stay gray throughout focus transitions");
   h.k=1;
