@@ -34,6 +34,7 @@ final class SetupWelcomeView extends View {
     private float scale;
     private float wordHeight, wordStroke, wipeHalfWidth;
     private long exitStart = -1;
+    private Runnable afterExit;
 
     SetupWelcomeView(Context context, Runnable next) {
         super(context); this.next = next;
@@ -56,7 +57,7 @@ final class SetupWelcomeView extends View {
         setFocusable(true); setFocusableInTouchMode(true);
         setContentDescription(hints["ru".equals(Prefs.language()) ? 1 : 0]);
     }
-    void stop() { running = false; pressed = false; background.clear(); }
+    void stop() { running = false; pressed = false; afterExit = null; background.clear(); }
     @Override protected void onDetachedFromWindow() { stop(); super.onDetachedFromWindow(); }
     @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         scale = Math.min(w / 1920f, h / 1080f);
@@ -80,10 +81,10 @@ final class SetupWelcomeView extends View {
         if (alpha <= 0 || progress <= 0) return;
         RectF b = bounds[language];
         float s = wordHeight * (language == 1 ? 1.2f : 1f) / (b.height() - 60);
-        int save = canvas.save(); canvas.translate(getWidth() / 2f, getHeight() * .47f);
+        int save = canvas.save(); canvas.translate(getWidth() / 2f, getHeight() * .47f + (language == 1 ? 30 * scale : 0));
         canvas.scale(s, s); canvas.translate(-b.centerX(), -b.centerY());
         shaderMatrix.setScale(getWidth() / s, -getHeight() / s);
-        shaderMatrix.postTranslate(b.centerX() - getWidth() / (2 * s), b.centerY() + getHeight() * .53f / s);
+        shaderMatrix.postTranslate(b.centerX() - getWidth() / (2 * s), b.centerY() + (getHeight() * .53f - (language == 1 ? 30 * scale : 0)) / s);
         dark.setLocalMatrix(shaderMatrix);
         ink.setStrokeWidth(wordStroke / s); ink.setAlpha(Math.round(255 * alpha));
         float remaining = lengths[language] * progress;
@@ -114,6 +115,12 @@ final class SetupWelcomeView extends View {
             word(canvas, language, progress, blend); canvas.restoreToCount(save);
         }
     }
+    private long elapsedSinceStart(long now) { return Math.max(0, now - start); }
+    void leave(Runnable action) {
+        if (!running || exitStart >= 0) return;
+        if (reduced) { stop(); action.run(); }
+        else { afterExit = action; exitStart = SystemClock.uptimeMillis(); invalidate(); }
+    }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
@@ -121,18 +128,18 @@ final class SetupWelcomeView extends View {
         ink.setShader(light ? null : dark); ink.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF);
         hint.setShader(light ? null : dark); hint.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF);
         long now = SystemClock.uptimeMillis();
-        if (exitStart >= 0 && now - exitStart >= 220) {
-            if (running) { stop(); post(next); } return;
+        if (exitStart >= 0 && now - exitStart >= 280) {
+            if (running) { Runnable action = afterExit; stop(); if (action != null) post(action); } return;
         }
         int content = canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(),
-                exitStart < 0 ? 255 : Math.round(255 * (1 - (now - exitStart) / 220f)));
+                exitStart < 0 ? Math.round(255 * (reduced ? 1 : Math.min(1, elapsedSinceStart(now) / 260f))) : Math.round(255 * Math.max(0, 1 - (now - exitStart) / 220f)));
         long elapsed = Math.max(0, now - start);
         long cycle = elapsed / 4800; float phase = elapsed % 4800;
         int language = (int) (cycle % 2);
         if (reduced) {
             language = "ru".equals(Prefs.language()) ? 1 : 0; word(canvas, language, 1, 1);
             shaderMatrix.setScale(getWidth(), -getHeight()); shaderMatrix.postTranslate(0, getHeight()); dark.setLocalMatrix(shaderMatrix);
-            hint.setAlpha(255); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .65f, hint);
+            hint.setAlpha(255); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .47f + 210 * scale, hint);
         } else {
             float progress = Math.min(1, phase / 3800);
             if (cycle == 0 || progress >= 1) word(canvas, language, progress, 1);
@@ -140,8 +147,8 @@ final class SetupWelcomeView extends View {
             // Text changes near completion of the incoming handwriting, independently of its fade.
             float blend = cycle == 0 ? 1 : Math.max(0, Math.min(1, (phase - 3200) / 500));
             shaderMatrix.setScale(getWidth(), -getHeight()); shaderMatrix.postTranslate(0, getHeight()); dark.setLocalMatrix(shaderMatrix);
-            if (blend < 1) { hint.setAlpha(Math.round(255 * (1 - blend))); canvas.drawText(hints[1 - language], getWidth() / 2f, getHeight() * .65f, hint); }
-            hint.setAlpha(Math.round(255 * blend)); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .65f, hint);
+            if (blend < 1) { hint.setAlpha(Math.round(255 * (1 - blend))); canvas.drawText(hints[1 - language], getWidth() / 2f, getHeight() * .47f + 210 * scale, hint); }
+            hint.setAlpha(Math.round(255 * blend)); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .47f + 210 * scale, hint);
             if (running && hasWindowFocus()) postInvalidateOnAnimation();
         }
         canvas.restoreToCount(content);
@@ -160,8 +167,7 @@ final class SetupWelcomeView extends View {
         if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER || key == KeyEvent.KEYCODE_NUMPAD_ENTER) {
             boolean advance = pressed && !event.isCanceled(); pressed = false;
             if (advance && running && exitStart < 0) {
-                if (reduced) { stop(); next.run(); }
-                else { exitStart = SystemClock.uptimeMillis(); invalidate(); }
+                next.run();
             } return true;
         }
         return super.onKeyUp(key, event);

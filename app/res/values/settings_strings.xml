@@ -247,7 +247,7 @@
     <string name="settings_setup_wifi_hint" formatted="false">Android requires location access to show the connected Wi-Fi name. This is optional: the launcher still works without it. GPS is not used for weather.</string>
     <string name="settings_setup_permission_granted" formatted="false">Permission already granted</string>
     <string name="settings_setup_permission_optional" formatted="false">You can grant access now or later</string>
-    <string name="settings_setup_allow" formatted="false">Grant access</string>
+    <string name="settings_setup_allow" formatted="false">Allow</string>
     <string name="settings_setup_tv" formatted="false">Live TV app</string>
     <string name="settings_setup_tv_hint" formatted="false">The detected system TV app is used by default. You can choose another app for the TV shortcut.</string>
     <string name="settings_setup_tv_choose" formatted="false">Choose an app</string>
@@ -270,7 +270,7 @@
     <string name="settings_setup_permissions">Permissions</string>
     <string name="settings_setup_permissions_hint">You can change access later in Settings.</string>
     <string name="settings_setup_location">Location</string>
-    <string name="settings_setup_remote_access">Remote buttons</string>
+    <string name="settings_setup_remote_access">Accessibility</string>
     <string name="settings_setup_history_access">Watch history</string>
     <string name="settings_setup_location_line1">Show your Wi-Fi network name.</string>
     <string name="settings_setup_location_line2">Weather uses your chosen city.</string>
@@ -285,4 +285,8 @@
     <string name="settings_setup_home_description">Open tvOS whenever you press\nthe Home button.</string>
     <string name="settings_setup_set_home">Set tvOS as Home</string>
     <string name="settings_setup_not_now">Not now</string>
+    <string name="settings_setup_weather_title">Weather</string>
+    <string name="settings_setup_weather_description">Choose a city for your weather forecast.\nYou can change it later.</string>
+    <string name="settings_setup_manual">Manually</string>
+    <string name="settings_setup_city_failed">Try detecting the city again</string>
 </resources>

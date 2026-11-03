@@ -449,3 +449,6 @@ See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.
 
 ### 1B169 setup polish
 SetupLanguageView reuses SettingsTransitions/SettingsTextRenderer for localized focus-preview titles; shared SettingsRowRenderer.drawFocused omits the inactive base without changing Settings rows. SetupArtwork adds provider/sync_apps contours and matching SVG sources. HomeDefault now opens ACTION_HOME_SETTINGS directly; regression covers OEM fallback and actual default detection.
+
+### 1B170 setup weather/transitions
+SettingsCityDialog owns the native city input/IME interaction shared by SettingsActivity and SetupActivity; SettingsCitySearch still owns lookup scheduling and stale-result guards. SetupFinishView.Kind adds Weather to the existing two-choice surface. SetupActivity owns consent, explicit city persistence, stable page navigation and outgoing-scene lifecycle tokens. SetupState adds WEATHER7 without reusing retired UPDATES4. Smooth SetupRemoteRenderer curves replace the unused SetupArtwork.remote_details pixel contour; weather.svg and native cubic geometry are cached like other setup artwork.

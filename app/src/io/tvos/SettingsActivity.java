@@ -40,8 +40,6 @@ import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeProvider;
-import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -768,22 +766,7 @@ public class SettingsActivity extends Activity {
 
         private void askCity() {
             if (citySearch.searching()) return;
-            EditText field = new EditText(activity);
-            field.setSingleLine(true);
-            field.setHint(AppStrings.get(R.string.settings_city_name_hint));
-            field.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-            AlertDialog dialog = new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle(AppStrings.get(R.string.settings_city))
-                    .setView(field)
-                    .setPositiveButton(AppStrings.get(R.string.settings_find_city), (d, which) -> citySearch.search(field.getText().toString()))
-                    .setNegativeButton(AppStrings.get(R.string.settings_cancel), null)
-                    .create();
-            field.setOnEditorActionListener((v, action, event) -> {
-                dialog.dismiss();
-                citySearch.search(field.getText().toString());
-                return true;
-            });
-            dialog.show();
+            SettingsCityDialog.show(activity, citySearch::search);
         }
 
         private void showCityResults(List<String[]> result) {

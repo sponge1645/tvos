@@ -252,7 +252,7 @@
     <string name="settings_setup_wifi_hint" formatted="false">Android требует доступ к местоположению для названия подключённой сети Wi-Fi. Это необязательно: без разрешения лаунчер продолжит работать. GPS для погоды не используется.</string>
     <string name="settings_setup_permission_granted" formatted="false">Разрешение уже выдано</string>
     <string name="settings_setup_permission_optional" formatted="false">Доступ можно предоставить сейчас или позже</string>
-    <string name="settings_setup_allow" formatted="false">Предоставить доступ</string>
+    <string name="settings_setup_allow" formatted="false">Разрешить</string>
     <string name="settings_setup_tv" formatted="false">Приложение для телеканалов</string>
     <string name="settings_setup_tv_hint" formatted="false">По умолчанию используется обнаруженное системное ТВ-приложение. Можно выбрать другое приложение для кнопки ТВ.</string>
     <string name="settings_setup_tv_choose" formatted="false">Выбрать приложение</string>
@@ -275,7 +275,7 @@
     <string name="settings_setup_permissions">Разрешения</string>
     <string name="settings_setup_permissions_hint">Доступ можно изменить позже в настройках.</string>
     <string name="settings_setup_location">Геолокация</string>
-    <string name="settings_setup_remote_access">Кнопки пульта</string>
+    <string name="settings_setup_remote_access">Спец. возможности</string>
     <string name="settings_setup_history_access">История просмотра</string>
     <string name="settings_setup_location_line1">Для имени сети Wi-Fi.</string>
     <string name="settings_setup_location_line2">Погода — по выбранному городу.</string>
@@ -290,4 +290,8 @@
     <string name="settings_setup_home_description">tvOS будет открываться\nпри нажатии кнопки «Домой».</string>
     <string name="settings_setup_set_home">Установить tvOS главным экраном</string>
     <string name="settings_setup_not_now">Не сейчас</string>
+    <string name="settings_setup_weather_title">Погода</string>
+    <string name="settings_setup_weather_description">Выберите город для прогноза погоды.\nЕго можно изменить позже.</string>
+    <string name="settings_setup_manual">Вручную</string>
+    <string name="settings_setup_city_failed">Определить город ещё раз</string>
 </resources>

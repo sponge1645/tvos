@@ -52,6 +52,8 @@ final class SetupLanguageView extends View {
     private final long start = SystemClock.uptimeMillis();
     private int selected;
     private boolean pressed, confirmed;
+    private long exitStart = -1;
+    private Runnable afterExit;
     SetupLanguageView(Context context, Runnable next) {
         this(context, next, null);
     }
@@ -87,13 +89,23 @@ final class SetupLanguageView extends View {
         if (region) choose.accept(codes[selected]);
         else { Prefs.setLanguage(codes[selected]); next.run(); }
     }
+    void leave(Runnable action) {
+        if (exitStart >= 0) return;
+        if (reduced) action.run();
+        else { afterExit = action; exitStart = SystemClock.uptimeMillis(); invalidate(); }
+    }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         float k = Math.min(getWidth() / 1920f, getHeight() / 1080f);
         float ox = (getWidth() - 1920 * k) / 2, oy = (getHeight() - 1080 * k) / 2;
         light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
         background.draw(canvas, getWidth(), getHeight(), light);
+        long time = SystemClock.uptimeMillis();
+        if (exitStart >= 0 && time - exitStart >= 280) {
+            Runnable action = afterExit; afterExit = null; if (action != null) post(action); return;
+        }
         float alpha = reduced ? 1 : Math.min(1, Math.max(0, (SystemClock.uptimeMillis() - start) / 260f));
+        if (exitStart >= 0) alpha *= Math.max(0, 1 - (time - exitStart) / 220f);
         int saved = canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha));
         canvas.translate(ox, oy); canvas.scale(k, k);
         matrix.setScale(1920, -1080); matrix.postTranslate(0, 1080); dark.setLocalMatrix(matrix);
@@ -130,7 +142,7 @@ final class SetupLanguageView extends View {
         matrix.postTranslate(-1370 * 660 / 650f, (1080 - 215) * 660 / 650f); dark.setLocalMatrix(matrix);
         remote.draw(canvas, 1370, 215, 650, ink);
         canvas.restoreToCount(saved);
-        if ((alpha < 1 || moving) && hasWindowFocus()) postInvalidateOnAnimation();
+        if ((exitStart >= 0 || alpha < 1 || moving) && hasWindowFocus()) postInvalidateOnAnimation();
     }
     private void drawRows(Canvas canvas) {
         int offset = region && !detected.isEmpty() ? 1 : 0;
