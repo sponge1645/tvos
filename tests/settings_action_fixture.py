@@ -17,6 +17,9 @@ public class CLASSNAME {
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;final ModeMonitor modeMonitor=new ModeMonitor();class ModeMonitor {long pendingAt;void markPending(){pendingAt=SystemClock.uptimeMillis();}}
  final AppLoader appLoader=new AppLoader();class AppLoader {void cancel(){}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
+ static class Values {void clearAppCache(){}}final Values valueSource=new Values();
+ final List<String> choiceKeys=new ArrayList<>(Arrays.asList("FR",""));
+ void openCountryPicker(){openPicker(PICK_REGION);}void openTvProviderPicker(){openPicker(PICK_TV);}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
  static class Ui {static boolean ru;}
  static class Context {}final Context context=new Context();Context getContext(){return context;}
@@ -34,6 +37,7 @@ public class CLASSNAME {
   static void setTheme(String v){theme=v;note("theme:"+v);}static void setLanguage(String v){language=v;note("language:"+v);}static void setTemperature(String v){unit=v;note("unit:"+v);}static void setHour24(boolean v){h24=v;note("hour24:"+v);}
   static final String[] KEYS={"netflix","youtube","prime","tcl"};static List<String> shelf;
   static List<String> shelf(){return shelf;}static void setShelf(List<String> s){shelf=s;note("shelf:"+s);}
+  static void setRecommendationRegion(String code){note("country:"+code);}static void setLiveTvApp(String target){note("tv:"+target);}
   static void setCity(String a,String b,String c,long d,String e){note("city:"+a+":"+b+":"+c+":"+d+":"+e);}
   static void setKeyApp(String key,String pkg){note("key:"+key+":"+pkg);}
  }

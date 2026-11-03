@@ -159,6 +159,8 @@ public class SettingsActivity extends Activity {
         private final SettingsUpdateDialog updateDialog;
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private final SettingsModeMonitor modeMonitor;
+        private boolean tvProviderLoading;
+        private final List<String> choiceKeys = new ArrayList<>();
         private int screen = MAIN, focus, settingsGroup = GENERAL;
         private final SettingsTransitions transitions = new SettingsTransitions();
         private final java.util.function.IntUnaryOperator transitionParent = this::parentScreen;
@@ -193,7 +195,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
-            modeMonitor = new SettingsModeMonitor(a, handler, () -> running, () -> screen == REGION,
+            modeMonitor = new SettingsModeMonitor(a, handler, () -> running, () -> screen == CITY,
                     this::announceForAccessibility, this::invalidate);
             preferenceEditor = new SettingsPreferenceEditor(localPrefs(),
                     () -> HomeData.get(getContext()).settingsChanged(), this::invalidate);
@@ -240,7 +242,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case REGION: case ACCESSIBILITY: case TOP_PANEL: {
+                case LANGUAGE: case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -474,9 +476,9 @@ public class SettingsActivity extends Activity {
 
         private void drawScreenContent(Canvas c) {
             switch (screen) {
-                case MAIN: case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
+                case MAIN: case LANGUAGE: case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
-                case ACCESSIBILITY: case APPS_DOWNLOADS: case REGION: case ABOUT: case SCREENSAVER:
+                case ACCESSIBILITY: case APPS_DOWNLOADS: case CITY: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
                 case HOME_CHOICE: drawChoice(c); break;
                 case PICKER: drawPicker(c); break;
@@ -501,7 +503,7 @@ public class SettingsActivity extends Activity {
         }
 
         private boolean menuChevronVisible(int row) {
-            return SettingsScreen.hasChevron(screen, row, screen == REGION && Prefs.automaticRegion());
+            return SettingsScreen.hasChevron(screen, row, screen == CITY && Prefs.automaticRegion());
         }
 
         private SettingsListRenderer.Row prepareRow(int index, String label, String value) {
@@ -525,12 +527,12 @@ public class SettingsActivity extends Activity {
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
                 row.kind = screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
-                row.disabled = screen == REGION && i == 1 && Prefs.automaticRegion();
+                row.disabled = screen == CITY && i == 1 && Prefs.automaticRegion();
                 boolean chevron = menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
                         : chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
-                row.fitValue = screen == MEDIA || screen == REGION;
+                row.fitValue = screen == MEDIA || screen == CITY;
                 row.showValue = screen != MOVIE_SERVICE;
                 if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.SERVICE_CHECK;
                 drawRow(c);
@@ -748,6 +750,7 @@ public class SettingsActivity extends Activity {
                 case REGION_MODE: toggleAutomaticRegion(); return;
                 case MENU_BUTTON: moveMenuButton(dir); return;
                 case GENERAL: preferenceEditor.general(focus, dir); return;
+                case CLICKS: setLocalFlag("navigation_clicks", !localPrefs().getBoolean("navigation_clicks", true)); return;
                 default: return;
             }
         }
@@ -770,8 +773,8 @@ public class SettingsActivity extends Activity {
         }
 
         private void showCityResults(List<String[]> result) {
-            if (screen != HOME_SETTINGS && screen != GENERAL && screen != REGION) return;
-            if (screen == REGION && Prefs.automaticRegion()) return;
+            if (screen != HOME_SETTINGS && screen != GENERAL && screen != CITY) return;
+            if (screen == CITY && Prefs.automaticRegion()) return;
             cities.clear();
             cities.addAll(result);
             openPicker(PICK_CITY);
@@ -862,6 +865,39 @@ public class SettingsActivity extends Activity {
             }
         }
 
+        private void openCountryPicker() {
+            pickFor = PICK_REGION; pickLabels.clear(); choiceKeys.clear(); pickCurrent = -1;
+            String selected = Prefs.recommendationRegion();
+            for (String code : io.tvos.setup.SetupCountries.codes(AppLanguage.current().locale)) {
+                if (code.equals(selected)) pickCurrent = choiceKeys.size();
+                choiceKeys.add(code); pickLabels.add(io.tvos.setup.SetupCountries.name(code, AppLanguage.current().locale));
+            }
+            focus = listWindow.openPicker(pickCurrent, pickLabels.size());
+            listScroll.snap(listWindow.offset()); screen = PICKER;
+        }
+
+        private void openTvProviderPicker() {
+            if (tvProviderLoading) return; tvProviderLoading = true;
+            final Context context = activity.getApplicationContext();
+            new Thread(() -> {
+                List<String[]> targets;
+                try { targets = LiveTvTargets.load(context); }
+                catch (RuntimeException unavailable) { targets = java.util.Collections.emptyList(); }
+                final List<String[]> found = targets;
+                handler.post(() -> {
+                    tvProviderLoading = false;
+                    if (!running || screen != MEDIA) return;
+                    pickFor = PICK_TV; pickLabels.clear(); choiceKeys.clear();
+                    choiceKeys.add(""); pickLabels.add(AppStrings.get(R.string.settings_tv_unselected));
+                    for (String[] target : found) { choiceKeys.add(target[0]); pickLabels.add(target[1]); }
+                    pickCurrent = choiceKeys.indexOf(localPrefs().getString("live_tv_app", ""));
+                    focus = listWindow.openPicker(pickCurrent, pickLabels.size());
+                    listScroll.snap(listWindow.offset()); screen = PICKER;
+                    invalidate(); spoken.focusMoved();
+                });
+            }, "tv-provider-picker").start();
+        }
+
         private void openPicker(int which) {
             pickFor = which;
             pickLabels.clear();
@@ -915,7 +951,7 @@ public class SettingsActivity extends Activity {
         private void activate() {
             final int screenBeforeAction = screen;
             SettingsActions.Action action = SettingsActions.activation(screen, focus, pickFor,
-                    (screen == HOME_SETTINGS && settingIndex() == CITY_ROW) || (screen == REGION && Prefs.automaticRegion()), buttonEditor.size(),
+                    (screen == HOME_SETTINGS && settingIndex() == CITY_ROW) || (screen == CITY && Prefs.automaticRegion()), buttonEditor.size(),
                     vpnTopEnabled());
             if (action == SettingsActions.Action.NAME) {
                 if (focus == 0) deviceDialogs.askDeviceName();
@@ -924,7 +960,7 @@ public class SettingsActivity extends Activity {
             Context c = getContext();
             if (action.targetScreen >= 0) {
                 screen = action.targetScreen;
-                focus = screen == HOME_SCREEN ? (Prefs.homeContinue() ? 1 : 0) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
+                focus = screen == HOME_SCREEN ? (Prefs.homeContinue() ? 1 : 0) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
                 case HOME_MODE:
                     if (!busy()) {
@@ -941,11 +977,22 @@ public class SettingsActivity extends Activity {
                     localPrefs().edit().putString(MovieService.KEY, MovieService.id(focus)).apply();
                     screen = MEDIA; focus = 0;
                     break;
+                case OPEN_REGION: openCountryPicker(); break;
+                case TV_PICKER: openTvProviderPicker(); return;
+                case SELECT_COUNTRY:
+                    Prefs.setRecommendationRegion(choiceKeys.get(listWindow.absoluteRow(focus)));
+                    screen = GENERAL; focus = 3; break;
+                case SELECT_TV:
+                    Prefs.setLiveTvApp(choiceKeys.get(listWindow.absoluteRow(focus)));
+                    valueSource.clearAppCache(); screen = MEDIA; focus = 2; break;
+                case SELECT_LANGUAGE:
+                    Prefs.setLanguage(focus == 0 ? "ru" : "en");
+                    HomeData.get(c).settingsChanged(); screen = GENERAL; focus = 2; break;
                 case SELECT_CITY: {
                     String[] city = cities.get(listWindow.absoluteRow(focus));
                     Prefs.setCity(city[1], city[2], city[3], Long.parseLong(city[4]), city[5]);
                     HomeData.get(c).settingsChanged();
-                    focus = 1; screen = REGION;
+                    focus = 1; screen = CITY;
                     break;
                 }
                 case SELECT_VPN: {
@@ -966,7 +1013,6 @@ public class SettingsActivity extends Activity {
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
                 case VOLUME_HOLD: toggleVolumeHold(); invalidate(); return;
-                case SETUP: activity.startActivity(new Intent(activity, SetupActivity.class).putExtra("replay", true)); break;
                 case ADVANCED_KEYS: activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class)); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;

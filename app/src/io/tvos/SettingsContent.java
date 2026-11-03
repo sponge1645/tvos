@@ -35,22 +35,24 @@ final class SettingsContent {
             case ABOUT: return AppStrings.get(R.string.settings_about, language);
             case SCREENSAVER: return AppStrings.get(R.string.settings_screen_saver, language);
             case HOME_CHOICE: return AppStrings.get(R.string.settings_default_launcher, language);
-            case REGION: return AppStrings.get(R.string.settings_region, language);
+            case CITY: return AppStrings.get(R.string.settings_city, language);
+            case LANGUAGE: return AppStrings.get(R.string.settings_language, language);
             case HOME_SETTINGS: return settingsGroup == SYSTEM ? (AppStrings.get(R.string.settings_categories, language)) : (AppStrings.get(R.string.settings_general, language));
             case REMOTE_KEYS: return AppStrings.get(R.string.settings_remotes_and_devices, language);
             case SHELF_EDIT: return "Dock";
             case CATEGORY_EDIT: return AppStrings.get(R.string.settings_categories, language);
-            case PICKER: return pickFor == PICK_VPN ? AppStrings.get(R.string.settings_vpn, language) : pickFor == PICK_CITY ? (AppStrings.get(R.string.settings_region, language)) : (AppStrings.get(R.string.settings_choose_app, language));
+            case PICKER: return pickFor == PICK_REGION ? AppStrings.get(R.string.settings_region, language) : pickFor == PICK_TV ? AppStrings.get(R.string.settings_tv_provider, language) : pickFor == PICK_VPN ? AppStrings.get(R.string.settings_vpn, language) : pickFor == PICK_CITY ? (AppStrings.get(R.string.settings_city, language)) : (AppStrings.get(R.string.settings_choose_app, language));
             default: return AppStrings.get(R.string.settings_settings, language);
         }
     }
 
     static String[] menuLabels(int screen, AppLanguage language) {
         switch (screen) {
-            case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language)};
+            case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language), AppStrings.get(R.string.settings_navigation_clicks, language), AppStrings.get(R.string.settings_tv_provider, language)};
+            case LANGUAGE: return new String[] {"Русский", "English"};
             case MOVIE_SERVICE: return MovieService.labels(language);
             case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_recommendations, language), AppStrings.get(R.string.home_continue_watching, language)};
-            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_navigation_clicks, language), AppStrings.get(R.string.settings_home_screen, language), AppStrings.get(R.string.settings_setup_repeat, language)};
+            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_city, language), AppStrings.get(R.string.settings_temperature, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.settings_home_screen, language)};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language), AppStrings.get(R.string.settings_show_in_bottom_menu, language)};
@@ -60,7 +62,7 @@ final class SettingsContent {
             case TOP_PANEL: return new String[] {AppStrings.get(R.string.settings_categories, language), AppStrings.get(R.string.settings_buttons, language), AppStrings.get(R.string.settings_widgets, language)};
             case APPS_DOWNLOADS: return new String[] {AppStrings.get(R.string.settings_download_airplay, language), AppStrings.get(R.string.settings_download_apple_music, language), AppStrings.get(R.string.settings_download_tizentube, language), AppStrings.get(R.string.settings_download_incy, language), AppStrings.get(R.string.settings_download_seena, language), AppStrings.get(R.string.settings_download_lampa, language), AppStrings.get(R.string.settings_download_kinopub, language)};
             case ACCESSIBILITY: return new String[] {AppStrings.get(R.string.settings_reduce_transparency, language), AppStrings.get(R.string.settings_reduce_motion, language), AppStrings.get(R.string.settings_tv_settings, language)};
-            case REGION: return new String[] {AppStrings.get(R.string.settings_automatic_value, language), AppStrings.get(R.string.settings_manual, language)};
+            case CITY: return new String[] {AppStrings.get(R.string.settings_automatic_value, language), AppStrings.get(R.string.settings_manual, language)};
             case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, language), AppStrings.get(R.string.settings_show_clock, language), AppStrings.get(R.string.settings_show_location, language), AppStrings.get(R.string.settings_show_weather, language), AppStrings.get(R.string.settings_preview, language)};
             case ABOUT: return new String[] {AppStrings.get(R.string.settings_name, language), AppStrings.get(R.string.settings_model, language), AppStrings.get(R.string.settings_serial_number, language), "tvOS", AppStrings.get(R.string.settings_os, language), AppStrings.get(R.string.settings_resolution, language), AppStrings.get(R.string.settings_wi_fi_network_name, language), AppStrings.get(R.string.settings_ip_address, language)};
             default: return new String[] {AppStrings.get(R.string.settings_general, language), AppStrings.get(R.string.settings_video_audio, language), AppStrings.get(R.string.settings_screen_saver, language), "AirPlay", AppStrings.get(R.string.settings_remotes_and_devices, language), AppStrings.get(R.string.settings_accessibility, language), AppStrings.get(R.string.settings_apps, language), "Dock", AppStrings.get(R.string.settings_menu_bar, language), AppStrings.get(R.string.settings_system, language)};
@@ -75,13 +77,15 @@ final class SettingsContent {
                 if (focus == 3) info = AppStrings.get(R.string.settings_help_airplay, language);
                 else if (focus == 7) info = AppStrings.get(R.string.settings_help_dock, language);
                 break;
-            case MEDIA: case MOVIE_SERVICE:
+            case MOVIE_SERVICE:
                 info = AppStrings.get(R.string.settings_help_default_service, language);
                 break;
             case HOME_SCREEN: return AppStrings.get(R.string.settings_help_home_screen, language);
-            case REGION: return AppStrings.get(R.string.settings_help_auto_region, language);
+            case CITY: return AppStrings.get(R.string.settings_help_auto_region, language);
+            case MEDIA: return focus == 0 ? AppStrings.get(R.string.settings_help_default_service, language) : null;
             case GENERAL:
-                if (focus == 3) info = AppStrings.get(R.string.settings_help_region, language);
+                if (focus == 3) info = AppStrings.get(R.string.settings_help_country, language);
+                else if (focus == 4) info = AppStrings.get(R.string.settings_help_region, language);
                 else if (focus == 7) info = AppStrings.get(R.string.settings_help_home_screen, language);
                 break;
             case SCREENSAVER:
@@ -100,7 +104,7 @@ final class SettingsContent {
                 info = AppStrings.get(R.string.settings_help_dock_editor, language);
                 break;
             case PICKER:
-                info = pickFor == PICK_CITY
+                info = pickFor == PICK_REGION ? AppStrings.get(R.string.settings_help_country, language) : pickFor == PICK_CITY
                         ? AppStrings.get(R.string.settings_help_region, language)
                         : AppStrings.get(R.string.settings_help_picker, language);
                 break;

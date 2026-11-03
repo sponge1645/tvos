@@ -37,8 +37,8 @@ public class SettingsHarness {
 tests=r'''
  public static void main(String[] args){
   SettingsHarness h=new SettingsHarness();h.screen=GENERAL;
-  for(int row:new int[]{0,3,7}){h.focus=row;check(!h.canAdjustMenu(),"General action/submenu must require OK: "+row);}
-  for(int row:new int[]{1,2,4,5,6}){h.focus=row;check(h.canAdjustMenu(),"General value accepts arrows: "+row);}
+  for(int row:new int[]{0,2,3,4,7}){h.focus=row;check(!h.canAdjustMenu(),"General action/submenu must require OK: "+row);}
+  for(int row:new int[]{1,5,6}){h.focus=row;check(h.canAdjustMenu(),"General value accepts arrows: "+row);}
   h.focus=1;h.arrow(1);check(Prefs.theme.equals("light"),"theme advances");h.arrow(-1);check(Prefs.theme.equals("auto"),"theme reverses");
   h.screen=WEATHER;h.focus=0;h.arrow(1);check(!h.weatherVisible(true)&&h.weatherVisible(false),"top weather arrow toggles independently");
   h.focus=1;h.arrow(-1);check(!Prefs.weather(),"both weather panels off disables widget");h.arrow(1);check(Prefs.weather()&&h.weatherVisible(false)&&!h.weatherVisible(true),"bottom weather can turn on from all-off state");
@@ -47,7 +47,7 @@ tests=r'''
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Загрузить "),"Russian download action retained");
   Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");
   h.screen=MAIN;check(Arrays.equals(h.menuLabels(),new String[]{"General","Video and Audio","Screen Saver","AirPlay","Remotes and Devices","Accessibility","Apps","Dock","Menu Bar","System"}),"main menu naming contract");
-  h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Language","Region","Temperature","Time Format","Navigation Clicks","Home Screen","Run setup again"}),"General naming contract");
+  h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Language","Region","City","Temperature","Time Format","Home Screen"}),"General naming contract");
   h.screen=ABOUT;check(Arrays.equals(h.menuLabels(),new String[]{"Name","Model","Serial Number","tvOS","OS","Resolution","Wi-Fi Network Name","IP Address"}),"About naming contract");
   h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
   h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Check for updates automatically"}),"update actions naming contract");
@@ -55,7 +55,7 @@ tests=r'''
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","TV Settings"}),"accessibility naming contract");
   for(int page:new int[]{WEATHER,DATE_TIME}){h.screen=page;check(h.menuLabels()[0].equals("Show in Menu Bar"),"Menu Bar wording shared everywhere");}
   h.screen=WEATHER;check(h.menuLabels()[1].equals("Show in Bottom Menu"),"bottom menu naming contract");
-  h.screen=REGION;check(h.menuLabels()[0].equals("Automatic")&&h.menuLabels()[1].equals("Manually"),"region has auto and manual controls");
+  h.screen=CITY;check(h.menuLabels()[0].equals("Automatic")&&h.menuLabels()[1].equals("Manually"),"region has auto and manual controls");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
   h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");

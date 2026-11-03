@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tv_provider">ТВ-провайдер</string>
+    <string name="settings_tv_unselected">Не выбрано</string>
+    <string name="settings_help_country">Страна, для которой подбираются рекомендации фильмов и сериалов.</string>
+</resources>

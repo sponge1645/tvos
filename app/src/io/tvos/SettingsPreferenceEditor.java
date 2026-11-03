@@ -59,10 +59,8 @@ final class SettingsPreferenceEditor {
 
     void general(int row, int dir) {
         if (row == 1) Prefs.setTheme(step(THEMES, Prefs.theme(), dir));
-        else if (row == 2) Prefs.setLanguage(AppLanguage.step(Prefs.language(), dir).code);
-        else if (row == 4) Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir));
-        else if (row == 5) Prefs.setHour24(!Prefs.hour24());
-        else if (row == 6) setFlag("navigation_clicks", !preferences.getBoolean("navigation_clicks", true));
+        else if (row == 5) Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir));
+        else if (row == 6) Prefs.setHour24(!Prefs.hour24());
         changed.run();
     }
 

@@ -7,8 +7,8 @@ public final class SettingsActions {
     private SettingsActions() { }
 
     public enum Action {
-        NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
-        KEY_PICKER, ADVANCED_KEYS, SETUP, VOLUME_HOLD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
+        NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_COUNTRY, SELECT_TV, SELECT_LANGUAGE, TV_PICKER, OPEN_REGION, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
+        KEY_PICKER, ADVANCED_KEYS, VOLUME_HOLD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
@@ -16,7 +16,7 @@ public final class SettingsActions {
         ACCESSIBILITY_SCREEN(ACCESSIBILITY), DOWNLOADS_SCREEN(APPS_DOWNLOADS),
         TOP_PANEL_SCREEN(TOP_PANEL), WIDGETS_SCREEN(WIDGETS), SYSTEM_SCREEN(SYSTEM),
         HOME_SCREEN_MODE_SCREEN(HOME_SCREEN), ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
-        REGION_SCREEN(REGION), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
+        CITY_SCREEN(CITY), LANGUAGE_SCREEN(LANGUAGE), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
 
         public final int targetScreen;
         Action() { targetScreen = -1; }
@@ -25,19 +25,19 @@ public final class SettingsActions {
 
     public enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, VOLUME_HOLD
+        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, CLICKS, VOLUME_HOLD
     }
 
     public static boolean canAdjust(int screen, int row, int buttonCount) {
         switch (screen) {
             case HOME_SETTINGS: case WEATHER: case DATE_TIME: return true;
             case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW;
-            case MEDIA: return false;
-            case GENERAL: return row == 1 || row == 2 || row == 4 || row == 5 || row == 6;
+            case MEDIA: return row == 1;
+            case GENERAL: return row == 1 || row == 5 || row == 6;
             case SCREENSAVER: return row >= 0 && row < 4;
             case UPDATES: return row == 1;
             case ACCESSIBILITY: return row < 2;
-            case REGION: return row == 0;
+            case CITY: return row == 0;
             case MENU_BUTTONS: return row < buttonCount;
             default: return false;
         }
@@ -59,8 +59,9 @@ public final class SettingsActions {
                 }
             case UPDATES: return row == 1 ? Adjustment.AUTO_UPDATE : Adjustment.NONE;
             case ACCESSIBILITY: return row == 0 ? Adjustment.TRANSPARENCY : row == 1 ? Adjustment.MOTION : Adjustment.NONE;
-            case REGION: return row == 0 ? Adjustment.REGION_MODE : Adjustment.NONE;
+            case CITY: return row == 0 ? Adjustment.REGION_MODE : Adjustment.NONE;
             case MENU_BUTTONS: return Adjustment.MENU_BUTTON;
+            case MEDIA: return row == 1 ? Adjustment.CLICKS : Adjustment.NONE;
             case GENERAL: return Adjustment.GENERAL;
             default: return Adjustment.NONE;
         }
@@ -71,7 +72,7 @@ public final class SettingsActions {
         switch (screen) {
             case ABOUT: return Action.NAME;
             case HOME_CHOICE: return Action.HOME_MODE;
-            case PICKER: return pickFor == PICK_CITY ? Action.SELECT_CITY : pickFor == PICK_VPN ? Action.SELECT_VPN : Action.SELECT_KEY;
+            case PICKER: return pickFor == PICK_REGION ? Action.SELECT_COUNTRY : pickFor == PICK_TV ? Action.SELECT_TV : pickFor == PICK_CITY ? Action.SELECT_CITY : pickFor == PICK_VPN ? Action.SELECT_VPN : Action.SELECT_KEY;
             case CATEGORY_EDIT: return Action.CATEGORY;
             case SHELF_EDIT: return Action.SHELF;
             case REMOTE_KEYS: return row == REMOTE_ADVANCED_ROW ? Action.ADVANCED_KEYS
@@ -91,15 +92,16 @@ public final class SettingsActions {
                     case 9: return Action.SYSTEM_SCREEN;
                     default: return Action.NONE;
                 }
-            case MEDIA: return row == 0 ? Action.MOVIE_SERVICE_SCREEN : Action.NONE;
+            case MEDIA: return row == 0 ? Action.MOVIE_SERVICE_SCREEN : row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_PICKER : Action.NONE;
+            case LANGUAGE: return Action.SELECT_LANGUAGE;
             case HOME_SCREEN: return Action.SELECT_HOME_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
-            case GENERAL: return row == 8 ? Action.SETUP : row == 7 ? Action.HOME_SCREEN_MODE_SCREEN : row == 3 ? Action.REGION_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
+            case GENERAL: return row == 7 ? Action.HOME_SCREEN_MODE_SCREEN : row == 4 ? Action.CITY_SCREEN : row == 3 ? Action.OPEN_REGION : row == 2 ? Action.LANGUAGE_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
             case WIDGETS: return row == 1 ? Action.DATE_SCREEN : row == 0 ? Action.WEATHER_SCREEN : Action.NONE;
             case UPDATES: return row == 0 ? Action.CHECK_UPDATE : row == 1 ? Action.AUTO_UPDATE : Action.NONE;
             case MENU_BUTTONS: return row == buttonCount ? (vpnEnabled ? Action.VPN_PICKER : Action.NONE) : Action.MENU_BUTTON;
-            case REGION: return row == 0 ? Action.REGION_TOGGLE : citySetting ? Action.NONE : Action.CITY_PICKER;
+            case CITY: return row == 0 ? Action.REGION_TOGGLE : citySetting ? Action.NONE : Action.CITY_PICKER;
             case DATE_TIME: return Action.DATE_TOGGLE;
             case WEATHER: return Action.WEATHER_TOGGLE;
             case SCREENSAVER: return row == 4 ? Action.PREVIEW : row >= 0 && row < 4 ? Action.MENU_ADJUST : Action.NONE;
@@ -120,7 +122,7 @@ public final class SettingsActions {
         int parent = SettingsScreen.parent(screen, group, pickFor);
         switch (screen) {
             case MAIN: return null;
-            case PICKER: return new Target(parent, pickFor == PICK_CITY ? 1
+            case PICKER: return new Target(parent, pickFor == PICK_REGION ? 3 : pickFor == PICK_TV ? 2 : pickFor == PICK_CITY ? 1
                     : pickFor == PICK_VPN ? buttonCount : pickFor - 1);
             case MOVIE_SERVICE: case ABOUT: case CATEGORY_EDIT: case UPDATES:
             case HOME_SETTINGS: case WEATHER: return new Target(parent, 0);
@@ -128,7 +130,8 @@ public final class SettingsActions {
             case HOME_CHOICE: case SCREENSAVER: case WIDGETS: return new Target(parent, 2);
             case HOME_SCREEN: case SHELF_EDIT: return new Target(parent, 7);
             case REMOTE_KEYS: return new Target(parent, 4);
-            case REGION: return new Target(parent, 3);
+            case CITY: return new Target(parent, 4);
+            case LANGUAGE: return new Target(parent, 2);
             case APPS_DOWNLOADS: return new Target(parent, 6);
             default: return new Target(MAIN, screen == GENERAL ? 0 : screen == ACCESSIBILITY ? 5 : screen == TOP_PANEL ? 8 : screen == SYSTEM ? 9 : 0);
         }

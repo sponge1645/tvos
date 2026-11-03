@@ -12,7 +12,7 @@ sources={
 'android/net/wifi/WifiInfo.java':'package android.net.wifi;public class WifiInfo {public String ssid="\\\"Home\\\"";public String getSSID(){return ssid;}}',
 'android/net/wifi/WifiManager.java':'package android.net.wifi;public class WifiManager {public WifiInfo info=new WifiInfo();public WifiInfo getConnectionInfo(){return info;}}',
 'io/tvos/Config.java':'package io.tvos;final class Config {static String CURRENCY="USD";}',
-'io/tvos/Prefs.java':'''package io.tvos;final class Prefs { static boolean hold;static String holdStatus="";static boolean volumeHold(){return hold;}static String volumeHoldStatus(){return holdStatus;}static boolean home;static boolean homeContinue(){return home;}static String theme="auto",unit="auto",city="City";static boolean weather=true,random=true,h24;static String language(){return AppLanguage.current().code;}static String temperature(){return unit;}static String theme(){return theme;}static String city(){return city;}static boolean automaticRegion(){return false;}static String manualCity(){return city;}static boolean weather(){return weather;}static boolean randomMovie(){return random;}static boolean hour24(){return h24;}static boolean topButtonEnabled(int id){return id!=2;}static int topButtonPosition(int id){return id+1;}static final String[] KEYS={"netflix","youtube","prime","tcl","mi"};static String keyApp(String k){return (k.equals("tcl")||k.equals("mi"))?"":k;}}''',
+'io/tvos/Prefs.java':'''package io.tvos;final class Prefs { static boolean hold;static String holdStatus="";static boolean volumeHold(){return hold;}static String volumeHoldStatus(){return holdStatus;}static boolean home;static boolean homeContinue(){return home;}static String theme="auto",unit="auto",city="City";static boolean weather=true,random=true,h24;static String recommendationRegion(){return "FR";}static String language(){return AppLanguage.current().code;}static String temperature(){return unit;}static String theme(){return theme;}static String city(){return city;}static boolean automaticRegion(){return false;}static String manualCity(){return city;}static boolean weather(){return weather;}static boolean randomMovie(){return random;}static boolean hour24(){return h24;}static boolean topButtonEnabled(int id){return id!=2;}static int topButtonPosition(int id){return id+1;}static final String[] KEYS={"netflix","youtube","prime","tcl","mi"};static String keyApp(String k){return (k.equals("tcl")||k.equals("mi"))?"":k;}}''',
 'io/tvos/settings/SettingsOrderEditor.java':'package io.tvos.settings;public final class SettingsOrderEditor {public int size(){return 2;}public int get(int i){return i==0?3:2;}}',
 'io/tvos/LocalNetwork.java':'''package io.tvos;final class LocalNetwork {static Info info;static class Info {boolean ethernet;String address="192.168.0.111";}static Info read(android.content.Context c){return info;}}''',
 'io/tvos/ValuesHarness.java':'''package io.tvos;import java.util.*;import io.tvos.settings.SettingsOrderEditor;import android.app.Activity;import static io.tvos.settings.SettingsScreen.*;
@@ -22,12 +22,13 @@ public class ValuesHarness {
   Activity a=new Activity();String[] status={""};boolean[] free={false};SettingsValues v=new SettingsValues(a,new SettingsOrderEditor(),()->free[0],top->top,()->status[0]);
   for(String lang:new String[]{"en","ru"}){
    AppLanguage.select(lang);boolean ru=lang.equals("ru");
-   check(v.menu(MEDIA,1)[0].equals(ru?"Спрашивать каждый раз":"Ask Every Time"),"default service initially asks every time");
-   a.prefs.data.put(MovieService.KEY,"seena");check(v.menu(MEDIA,1)[0].equals("Seena")&&v.menu(MOVIE_SERVICE,5)[3].equals(ru?"Выбрано":"Selected"),"service value and accessible selected state");a.prefs.data.remove(MovieService.KEY);
+   check(v.menu(MEDIA,3)[0].equals(ru?"Спрашивать каждый раз":"Ask Every Time"),"default service initially asks every time");
+   check(v.menu(LANGUAGE,2)[ru?0:1].equals(AppStrings.get(R.string.settings_service_selected)),"language list marks saved choice");check(v.menu(MEDIA,3)[2].equals(AppStrings.get(R.string.settings_tv_unselected)),"empty TV provider shows not selected");
+   a.prefs.data.put(MovieService.KEY,"seena");check(v.menu(MEDIA,3)[0].equals("Seena")&&v.menu(MOVIE_SERVICE,5)[3].equals(ru?"Выбрано":"Selected"),"service value and accessible selected state");a.prefs.data.remove(MovieService.KEY);
    check(v.menu(HOME_SCREEN,2)[0].equals(ru?"Выбрано":"Selected"),"recommendations selected by default");Prefs.home=true;check(v.menu(HOME_SCREEN,2)[1].equals(ru?"Выбрано":"Selected"),"continue mode selected");check(v.menu(GENERAL,8)[7].equals(AppStrings.get(R.string.home_continue_watching)),"General displays current Home mode");Prefs.home=false;
-   String[] general=v.menu(GENERAL,8);check(general.length==8&&general[0].isEmpty()&&general[3].equals("City"),"general ordering");
+   String[] general=v.menu(GENERAL,8);check(general.length==8&&general[0].isEmpty()&&general[4].equals("City"),"general ordering");
    check(general[2].equals(AppLanguage.current().nativeName)&&general[1].equals(ru?"Авто":"Automatic"),"live language and theme");
-   Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,8);check(general[4].equals("°C")&&general[5].equals(ru?"24 ч":"24 h"),"units/hour");
+   Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,8);check(general[5].equals("°C")&&general[6].equals(ru?"24 ч":"24 h"),"units/hour");
    Prefs.unit="auto";Prefs.theme="auto";Prefs.h24=false;
    free[0]=true;check(v.menu(SYSTEM,4)[2].equals("tvOS"),"current launcher callback");
    check(v.menu(ACCESSIBILITY,3)[2].isEmpty(),"TV Settings action has no misplaced launcher value");
@@ -38,7 +39,7 @@ public class ValuesHarness {
    a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,5);check(saver[0].equals("National Geographic")&&saver[4].isEmpty(),"saver source and action row");
    check(v.menu(WEATHER,2)[0].equals(SettingsValues.onOff(true))&&v.menu(WEATHER,2)[1].equals(SettingsValues.onOff(false)),"independent weather callback");
    check(v.menu(MENU_BUTTONS,3)[0].equals("#4")&&v.menu(MENU_BUTTONS,3)[1].equals(SettingsValues.onOff(false))&&v.menu(MENU_BUTTONS,3)[2].isEmpty(),"button order and VPN footer");
-   status[0]="Searching";check(v.menu(REGION,2)[1].equals("Searching"),"Region exposes pending/error lookup status");check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
+   status[0]="Searching";check(v.menu(CITY,2)[1].equals("Searching"),"Region exposes pending/error lookup status");check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
    check(v.settings().length==6&&SettingsValues.randomRow()==5,"stable category rows without quote/coin controls");
    check(SettingsValues.keyLabels().length==7&&SettingsValues.keyLabels()[4].equals(ru?"Кнопка MI":"MI Button"),"MI setting present in both languages");String[] mappings=SettingsValues.keyValues(Arrays.asList("", "youtube"),Arrays.asList("old empty label", "YT"));
    check(mappings[1].equals("YT"),"configured remote retains app label");
@@ -62,6 +63,8 @@ public class ValuesHarness {
  }
 }'''
 }
+sources['io/tvos/LiveTvTargets.java']='package io.tvos;class LiveTvTargets {static String packageName(String key){return key;}}'
+sources['io/tvos/setup/SetupCountries.java']=Path('app/src/io/tvos/setup/SetupCountries.java').read_text()
 for name in ['SettingsValues','SettingsContent']:sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 sources['io/tvos/SettingsUpdateDialog.java']='package io.tvos;class SettingsUpdateDialog {static int reads;static String versionName(android.content.Context c){reads++;return "tvOS installed";}}'
 sources['io/tvos/version/SoftwareBuild.java']=Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()

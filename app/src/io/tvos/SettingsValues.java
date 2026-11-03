@@ -46,8 +46,19 @@ final class SettingsValues {
         return vpnLabel;
     }
 
+    private String tvTarget, tvLabel, tvLanguage;
+    private String tvProviderLabel(String target) {
+        String language = AppLanguage.current().code;
+        if (target.equals(tvTarget) && language.equals(tvLanguage)) return tvLabel;
+        String pkg = LiveTvTargets.packageName(target);
+        String label = target;
+        if (!pkg.isEmpty()) try { label = String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
+        catch (android.content.pm.PackageManager.NameNotFoundException | RuntimeException unavailable) { /* Keep explicit target. */ }
+        tvTarget = target; tvLanguage = language; tvLabel = label;
+        return label;
+    }
     private String vpnPackage, vpnLanguage, vpnLabel;
-    void clearAppCache() { vpnPackage = vpnLanguage = vpnLabel = null; }
+    void clearAppCache() { vpnPackage = vpnLanguage = vpnLabel = tvTarget = tvLabel = tvLanguage = null; }
 
     private SharedPreferences localPrefs() { return activity.getSharedPreferences("settings", Context.MODE_PRIVATE); }
     private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
@@ -59,6 +70,9 @@ final class SettingsValues {
         java.util.Arrays.fill(v, "");
         if (screen == MEDIA) {
             v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
+            v[1] = onOff(localPrefs().getBoolean("navigation_clicks", true));
+            String target = localPrefs().getString("live_tv_app", "");
+            v[2] = target.isEmpty() ? AppStrings.get(R.string.settings_tv_unselected) : tvProviderLabel(target);
         } else if (screen == HOME_SCREEN) {
             v[Prefs.homeContinue() ? 1 : 0] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == MOVIE_SERVICE) {
@@ -67,12 +81,14 @@ final class SettingsValues {
             String theme = Prefs.theme();
             v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
             v[2] = settings()[0];
-            v[3] = Prefs.city();
-            v[4] = settings()[1];
-            v[5] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
-            v[6] = onOff(localPrefs().getBoolean("navigation_clicks", true));
+            v[3] = io.tvos.setup.SetupCountries.name(Prefs.recommendationRegion(), AppLanguage.current().locale);
+            v[4] = Prefs.city();
+            v[5] = settings()[1];
+            v[6] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
             v[7] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
 
+        } else if (screen == LANGUAGE) {
+            v["ru".equals(Prefs.language()) ? 0 : 1] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == UPDATES) {
             v[1] = onOff(localPrefs().getBoolean("auto_update", false));
         } else if (screen == ACCESSIBILITY) {
@@ -80,7 +96,7 @@ final class SettingsValues {
             v[1] = onOff(localFlag("reduce_motion"));
         } else if (screen == SYSTEM) {
             v[2] = freeActive.getAsBoolean() ? "tvOS" : AppStrings.get(R.string.settings_built_in);
-        } else if (screen == REGION) {
+        } else if (screen == CITY) {
             v[0] = onOff(Prefs.automaticRegion());
             v[1] = !cityStatus.get().isEmpty() ? cityStatus.get() : Prefs.manualCity();
         } else if (screen == MENU_BUTTONS) {

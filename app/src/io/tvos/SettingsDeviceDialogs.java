@@ -53,12 +53,8 @@ final class SettingsDeviceDialogs {
                 .setMessage(AppStrings.get(R.string.settings_all_tvos_settings_selected_apps_and_app_data_will_be_erased_this_))
                 .setNegativeButton(AppStrings.get(R.string.settings_cancel), null)
                 .setPositiveButton(AppStrings.get(R.string.settings_reset_tvos_3), (dialog, which) -> {
-                    android.app.ActivityManager am = (android.app.ActivityManager)
-                            activity.getSystemService(Context.ACTIVITY_SERVICE);
-                    if (am == null || !am.clearApplicationUserData())
-                        android.widget.Toast.makeText(activity,
-                                AppStrings.get(R.string.settings_could_not_reset_tvos),
-                                android.widget.Toast.LENGTH_LONG).show();
+                    activity.startActivity(new android.content.Intent(activity, ResetActivity.class)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
                 }).show();
     }
 
