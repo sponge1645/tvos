@@ -36,7 +36,7 @@ final class SetupWelcomeView extends View {
     SetupWelcomeView(Context context, Runnable next) {
         super(context); this.next = next;
         reduced = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
-        hints = new String[]{AppStrings.get(R.string.settings_setup_center_hint, "en"), AppStrings.get(R.string.settings_setup_center_hint, "ru")};
+        hints = new String[]{AppStrings.get(R.string.settings_setup_center_hint, AppLanguage.ENGLISH), AppStrings.get(R.string.settings_setup_center_hint, AppLanguage.RUSSIAN)};
         hint.setTypeface(Ui.displaySemibold); hint.setTextAlign(Paint.Align.CENTER);
         ink.setStyle(Paint.Style.STROKE); ink.setStrokeCap(Paint.Cap.ROUND); ink.setStrokeJoin(Paint.Join.ROUND);
         for (int language = 0; language < 2; language++) {
