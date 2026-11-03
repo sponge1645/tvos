@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import io.tvos.weather.WeatherForecast;
+import io.tvos.home.HomeLayout;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -84,6 +85,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             return true;
         }
         private void label(Canvas c, String value, float x, float y, float size, int color, Paint.Align align, float width) {
+            size *= 1.1f;
             text.setColor(color); text.setTextSize(size); text.setTextAlign(align);
             text.setTypeface(Ui.displaySemibold);
             float measured = text.measureText(value);
@@ -102,10 +104,10 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             panel.set(40*k, 50*k, 740*k, 1000*k);
             if (android.os.Build.VERSION.SDK_INT < 33) {
                 fill.setColor(night ? 0xF21C242F : 0xF2E8F1F8);
-                c.drawRoundRect(panel, 36*k, 36*k, fill);
+                c.drawRoundRect(panel, HomeLayout.DOCK_RADIUS*k, HomeLayout.DOCK_RADIUS*k, fill);
             }
             scene.setOffset(0, 0);
-            scene.liquid(c, panel, 36*k, night ? 0xFF111113 : 0xFFFFFFFF,
+            scene.liquid(c, panel, HomeLayout.DOCK_RADIUS*k, night ? 0xFF111113 : 0xFFFFFFFF,
                     night ? .38f : .78f, .035f, 30*k, 24*k, .75f, 1);
             int saved = c.save(); c.scale(k, k);
             WeatherForecast w = data.weather;

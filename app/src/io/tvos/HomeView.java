@@ -207,7 +207,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 case HERO: drawLightTop(c); break;
                 case STATUS: {
                     HomeHeaderRenderer.Frame topFrame = headerFrame();
-                    header.drawDateWeather(c, topFrame);
+                    if (weatherPanel == null) header.drawDateWeather(c, topFrame);
                     header.drawButtons(c, topFrame);
                     break;
                 }
@@ -1050,6 +1050,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             weatherPanel = null;
             if (running) { zone = canOpenWeather() ? Z_WEATHER : Z_TOP; retarget(false); status.invalidate(); requestFocus(); spoken.focusMoved(); }
         });
+        status.invalidate();
         weatherPanel.show();
     }
     @Override public boolean onTouchEvent(android.view.MotionEvent event) {
