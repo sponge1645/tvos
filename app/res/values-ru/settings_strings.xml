@@ -247,7 +247,7 @@
     <string name="settings_setup_skip" formatted="false">Настроить позже</string>
     <string name="settings_setup_back" formatted="false">Назад</string>
     <string name="settings_setup_detecting" formatted="false">Определяем…</string>
-    <string name="settings_setup_lookup_failed" formatted="false">Не удалось определить город. Повторите попытку, выберите вручную или настройте позже.</string>
+    <string name="settings_setup_lookup_failed" formatted="false">Не удалось определить страну. Выберите её из списка.</string>
     <string name="settings_setup_wifi" formatted="false">Сведения о Wi-Fi</string>
     <string name="settings_setup_wifi_hint" formatted="false">Android требует доступ к местоположению для названия подключённой сети Wi-Fi. Это необязательно: без разрешения лаунчер продолжит работать. GPS для погоды не используется.</string>
     <string name="settings_setup_permission_granted" formatted="false">Разрешение уже выдано</string>

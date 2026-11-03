@@ -242,7 +242,7 @@
     <string name="settings_setup_skip" formatted="false">Set up later</string>
     <string name="settings_setup_back" formatted="false">Back</string>
     <string name="settings_setup_detecting" formatted="false">Looking up…</string>
-    <string name="settings_setup_lookup_failed" formatted="false">Could not determine the city. Retry, choose manually or set it up later.</string>
+    <string name="settings_setup_lookup_failed" formatted="false">Could not determine the country. Choose it from the list.</string>
     <string name="settings_setup_wifi" formatted="false">Wi-Fi information</string>
     <string name="settings_setup_wifi_hint" formatted="false">Android requires location access to show the connected Wi-Fi name. This is optional: the launcher still works without it. GPS is not used for weather.</string>
     <string name="settings_setup_permission_granted" formatted="false">Permission already granted</string>
