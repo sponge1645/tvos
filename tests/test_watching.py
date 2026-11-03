@@ -66,6 +66,10 @@ public class WatchingHarness {
   String trace=WatchingItems.trace(Arrays.asList(caption));caption.title="Changed";
   check(!trace.equals(WatchingItems.trace(Arrays.asList(caption))),"trace detects content changes without logging titles");
   check(WatchingItems.remaining(1800000,840000)==16,"remaining minutes");
+  check(Math.abs(WatchingItems.progress(1800000,840000)-.4666667f)<.00001f,"playback fraction");
+  check(WatchingItems.progress(0,10)==-1&&WatchingItems.progress(100,-1)==-1,"unknown progress omitted");
+  check(WatchingItems.progress(100,0)==0&&WatchingItems.progress(100,200)==1,"progress endpoints clamped");
+  check(WatchingText.overlay(caption).equals("С1 / Э2"),"overlay omits service fallback");
   check(WatchingItems.remaining(60001,0)==2,"round up partial minute");
   check(WatchingItems.remaining(0,0)==-1,"unknown duration stays unknown");
   check(WatchingItems.remaining(60000,999999)==0,"overshoot clamped");
@@ -97,6 +101,8 @@ public class WatchingHarness {
   check(catalog.picks().size()==2,"foreign rows, broken intents and duplicate episodes excluded");
   Recs.Pick serial=catalog.picks().get(0),film=catalog.picks().get(1);
   check(serial.id==0&&serial.watchingKey.equals("kinopub:42"),"source identity never becomes TMDB id");
+  check(serial.backdrop!=null&&!serial.backdrop.equals("https://cdn.example/portrait.jpg"),"provider thumbnail preserved separately");
+  check(serial.watchingProgress>0&&serial.watchingProgress<1,"provider progress retained");
   check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
   check(serial.meta.equals("С1 / Э2 · Осталось: 16 мин."),"serial caption");
   check(film.meta.equals("Осталось: 32 мин."),"movie caption omits season/episode");

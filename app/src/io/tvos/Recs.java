@@ -35,6 +35,7 @@ final class Recs {
         String watchingKey, resumeUri;
         String watchingSeason = "", watchingEpisode = "";
         long watchingRemaining = -1, watchingUpdated;
+        float watchingProgress = -1;
         double rating;
         boolean detailed;
     }

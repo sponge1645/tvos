@@ -79,7 +79,7 @@ final class DockContinue {
         visible = true;
         StringBuilder key = new StringBuilder();
         for (Recs.Pick p : picks) key.append(p.watchingKey).append('\n').append(p.resumeUri).append('\n')
-                .append(p.meta).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
+                .append(p.meta).append('\n').append(p.watchingProgress).append('\n').append(p.backdrop).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
         if (signature.equals(key.toString())) return;
         String selected = index < items.size() ? items.get(index).watchingKey : null;
         signature = key.toString(); generation++; pending.clear(); paths.clear(); imageAppeared.clear();
@@ -120,7 +120,7 @@ final class DockContinue {
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
                     AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
-                final String ready = url.isEmpty() ? p.poster : url;
+                final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
                 main.post(() -> {
                     if (!visible || token != generation) return;
                     pending.remove(key); paths.put(key, ready == null ? "" : ready);
@@ -240,7 +240,7 @@ final class DockContinue {
                 fadingImage |= progress < 1;
                 alpha = Math.round(255 * progress * progress * (3 - 2 * progress));
             }
-            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.caption(pick), image, alpha);
+            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.overlay(pick), image, alpha, pick.watchingProgress);
         }
         renderer.end(c);
         if (fadingImage) { main.removeCallbacks(frame); main.postDelayed(frame, 16); }

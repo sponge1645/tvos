@@ -6,13 +6,18 @@ import io.tvos.watching.WatchingSources;
 final class WatchingText {
     private WatchingText() {}
 
-    static String caption(Recs.Pick pick) {
+    static String overlay(Recs.Pick pick) { return format(pick, false); }
+
+    static String caption(Recs.Pick pick) { return format(pick, true); }
+
+    private static String format(Recs.Pick pick, boolean includeService) {
         String episode = "";
         if ("tv".equals(pick.kind) && !pick.watchingSeason.isEmpty() && !pick.watchingEpisode.isEmpty()) {
             episode = String.format(Ui.locale(), AppStrings.get(R.string.home_watching_episode),
                     pick.watchingSeason, pick.watchingEpisode);
         }
         if (pick.watchingRemaining < 0) {
+            if (!includeService) return episode;
             String service = WatchingSources.knownLabel(WatchingSources.id(pick.pkg));
             if (service.isEmpty()) service = pick.pkg == null ? "" : pick.pkg;
             return episode.isEmpty() ? service : service.isEmpty() ? episode : episode + " · " + service;

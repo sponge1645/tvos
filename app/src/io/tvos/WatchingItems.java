@@ -41,8 +41,13 @@ final class WatchingItems {
         int fingerprint = 1;
         for (Recs.Pick pick : picks) fingerprint = 31 * fingerprint + java.util.Objects.hash(
                 pick.pkg, pick.watchingKey, pick.title, pick.watchingUpdated,
-                pick.watchingRemaining, pick.watchingSeason, pick.watchingEpisode);
+                pick.watchingRemaining, pick.watchingProgress, pick.watchingSeason, pick.watchingEpisode);
         return "cards=" + picks.size() + ", fingerprint=" + Integer.toHexString(fingerprint);
+    }
+
+    static float progress(long duration, long position) {
+        if (duration <= 0 || position < 0) return -1;
+        return (float) ((double) Math.min(duration, position) / duration);
     }
 
     static long remaining(long duration, long position) {

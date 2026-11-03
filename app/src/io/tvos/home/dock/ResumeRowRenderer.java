@@ -26,17 +26,21 @@ public final class ResumeRowRenderer {
     private int layer;
     private final Paint headingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint titlePaint = new TextPaint();
-    private final Paint metaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final TextPaint metaPaint = new TextPaint();
     private final RectF rect = new RectF(), imageRect = new RectF();
     private final Path clip = new Path();
     private final RectF shadowRect = new RectF();
     private final Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG), rim = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private LinearGradient focusSheen, focusRim;
+    private LinearGradient focusSheen, focusRim, bottomShade;
+    private float shadeHeight = -1;
+    private final Paint overlay = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF progressRect = new RectF();
     private float shadowScale = -1, focusWidth = -1, focusHeight = -1;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
 
-    public ResumeRowRenderer(Shadow shadows) { this.shadows = shadows; titlePaint.setAntiAlias(true); }
+    public ResumeRowRenderer(Shadow shadows) { this.shadows = shadows; titlePaint.setAntiAlias(true); metaPaint.setAntiAlias(true); }
 
     /** False means the empty state was drawn and the canvas is already restored. */
     public boolean begin(Canvas c, Frame frame) {
@@ -66,6 +70,9 @@ public final class ResumeRowRenderer {
         return left < 1920 * k && left + width > 40 * k;
     }
     public void card(Canvas c, float position, float focusValue, String label, String caption, Bitmap image, int imageAlpha) {
+        card(c, position, focusValue, label, caption, image, imageAlpha, -1);
+    }
+    public void card(Canvas c, float position, float focusValue, String label, String caption, Bitmap image, int imageAlpha, float progress) {
         Paint title = titlePaint, meta = metaPaint;
         float left = 60 * k + position * (width + 45 * k);
         if (left >= 1920 * k) return;
@@ -94,6 +101,34 @@ public final class ResumeRowRenderer {
             imageRect.set(rect.centerX() - w / 2, rect.centerY() - h / 2, rect.centerX() + w / 2, rect.centerY() + h / 2);
             c.drawBitmap(image, null, imageRect, paint); c.restore(); paint.setAlpha(255);
         }
+        // Draw in card coordinates so the caption and progress follow the focus animation.
+        c.save(); c.translate(cx, cy); c.scale(scaleFocus, scaleFocus);
+        shadowRect.set(-width / 2, -height / 2, width / 2, height / 2);
+        clip.reset(); clip.addRoundRect(shadowRect, 28 * k, 28 * k, Path.Direction.CW);
+        c.clipPath(clip);
+        if (!caption.isEmpty() || progress >= 0) {
+            if (bottomShade == null || shadeHeight != height) {
+                shadeHeight = height;
+                bottomShade = new LinearGradient(0, -height * .1f, 0, height / 2,
+                        0x00000000, 0xD9000000, Shader.TileMode.CLAMP);
+            }
+            overlay.setShader(bottomShade);
+            c.drawRect(shadowRect, overlay);
+            meta.setColor(0xFFFFFFFF);
+            String detail = android.text.TextUtils.ellipsize(caption, metaPaint, width - 64 * k,
+                    android.text.TextUtils.TruncateAt.END).toString();
+            c.drawText(detail, -width / 2 + 32 * k, height / 2 - (progress >= 0 ? 53 : 30) * k, meta);
+            if (progress >= 0) {
+                float x = -width / 2 + 32 * k, y = height / 2 - 25 * k;
+                progressRect.set(x, y, width / 2 - 32 * k, y + 7 * k);
+                progressPaint.setColor(0x70FFFFFF);
+                c.drawRoundRect(progressRect, 3.5f * k, 3.5f * k, progressPaint);
+                progressRect.right = x + (width - 64 * k) * clamp(progress);
+                progressPaint.setColor(0xFFFFFFFF);
+                c.drawRoundRect(progressRect, 3.5f * k, 3.5f * k, progressPaint);
+            }
+        }
+        c.restore();
         if (focus > .01f) {
             if (focusSheen == null || focusWidth != width || focusHeight != height) {
                 focusWidth = width; focusHeight = height;
@@ -112,8 +147,7 @@ public final class ResumeRowRenderer {
             c.restore();
         }
         String shown = android.text.TextUtils.ellipsize(label, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
-        c.drawText(shown, left, top + height + 37 * k, title);
-        c.drawText(caption, left, top + height + 70 * k, meta);
+        c.drawText(shown, cx - title.measureText(shown) / 2, top + height + 37 * k, title);
     }
     public void end(Canvas canvas) { canvas.restore(); canvas.restoreToCount(layer); }
     private static float clamp(float value) { return Math.max(0, Math.min(1, value)); }
