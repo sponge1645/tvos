@@ -1,17 +1,11 @@
 package io.tvos;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.inputmethodservice.InputMethodService;
-import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 /** Hardware-button assignments through Android's IME pipeline; volume stays with firmware. */
 public class RemoteInputMethod extends InputMethodService {
@@ -19,16 +13,7 @@ public class RemoteInputMethod extends InputMethodService {
     private String targetPackage = "";
 
     static void choose(Activity activity) {
-        new AlertDialog.Builder(activity)
-                .setTitle(AppStrings.get(R.string.settings_remote_input))
-                .setMessage(AppStrings.get(R.string.settings_remote_input_help))
-                .setPositiveButton(AppStrings.get(R.string.settings_remote_input_enable), (d, w) ->
-                        activity.startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)))
-                .setNeutralButton(AppStrings.get(R.string.settings_remote_input_choose), (d, w) -> {
-                    InputMethodManager manager = (InputMethodManager) activity.getSystemService(INPUT_METHOD_SERVICE);
-                    if (manager != null) manager.showInputMethodPicker();
-                })
-                .setNegativeButton(android.R.string.cancel, null).show();
+        activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class).putExtra("input_options", true));
     }
     @Override public void onCreate() {
         super.onCreate();
@@ -59,29 +44,29 @@ public class RemoteInputMethod extends InputMethodService {
     }
     @Override public boolean onEvaluateFullscreenMode() { return false; }
 
-    @Override public boolean onEvaluateInputViewShown() { return true; }
+    // Keep the show request for the destination IME without drawing or resizing for our own window.
+    @Override public boolean onEvaluateInputViewShown() { return false; }
     @Override public boolean onShowInputRequested(int flags, boolean configChange) {
         if (RemoteKeyboardBridge.coolingDown()) return false;
-        RemoteKeyboardBridge.request(this);
-        return true;
+        return RemoteKeyboardBridge.request(this);
     }
-    @Override public View onCreateInputView() {
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(24, 12, 24, 12);
-        panel.setBackgroundColor(0xFF202B39);
-        TextView message = new TextView(this);
-        message.setText(AppStrings.get(R.string.settings_remote_keyboard_connecting));
-        message.setTextColor(0xFFFFFFFF); message.setTextSize(18);
-        panel.addView(message);
-        Button picker = new Button(this);
-        picker.setText(AppStrings.get(R.string.settings_remote_input_choose));
-        picker.setOnClickListener(v -> {
-            InputMethodManager manager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            if (manager != null) manager.showInputMethodPicker();
-        });
-        panel.addView(picker);
-        return panel;
+    @Override public View onCreateInputView() { return null; }
+    @Override public View onCreateCandidatesView() { return null; }
+    @Override public void onWindowShown() {
+        super.onWindowShown();
+        android.view.Window window = getWindow().getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+        }
+    }
+    @Override public void onComputeInsets(Insets out) {
+        super.onComputeInsets(out);
+        int height = getWindow().getWindow().getDecorView().getHeight();
+        out.contentTopInsets = out.visibleTopInsets = height;
+        out.touchableInsets = Insets.TOUCHABLE_INSETS_REGION;
+        out.touchableRegion.setEmpty();
     }
     @Override public void onDestroy() {
         if (shortcuts != null) { shortcuts.close(); shortcuts = null; }

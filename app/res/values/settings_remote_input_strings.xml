@@ -5,7 +5,6 @@
     <string name="settings_remote_input_choose" formatted="false">Select</string>
     <string name="settings_remote_input_help" formatted="false">Enable tvOS and Gboard in keyboard settings, then select tvOS as the current keyboard. tvOS handles button assignments and temporarily switches to the text keyboard when typing. Local ADB must remain available to return after the keyboard closes. Choose a text keyboard in Button shortcuts. Volume remains controlled by the TV. Disable the old tvOS accessibility service if enabled for buttons.</string>
     <string name="settings_remote_text_keyboard" formatted="false">Text keyboard</string>
-    <string name="settings_remote_keyboard_connecting" formatted="false">Opening the text keyboard… If it does not open, select a keyboard below.</string>
     <string name="settings_remote_keyboard_monitoring" formatted="false">Text input is active. Tap to return to tvOS button assignments.</string>
     <string name="settings_remote_keyboard_failed" formatted="false">Keyboard handoff failed. Check local ADB and enabled keyboards. To restore button assignments, select tvOS button input.</string>
 </resources>

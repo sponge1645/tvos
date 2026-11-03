@@ -1,7 +1,5 @@
 package io.tvos;
 
-import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -40,26 +38,13 @@ public class RemoteKeyboardBridge extends Service {
             if (!c.getPackageName().equals(info.getPackageName()) && KeyboardHandoff.validId(info.getId())) result.add(info);
         return result;
     }
-    private static String target(Context c) {
+    static String target(Context c) {
         String saved = KeyboardHandoff.readTarget(c.getFilesDir());
         List<InputMethodInfo> keyboards = keyboards(c);
         for (InputMethodInfo info : keyboards) if (info.getId().equals(saved)) return saved;
         for (InputMethodInfo info : keyboards) if ("com.google.android.inputmethod.latin".equals(info.getPackageName())
                 || "com.google.android.tv.inputmethod".equals(info.getPackageName())) return info.getId();
         return keyboards.isEmpty() ? "" : keyboards.get(0).getId();
-    }
-    static void chooseKeyboard(Activity activity) {
-        List<InputMethodInfo> keyboards = keyboards(activity);
-        if (keyboards.isEmpty()) { activity.startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)); return; }
-        String[] labels = new String[keyboards.size()];
-        for (int i = 0; i < labels.length; i++) labels[i] = String.valueOf(keyboards.get(i).loadLabel(activity.getPackageManager()));
-        new AlertDialog.Builder(activity).setTitle(AppStrings.get(R.string.settings_remote_text_keyboard))
-                .setItems(labels, (d, at) -> new Thread(() -> {
-                    try { KeyboardHandoff.writeTarget(activity.getFilesDir(), keyboards.get(at).getId()); }
-                    catch (IOException error) { activity.runOnUiThread(() -> Toast.makeText(activity,
-                            AppStrings.get(R.string.settings_remote_save_failed), Toast.LENGTH_LONG).show()); }
-                }, "text-keyboard-setting").start())
-                .setNegativeButton(android.R.string.cancel, null).show();
     }
     static boolean request(Context context) {
         if (coolingDown()) return false;

@@ -12,7 +12,7 @@ text keyboard. Once the keyboard has been hidden for at least 700 ms it restores
 tvOS, provided the user has not selected a different keyboard in the meantime.
 A one-second binding grace period ignores the old IME's visibility during startup.
 
-Choose the text keyboard under Button shortcuts → Text keyboard. Enabled Gboard
+Choose the text keyboard under Remotes and Devices → Input Settings → Text keyboard. Enabled Gboard
 is preferred automatically when there is no saved choice. The setting is an atomic
 file, read afresh across Home and input-method processes. The original handmade
 text keyboard is removed; a small connecting/picker panel is the fallback when
@@ -32,9 +32,22 @@ The old tvOS accessibility service may be disabled; it only contains the optiona
 CHiQ cold-boot guard and never requests keys. Setup and Home-mode jobs do not
 enable it automatically.
 
-Remotes and Devices → Button shortcuts → Add a button. Press the physical key,
-then select Home-only or Across apps and independent 1×/2×/3× actions. Existing
-Netflix/YouTube/Prime/TCL/MI choices and saved custom assignments are preserved.
+Remotes and Devices opens a native tvOS-style editor: the shared settings gradient,
+logo tile, focus capsules, short row labels and checkmark pickers. Saved buttons
+appear first, followed by Add a Button and Input Settings. Adding a button learns
+one matching physical DOWN/UP pair; capture never runs existing assignments.
+The editor shows Works (Everywhere/Home), Single Press, Double Press, Triple Press
+and a confirmed Delete action. The default for new buttons is Everywhere; OK is
+always Home-only and initially keeps its original action. Existing scope choices
+are preserved. Global bindings and legacy app buttons now also work inside the
+main Settings activity and the editor outside capture mode. Both local adapters
+cancel on pause/focus loss and unregister on destruction. The IME continues to
+skip tvOS windows to avoid duplicate execution.
+
+Existing Netflix/YouTube/Prime/TCL/MI choices are preserved under Input Settings →
+App Buttons. Text keyboard selection also uses the tvOS checkmark interface; only
+the Android enable/select-keyboard system screens leave the custom UI.
+
 Bindings match Android code, Linux scan code and remote name, with up to 32 keys.
 Tap interval is 300 ms. Single-only assignments execute on release. Double/triple
 assignments delay the single action. Original OK is supported on Home only.
@@ -49,10 +62,13 @@ windows that bypass the IME require physical-device validation.
 
 ## Validation
 
-148 JVM test scripts pass, including actual controller-worker tests with simulated
+150 JVM test scripts pass, including actual controller-worker tests with simulated
 ADB failure/rollback, manual selection and foreground cleanup; policy tests cover
 binding/close debounce, malformed firmware output, show timeout, screen-off and
-atomic target storage. The existing tap and remote-adapter tests still pass.
+atomic target storage. Editor tests execute capture/release matching, reserved keys,
+Home-only OK, default global scope, duplicate preservation, gesture assignment and
+confirmed deletion. Settings lifecycle tests execute global/vendor dispatch,
+navigation fallback and adapter cleanup. Existing tap/remote tests still pass.
 Java source compilation against Android API 35 passes. Full APK assembly and
 real-TV testing were not available in the implementation environment.
 

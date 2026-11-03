@@ -53,12 +53,14 @@ import java.util.List;
 public class SettingsActivity extends Activity {
     private SettingsView view;
     private SettingsPreview preview;
+    private RemoteShortcuts shortcuts;
     private HomeUpdatePrompt automaticUpdates;
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         RegionVpnRecovery.request(this);
         Watchdog.install(this);
         Ui.init(this);
+        shortcuts = new RemoteShortcuts(this, true, null);
         view = new SettingsView(this);
         preview = new SettingsPreview(this, view, view::resume);
         setContentView(preview.host());
@@ -69,6 +71,7 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (shortcuts != null) shortcuts.reload();
         view.resume();
         SetupGate.route(this);
         if (automaticUpdates != null) automaticUpdates.resume();
@@ -86,6 +89,7 @@ public class SettingsActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        if (shortcuts != null) shortcuts.cancel();
         if (automaticUpdates != null) automaticUpdates.pause();
         preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
@@ -94,10 +98,16 @@ public class SettingsActivity extends Activity {
 
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
+        if (!focused && shortcuts != null) shortcuts.cancel();
         if (focused && automaticUpdates != null) automaticUpdates.changed();
     }
 
+    @Override protected void onDestroy() {
+        if (shortcuts != null) { shortcuts.close(); shortcuts = null; }
+        super.onDestroy();
+    }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (shortcuts != null && shortcuts.onKey(event) || RemoteKeys.onKey(this, event)) return true;
         if (preview.onKey(event)) return true;
         if (!preview.active() && view.onKey(event)) return true;
         return super.dispatchKeyEvent(event);
@@ -1003,8 +1013,8 @@ public class SettingsActivity extends Activity {
                 case HOME_ADJUST: adjust(1); invalidate(); return;
                 case AIRPLAY: launchAirPlay(); return;
                 case REMOTES:
-                    loadApps(() -> { screen = REMOTE_KEYS; focus = 0; });
-                    break;
+                    activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class));
+                    return;
                 case SHELF_EDITOR: openShelfEditor(); return;
                 case DOWNLOAD: AppDownloads.start(activity, focus); return;
                 case MENU_ADJUST: adjustMenu(1); break;

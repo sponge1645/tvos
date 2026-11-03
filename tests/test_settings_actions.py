@@ -13,12 +13,12 @@ public class ActionsTest {
   check(SettingsActions.activation(WIDGETS,0,0,false,6,false)==SettingsActions.Action.WEATHER_SCREEN,"first widget opens weather");
   check(SettingsActions.activation(WIDGETS,1,0,false,6,false)==SettingsActions.Action.DATE_SCREEN,"second widget opens date");
   check(SettingsActions.activation(WIDGETS,2,0,false,6,false)==SettingsActions.Action.NONE,"removed third widget is inactive");
-  int[] targets={GENERAL,MEDIA,SCREENSAVER,-1,REMOTE_KEYS,ACCESSIBILITY,APPS_DOWNLOADS,SHELF_EDIT,TOP_PANEL,SYSTEM};
+  int[] targets={GENERAL,MEDIA,SCREENSAVER,-1,-1,ACCESSIBILITY,APPS_DOWNLOADS,SHELF_EDIT,TOP_PANEL,SYSTEM};
   for(int row=0;row<10;row++){
    ActionView v=create(MAIN,row);v.activate();
    if(targets[row]>=0)check(v.screen==targets[row],"main row destination "+row);
    if(row==3)check(ActionView.events.equals(Arrays.asList("airplay")),"AirPlay returns without focus reset");
-   if(row==4)check(!ActionView.events.contains("remote-service")&&ActionView.events.contains("load-apps"),"remote screen does not enable accessibility");
+   if(row==4)check(!ActionView.events.contains("remote-service")&&!ActionView.events.contains("load-apps")&&ActionView.events.stream().anyMatch(e->e.startsWith("start:")),"remote screen does not enable accessibility");
   }
   int[][] back={{HOME_SCREEN,TOP_PANEL,4},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
   for(int[] route:back){check(io.tvos.settings.SettingsScreen.parent(route[0],GENERAL,0)==route[1],"animation parent agrees with Back destination");ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
