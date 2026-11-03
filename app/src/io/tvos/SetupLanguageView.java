@@ -26,9 +26,9 @@ final class SetupLanguageView extends View {
     private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final RectF row = new RectF();
-    private final SetupLayout layout = new SetupLayout();
     private final Rect titleBounds = new Rect();
-    private float listBottom;
+    private static final float TITLE_Y = 225, MORE_GAP = 16;
+    private final float firstRow;
     private final Rect moreBounds = new Rect();
     private final Shader dark = new LinearGradient(0, 1, 1, 0, 0xFF95B3BE, 0xFF95B3BE, Shader.TileMode.CLAMP);
     private final Matrix matrix = new Matrix();
@@ -69,6 +69,17 @@ final class SetupLanguageView extends View {
         languageTitles = new String[languages.length];
         for (int i = 0; i < languages.length; i++) languageTitles[i] = AppStrings.get(R.string.settings_setup_language_title, languages[i]);
         more = AppStrings.get(R.string.settings_setup_more_regions);
+        // Shared heading baseline and first capsule, independent of list length.
+        text.setTypeface(Ui.displayBold); text.setTextSize(80);
+        int titleBottom = 0;
+        for (String heading : languageTitles) {
+            text.getTextBounds(heading, 0, heading.length(), titleBounds);
+            titleBottom = Math.max(titleBottom, titleBounds.bottom);
+        }
+        String heading = AppStrings.get(R.string.settings_region);
+        text.getTextBounds(heading, 0, heading.length(), titleBounds);
+        titleBottom = Math.max(titleBottom, titleBounds.bottom);
+        firstRow = TITLE_Y + titleBottom + SetupLayout.GAP + SetupLayout.BUTTON_HEIGHT / 2;
         if (region) {
             codes = SetupCountries.codes(AppLanguage.current().locale);
             names = new String[codes.length];
@@ -118,26 +129,9 @@ final class SetupLanguageView extends View {
         ink.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); ink.setShader(light ? null : dark);
         text.setColor(light ? 0xFF6E7E94 : 0xFFFFFFFF); text.setShader(light ? null : dark);
         text.setTypeface(Ui.displayBold); text.setTextSize(80);
-        text.getTextBounds(title(), 0, title().length(), titleBounds);
         boolean suggestion = region && (!detected.isEmpty() || !status.isEmpty());
-        int visible = region ? Math.min(6, codes.length - (detected.isEmpty() ? 0 : 1)) : codes.length;
-        float titleHeight = titleBounds.bottom - titleBounds.top;
-        float listHeight = SetupLayout.BUTTON_HEIGHT + Math.max(0, visible - 1) * 80;
-        float subtitleHeight = 0;
-        if (region) {
-            text.setTypeface(Ui.displayMedium); text.setTextSize(40);
-            if (text.measureText(more) > 800) text.setTextSize(40 * 800 / text.measureText(more));
-            text.getTextBounds(more, 0, more.length(), moreBounds);
-            subtitleHeight = moreBounds.bottom - moreBounds.top;
-        }
-        float groupHeight = titleHeight + SetupLayout.GAP + listHeight
-                + (region ? subtitleHeight + 1 + (suggestion ? SetupLayout.BUTTON_HEIGHT + SetupLayout.GAP : 0) : 0);
-        float groupTop = SetupLayout.CENTER_Y - groupHeight / 2;
-        float titleY = groupTop - titleBounds.top;
-        float contentTop = groupTop + titleHeight + SetupLayout.GAP;
-        listBottom = groupTop + groupHeight;
-        text.setTypeface(Ui.displayBold); text.setTextSize(80);
-        boolean titleMoving = transitions.drawTitle(canvas, title(), SystemClock.uptimeMillis(), reduced, 600, titleY, text, titleText);
+        float contentTop = firstRow - SetupLayout.BUTTON_HEIGHT / 2;
+        boolean titleMoving = transitions.drawTitle(canvas, title(), SystemClock.uptimeMillis(), reduced, 600, TITLE_Y, text, titleText);
         text.setTypeface(Ui.displaySemibold);
         long now = SystemClock.uptimeMillis();
         float dt = Math.min(.05f, Math.max(0, (now - frame) / 1000f)); frame = now; moving = titleMoving;
@@ -154,19 +148,20 @@ final class SetupLanguageView extends View {
             text.setTypeface(Ui.displayMedium); text.setTextSize(40); float width = text.measureText(more);
             if (width > 800) text.setTextSize(40 * 800 / width);
             text.setShader(null); text.setColor(light ? 0xFF93A9C2 : 0xFF576B74);
+            text.getTextBounds(more, 0, more.length(), moreBounds);
             float baseline = contentTop + (suggestion ? SetupLayout.BUTTON_HEIGHT + SetupLayout.GAP : 0) - moreBounds.top;
             canvas.drawText(more, 600, baseline, text);
             text.getTextBounds(more, 0, more.length(), moreBounds);
-            // Focus capsule: 70px tall, grows 1.012x. Its top is exactly 1px below the label bounds.
-            rowStart = baseline + moreBounds.bottom + 1 + 70 * 1.012f / 2;
+            // Leave 16px below the label; finish the top fade above the capsule.
+            rowStart = baseline + moreBounds.bottom + MORE_GAP + SetupLayout.BUTTON_HEIGHT / 2;
             text.setTypeface(Ui.displaySemibold);
-        } else rowStart = contentTop + SetupLayout.BUTTON_HEIGHT / 2;
+        } else rowStart = firstRow;
         int offset = region && !detected.isEmpty() ? 1 : 0;
         scroll.target = region ? Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3)) : 0;
         if (reduced) scroll.snap(scroll.target); else moving |= scroll.step(dt);
-        viewport.resize(190, region ? rowStart - (scroll.value <= offset + .001f ? 35.42f : 55) : rowStart - 35.42f, 1020, Math.round((getHeight() - oy) / k), 1);
+        viewport.resize(190, rowStart - 74, 1020, Math.round((getHeight() - oy) / k), 1);
         int listSave = canvas.save();
-        canvas.clipRect(0, rowStart - 55, 1100, listBottom + 1);
+        canvas.clipRect(0, rowStart - SetupLayout.BUTTON_HEIGHT / 2 - MORE_GAP + 8, 1100, Math.round((getHeight() - oy) / k));
         viewport.draw(canvas, rows); canvas.restoreToCount(listSave);
         // Keep the screen-space tile gradient unchanged through the remote's own transform.
         matrix.setScale(1920 * 660 / 650f, -1080 * 660 / 650f);
