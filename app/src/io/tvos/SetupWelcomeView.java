@@ -32,6 +32,8 @@ final class SetupWelcomeView extends View {
     private long start;
     private boolean running = true, pressed;
     private float scale;
+    private float wordHeight, wordStroke, wipeHalfWidth;
+    private long exitStart = -1;
 
     SetupWelcomeView(Context context, Runnable next) {
         super(context); this.next = next;
@@ -59,21 +61,28 @@ final class SetupWelcomeView extends View {
     @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         scale = Math.min(w / 1920f, h / 1080f);
         shaderMatrix.setScale(w, -h); shaderMatrix.postTranslate(0, h); dark.setLocalMatrix(shaderMatrix);
-        hint.setTextSize(60 * scale);
+        hint.setTextSize(40 * scale);
+        RectF english = bounds[0];
+        float originalScale = Math.min(570 * scale / english.width(), 210 * scale / english.height());
+        wordStroke = 90 * originalScale;
+        wordHeight = (english.height() - 60) * originalScale;
+        float widestWord = 0;
+        for (RectF b : bounds) widestWord = Math.max(widestWord, (b.width() - 60) * wordHeight / (b.height() - 60) + wordStroke);
+        float fit = Math.min(1, getWidth() * .8f / widestWord);
+        wordHeight *= fit; wordStroke *= fit; wipeHalfWidth = widestWord * fit / 2 + 12 * scale;
         float widest = Math.max(hint.measureText(hints[0]), hint.measureText(hints[1]));
         if (widest > w * .85f) hint.setTextSize(hint.getTextSize() * w * .85f / widest);
     }
     private void word(Canvas canvas, int language, float progress, float alpha) {
         if (alpha <= 0 || progress <= 0) return;
         RectF b = bounds[language];
-        float s = Math.min(570 * scale / b.width(), 210 * scale / b.height());
+        float s = wordHeight / (b.height() - 60);
         int save = canvas.save(); canvas.translate(getWidth() / 2f, getHeight() * .47f);
         canvas.scale(s, s); canvas.translate(-b.centerX(), -b.centerY());
-        // Keep the tile gradient in screen coordinates after transforming the canvas.
         shaderMatrix.setScale(getWidth() / s, -getHeight() / s);
         shaderMatrix.postTranslate(b.centerX() - getWidth() / (2 * s), b.centerY() + getHeight() * .53f / s);
         dark.setLocalMatrix(shaderMatrix);
-        ink.setStrokeWidth(90); ink.setAlpha(Math.round(255 * alpha));
+        ink.setStrokeWidth(wordStroke / s); ink.setAlpha(Math.round(255 * alpha));
         float remaining = lengths[language] * progress;
         for (PathMeasure measure : measures[language]) {
             float length = measure.getLength();
@@ -85,8 +94,8 @@ final class SetupWelcomeView extends View {
     }
     /** Soft horizontal replacement, confined to the small word area; no offscreen bitmap. */
     private void replacement(Canvas canvas, int language, float progress) {
-        float left = getWidth() / 2f - 300 * scale;
-        float right = getWidth() / 2f + 300 * scale;
+        float left = getWidth() / 2f - wipeHalfWidth;
+        float right = getWidth() / 2f + wipeHalfWidth;
         float feather = 32 * scale;
         float edge = left - feather + (right - left + 2 * feather) * progress;
         int save = canvas.save();
@@ -108,7 +117,13 @@ final class SetupWelcomeView extends View {
         background.draw(canvas, getWidth(), getHeight(), light);
         ink.setShader(light ? null : dark); ink.setColor(light ? 0xFF8897AC : 0xFFFFFFFF);
         hint.setShader(light ? null : dark); hint.setColor(light ? 0xFF8897AC : 0xFFFFFFFF);
-        long elapsed = Math.max(0, SystemClock.uptimeMillis() - start);
+        long now = SystemClock.uptimeMillis();
+        if (exitStart >= 0 && now - exitStart >= 220) {
+            if (running) { stop(); post(next); } return;
+        }
+        int content = canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(),
+                exitStart < 0 ? 255 : Math.round(255 * (1 - (now - exitStart) / 220f)));
+        long elapsed = Math.max(0, now - start);
         long cycle = elapsed / 4800; float phase = elapsed % 4800;
         int language = (int) (cycle % 2);
         if (reduced) {
@@ -126,6 +141,7 @@ final class SetupWelcomeView extends View {
             hint.setAlpha(Math.round(255 * blend)); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .65f, hint);
             if (running && hasWindowFocus()) postInvalidateOnAnimation();
         }
+        canvas.restoreToCount(content);
     }
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused); pressed = false;
@@ -140,7 +156,10 @@ final class SetupWelcomeView extends View {
     @Override public boolean onKeyUp(int key, KeyEvent event) {
         if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER || key == KeyEvent.KEYCODE_NUMPAD_ENTER) {
             boolean advance = pressed && !event.isCanceled(); pressed = false;
-            if (advance && running) { stop(); next.run(); } return true;
+            if (advance && running && exitStart < 0) {
+                if (reduced) { stop(); next.run(); }
+                else { exitStart = SystemClock.uptimeMillis(); invalidate(); }
+            } return true;
         }
         return super.onKeyUp(key, event);
     }

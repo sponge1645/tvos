@@ -95,7 +95,11 @@ public class SetupActivity extends Activity {
     private void render() {
         cancelWork(); stopHello(); regionText = null;
         if (page == SetupState.HELLO) {
-            welcome = new SetupWelcomeView(this, this::next); setContentView(welcome); welcome.requestFocus(); return;
+            welcome = new SetupWelcomeView(this, () -> { if (active && page == SetupState.HELLO) next(); }); setContentView(welcome); welcome.requestFocus(); return;
+        }
+        if (page == SetupState.LANGUAGE) {
+            SetupLanguageView language = new SetupLanguageView(this, () -> { detected = null; regionStatus = ""; next(); });
+            setContentView(language); language.requestFocus(); return;
         }
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
         scroll.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF142C45, 0xFF080B14}));
@@ -103,10 +107,6 @@ public class SetupActivity extends Activity {
         body.setPadding(dp(80), dp(20), dp(80), dp(20)); scroll.addView(body); setContentView(scroll);
         label("tvOS", 23);
         switch (page) {
-            case SetupState.LANGUAGE:
-                label(text(R.string.settings_setup_language), 34); label(text(R.string.settings_setup_language_hint), 19);
-                for (AppLanguage language : AppLanguage.values()) button((Prefs.language().equals(language.code) ? "✓ " : "") + language.nativeName,
-                        () -> { Prefs.setLanguage(language.code); detected = null; regionStatus = ""; render(); }); break;
             case SetupState.REGION:
                 label(text(R.string.settings_region), 34);
                 label(text(R.string.settings_setup_region_hint), 18);

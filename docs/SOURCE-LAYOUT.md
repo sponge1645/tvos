@@ -437,3 +437,6 @@ See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.
 
 ### 1B163 welcome
 `SetupWelcomeView` owns the native vector welcome, lifecycle and center-button handling. `setup/WelcomePaths` contains supplied cubic stroke geometry; reference SVGs are in `docs/design`. The setup activity coordinates navigation only.
+
+### 1B165 setup language
+`SetupLanguageView` draws the language picker; `setup/SetupRemoteRenderer` caches the compound remote path and transparent button holes. Welcome normalizes bilingual ink height/weight and performs exit fade before the Activity replaces its view.

@@ -286,3 +286,6 @@ Welcome screen: replace script-font/buttons with native hello/привет strok
 
 ### 1B164
 Double welcome hint size (bounded to viewport), increase handwriting stroke 60→90, replace whole-word fades with a feathered left-to-right wipe. Each completed word holds one second. Hint crossfade retains its 500ms easing/timing relative to each incoming word.
+
+### 1B165
+Welcome hint is 40px at 1080p with proportional scaling. Normalize both handwriting SVGs to equal visible height and stroke weight, fitting width jointly. Add native language screen with focus-only capsule and programmatic remote silhouette. Welcome content fades out completely before language content fades in; Reduced Motion skips fades. Language choice commits only on uncanceled OK.
