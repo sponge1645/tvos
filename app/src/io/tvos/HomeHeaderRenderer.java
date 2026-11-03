@@ -18,7 +18,7 @@ final class HomeHeaderRenderer {
         int tab, networkState;
         int wifiLevel = -1;
         int hiddenTab = -1;
-        boolean showDate, weatherTop, searchMode, largePostersWithoutWidgets;
+        boolean weatherFocused, showDate, weatherTop, searchMode, largePostersWithoutWidgets;
         String clockText, dateText, searchQuery;
         String[] tabs;
         RectF[] topRects;
@@ -62,13 +62,15 @@ final class HomeHeaderRenderer {
     private float tone(float a, float b) { return a + (b - a) * frame.night; }
     private static int blend(int a, int b, float f) { return ActionSurface.blend(a,b,f); }
 
+    RectF weatherBounds() { return widgetsCapsule; }
+
     void drawDateWeather(Canvas c, Frame frame) {
         this.frame = frame;
         WeatherForecast wx = data.weather;
         boolean weather = frame.weatherTop && !Double.isNaN(wx.temp);
         String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
         if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
-        if (date.isEmpty() && !weather) return;
+        if (date.isEmpty() && !weather) { widgetsCapsule.setEmpty(); return; }
         float k = frame.k, pad = 20 * k, gap = !date.isEmpty() && weather ? 16 * k : 0;
         float cy = HomeLayout.HEADER_CY * k;
         Paint datePaint = headerDateScratch;
@@ -85,8 +87,10 @@ final class HomeHeaderRenderer {
         float left = MARGIN * k;
         widgetsCapsule.set(left, HomeLayout.TOP * k, left + 2 * pad + dateWidth + gap + weatherWidth,
                 (HomeLayout.TOP + HomeLayout.BUTTON) * k);
-        // Canvas-only decoration: it adds no focus target, click handler or accessibility action.
-        actionSurface.draw(c, widgetsCapsule, 0, frame.night, k);
+        // The home exposes this capsule as a weather action when forecast data is available.
+        actionSurface.draw(c, widgetsCapsule, frame.weatherFocused ? 1 : 0, frame.night, k);
+        int ink = ActionSurface.ink(frame.night, frame.weatherFocused ? 1 : 0);
+        datePaint.setColor(ink); weatherPaint.setColor(ink);
         float x = left + pad;
         if (!date.isEmpty()) {
             c.drawText(date, x - Ui.leftBearing(datePaint, date), cy + Ui.halfCap(datePaint), datePaint);

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="weather_hourly_title">ПРОГНОЗ ПО ЧАСАМ</string>
+    <string name="weather_daily_title">ПРОГНОЗ НА 5 ДНЕЙ</string>
+    <string name="weather_now">Сейчас</string>
+    <string name="weather_today">Сегодня</string>
+    <string name="weather_updated">Обновлено %1$s</string>
+    <string name="weather_details">Влажность %1$s · Ветер %2$s км/ч</string>
+    <string name="weather_loading">Загрузка прогноза…</string>
+    <string name="weather_open_forecast">Прогноз погоды</string>
+</resources>

@@ -104,6 +104,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final MovieAppLauncher movieApps;
     private final HomeDockEditor<HomeApps.Item> dockEditor;
 
+    private static final int Z_WEATHER = 6;
+    private HomeWeatherPanel weatherPanel;
+    private boolean weatherTouch, weatherWasFocused;
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
     private final WatchingCatalog watching;
     private final DockBackdrop dockBackdrop;
@@ -479,6 +482,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void pause() {
+        if (weatherPanel != null) weatherPanel.dismiss();
         if (!running) return;
         running = false;
         randomPoster.clear();
@@ -969,7 +973,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (snap) rouletteButtonFocus.snap(rouletteTarget);
         heroChanged |= aim(cardFocus, !grid.open && zone == Z_CARDS ? cardIndex : -1, snap) | topChanged;
         tilesDirty |= snap || tilesChanged;
-        statusDirty |= snap || topChanged;
+        statusDirty |= snap || topChanged || weatherWasFocused != (zone == Z_WEATHER);
+        weatherWasFocused = zone == Z_WEATHER;
         heroDirty |= snap || heroChanged;
         drawerDirty |= snap || drawerChanged;
         spoken.focusMoved();
@@ -1034,6 +1039,31 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             okDown = false; dockEditor.cancelHold(); return true;
         }
         return false;
+    }
+
+    private boolean canOpenWeather() {
+        return !grid.open && !drawer.open && weatherTop() && !Double.isNaN(data.weather.temp);
+    }
+    private void openWeather() {
+        if (!canOpenWeather() || weatherPanel != null) return;
+        zone = Z_WEATHER; okDown = false; click.open(); retarget(false); status.invalidate();
+        weatherPanel = new HomeWeatherPanel(activity, scene, data);
+        weatherPanel.setOnDismissListener(dialog -> {
+            weatherPanel = null;
+            if (running) { zone = canOpenWeather() ? Z_WEATHER : Z_TOP; retarget(false); status.invalidate(); requestFocus(); spoken.focusMoved(); }
+        });
+        weatherPanel.show();
+    }
+    @Override public boolean onTouchEvent(android.view.MotionEvent event) {
+        if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+            weatherTouch = canOpenWeather() && header.weatherBounds().contains(event.getX(), event.getY());
+            if (weatherTouch) return true;
+        } else if (event.getAction() == android.view.MotionEvent.ACTION_UP && weatherTouch) {
+            weatherTouch = false;
+            if (canOpenWeather() && header.weatherBounds().contains(event.getX(), event.getY())) openWeather();
+            return true;
+        } else if (event.getAction() == android.view.MotionEvent.ACTION_CANCEL) weatherTouch = false;
+        return super.onTouchEvent(event);
     }
 
     boolean onKey(KeyEvent e) {
@@ -1202,6 +1232,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void activate() {
         wake();
         if (rouletteWork.spinning()) return;
+        if (zone == Z_WEATHER) { openWeather(); return; }
         HomeApps.Item it;
         RectF r;
         if (!grid.open && zone == WIDGETS) return;   // a widget is only read
@@ -1381,6 +1412,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         s.cardIndex = cardIndex; s.shelfIndex = dock.index; s.drawerIndex = drawer.index; s.widgetIndex = widgetIndex;
         s.others = grid.items; s.shelf = dock.items; s.drawerItems = drawer.items; s.lightButtons = lightButtons; s.cards = cards;
         s.topRects = topRects; s.cardRects = cardRects; s.tileRects = dock.rects; s.drawerRects = drawer.rects;
+        s.weatherHeader = header.weatherBounds(); s.weatherTop = canOpenWeather();
         s.weatherCard = drawer.weather; s.tabs = tabs(); s.networkState = networkStatus.state();
         s.k = k; s.h = h; s.scroll = grid.scroll.target;
         s.contentTop = contentTop; s.contentBottom = contentBottom;
@@ -1397,6 +1429,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             return;
         }
         switch (group) {
+            case Z_WEATHER: zone = Z_WEATHER; status.invalidate(); break;
             case Z_DRAWER:
                 if (!drawer.open) openDrawer();
                 drawer.index = i;
@@ -1601,6 +1634,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = search.query;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
         headingFrame.lDate = lDate; headingFrame.lTab = lTab; headingFrame.lTabOn = lTabOn;
+        headingFrame.weatherFocused = zone == Z_WEATHER;
         headingFrame.showDate = showHeaderPart("show_date"); headingFrame.weatherTop = weatherTop();
         headingFrame.searchMode = search.active; headingFrame.largePostersWithoutWidgets = largePostersWithoutWidgets;
         return headingFrame;
@@ -1621,6 +1655,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private boolean moveLight(int dx, int dy) {
         switch (zone) {
+            case Z_WEATHER:
+                if (dy > 0 || dx > 0 || !canOpenWeather()) {
+                    zone = Z_TOP; topIndex = dx > 0 ? availableTopButton(5) : search.active || !picksOn() ? availableTopButton(5) : tab;
+                    status.invalidate();
+                } else return true;
+                break;
             case Z_SHELF:
                 if (dy >= 0) return false;
                 if (dock.items.isEmpty()) {
@@ -1676,7 +1716,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 }
                 break;
             case Z_TOP:
-                if (dx != 0) {
+                if (dy < 0 && canOpenWeather()) {
+                    zone = Z_WEATHER; status.invalidate();
+                } else if (dx != 0) {
                     int next = nextTopControl(topIndex, dx);
                     if (next == topIndex) return true;
                     topIndex = next;

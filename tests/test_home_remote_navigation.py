@@ -20,7 +20,8 @@ class Prefs {static int saves;static final int[] order={0,1,2,3,5,4};static int[
 public class RemoteNavigationHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
  boolean dockContinueKey(KeyEvent e){return false;}
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
- static final int Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
+ boolean weatherAvailable;boolean canOpenWeather(){return weatherAvailable;}static class Status {void invalidate(){}}final Status status=new Status();
+ static final int Z_WEATHER=6,Z_SHELF=2,Z_DRAWER=3,Z_TOP=4,Z_CARDS=5,WIDGETS=8;
  int zone=Z_SHELF,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;
  boolean running=true,vpnPress;int vpnOpens;final Runnable vpnHold=this::openVpnOnHold;void openVpnApp(){vpnOpens++;}
  boolean okDown,backDown,enabled=true,heroDirty,statusDirty;
@@ -70,6 +71,7 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
   vpn.search.active=true;vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
   vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold works inside Search and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");
   vpn.event(23,true,0);vpn.right();vpn.handler.advance(500);vpn.event(23,false,0);check(vpn.vpnOpens==1&&vpn.launches==1,"moving off VPN cancels both delayed open and release activation");
+  RemoteNavigationHarness wx=new RemoteNavigationHarness(2);wx.weatherAvailable=true;wx.zone=Z_TOP;wx.topIndex=1;wx.moveLight(0,-1);check(wx.zone==Z_WEATHER,"Up from tabs reaches weather");wx.moveLight(0,1);check(wx.zone==Z_TOP,"Down from weather returns to tabs");wx.moveLight(0,-1);wx.moveLight(1,0);check(wx.zone==Z_TOP&&wx.topIndex>=5,"Right from weather reaches top actions");
   System.out.println("PASS: real key→move→moveLight chain, Dock arrows/counts/edges/repeats, filled and empty search entry/exit across tabs, drawer, OK, long-press edit/save and roulette lock");
  }
 }'''

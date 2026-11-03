@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="weather_hourly_title">HOURLY FORECAST</string>
+    <string name="weather_daily_title">5-DAY FORECAST</string>
+    <string name="weather_now">Now</string>
+    <string name="weather_today">Today</string>
+    <string name="weather_updated">Updated %1$s</string>
+    <string name="weather_details">Humidity %1$s · Wind %2$s km/h</string>
+    <string name="weather_loading">Loading forecast…</string>
+    <string name="weather_open_forecast">Weather forecast</string>
+</resources>

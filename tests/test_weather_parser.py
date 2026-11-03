@@ -46,6 +46,13 @@ public class ParserTest {
    o=body("Europe/Berlin").put("daily",daily("2026-03-29T02:30","2026-10-25T02:30"));w=parse(o);check(w.sunrise==at("2026-03-29T03:30","Europe/Berlin")&&w.sunset==Instant.parse("2026-10-25T01:30:00Z").toEpochMilli(),"DST gap and overlap match legacy lenient calendar");
    now=0;fails(body("UTC").put("hourly",hourly("bad-time")),"malformed future time rejected");fails(body("UTC").put("hourly",hourly("2026-11-02T09:00").put("temperature_2m",new JSONArray())),"incomplete future temperature array rejected");
    ExecutorService pool=Executors.newFixedThreadPool(2);try{List<Future<Long>> jobs=new ArrayList<>();JSONObject.docs.put("utc",body("UTC"));JSONObject.docs.put("berlin",body("Europe/Berlin"));for(int i=0;i<50;i++){final boolean utc=i%2==0;jobs.add(pool.submit(()->parser.parse(utc?"utc":"berlin").sunrise));}for(int i=0;i<jobs.size();i++)check(jobs.get(i).get()==at("2026-11-02T06:00",i%2==0?"UTC":"Europe/Berlin"),"date formatter is response-local");}finally{pool.shutdownNow();}
+   o=body("Europe/Berlin");JSONObject dd=o.getJSONObject("daily");
+   dd.put("time",new JSONArray("2026-11-02","2026-11-03","2026-11-04","2026-11-05","2026-11-06","2026-11-07"));
+   dd.put("temperature_2m_min",new JSONArray(-2.0,0.0,1.0,2.0,3.0,4.0)).put("temperature_2m_max",new JSONArray(5.0,6.0,7.0,8.0,9.0,10.0)).put("weather_code",new JSONArray(0,3,61,71,95,2)).put("precipitation_probability_max",new JSONArray(0,20,60));
+   o.getJSONObject("current").put("relative_humidity_2m",84).put("wind_speed_10m",13.5);w=parse(o);
+   check(w.days.size()==5&&w.days.get(2).code==61&&w.days.get(2).rain==60&&w.days.get(4).rain==-1,"five-day cap and optional rain");
+   check(w.days.get(0).time==at("2026-11-02T00:00","Europe/Berlin")&&w.days.get(4).min==3&&w.days.get(4).max==9,"daily dates use forecast timezone and preserve Celsius");
+   check(w.humidity==84&&w.wind==13.5&&w.timezone.equals("Europe/Berlin"),"current humidity/wind and timezone retained");
    System.out.println("PASS: real weather parser, model defaults/mutability, timezone/DST/lenient dates, future-hour cap/order/indexes, clock timing, malformed data and concurrent isolation");
   }finally{TimeZone.setDefault(saved);Locale.setDefault(language);}
  }

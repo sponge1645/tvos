@@ -26,11 +26,12 @@ files={
 import java.util.*;import android.graphics.*;import android.content.Context;
 import static io.tvos.HomeAccessibility.*;
 public class AccessibilityHarness implements HomeAccessibility.Host {
+ static class Header {android.graphics.RectF weatherBounds(){return new android.graphics.RectF(40,50,340,112);}}final Header header=new Header();boolean headerWeather;boolean canOpenWeather(){return headerWeather;}
  boolean picks=true,weather=true,gridDirty;int tab,zone=Z_SHELF,topIndex,cardIndex,widgetIndex;
  List<HomeApps.Item> lightButtons=new ArrayList<>();
  List<Recs.Pick> cards=new ArrayList<>(Arrays.asList(new Recs.Pick("Title","2024, 120 min","Seena")));
  RectF[] topRects=new RectF[11],cardRects={new RectF(80,262,300,704)};static class Session {boolean active;}final Session search=new Session();static class DrawerState {boolean open;int index;List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("HDMI")));RectF[] rects={new RectF(80,540,304,666)};final RectF weather=new RectF(80,708,1840,1008);}final DrawerState drawer=new DrawerState();
- float k=1,h=1080,contentTop=226,contentBottom=788;static class Layer {float y;float getTranslationY(){return y;}}final Layer heroLayer=new Layer(),status=new Layer(),tiles=new Layer();
+ float k=1,h=1080,contentTop=226,contentBottom=788;static class Layer {void invalidate(){}float y;float getTranslationY(){return y;}}final Layer heroLayer=new Layer(),status=new Layer(),tiles=new Layer();
  static class Spring {float target;}static class DockState {int index;List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("Lampa")));RectF[] rects={new RectF(80,814,304,940)};}final DockState dock=new DockState();static class Grid {boolean open;int index;final Spring scroll=new Spring();List<HomeApps.Item> items=new ArrayList<>(Arrays.asList(new HomeApps.Item("YouTube"),new HomeApps.Item("Settings")));}final Grid grid=new Grid();static class Work {boolean active;boolean spinning(){return active;}}final Work rouletteWork=new Work();
  final NetworkStatus networkStatus=new NetworkStatus();final HomeData data=new HomeData();final Context context=new Context();
  final HomeAccessibility source=new HomeAccessibility(context,data,this);final boolean[] visible=new boolean[11];
@@ -47,6 +48,7 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
  public static void main(String[] args){
   AppLanguage.select("en");AccessibilityHarness h=new AccessibilityHarness();
   check(h.ids().equals(Arrays.asList(4004,4001,4005,4011,4010,4009,5001,2001,3001)),"stable IDs and configured reading order");
+  h.headerWeather=true;check(h.ids().contains(node(Z_WEATHER,0)),"header weather is exposed as an action");Rect weatherBounds=new Rect();check(h.source.bounds(node(Z_WEATHER,0),weatherBounds)&&weatherBounds.left==40,"header weather bounds");h.source.focus(node(Z_WEATHER,0));check(h.zone==Z_WEATHER&&h.source.focused()==node(Z_WEATHER,0)&&h.source.clickable(node(Z_WEATHER,0)),"weather focus and activation node");h.headerWeather=false;h.zone=Z_SHELF;h.click.count=0;
   h.visible[3]=false;check(!h.ids().contains(4004),"disabled category removed");h.visible[3]=true;
   check(h.source.text(2001).equals("Lampa")&&h.source.text(5001).equals("Title, 2024, 120 min. App: Seena"),"app and recommendation text");
   h.networkStatus.value=1;check(h.source.text(4011).startsWith("Wi-Fi"),"Wi-Fi label");h.networkStatus.value=2;check(h.source.text(4011).startsWith("Ethernet"),"live Ethernet label");

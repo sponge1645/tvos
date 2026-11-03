@@ -28,8 +28,8 @@ import java.util.concurrent.Executors;
  * No API key is needed. Location comes from the region settings.
  */
 final class HomeData {
-    private static final String WEATHER_QUERY = "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset"
-            + "&hourly=temperature_2m,weather_code,is_day&timezone=auto&forecast_days=2";
+    private static final String WEATHER_QUERY = "&current=temperature_2m,weather_code,is_day,relative_humidity_2m,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code,precipitation_probability_max"
+            + "&hourly=temperature_2m,weather_code,is_day&timezone=auto&forecast_days=5";
 
     private static String weatherPlace() {
         return Prefs.latitude() + "," + Prefs.longitude();
@@ -73,7 +73,7 @@ final class HomeData {
             // The cached forecast is for the city it was fetched for; another city means fetch again.
             if (w != null && weatherPlace().equals(cache.getString("weatherPlace", ""))) {
                 weather = WEATHER_PARSER.parse(w);
-                weatherAt = cache.getLong("weatherAt", 0);
+                weatherAt = weather.days.size() < 5 ? 0 : cache.getLong("weatherAt", 0);
             }
         } catch (Exception ignored) {}
     }

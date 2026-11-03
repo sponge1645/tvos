@@ -13,19 +13,19 @@ import java.util.List;
 
 /** Home virtual-node source. Reads live UI state only on the UI thread; navigation remains with the host. */
 final class HomeAccessibility implements Spoken.Source {
-    static final int Z_TOP = 4, Z_CARDS = 5, Z_SHELF = 2, Z_DRAWER = 3, GRID = 9, WIDGETS = 8;
+    static final int Z_WEATHER = 6, Z_TOP = 4, Z_CARDS = 5, Z_SHELF = 2, Z_DRAWER = 3, GRID = 9, WIDGETS = 8;
     static final int COLUMNS = HomeLayout.APP_COLUMNS;
     static final float GRID_W = HomeLayout.APP_WIDTH, GRID_H = HomeLayout.APP_HEIGHT, GRID_GAP = HomeLayout.APP_GAP,
             GRID_ROW = HomeLayout.APP_ROW, GRID_TOP = HomeLayout.APP_TOP;
 
     /** Reused read-only view of the current frame; list/rectangle references are never copied or retained separately. */
     static final class State {
-        boolean sheetOpen, searchMode, drawerOpen, picksOn, weatherBottom, spinning;
+        boolean weatherTop, sheetOpen, searchMode, drawerOpen, picksOn, weatherBottom, spinning;
         int tab, zone, gridIndex, topIndex, cardIndex, shelfIndex, drawerIndex, widgetIndex, networkState;
         List<HomeApps.Item> others, shelf, drawerItems, lightButtons;
         List<Recs.Pick> cards;
         RectF[] topRects, cardRects, tileRects, drawerRects;
-        RectF weatherCard;
+        RectF weatherCard, weatherHeader;
         String[] tabs;
         final boolean[] topVisible = new boolean[11];
         float k, h, scroll, heroY, statusY, tilesY, contentTop, contentBottom;
@@ -55,7 +55,7 @@ final class HomeAccessibility implements Spoken.Source {
         state.others = state.shelf = state.drawerItems = state.lightButtons = null;
         state.cards = null;
         state.topRects = state.cardRects = state.tileRects = state.drawerRects = null;
-        state.weatherCard = null;
+        state.weatherCard = state.weatherHeader = null;
         state.tabs = null;
     }
 
@@ -68,6 +68,7 @@ final class HomeAccessibility implements Spoken.Source {
             for (int i = 0; i < s.others.size(); i++) out.add(id(GRID, i));
             return;
         }
+        if (s.weatherTop) out.add(id(Z_WEATHER, 0));
         if (s.picksOn && !s.searchMode) for (int id : Prefs.categoryOrder())
             if (s.topVisible[id]) out.add(id(Z_TOP, id));
         for (int id : Prefs.topButtonOrder()) if (s.topVisible[5 + id]) out.add(id(Z_TOP, 5 + id));
@@ -94,6 +95,7 @@ final class HomeAccessibility implements Spoken.Source {
             case Z_CARDS: return s.tab == 4 ? (AppStrings.get(R.string.home_random_movie)) : i < s.cards.size() ? pickText(s.cards.get(i)) : "";
             case Z_SHELF: return label(s.shelf, i);
             case Z_DRAWER: return label(s.drawerItems, i);
+            case Z_WEATHER: return weatherText();
             case WIDGETS: return i == 0 ? weatherText() : "";
             default: return "";
         }
@@ -114,6 +116,9 @@ final class HomeAccessibility implements Spoken.Source {
                 dy = 0;
                 break;
             }
+            case Z_WEATHER:
+                if (!s.weatherTop || s.weatherHeader == null || i != 0) return false;
+                a11yRect.set(s.weatherHeader); dy = s.statusY; break;
             case Z_TOP:
                 if (i >= s.topRects.length || !s.topVisible[i]) return false;
                 a11yRect.set(s.topRects[i]);
@@ -159,6 +164,7 @@ final class HomeAccessibility implements Spoken.Source {
         State s = read();
         if (s.sheetOpen) return s.others.isEmpty() ? -1 : id(GRID, s.gridIndex);
         switch (s.zone) {
+            case Z_WEATHER: return s.weatherTop ? id(Z_WEATHER, 0) : -1;
             case Z_TOP: return id(Z_TOP, s.topIndex);
             case Z_CARDS: return s.tab == 4 ? id(Z_CARDS, 0) : s.cardIndex < s.cards.size() ? id(Z_CARDS, s.cardIndex) : -1;
             case Z_SHELF: return s.shelf.isEmpty() ? -1 : id(Z_SHELF, s.shelfIndex);
@@ -180,6 +186,7 @@ final class HomeAccessibility implements Spoken.Source {
         }
         if (s.sheetOpen) return;
         switch (group) {
+            case Z_WEATHER: if (i != 0 || !s.weatherTop) return; break;
             case Z_DRAWER: if (i >= s.drawerItems.size()) return; break;
             case WIDGETS: if (i != 0 || !s.drawerOpen || !s.weatherBottom) return; break;
             case Z_TOP: if (i >= s.topRects.length || !s.topVisible[i]) return; break;
