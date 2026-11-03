@@ -26,7 +26,7 @@ public final class SetupRemoteRenderer {
         oval(symbols,51,100,135,184);
         bounds.set(135,35,149,49); symbols.arcTo(bounds,-45,270,true);
         symbols.moveTo(142,32); symbols.lineTo(142,41);
-        symbols.moveTo(65,241); symbols.lineTo(57,249); symbols.lineTo(65,257);
+        symbols.moveTo(60,241); symbols.lineTo(52,249); symbols.lineTo(60,257);
         bounds.set(118,242,138,255); symbols.addRoundRect(bounds,1,1,Path.Direction.CW);
         symbols.moveTo(124,258); symbols.lineTo(132,258);
         symbols.moveTo(48,312); symbols.lineTo(58,319); symbols.lineTo(48,326); symbols.close();

@@ -9,10 +9,13 @@ import android.view.KeyEvent;
 import android.view.View;
 import io.tvos.settings.SettingsBackground;
 import io.tvos.setup.SetupArtwork;
+import io.tvos.setup.SetupLayout;
 import io.tvos.settings.SettingsRowRenderer;
 
 /** Three short access explanations and two optional choices, drawn in the setup palette. */
 final class SetupPermissionsView extends View {
+    private final SetupLayout layout = new SetupLayout();
+    private final String[] headings, introductions;
     private final SettingsBackground background = new SettingsBackground();
     private final Shadows shadows = new Shadows();
     private final SettingsRowRenderer buttons = new SettingsRowRenderer(shadows::draw);
@@ -33,6 +36,7 @@ final class SetupPermissionsView extends View {
         super(c); this.allow = allow; this.deny = deny;
         title = AppStrings.get(R.string.settings_setup_permissions);
         intro = AppStrings.get(R.string.settings_setup_permissions_hint);
+        headings = title.split("\n"); introductions = intro.split("\n");
         names = new String[]{AppStrings.get(R.string.settings_setup_location), AppStrings.get(R.string.settings_setup_remote_access), AppStrings.get(R.string.settings_setup_history_access)};
         first = new String[]{AppStrings.get(R.string.settings_setup_location_line1),AppStrings.get(R.string.settings_setup_remote_line1),AppStrings.get(R.string.settings_setup_history_line1)};
         second = new String[]{AppStrings.get(R.string.settings_setup_location_line2),AppStrings.get(R.string.settings_setup_remote_line2),AppStrings.get(R.string.settings_setup_history_line2)};
@@ -65,18 +69,30 @@ final class SetupPermissionsView extends View {
         int saved = c.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha)); c.translate((getWidth()-1920*k)/2,(getHeight()-1080*k)/2); c.scale(k,k);
         int color = light ? 0xFF6E7E94 : 0xFF95B3BE;
         text.setColor(color); text.setTypeface(Ui.displayBold); text.setTextAlign(Paint.Align.CENTER); text.setTextSize(80);
-        c.drawText(title,960,225,text); text.setTypeface(Ui.displaySemibold); text.setTextSize(36); c.drawText(intro,960,310,text);
+        float titleHeight = layout.height(text, headings, 80, 1500, 94);
+        text.setTypeface(Ui.displaySemibold);
+        float introHeight = layout.height(text, introductions, 36, 1500, 48);
+        float cardsHeight = 285, actionsHeight = SetupLayout.BUTTON_HEIGHT + 100;
+        float groupHeight = titleHeight + SetupLayout.GAP + introHeight + SetupLayout.GAP
+                + cardsHeight + SetupLayout.GAP + actionsHeight;
+        float groupTop = SetupLayout.CENTER_Y - groupHeight / 2;
+        text.setTypeface(Ui.displayBold);
+        layout.draw(c, text, headings, 960, groupTop, 80, 1500, 94);
+        text.setTypeface(Ui.displaySemibold);
+        layout.draw(c, text, introductions, 960, groupTop + titleHeight + SetupLayout.GAP, 36, 1500, 48);
+        float cardsTop = groupTop + titleHeight + SetupLayout.GAP + introHeight + SetupLayout.GAP;
+        float actionTop = cardsTop + cardsHeight + SetupLayout.GAP;
         for (int i=0;i<3;i++) {
-            float x=270+i*470; rect.set(x,405,x+440,690); card.setColor(light?0x226E7E94:0x3395B3BE); c.drawRoundRect(rect,26,26,card);
-            icon.setColor(color); int mark=c.save(); c.translate(x+35,430); float symbolScale = i == 0 ? 56/237f : i == 1 ? 64/275f : 60/310f; c.scale(symbolScale,symbolScale); c.drawPath(icons[i],icon); c.restoreToCount(mark);
-            text.setTextAlign(Paint.Align.LEFT); text.setColor(color); text.setTextSize(32); c.drawText(names[i],x+30,540,text);
-            text.setTextSize(28); line(c, first[i], x+30, 595); line(c, second[i], x+30, 635);
+            float x=270+i*470; rect.set(x,cardsTop,x+440,cardsTop+cardsHeight); card.setColor(light?0x226E7E94:0x3395B3BE); c.drawRoundRect(rect,26,26,card);
+            icon.setColor(color); int mark=c.save(); c.translate(x+35,cardsTop+25); float symbolScale = i == 0 ? 56/237f : i == 1 ? 64/275f : 60/310f; c.scale(symbolScale,symbolScale); c.drawPath(icons[i],icon); c.restoreToCount(mark);
+            text.setTextAlign(Paint.Align.LEFT); text.setColor(color); text.setTextSize(32); c.drawText(names[i],x+30,cardsTop+135,text);
+            text.setTextSize(28); line(c, first[i], x+30, cardsTop+190); line(c, second[i], x+30, cardsTop+230);
         }
         long now=SystemClock.uptimeMillis(); float dt=Math.min(.05f,Math.max(0,(now-frame)/1000f));frame=now; boolean moving=false;
         text.setTextAlign(Paint.Align.CENTER); text.setTextSize(40);
         for(int i=0;i<2;i++) {
             focus[i].target=i==selected?1:0;if(reduced)focus[i].snap(focus[i].target);else moving|=focus[i].step(dt);
-            float f=Math.max(0,Math.min(1,focus[i].value)),cy=800+i*100;
+            float f=Math.max(0,Math.min(1,focus[i].value)),cy=actionTop+SetupLayout.BUTTON_HEIGHT/2+i*100;
             if(f>.001f){rect.set(568.4444f,cy-30,1284,cy+30);buttons.drawFocused(c,rect,1,light,f);}
             text.setColor(io.tvos.settings.SettingsListRenderer.blend(color,0xFF1C1C1E,f));c.drawText(choices[i],960,cy+14,text);
         }
