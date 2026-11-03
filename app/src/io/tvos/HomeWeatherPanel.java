@@ -47,11 +47,14 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
             window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0f);
+            window.setWindowAnimations(0);
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
         }
         forecast.setFocusable(true); forecast.setFocusableInTouchMode(true); forecast.requestFocus();
-        forecast.setAlpha(0); forecast.animate().alpha(1).setDuration(reduced() ? 0 : 180).start();
+        forecast.setAlpha(0); forecast.animate().alpha(1).setDuration(reduced() ? 0 : 240)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f)).start();
     }
     private boolean reduced() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false); }
     @Override protected void onStart() { super.onStart(); data.addListener(this); data.refreshIfStale(); onData(); forecast.postDelayed(minute, 60_000); }
@@ -65,7 +68,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
     private void close() {
         if (closing) return; closing = true;
         if (reduced()) dismiss();
-        else forecast.animate().alpha(0).setDuration(150).withEndAction(this::dismiss).start();
+        else forecast.animate().alpha(0).setDuration(180).withEndAction(this::dismiss).start();
     }
     @Override public void onBackPressed() { close(); }
     @Override public boolean onKeyDown(int key, KeyEvent event) {
@@ -100,15 +103,14 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             float k = Math.min(getWidth() / 1920f, getHeight() / 1080f);
             boolean night = data.isNight(System.currentTimeMillis());
             int ink = night ? 0xFFF5F5F7 : 0xFF1D1D1F, muted = night ? 0xFFB7B9C1 : 0xFF5E6570;
-            fill.setShader(null); fill.setColor(0x33000000); c.drawRect(0, 0, getWidth(), getHeight(), fill);
+            // Keep the home unchanged: only the frosted forecast panel fades in.
+            fill.setShader(null);
             panel.set(40*k, 50*k, 740*k, 1000*k);
-            if (android.os.Build.VERSION.SDK_INT < 33) {
-                fill.setColor(night ? 0xF21C242F : 0xF2E8F1F8);
-                c.drawRoundRect(panel, HomeLayout.DOCK_RADIUS*k, HomeLayout.DOCK_RADIUS*k, fill);
-            }
+            fill.setColor(night ? 0xF21C242F : 0xF2E8F1F8);
+            c.drawRoundRect(panel, HomeLayout.DOCK_RADIUS*k, HomeLayout.DOCK_RADIUS*k, fill);
             scene.setOffset(0, 0);
             scene.liquid(c, panel, HomeLayout.DOCK_RADIUS*k, night ? 0xFF111113 : 0xFFFFFFFF,
-                    night ? .38f : .78f, .035f, 30*k, 24*k, .75f, 1);
+                    night ? .90f : .92f, .02f, 30*k, 8*k, .45f, 1);
             int saved = c.save(); c.scale(k, k);
             WeatherForecast w = data.weather;
             label(c, Prefs.city(), 390, 108, 32, ink, Paint.Align.CENTER, 620);
