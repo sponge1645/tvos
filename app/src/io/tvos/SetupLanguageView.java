@@ -160,9 +160,9 @@ final class SetupLanguageView extends View {
         scroll.target = region ? Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3)) : 0;
         if (reduced) scroll.snap(scroll.target); else moving |= scroll.step(dt);
         viewport.resize(190, rowStart - 74, 1020, Math.round((getHeight() - oy) / k), 1);
-        int listSave = canvas.save();
-        canvas.clipRect(0, rowStart - SetupLayout.BUTTON_HEIGHT / 2 - MORE_GAP + 8, 1100, Math.round((getHeight() - oy) / k));
-        viewport.draw(canvas, rows); canvas.restoreToCount(listSave);
+        // The viewport fades the shadow as well as the rows. An extra clip here
+        // cuts through the blurred shadow and produces a visible horizontal seam.
+        viewport.draw(canvas, rows);
         // Keep the screen-space tile gradient unchanged through the remote's own transform.
         matrix.setScale(1920 * 660 / 650f, -1080 * 660 / 650f);
         matrix.postTranslate(-1370 * 660 / 650f, (1080 - 215) * 660 / 650f); dark.setLocalMatrix(matrix);
