@@ -40,9 +40,9 @@ tests=r'''
   for(int row:new int[]{0,2,3}){h.focus=row;check(!h.canAdjustMenu(),"General action/submenu must require OK: "+row);}
   for(int row:new int[]{1,4}){h.focus=row;check(h.canAdjustMenu(),"General value accepts arrows: "+row);}
   h.focus=1;h.arrow(1);check(Prefs.theme.equals("light"),"theme advances");h.arrow(-1);check(Prefs.theme.equals("auto"),"theme reverses");
-  h.screen=WEATHER;h.focus=0;h.arrow(1);check(h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles both to home");
+  h.store.putInt("weather_placement",3);h.screen=WEATHER;h.focus=0;h.arrow(1);check(h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles both to home");
   h.focus=0;h.arrow(1);check(!h.weatherVisible(true)&&h.weatherVisible(false),"weather mode cycles home to bottom");h.arrow(1);check(h.weatherVisible(true)&&h.weatherVisible(false),"weather mode cycles bottom to both");
-  h.screen=DATE_TIME;h.focus=0;h.arrow(1);check(!h.store.getBoolean("show_date",true),"date widget accepts arrow");h.arrow(-1);check(h.store.getBoolean("show_date",false),"date widget reverses");
+  h.screen=DATE_TIME;h.focus=0;h.arrow(1);check(h.store.getBoolean("show_date",false),"date widget accepts arrow");h.arrow(-1);check(!h.store.getBoolean("show_date",true),"date widget reverses");
   h.screen=APPS_DOWNLOADS;Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Download "),"English download action: "+label);
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Загрузить "),"Russian download action retained");
   Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");

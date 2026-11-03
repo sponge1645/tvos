@@ -35,10 +35,6 @@
     <string name="home_random_movie" formatted="false">"Random Movie"</string>
     <string name="home_movies_loading_toast" formatted="false">"Loading movies…"</string>
     <string name="home_search_heading_prefix" formatted="false">"Search: "</string>
-    <string name="home_roulette_loading" formatted="false">"Loading movies…"</string>
-    <string name="home_roulette_title" formatted="false">"🎲  Random Movie"</string>
-    <string name="home_ok_watch" formatted="false">"OK – watch"</string>
-    <string name="home_right_spin_again" formatted="false">"Right – spin again"</string>
     <string name="home_network_wifi" formatted="false">"Wi-Fi, internet available"</string>
     <string name="home_network_ethernet" formatted="false">"Ethernet, internet available"</string>
     <string name="home_network_offline" formatted="false">"No internet"</string>

@@ -15,7 +15,6 @@ settings=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 home=Path('app/src/io/tvos/HomeView.java').read_text()
 prefs_body=''.join(method(prefs,s) for s in [
  '    private static void put(String key, String value)', '    private static void put(String key, boolean value)',
-  '    static boolean randomMovie(', '    static void setRandomMovie(',
  '    private static void readCategories(', '    static int[] categoryOrder(', '    static boolean categoryEnabled(',
  '    static int firstCategory(', '    static int lastCategory(', '    static int categoryCount(', '    static int categoryPosition(',
  '    static void setCategoryEnabled(', '    static void setCategoryOrder('])
@@ -68,8 +67,8 @@ public class CategoriesHarness {
   if(at<order.size()){for(int i=at;i<order.size();i++){Collections.swap(order,at,i);permutation(order,at+1);Collections.swap(order,at,i);}return;}
   permutations++;
   Prefs.setCategoryOrder(order);
-  for(int mask=0;mask<32;mask++){
-   for(int id:new int[]{0,1,3,2,4})Prefs.setCategoryEnabled(id,(mask&(1<<id))!=0);
+  for(int mask=0;mask<16;mask++){
+   for(int id:new int[]{0,1,3,2})Prefs.setCategoryEnabled(id,(mask&(1<<id))!=0);
    List<Integer> visible=new ArrayList<>();for(int id:order)if((mask&(1<<id))!=0)visible.add(id);
    check(Prefs.categoryCount()==visible.size(),"enabled count independent of category IDs");
    SettingsOrderEditor model=SettingsEditors.categories();model.rebuild(-1);
@@ -91,39 +90,38 @@ public class CategoriesHarness {
   }
  }
  public static void main(String[] args){
-  Prefs.fresh();check(Arrays.equals(Prefs.categoryOrder(),new int[]{0,1,3,2,4}),"default order preserved");
-  check(Prefs.categoryEnabled(2)&&Prefs.categoryEnabled(4)&&Prefs.categoryCount()==5,"legacy default visibility preserved");
-  Prefs.store.putBoolean("category_2",false);Prefs.version++;check(Prefs.categoryEnabled(2),"retired category toggle never hides new Watching");
-  Prefs.setRandomMovie(false);check(Prefs.categoryEnabled(2)&&!Prefs.categoryEnabled(4),"watching independent of roulette");
+  Prefs.fresh();check(Arrays.equals(Prefs.categoryOrder(),new int[]{0,1,3,2}),"default order preserved");
+  check(!Prefs.categoryEnabled(2)&&!Prefs.categoryEnabled(4)&&Prefs.categoryCount()==3,"new defaults exclude Watching and retired roulette");
+  Prefs.store.putBoolean("category_2",false);Prefs.version++;check(!Prefs.categoryEnabled(2),"retired toggle does not enable Watching");
   Prefs.store.putString("category_order","4,2,4,99,x,1,-2");Prefs.version++;
-  check(Arrays.equals(Prefs.categoryOrder(),new int[]{4,2,1,0,3}),"malformed order repaired without duplicates or losing categories");
-  invalid(Arrays.asList(0,1,2,3));invalid(Arrays.asList(0,1,3,3));invalid(Arrays.asList(0,1));invalid(Arrays.asList(0,1,2,3,3));invalid(Arrays.asList(0,1,2,3,9));
+  check(Arrays.equals(Prefs.categoryOrder(),new int[]{2,1,0,3}),"malformed order repaired without duplicates or losing categories");
+  invalid(Arrays.asList(0,1,3,3));invalid(Arrays.asList(0,1));invalid(Arrays.asList(0,1,2,3,3));invalid(Arrays.asList(0,1,2,3,9));
   Prefs.fresh();CategoryEditor e=new CategoryEditor();e.open();
-  check(snapshot(e.categoryEditor).equals(Arrays.asList(0,1,3,2,4)),"enabled categories first, disabled below like Dock");
+  check(snapshot(e.categoryEditor).equals(Arrays.asList(0,1,3,2)),"enabled categories first, disabled below like Dock");
   e.focus=1;e.move(-1);check(e.categoryEditor.get(0)==1&&e.focus==0,"reorder follows selected category");
   e.move(-1);check(e.focus==0,"left edge does not wrap");
-  e.toggle();check(!Prefs.categoryEnabled(1)&&e.categoryEditor.get(4)==1&&e.focus==4,"disable moves category below enabled entries and keeps focus");
-  e.move(-1);check(e.focus==4,"disabled categories cannot displace enabled entries");
-  e.toggle();check(Prefs.categoryEnabled(1)&&e.categoryEditor.get(4)==1&&e.focus==4,"enable appends to active categories like Dock");
+  e.toggle();check(!Prefs.categoryEnabled(1)&&e.categoryEditor.get(3)==1&&e.focus==3,"disable moves category below enabled entries and keeps focus");
+  e.move(-1);check(e.focus==3,"disabled categories cannot displace enabled entries");
+  e.toggle();check(Prefs.categoryEnabled(1)&&e.categoryEditor.get(2)==1&&e.focus==2,"enable appends to active categories like Dock");
   List<Integer> saved=snapshot(e.categoryEditor);Prefs.reload();e.open();
   check(snapshot(e.categoryEditor).equals(saved),"order survives a fresh preferences snapshot");
   while(Prefs.categoryCount()>0){e.focus=0;e.toggle();}
   check(Prefs.firstCategory()==-1&&Prefs.lastCategory()==-1,"all categories can be disabled");
   e.focus=2;int restored=e.categoryEditor.get(2);e.toggle();
   check(Prefs.categoryCount()==1&&Prefs.firstCategory()==restored&&e.focus==0,"one category can be restored after all-off");
-  Prefs.setCategoryOrder(Arrays.asList(3,1,4,0,2));
-  for(int id:new int[]{0,1,3,2,4})Prefs.setCategoryEnabled(id,id==1||id==3);
+  Prefs.setCategoryOrder(Arrays.asList(3,1,0,2));
+  for(int id:new int[]{0,1,3,2})Prefs.setCategoryEnabled(id,id==1||id==3);
   HomeNavigation nav=new HomeNavigation();nav.tab=0;nav.topIndex=0;nav.zone=HomeNavigation.Z_TOP;nav.sync();
   check(nav.tab==3&&nav.topIndex==3,"disabling active category chooses first visible in configured order");
-  for(int id:new int[]{0,1,3,2,4})Prefs.setCategoryEnabled(id,false);
+  for(int id:new int[]{0,1,3,2})Prefs.setCategoryEnabled(id,false);
   nav.zone=HomeNavigation.Z_CARDS;nav.sync();
-  check(nav.zone==HomeNavigation.Z_SHELF&&nav.cancels>0,"all-off cancels hidden roulette and exits cards focus");
+  check(nav.zone==HomeNavigation.Z_SHELF,"all-off cancels hidden roulette and exits cards focus");
   nav.actions=16;nav.zone=HomeNavigation.Z_TOP;nav.topIndex=0;nav.sync();
   check(nav.topIndex==9,"all-off can still reach enabled clock action");
   nav.actions=0;nav.zone=HomeNavigation.Z_TOP;nav.sync();
   check(nav.zone==HomeNavigation.Z_SHELF,"no visible top controls returns focus to Dock");
-  permutation(new ArrayList<>(Arrays.asList(0,1,3,2,4)),0);
-  check(permutations==120,"all category permutations covered");
+  permutation(new ArrayList<>(Arrays.asList(0,1,3,2)),0);
+  check(permutations==24,"all category permutations covered");
   System.out.println("PASS: category migration, persistence, editor reorder/toggle/focus, all-off, 120 orders x 32 visibility masks, home/search navigation");
  }
 }

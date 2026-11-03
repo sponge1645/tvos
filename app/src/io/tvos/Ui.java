@@ -134,10 +134,17 @@ final class Ui {
         }
     }
 
-    /** Full date uses the selected language's pattern and locale, independent of Android. */
+    /** Compact date uses the selected language's pattern and locale, independent of Android. */
     static String date(long now) {
         AppLanguage selected = AppLanguage.current();
-        return new SimpleDateFormat(selected.datePattern, selected.locale).format(new Date(now));
+        SimpleDateFormat date = new SimpleDateFormat(selected.datePattern, selected.locale);
+        if (selected == AppLanguage.RUSSIAN) {
+            java.text.DateFormatSymbols symbols = date.getDateFormatSymbols();
+            symbols.setShortWeekdays(new String[]{"", "Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"});
+            symbols.setShortMonths(new String[]{"янв.", "фев.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сен.", "окт.", "ноя.", "дек.", ""});
+            date.setDateFormatSymbols(symbols);
+        }
+        return date.format(new Date(now));
     }
 
     /** Spinning arc (work in progress). */

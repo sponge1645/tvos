@@ -46,7 +46,6 @@ public class StringsHarness {
   check(AppStrings.quantity(R.plurals.settings_days_ago,AppLanguage.RUSSIAN,22).equals("%1$d дня назад"),"plural lookup uses app Russian");
   check(AppStrings.quantity(R.plurals.settings_days_ago,AppLanguage.ENGLISH,22).equals("%1$d days ago"),"plural lookup uses app English");
   check(Context.overrides==before,"plural lookup reuses locale resources");
-  check(AppStrings.get(R.string.home_roulette_title,AppLanguage.ENGLISH).equals("🎲  Random Movie"),"home title preserves two spaces");
   check(AppStrings.get(R.string.home_weather_high_low,AppLanguage.RUSSIAN).equals("Макс. %1$s   Мин. %2$s"),"home template preserves three spaces");
   check(AppStrings.get(R.string.home_spoken_of,AppLanguage.RUSSIAN).equals(" из "),"home count separator keeps both edge spaces");
   AppLanguage.select("ru");check(AppStrings.get(id).equals("Заставка"),"default lookup uses registry selection");

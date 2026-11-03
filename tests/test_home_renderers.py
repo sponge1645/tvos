@@ -133,7 +133,6 @@ harness=harness.replace('  recs.missing=true;', '''  FocusHarness focus=new Focu
    SystemClock.now=start+1500;p.begin(1,0,tab,0,true,true,title,meta);Canvas search=new Canvas();p.draw(search,pick,base,1,0);
    check(p.marqueeActive(start+1500)&&text(search,pick.title).l<base.left&&entries(search,"rect").stream().anyMatch(e->e.mode!=null),"search scrolls full long title with edge mask from every tab, including roulette");
   }
-  focus.search.active=false;focus.tab=4;check(focus.focusedPoster()==-1,"roulette itself still has no poster marquee");
   focus.search.active=true;focus.grid.open=true;check(focus.focusedPoster()==-1,"sheet blocks underlying marquee");focus.grid.open=false;focus.zone=1;check(focus.focusedPoster()==-1,"top focus stops poster marquee");
   focus.zone=2;focus.cards.clear();check(focus.focusedPoster()==-1,"empty results have no marquee");
   recs.missing=true;''')

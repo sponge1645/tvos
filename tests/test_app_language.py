@@ -62,11 +62,11 @@ public class LanguageHarness {
 
   long at=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).parse("2026-10-24 07:18:10").getTime();
   Prefs.h24=false;check(Ui.clock(at).equals("7:18 AM")&&Ui.time(at).equals("7:18 AM"),"English 12-hour formats preserved");
-  check(Ui.date(at).equals("Saturday, October 24")&&hour(at).equals("7 AM"),"English full date and weather hour patterns preserved");
+  check(Ui.date(at).equals("Sat, 24 Oct")&&hour(at).equals("7 AM"),"English full date and weather hour patterns preserved");
   int[] calls={0};String en=Ui.once("language-test",1,()->{calls[0]++;return Ui.locale().toLanguageTag();});
   Prefs.setLanguage("ru");Prefs.h24=true;
   check(Ui.clock(at).equals("07:18")&&Ui.time(at).equals("07:18"),"24-hour formats preserved");
-  check(Ui.date(at).equals("суббота, 24 октября")&&hour(at).equals("07:18"),"Russian date/hour preserve language independently of French OS");
+  check(Ui.date(at).equals("Сб, 24 окт.")&&hour(at).equals("07:18"),"Russian date/hour preserve language independently of French OS");
   String ru=Ui.once("language-test",1,()->{calls[0]++;return Ui.locale().toLanguageTag();});
   check(!en.equals(ru)&&calls[0]==2,"formatted cache is separated by canonical language");
   Prefs.setLanguage("en");check(Ui.once("language-test",1,()->"must not run")==en,"returning to a language reuses its cached text");

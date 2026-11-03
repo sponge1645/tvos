@@ -40,7 +40,7 @@ public class ValuesHarness {
    check(v.menu(WEATHER,3)[0].equals(AppStrings.get(R.string.settings_weather_home))&&v.menu(WEATHER,3)[1].equals("City"),"independent weather callback");
    check(v.menu(MENU_BUTTONS,3)[0].equals("#4")&&v.menu(MENU_BUTTONS,3)[1].equals(SettingsValues.onOff(false))&&v.menu(MENU_BUTTONS,3)[2].isEmpty(),"button order and VPN footer");
    status[0]="Searching";check(v.menu(CITY,2)[1].equals("Searching"),"Region exposes pending/error lookup status");check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
-   check(v.settings().length==6&&SettingsValues.randomRow()==5,"stable category rows without quote/coin controls");
+   check(v.settings().length==5,"stable category rows without quote/coin controls");
    check(SettingsValues.keyLabels().length==7&&SettingsValues.keyLabels()[4].equals(ru?"Кнопка MI":"MI Button"),"MI setting present in both languages");String[] mappings=SettingsValues.keyValues(Arrays.asList("", "youtube"),Arrays.asList("old empty label", "YT"));
    check(mappings[1].equals("YT"),"configured remote retains app label");
    for(int index:new int[]{0,2,3})check(mappings[index].equals(ru?"Не настроено":"Not configured"),"missing and empty remote mappings use one live localized status");

@@ -39,7 +39,7 @@ tests='''
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
    check(h.onOff(true).equals(russian?"Вкл.":"On"),"enabled value");
    check(h.menuButtonLabel(5).equals(russian?"Сеть":"Network"),"network reorder label");
-   check(h.categoryLabel(4).equals(russian?"Случайный фильм":"Random Movie"),"category label");
+   check(h.categoryLabel(4).isEmpty(),"category label");
    h.updatePopup=2;String[][] copy=h.popup();
    check(copy[0].length==4&&copy[1].length==2,"update dialog keeps line/button geometry");
    check(copy[0][0].equals(russian?"Доступно обновление до версии 1.2.3.":"Update 1.2.3 is available."),"version slot");

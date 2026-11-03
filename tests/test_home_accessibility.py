@@ -19,7 +19,6 @@ files={
  'io/tvos/Prefs.java':'''package io.tvos;class Prefs {static String city="";static String city(){return city;}static int[] categories={3,0,4},buttons={5,4,3};static int[] categoryOrder(){return categories;}static int[] topButtonOrder(){return buttons;}static int categoryPosition(int id){for(int i=0;i<categories.length;i++)if(categories[i]==id)return i+1;return 0;}static int categoryCount(){return categories.length;}}''',
  'io/tvos/HomeData.java':'''package io.tvos;import java.util.*;class HomeData {io.tvos.weather.WeatherForecast weather=forecast();static io.tvos.weather.WeatherForecast forecast(){io.tvos.weather.WeatherForecast w=new io.tvos.weather.WeatherForecast();w.temp=10;w.max=20;w.min=5;w.code=0;w.sunrise=1;w.sunset=2;w.hours.add(9L);w.hourTemp.add(11.0);return w;}static String degrees(double n){return (int)n+"°";}static String hour(long n){return "09:00";}static String condition(int c,boolean d){return "Clear";}}''',
  'io/tvos/Ui.java':'package io.tvos;class Ui {static String time(long n){return n==1?"06:00":"18:00";}}',
- 'io/tvos/RouletteRenderer.java':'package io.tvos;import io.tvos.home.HomeLayout;import android.graphics.RectF;class RouletteRenderer {'+block(Path('app/src/io/tvos/RouletteRenderer.java').read_text(),'    static void buttonBounds(').replace('(MARGIN + CONTENT_R)','(80 + 1840)')+'}',
  'io/tvos/HomeAccessibility.java':source,
  'io/tvos/home/HomeLayout.java':Path('app/src/io/tvos/home/HomeLayout.java').read_text(),
  'io/tvos/AccessibilityHarness.java':'''package io.tvos;
@@ -67,10 +66,8 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   h.grid.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
   h.source.focus(9002);check(h.grid.index==1&&h.gridDirty&&h.gridRetargets==1&&h.source.focused()==9002,"grid focus/scroll host");
   int moves=h.moves;h.source.focus(2001);check(h.moves==moves,"sheet blocks underlying focus");h.source.focus(9003);check(h.moves==moves,"invalid grid index ignored");
-  h.grid.open=false;h.tab=4;h.heroLayer.y=0;check(h.source.bounds(5001,r)&&r.left==665&&r.top==444&&r.right==1255&&r.bottom==570,"shared roulette button bounds");
-  h.rouletteWork.active=true;h.source.focus(3001);check(h.moves==moves,"spinning locks TalkBack focus");h.rouletteWork.active=false;h.source.focus(5001);check(h.zone==Z_CARDS&&h.source.text(5001).equals("Random Movie"),"roulette node");
   h.source.click(5001);check(h.activations==1,"click delegates existing activation");
-  h.visible[10]=false;check(!h.source.bounds(4011,r),"disabled top control has no bounds");h.source.focus(4011);check(h.zone==Z_CARDS,"disabled focus ignored");
+  h.grid.open=false;int priorZone=h.zone;h.visible[10]=false;check(!h.source.bounds(4011,r),"disabled top control has no bounds");h.source.focus(4011);check(h.zone==priorZone,"disabled focus ignored");
   for(int id:new int[]{-1,0,999999}){check(h.source.text(id).isEmpty()&&!h.source.bounds(id,r),"invalid IDs safely ignored");h.source.focus(id);}
   check(!h.source.talkBack(),"disabled service");h.context.manager.enabled=true;check(!h.source.talkBack(),"nonspoken accessibility alone is insufficient");h.context.manager.services.add(new Object());check(h.source.talkBack(),"spoken feedback service detection");
   h.grid.open=false;h.search.active=true;check(!h.ids().contains(4001)&&h.ids().contains(5001),"search hides categories but keeps result node");

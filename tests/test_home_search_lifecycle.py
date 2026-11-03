@@ -86,7 +86,7 @@ public class HomeWorkHarness {static class RandomPoster {void clear(){}}final Ra
  public static void main(String[] args){
   HomeWorkHarness h=new HomeWorkHarness();h.search.query="movie";
   h.beginSearch();h.restoreSearchRequest();
-  check(h.recs.calls.size()==1 && h.rouletteCancels==1,"entry requests query and cancels hidden roulette");
+  check(h.recs.calls.size()==1,"entry requests query");
   Recs.Call first=h.recs.calls.get(0);h.beginSearch();h.restoreSearchRequest();
   check(h.recs.calls.size()==1 && first.request.active(),"opening input cannot duplicate active request");
   first.deliver(1);h.cardPage=2;h.cardIndex=3;

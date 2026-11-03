@@ -108,12 +108,12 @@ final class SettingsValues {
             v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
         } else if (screen == TOP_PANEL) {
-            v[2] = onOff(localPrefs().getBoolean("show_date", true));
+            v[2] = onOff(localPrefs().getBoolean("show_date", false));
             v[4] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
         } else if (screen == WIDGETS) {
             // Date is a submenu; its switch is shown inside DATE_TIME.
         } else if (screen == DATE_TIME) {
-            v[0] = onOff(localPrefs().getBoolean("show_date", true));
+            v[0] = onOff(localPrefs().getBoolean("show_date", false));
         } else if (screen == WEATHER) {
             boolean top = weatherVisible.test(true), bottom = weatherVisible.test(false);
             v[0] = AppStrings.get(top && bottom ? R.string.settings_weather_both : bottom ? R.string.settings_weather_bottom : R.string.settings_weather_home);
@@ -161,7 +161,6 @@ final class SettingsValues {
         return v;
     }
 
-    static int randomRow() { return 5; }
 
     static String[] settingLabels() {
         List<String> l = new ArrayList<>();
@@ -170,7 +169,6 @@ final class SettingsValues {
         l.add(AppStrings.get(R.string.settings_theme));
         l.add(AppStrings.get(R.string.settings_weather_widget));
         l.add(AppStrings.get(R.string.settings_city));
-        l.add(AppStrings.get(R.string.settings_random_movie));
         return l.toArray(new String[0]);
     }
 
@@ -184,7 +182,6 @@ final class SettingsValues {
         v[2] = theme.equals("light") ? AppStrings.get(R.string.settings_theme_light) : theme.equals("dark") ? AppStrings.get(R.string.settings_theme_dark) : AppStrings.get(R.string.settings_automatic_value);
         v[3] = onOff(Prefs.weather());
         v[CITY_ROW] = !cityStatus.get().isEmpty() ? cityStatus.get() : Prefs.city().isEmpty() ? "—" : Prefs.city();
-        v[randomRow()] = onOff(Prefs.randomMovie());
         return v;
     }
 

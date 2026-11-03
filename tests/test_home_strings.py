@@ -41,7 +41,7 @@ public class HomeStringsHarness {
   for(boolean ru:new boolean[]{false,true,false,true}){
    Ui.ru=ru;AppLanguage.select(Ui.ru?"ru":"en");Ui.language=ru?"ru":"en";Prefs.city="";Prefs.version++;
    h.data.weather=HomeData.forecast();
-   String[] labels=h.tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Я смотрю","Сериалы","🎲"}:new String[]{"New","Movies","Watching","Shows","🎲"}),"tab order/copy");
+   String[] labels=h.tabs();check(Arrays.equals(labels,ru?new String[]{"Новинки","Фильмы","Я смотрю","Сериалы"}:new String[]{"New","Movies","Watching","Shows"}),"tab order/copy");
    if(ru){if(russian==null)russian=labels;else check(labels==russian,"Russian array reused after language switch");}
    else{if(english==null)english=labels;else check(labels==english,"English array reused after language switch");}
    for(int i=0;i<10000;i++)check(h.tabs()==labels,"tabs create no per-frame array");
@@ -62,8 +62,6 @@ public class HomeStringsHarness {
    Prefs.city="";fresh.temp=Double.NaN;check(h.weatherText().equals(ru?"Погода. Сейчас нет данных о погоде.":"Weather. No weather data right now."),"missing weather fallback");
 
    check(AppStrings.get(R.string.home_movies_loading_toast,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"Загружаем фильмы…":"Loading movies…"),"toast and roulette keep their distinct Russian wording");
-   check(AppStrings.get(R.string.home_roulette_loading,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"Загрузка фильмов…":"Loading movies…"),"roulette wording");
-   check(AppStrings.get(R.string.home_roulette_title,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"🎲  Случайный фильм":"🎲  Random Movie"),"dice title keeps double space");
    check(AppStrings.get(R.string.home_dock_edit_hint,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?"← → – переместить. ОК – сохранить. Назад – отменить.":"← → – move. OK – save. Back – cancel."),"Dock hint localized");
    check(AppStrings.get(R.string.home_spoken_of,(ru?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(ru?" из ":" of "),"spoken count separators");
   }

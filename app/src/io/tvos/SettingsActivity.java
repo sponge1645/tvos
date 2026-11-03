@@ -255,8 +255,8 @@ public class SettingsActivity extends Activity {
                 case HOME_SETTINGS:
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
-                    String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[randomRow()]} : settingLabels();
-                    String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[randomRow()]} : valueSource.settings();
+                    String[] labels = keys ? keyLabels() : settingLabels();
+                    String[] values = keys ? keyValues(appPkgs, appLabels) : valueSource.settings();
                     return row < labels.length ? labels[row] + ", " + values[row] : "";
                 }
                 case PICKER: {
@@ -369,7 +369,7 @@ public class SettingsActivity extends Activity {
                 case MOVIE_SERVICE: return MovieService.count();
                 case CATEGORY_EDIT: return categoryEditor.size();
                 case MENU_BUTTONS: return buttonEditor.size() + 1;
-                case HOME_SETTINGS: return settingsGroup == SYSTEM ? 1 : settingLabels().length;
+                case HOME_SETTINGS: return settingLabels().length;
                 case PICKER: return listWindow.visibleRows(pickLabels.size());
                 case SHELF_EDIT: return listWindow.visibleRows(dockEditor.size());
                 case REMOTE_KEYS: return Prefs.KEYS.length + 2;
@@ -526,15 +526,16 @@ public class SettingsActivity extends Activity {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
-                row.kind = screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
+                row.kind = screen == LANGUAGE ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = screen == CITY && i == 1 && Prefs.automaticRegion();
                 boolean chevron = menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
                         : chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
                 row.fitValue = screen == MEDIA || screen == CITY;
-                row.showValue = screen != MOVIE_SERVICE;
+                row.showValue = screen != MOVIE_SERVICE && screen != LANGUAGE;
                 if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.SERVICE_CHECK;
+                if (screen == LANGUAGE && i == ("ru".equals(Prefs.language()) ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
                 drawRow(c);
             }
         }
@@ -627,7 +628,6 @@ public class SettingsActivity extends Activity {
         private static final int CITY_ROW = 4;
 
         private int settingIndex() {
-            if (settingsGroup == SYSTEM) return randomRow();
             return focus;
         }
 
@@ -768,7 +768,7 @@ public class SettingsActivity extends Activity {
                 Prefs.setKeyApp(Prefs.KEYS[focus], appPkgs.get(next));
                 return;
             }
-            preferenceEditor.legacy(settingIndex(), randomRow(), dir);
+            preferenceEditor.legacy(settingIndex(), dir);
         }
 
         private void askCity() {
@@ -799,7 +799,7 @@ public class SettingsActivity extends Activity {
                 case 1: return AppStrings.get(R.string.settings_movies);
                 case 2: return AppStrings.get(R.string.home_tab_watching);
                 case 3: return AppStrings.get(R.string.settings_shows);
-                default: return AppStrings.get(R.string.settings_random_movie);
+                default: return "";
             }
         }
 
@@ -938,8 +938,8 @@ public class SettingsActivity extends Activity {
 
         private void drawList(Canvas c) {
             boolean keys = screen == REMOTE_KEYS;
-            String[] labels = keys ? keyLabels() : settingsGroup == SYSTEM ? new String[] {settingLabels()[randomRow()]} : settingLabels();
-            String[] values = keys ? keyValues(appPkgs, appLabels) : settingsGroup == SYSTEM ? new String[] {valueSource.settings()[randomRow()]} : valueSource.settings();
+            String[] labels = keys ? keyLabels() : settingLabels();
+            String[] values = keys ? keyValues(appPkgs, appLabels) : valueSource.settings();
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 setApprovedRowRect(i);

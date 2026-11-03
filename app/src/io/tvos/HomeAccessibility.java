@@ -20,7 +20,7 @@ final class HomeAccessibility implements Spoken.Source {
 
     /** Reused read-only view of the current frame; list/rectangle references are never copied or retained separately. */
     static final class State {
-        boolean weatherTop, sheetOpen, searchMode, drawerOpen, picksOn, weatherBottom, spinning;
+        boolean weatherTop, sheetOpen, searchMode, drawerOpen, picksOn, weatherBottom;
         int tab, zone, gridIndex, topIndex, cardIndex, shelfIndex, drawerIndex, widgetIndex, networkState;
         List<HomeApps.Item> others, shelf, drawerItems, lightButtons;
         List<Recs.Pick> cards;
@@ -72,7 +72,7 @@ final class HomeAccessibility implements Spoken.Source {
         if (s.picksOn && !s.searchMode) for (int id : Prefs.categoryOrder())
             if (s.topVisible[id]) out.add(id(Z_TOP, id));
         for (int id : Prefs.topButtonOrder()) if (s.topVisible[5 + id]) out.add(id(Z_TOP, 5 + id));
-        if (s.picksOn) for (int i = 0; i < (s.tab == 4 ? 1 : Math.min(5, s.cards.size())); i++) out.add(id(Z_CARDS, i));
+        if (s.picksOn) for (int i = 0; i < Math.min(5, s.cards.size()); i++) out.add(id(Z_CARDS, i));
         for (int i = 0; i < s.shelf.size(); i++) out.add(id(Z_SHELF, i));
         for (int i = 0; i < s.drawerItems.size(); i++) out.add(id(Z_DRAWER, i));
         if (s.drawerOpen && s.weatherBottom) out.add(id(WIDGETS, 0));
@@ -92,7 +92,7 @@ final class HomeAccessibility implements Spoken.Source {
                 if (i >= 5) return label(s.lightButtons, i - 5);
                 if (i >= s.tabs.length) return "";
                 return s.tabs[i] + AppStrings.get(R.string.home_spoken_tab) + Prefs.categoryPosition(i) + AppStrings.get(R.string.home_spoken_of) + Prefs.categoryCount();
-            case Z_CARDS: return s.tab == 4 ? (AppStrings.get(R.string.home_random_movie)) : i < s.cards.size() ? pickText(s.cards.get(i)) : "";
+            case Z_CARDS: return i < s.cards.size() ? pickText(s.cards.get(i)) : "";
             case Z_SHELF: return label(s.shelf, i);
             case Z_DRAWER: return label(s.drawerItems, i);
             case Z_WEATHER: return weatherText();
@@ -125,12 +125,8 @@ final class HomeAccessibility implements Spoken.Source {
                 dy = (i < 5 ? s.heroY : s.statusY);
                 break;
             case Z_CARDS:
-                if (i >= (s.tab == 4 ? 1 : Math.min(5, s.cards.size()))) return false;
-                if (s.tab == 4) {
-                    RouletteRenderer.buttonBounds(a11yRect, s.k, s.contentTop, s.contentBottom);
-                } else {
-                    a11yRect.set(s.cardRects[i]);
-                }
+                if (i >= Math.min(5, s.cards.size())) return false;
+                a11yRect.set(s.cardRects[i]);
                 dy = s.heroY;
                 break;
             case Z_SHELF:
@@ -166,7 +162,7 @@ final class HomeAccessibility implements Spoken.Source {
         switch (s.zone) {
             case Z_WEATHER: return s.weatherTop ? id(Z_WEATHER, 0) : -1;
             case Z_TOP: return id(Z_TOP, s.topIndex);
-            case Z_CARDS: return s.tab == 4 ? id(Z_CARDS, 0) : s.cardIndex < s.cards.size() ? id(Z_CARDS, s.cardIndex) : -1;
+            case Z_CARDS: return s.cardIndex < s.cards.size() ? id(Z_CARDS, s.cardIndex) : -1;
             case Z_SHELF: return s.shelf.isEmpty() ? -1 : id(Z_SHELF, s.shelfIndex);
             case Z_DRAWER: return s.drawerItems.isEmpty() ? -1 : id(Z_DRAWER, s.drawerIndex);
             case WIDGETS: return id(WIDGETS, s.widgetIndex);
@@ -178,7 +174,6 @@ final class HomeAccessibility implements Spoken.Source {
         host.wake();
         if (id <= 0) return;
         State s = read();
-        if (s.spinning) return;
         int group = (id - 1) / 1000, i = (id - 1) % 1000;
         if (group == GRID) {
             if (s.sheetOpen && i < s.others.size()) host.focus(group, i);
@@ -190,7 +185,7 @@ final class HomeAccessibility implements Spoken.Source {
             case Z_DRAWER: if (i >= s.drawerItems.size()) return; break;
             case WIDGETS: if (i != 0 || !s.drawerOpen || !s.weatherBottom) return; break;
             case Z_TOP: if (i >= s.topRects.length || !s.topVisible[i]) return; break;
-            case Z_CARDS: if (i >= (s.tab == 4 ? 1 : s.cards.size())) return; break;
+            case Z_CARDS: if (i >= s.cards.size()) return; break;
             case Z_SHELF: if (i >= s.shelf.size()) return; break;
             default: return;
         }

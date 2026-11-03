@@ -7,7 +7,7 @@ def method(sig):
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 header='''import java.util.*;import io.tvos.home.HomeFocusPolicy;
-public class SearchFocusHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;static class RandomPoster {boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
+public class SearchFocusHarness { static final int Z_WEATHER=6;boolean canOpenWeather(){return false;}static class Status {void invalidate(){}}final Status status=new Status();final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;static class RandomPoster {boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  static class Prefs {static int[] topButtonOrder(){return new int[]{0,1,2,3,5,4};}}
  static class DockState {int index;List<Object> items=new ArrayList<>(Arrays.asList(new Object()));RectF[] rects={new RectF()};}final DockState dock=new DockState();
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;

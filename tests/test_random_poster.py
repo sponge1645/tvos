@@ -24,7 +24,7 @@ sources={
   RandomHarness h=new RandomHarness();h.recs.picks.add(pick(1,8));
   for(int tab:new int[]{0,1,3}){h.tab=tab;List<Recs.Pick> all=h.currentCatalog();check(all.size()==2&&all.get(1).id==-1,"one tail for each ordinary category");}
   for(int i=2;i<=25;i++)h.recs.picks.add(pick(i,8));h.tab=1;List<Recs.Pick> capped=h.currentCatalog();check(capped.size()==25&&capped.get(24).id==-1&&h.recs.picks.size()==25,"24 original posters plus question at position 25 without changing source catalog");
-  h.search.active=true;check(h.currentCatalog()==h.search.results,"search has no synthetic tail");h.search.active=false;h.tab=4;check(h.currentCatalog().isEmpty(),"roulette has no tail");
+  h.search.active=true;check(h.currentCatalog()==h.search.results,"search has no synthetic tail");h.search.active=false;
   h.tab=2;h.watching.list.add(pick(77,0));check(h.currentCatalog()==h.watching.list&&h.currentCatalog().size()==1,"Watching uses provider list without a random tail");
   RandomPoster r=new RandomPoster();GenreCatalog c=new GenreCatalog();int[] changes={0},errors={0};Runnable changed=()->changes[0]++,failed=()->errors[0]++;
   Recs.Pick placeholder=r.tail("tv:5","tv");check(r.placeholder(placeholder)&&placeholder.title.equals("Random Series"),"TV placeholder");

@@ -4,6 +4,9 @@ import re,subprocess,tempfile
 from settings_strings_fixture import write
 # П is a non-displayed capital-height reference for sizing the search SVG.
 allowed={'DockBackdrop.java':{'истори','смотр','нов','фильм','рекоменд'},'HomeSearchInput.java':{'П'},'HomeApps.java':{'игровая приставка','игровая консоль'},'AppLanguage.java':{'Русский'},'SettingsDeviceDialogs.java':{'ТВ'},'SettingsValues.java':{'ТВ'},'Recs.java':{'ы','и','а','ов'},'PosterText.java':{' г.',' г'}}
+# Exact Russian calendar abbreviations are locale-format data, not untranslated UI prose.
+allowed['LiveTvTargets.java']={'телев'}
+allowed['Ui.java']={'Вс','Пн','Вт','Ср','Чт','Пт','Сб','янв.','фев.','мар.','апр.','мая','июн.','июл.','авг.','сен.','окт.','ноя.','дек.'}
 for p in Path('app/src/io/tvos').glob('*.java'):
  text=p.read_text()
  assert not re.search(r'Ui\.(?:ru|en|es|de|tr)\b',text),p

@@ -49,7 +49,7 @@ final class SettingsContent {
     static String[] menuLabels(int screen, AppLanguage language) {
         switch (screen) {
             case MEDIA: return new String[] {AppStrings.get(R.string.settings_default_service, language), AppStrings.get(R.string.settings_navigation_clicks, language), AppStrings.get(R.string.settings_tv_provider, language)};
-            case LANGUAGE: return new String[] {"Русский", "English"};
+            case LANGUAGE: return new String[] {AppLanguage.RUSSIAN.nativeName, AppLanguage.ENGLISH.nativeName};
             case MOVIE_SERVICE: return MovieService.labels(language);
             case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_recommendations, language), AppStrings.get(R.string.home_continue_watching, language)};
             case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_time_format, language)};

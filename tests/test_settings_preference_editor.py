@@ -24,13 +24,13 @@ public class PreferenceHarness {
  }
  Prefs.weather=false;p.putBoolean("weather_show_top",true);p.putBoolean("weather_show_bottom",true);check(!e.weatherVisible(true)&&!e.weatherVisible(false),"master switch overrides saved positions");e.toggleWeather(false);check(Prefs.weather&&!e.weatherVisible(true)&&e.weatherVisible(false),"enable bottom from master-off");
  p.putInt("weather_placement",1);p.putBoolean("weather_show_top",false);check(!e.weatherVisible(true),"new key overrides legacy placement");
- events.clear();e.toggleDateTime();check(!p.getBoolean("show_date",true)&&events.equals(Arrays.asList("refresh")),"date defaults on and only redraws");e.toggleDateTime();check(p.getBoolean("show_date",false),"date restored");
+ events.clear();e.toggleDateTime();check(p.getBoolean("show_date",false)&&events.equals(Arrays.asList("refresh")),"date defaults on and only redraws");e.toggleDateTime();check(!p.getBoolean("show_date",true),"date restored");
  Prefs.theme="auto";e.general(1,-1);check(Prefs.theme.equals("dark"),"theme reverse wrap");e.general(1,1);check(Prefs.theme.equals("auto"),"theme forward wrap");
- Prefs.unit="auto";e.temperature(-1);check(Prefs.unit.equals("F"),"unit reverse wrap");e.legacy(1,8,1);check(Prefs.unit.equals("auto"),"legacy shares unit cycle");
- for(int d:new int[]{-1,1}){Prefs.theme="invalid";e.general(1,d);check(Prefs.theme.equals(d<0?"light":"auto"),"unknown value fallback preserved");Prefs.theme="invalid";e.legacy(2,8,d);check(Prefs.theme.equals(d<0?"light":"auto"),"legacy fallback matches General");}
+ Prefs.unit="auto";e.temperature(-1);check(Prefs.unit.equals("F"),"unit reverse wrap");e.legacy(1,1);check(Prefs.unit.equals("auto"),"legacy shares unit cycle");
+ for(int d:new int[]{-1,1}){Prefs.theme="invalid";e.general(1,d);check(Prefs.theme.equals(d<0?"light":"auto"),"unknown value fallback preserved");Prefs.theme="invalid";e.legacy(2,d);check(Prefs.theme.equals(d<0?"light":"auto"),"legacy fallback matches General");}
  Prefs.language="en";e.general(2,1);check(Prefs.language.equals("en"),"language submenu is not cycled by arrows");e.general(4,1);check(Prefs.h24,"time format toggle");
  events.clear();e.general(2,1);check(p.getBoolean("navigation_clicks",true),"General no longer changes navigation clicks");
- events.clear();e.legacy(4,8,1);e.legacy(99,8,1);check(events.isEmpty(),"city and unknown legacy rows do not mutate or notify");e.legacy(8,8,1);check(Prefs.random&&events.equals(Arrays.asList("changed")),"random movie preference retained");
+ events.clear();e.legacy(4,1);e.legacy(99,1);check(events.isEmpty(),"city and unknown legacy rows do not mutate or notify");
  p.data.remove("video_dream_source");events.clear();e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("na")&&events.equals(Arrays.asList("refresh")),"dream source default and redraw");e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("apple"),"dream source wraps");p.putString("video_dream_source","unknown");e.cycleDreamSource(-1);check(p.getString("video_dream_source","").equals("na"),"unknown dream source fallback preserved");
  check(p.getString("personal","").equals("keep"),"unrelated settings survive");
  System.out.println("PASS: actual preference adapter, weather migration/master/independent switches, defaults, direction/wrap/unknown values, legacy settings, exact callbacks and key preservation");

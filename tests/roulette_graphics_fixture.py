@@ -32,5 +32,4 @@ def files():
  'io/tvos/ActionSurface.java':Path('app/src/io/tvos/ActionSurface.java').read_text(),
  'io/tvos/artwork/ImagePainter.java':Path('app/src/io/tvos/artwork/ImagePainter.java').read_text(),
  'io/tvos/home/HomeLayout.java':Path('app/src/io/tvos/home/HomeLayout.java').read_text(),
- 'io/tvos/RouletteRenderer.java':Path('app/src/io/tvos/RouletteRenderer.java').read_text(),
  }

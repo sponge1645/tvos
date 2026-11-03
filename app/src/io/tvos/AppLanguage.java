@@ -4,8 +4,8 @@ import java.util.Locale;
 
 /** Single catalog and runtime selection. Prefs owns persistence; Ui keeps transitional aliases only. */
 enum AppLanguage {
-    RUSSIAN("ru", "Русский", Locale.forLanguageTag("ru-RU"), "EEEE, d MMMM", "HH:mm"),
-    ENGLISH("en", "English", Locale.US, "EEEE, MMMM d", "h a");
+    RUSSIAN("ru", "Русский", Locale.forLanguageTag("ru-RU"), "EEE, d MMM", "HH:mm"),
+    ENGLISH("en", "English", Locale.US, "EEE, d MMM", "h a");
 
     final String code, nativeName, datePattern, hourPattern, apiTag;
     final Locale locale;

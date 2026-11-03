@@ -35,10 +35,6 @@
     <string name="home_random_movie" formatted="false">"Случайный фильм"</string>
     <string name="home_movies_loading_toast" formatted="false">"Загружаем фильмы…"</string>
     <string name="home_search_heading_prefix" formatted="false">"Поиск: "</string>
-    <string name="home_roulette_loading" formatted="false">"Загрузка фильмов…"</string>
-    <string name="home_roulette_title" formatted="false">"🎲  Случайный фильм"</string>
-    <string name="home_ok_watch" formatted="false">"OK – смотреть"</string>
-    <string name="home_right_spin_again" formatted="false">"Вправо – крутить ещё"</string>
     <string name="home_network_wifi" formatted="false">"Wi-Fi, интернет доступен"</string>
     <string name="home_network_ethernet" formatted="false">"Ethernet, интернет доступен"</string>
     <string name="home_network_offline" formatted="false">"Нет интернета"</string>

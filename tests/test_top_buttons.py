@@ -74,12 +74,12 @@ public class TopButtonsHarness {
  }
  public static void main(String[] args){
   Prefs.fresh();check(Arrays.equals(Prefs.topButtonOrder(),new int[]{0,1,2,3,5,4}),"prior visual order migrated");
-  check(!Prefs.topButtonEnabled(2)&&Prefs.topButtonEnabled(5)&&Prefs.topButtonCount()==5,"VPN off and Network on defaults preserved");
+  check(!Prefs.topButtonEnabled(2)&&!Prefs.topButtonEnabled(1)&&!Prefs.topButtonEnabled(5)&&Prefs.topButtonEnabled(0)&&Prefs.topButtonEnabled(3)&&Prefs.topButtonEnabled(4)&&Prefs.topButtonCount()==3,"VPN off and Network on defaults preserved");
   Prefs.store.putBoolean("top_button_3",false);Prefs.version++;check(!Prefs.topButtonEnabled(3),"legacy visibility preserved");
   Prefs.store.putString("top_button_order","5,5,99,x,4");Prefs.version++;check(Arrays.equals(Prefs.topButtonOrder(),new int[]{5,4,0,1,2,3}),"malformed data repaired without duplicates");
   boolean rejected=false;try{Prefs.setTopButtonOrder(Arrays.asList(0,1));}catch(IllegalArgumentException e){rejected=true;}check(rejected,"partial order rejected");
   rejected=false;try{Prefs.setTopButtonOrder(Arrays.asList(0,1,2,3,4,4));}catch(IllegalArgumentException e){rejected=true;}check(rejected,"duplicate order rejected");
-  Prefs.fresh();Editor e=new Editor();e.open();check(snapshot(e.buttonEditor).equals(Arrays.asList(0,1,3,5,4,2)),"enabled first, disabled below");
+  Prefs.fresh();Prefs.setTopButtonEnabled(1,true);Prefs.setTopButtonEnabled(5,true);Editor e=new Editor();e.open();check(snapshot(e.buttonEditor).equals(Arrays.asList(0,1,3,5,4,2)),"enabled first, disabled below");
   e.focus=3;e.move(-1);check(e.buttonEditor.get(2)==5&&e.focus==2,"Network can move left and focus follows");
   e.toggle();check(!Prefs.topButtonEnabled(5)&&e.focus==5,"disabled Network moves below list");
   e.move(-1);check(e.focus==5,"disabled button cannot reorder enabled list");

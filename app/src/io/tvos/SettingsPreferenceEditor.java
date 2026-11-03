@@ -35,7 +35,7 @@ final class SettingsPreferenceEditor {
         if (!Prefs.weather()) return false;
         String key = top ? "weather_show_top" : "weather_show_bottom";
         if (preferences.contains(key)) return preferences.getBoolean(key, true);
-        int old = preferences.getInt("weather_placement", 3);
+        int old = preferences.getInt("weather_placement", 1);
         return top ? (old == 1 || old == 3) : (old == 2 || old == 3);
     }
 
@@ -54,7 +54,7 @@ final class SettingsPreferenceEditor {
 
     void toggleDateTime() {
         String key = "show_date";
-        setFlag(key, !preferences.getBoolean(key, true));
+        setFlag(key, !preferences.getBoolean(key, false));
     }
 
     void temperature(int dir) { Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir)); changed.run(); }
@@ -71,8 +71,7 @@ final class SettingsPreferenceEditor {
         changed.run();
     }
 
-    void legacy(int selected, int randomRow, int dir) {
-        if (selected == randomRow) { Prefs.setRandomMovie(!Prefs.randomMovie()); changed.run(); return; }
+    void legacy(int selected, int dir) {
         switch (selected) {
             case 0: Prefs.setLanguage(AppLanguage.step(Prefs.language(), dir).code); break;
             case 1: Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir)); break;

@@ -146,7 +146,6 @@
     <string name="settings_new" formatted="false">New</string>
     <string name="settings_movies" formatted="false">Movies</string>
     <string name="settings_shows" formatted="false">Shows</string>
-    <string name="settings_random_movie" formatted="false">Random Movie</string>
     <string name="settings_save" formatted="false">Save</string>
     <string name="settings_ms" formatted="false">" ms"</string>
     <string name="settings_gigabytes_format" formatted="false">%.2f GB</string>

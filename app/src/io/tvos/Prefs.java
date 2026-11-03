@@ -58,7 +58,7 @@ final class Prefs {
     /** Delete retired widget/category keys; keep weather, region and other settings. */
     private static void removeRetiredWidgetData() {
         SharedPreferences settings = sp();
-        String[] retired = {"quotes", "coin0", "coin1", "coin2", "coin3", "showDetectives", "category_2"};
+        String[] retired = {"quotes", "coin0", "coin1", "coin2", "coin3", "showDetectives", "category_2", "showRandomMovie", "category_4"};
         SharedPreferences.Editor edit = null;
         for (String key : retired) if (settings.contains(key)) {
             if (edit == null) edit = settings.edit();
@@ -230,8 +230,6 @@ final class Prefs {
     static String watchingSource() { return sp().getString("watching_source", "all"); }
     static void setWatchingSource(String source) { put("watching_source", source); }
 
-    static boolean randomMovie() { return sp().getBoolean("showRandomMovie", true); }
-    static void setRandomMovie(boolean on) { put("showRandomMovie", on); }
 
     // Keep existing IDs stable; Watching uses the vacant ID 2 with its own preference key.
     private static int categoryVersion = -1, categoryMask;
@@ -239,20 +237,19 @@ final class Prefs {
 
     private static void readCategories() {
         if (categoryOrderCache != null && categoryVersion == version) return;
-        int[] order = new int[5];
-        boolean[] seen = new boolean[5];
+        int[] order = new int[4];
+        boolean[] seen = new boolean[4];
         int count = 0;
-        for (String value : sp().getString("category_order", "0,1,3,2,4").split(",")) {
+        for (String value : sp().getString("category_order", "0,1,3,2").split(",")) {
             try {
                 int id = Integer.parseInt(value);
-                if (id >= 0 && id < 5 && !seen[id]) { order[count++] = id; seen[id] = true; }
+                if (id >= 0 && id < 4 && !seen[id]) { order[count++] = id; seen[id] = true; }
             } catch (NumberFormatException ignored) { }
         }
-        for (int id = 0; id < 5; id++) if (!seen[id]) order[count++] = id;
+        for (int id = 0; id < 4; id++) if (!seen[id]) order[count++] = id;
         categoryMask = 0;
-        for (int id = 0; id < 5; id++) {
-            boolean enabled = id == 4 ? randomMovie()
-                    : sp().getBoolean(id == 2 ? "category_watching" : "category_" + id, true);
+        for (int id = 0; id < 4; id++) {
+            boolean enabled = sp().getBoolean(id == 2 ? "category_watching" : "category_" + id, id != 2);
             if (enabled) categoryMask |= 1 << id;
         }
         categoryOrderCache = order;
@@ -261,7 +258,7 @@ final class Prefs {
 
     /** Shared read-only snapshot; rebuilt only after settings change, never during each animation frame. */
     static int[] categoryOrder() { readCategories(); return categoryOrderCache; }
-    static boolean categoryEnabled(int id) { readCategories(); return id >= 0 && id < 5 && (categoryMask & 1 << id) != 0; }
+    static boolean categoryEnabled(int id) { readCategories(); return id >= 0 && id < 4 && (categoryMask & 1 << id) != 0; }
     static int firstCategory() { for (int id : categoryOrder()) if (categoryEnabled(id)) return id; return -1; }
     static int lastCategory() {
         int result = -1;
@@ -279,17 +276,16 @@ final class Prefs {
     }
 
     static void setCategoryEnabled(int id, boolean enabled) {
-        if (id < 0 || id >= 5) throw new IllegalArgumentException("Invalid category");
-        if (id == 4) setRandomMovie(enabled);
-        else put(id == 2 ? "category_watching" : "category_" + id, enabled);
+        if (id < 0 || id >= 4) throw new IllegalArgumentException("Invalid category");
+        put(id == 2 ? "category_watching" : "category_" + id, enabled);
     }
 
     static void setCategoryOrder(List<Integer> order) {
-        if (order.size() != 5) throw new IllegalArgumentException("Incomplete categories");
-        boolean[] seen = new boolean[5];
+        if (order.size() != 4) throw new IllegalArgumentException("Incomplete categories");
+        boolean[] seen = new boolean[4];
         StringBuilder value = new StringBuilder();
         for (Integer id : order) {
-            if (id == null || id < 0 || id >= 5 || seen[id]) throw new IllegalArgumentException("Invalid category order");
+            if (id == null || id < 0 || id >= 4 || seen[id]) throw new IllegalArgumentException("Invalid category order");
             seen[id] = true;
             if (value.length() > 0) value.append(',');
             value.append(id);
@@ -316,7 +312,7 @@ final class Prefs {
         for (int id : DEFAULT_TOP_BUTTON_ORDER) if (!seen[id]) order[count++] = id;
         topButtonMask = 0;
         for (int id = 0; id < 6; id++)
-            if (sp().getBoolean("top_button_" + id, id != 2)) topButtonMask |= 1 << id;
+            if (sp().getBoolean("top_button_" + id, id == 0 || id == 3 || id == 4)) topButtonMask |= 1 << id;
         topButtonOrderCache = order;
         topButtonVersion = version;
     }
