@@ -59,7 +59,7 @@ final class SetupWelcomeView extends View {
     @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         scale = Math.min(w / 1920f, h / 1080f);
         shaderMatrix.setScale(w, -h); shaderMatrix.postTranslate(0, h); dark.setLocalMatrix(shaderMatrix);
-        hint.setTextSize(30 * scale);
+        hint.setTextSize(60 * scale);
         float widest = Math.max(hint.measureText(hints[0]), hint.measureText(hints[1]));
         if (widest > w * .85f) hint.setTextSize(hint.getTextSize() * w * .85f / widest);
     }
@@ -73,7 +73,7 @@ final class SetupWelcomeView extends View {
         shaderMatrix.setScale(getWidth() / s, -getHeight() / s);
         shaderMatrix.postTranslate(b.centerX() - getWidth() / (2 * s), b.centerY() + getHeight() * .53f / s);
         dark.setLocalMatrix(shaderMatrix);
-        ink.setStrokeWidth(60); ink.setAlpha(Math.round(255 * alpha));
+        ink.setStrokeWidth(90); ink.setAlpha(Math.round(255 * alpha));
         float remaining = lengths[language] * progress;
         for (PathMeasure measure : measures[language]) {
             float length = measure.getLength();
@@ -83,6 +83,25 @@ final class SetupWelcomeView extends View {
         }
         canvas.restoreToCount(save);
     }
+    /** Soft horizontal replacement, confined to the small word area; no offscreen bitmap. */
+    private void replacement(Canvas canvas, int language, float progress) {
+        float left = getWidth() / 2f - 300 * scale;
+        float right = getWidth() / 2f + 300 * scale;
+        float feather = 32 * scale;
+        float edge = left - feather + (right - left + 2 * feather) * progress;
+        int save = canvas.save();
+        canvas.clipRect(edge + feather, 0, getWidth(), getHeight());
+        word(canvas, 1 - language, 1, 1); canvas.restoreToCount(save);
+        save = canvas.save(); canvas.clipRect(0, 0, edge - feather, getHeight());
+        word(canvas, language, progress, 1); canvas.restoreToCount(save);
+        for (int band = 0; band < 8; band++) {
+            float x = edge - feather + 2 * feather * band / 8;
+            float blend = 1 - (band + .5f) / 8;
+            save = canvas.save(); canvas.clipRect(x, 0, x + 2 * feather / 8, getHeight());
+            word(canvas, 1 - language, 1, 1 - blend);
+            word(canvas, language, progress, blend); canvas.restoreToCount(save);
+        }
+    }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
@@ -90,19 +109,18 @@ final class SetupWelcomeView extends View {
         ink.setShader(light ? null : dark); ink.setColor(light ? 0xFF8897AC : 0xFFFFFFFF);
         hint.setShader(light ? null : dark); hint.setColor(light ? 0xFF8897AC : 0xFFFFFFFF);
         long elapsed = Math.max(0, SystemClock.uptimeMillis() - start);
-        long cycle = elapsed / 6000; float phase = elapsed % 6000;
+        long cycle = elapsed / 4800; float phase = elapsed % 4800;
         int language = (int) (cycle % 2);
         if (reduced) {
             language = "ru".equals(Prefs.language()) ? 1 : 0; word(canvas, language, 1, 1);
             shaderMatrix.setScale(getWidth(), -getHeight()); shaderMatrix.postTranslate(0, getHeight()); dark.setLocalMatrix(shaderMatrix);
             hint.setAlpha(255); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .65f, hint);
         } else {
-            float fade = Math.max(0, (phase - 5200) / 800);
-            float progress = Math.min(1, (phase + (cycle > 0 ? 800 : 0)) / 3800);
-            word(canvas, language, progress, 1 - fade);
-            if (fade > 0) word(canvas, 1 - language, (phase - 5200) / 3800, fade);
+            float progress = Math.min(1, phase / 3800);
+            if (cycle == 0 || progress >= 1) word(canvas, language, progress, 1);
+            else replacement(canvas, language, progress);
             // Text changes near completion of the incoming handwriting, independently of its fade.
-            float blend = cycle == 0 ? 1 : Math.max(0, Math.min(1, (phase - 2400) / 500));
+            float blend = cycle == 0 ? 1 : Math.max(0, Math.min(1, (phase - 3200) / 500));
             shaderMatrix.setScale(getWidth(), -getHeight()); shaderMatrix.postTranslate(0, getHeight()); dark.setLocalMatrix(shaderMatrix);
             if (blend < 1) { hint.setAlpha(Math.round(255 * (1 - blend))); canvas.drawText(hints[1 - language], getWidth() / 2f, getHeight() * .65f, hint); }
             hint.setAlpha(Math.round(255 * blend)); canvas.drawText(hints[language], getWidth() / 2f, getHeight() * .65f, hint);

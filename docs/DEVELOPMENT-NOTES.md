@@ -283,3 +283,6 @@ outside its connection monitor, matching the real Adb.stream lock behavior.
 
 ### 1.1.2 (1B163)
 Welcome screen: replace script-font/buttons with native hello/привет stroke animation, Settings day/night background and tile ink, Semibold center-button instructions and independent text crossfade. Keep wizard persistence and later steps. Remove unused font bundle. Add actual view/input/clock regression; physical TV review pending.
+
+### 1B164
+Double welcome hint size (bounded to viewport), increase handwriting stroke 60→90, replace whole-word fades with a feathered left-to-right wipe. Each completed word holds one second. Hint crossfade retains its 500ms easing/timing relative to each incoming word.
