@@ -1,0 +1,15 @@
+"""Run ISO TMDB policy and actual preference getter/setter without Android/global catalog state."""
+from pathlib import Path
+import subprocess,tempfile
+source=Path('app/src/io/tvos/Prefs.java').read_text();a=source.index('    static String recommendationRegion()');b=source.index('    static void setLiveTvApp(',a)
+sources={'io/tvos/catalog/RecommendationRegion.java':Path('app/src/io/tvos/catalog/RecommendationRegion.java').read_text(),
+'io/tvos/Prefs.java':'''package io.tvos;import java.util.*;class Prefs {static int version;static final Store store=new Store();static Store sp(){return store;}static class Store {Map<String,String> values=new HashMap<>();String getString(String key,String def){return values.getOrDefault(key,def);}Store edit(){return this;}Store putString(String key,String value){values.put(key,value);return this;}void apply(){}}'''+source[a:b]+'}',
+'io/tvos/Config.java':'package io.tvos;class Config {static String TMDB_REGION="US";}',
+'io/tvos/Recs.java':'package io.tvos;class Recs {static int changes;static void regionChanged(){changes++;}}',
+'io/tvos/RegionTest.java':'''package io.tvos;import io.tvos.catalog.RecommendationRegion;class RegionTest {static void check(boolean b,String m){if(!b)throw new AssertionError(m);}public static void main(String[] args){check(Prefs.recommendationRegion().equals("US"),"configured country retained before setup");Prefs.setRecommendationRegion(" fr ");check(Prefs.recommendationRegion().equals("FR")&&Prefs.store.values.get("setup_country").equals("FR")&&Prefs.version==1&&Recs.changes==1,"existing country key persists normalized selection and invalidates catalog");Prefs.setRecommendationRegion("FR");Prefs.setRecommendationRegion("xx&region=RU");check(Prefs.version==1&&Recs.changes==1,"same and invalid countries never refetch or corrupt URL");Prefs.setRecommendationRegion("RU");check(Prefs.recommendationRegion().equals("RU")&&Recs.changes==2,"Russia overrides configured country");Prefs.store.values.put("setup_country","ZZ");Config.TMDB_REGION="invalid";check(Prefs.recommendationRegion().equals("RU"),"invalid saved/config countries have a safe fallback");check(RecommendationRegion.filter("movie","FR").equals("&region=FR"),"movie release-country filter");check(RecommendationRegion.filter("tv","RU").contains("watch_region=RU")&&RecommendationRegion.filter("tv","RU").contains("with_watch_monetization_types="),"TV region includes the required availability filter");check(RecommendationRegion.filter("movie",null).isEmpty(),"legacy empty query policy remains available");System.out.println("PASS: actual region preferences, ISO validation, TMDB filters, invalidation, compatibility and fallbacks");}}'''}
+with tempfile.TemporaryDirectory() as tmp:
+ root=Path(tmp)
+ for name,text in sources.items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+ subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','-cp',tmp,'io.tvos.RegionTest'],check=True,timeout=15)

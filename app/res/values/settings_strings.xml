@@ -289,4 +289,5 @@
     <string name="settings_setup_weather_description">Choose a city for your weather forecast.\nYou can change it later.</string>
     <string name="settings_setup_manual">Manually</string>
     <string name="settings_setup_city_failed">Try detecting the city again</string>
+    <string name="settings_setup_tv_unavailable">This app or service has no accessible screen or TV input.</string>
 </resources>

@@ -452,3 +452,6 @@ SetupLanguageView reuses SettingsTransitions/SettingsTextRenderer for localized 
 
 ### 1B170 setup weather/transitions
 SettingsCityDialog owns the native city input/IME interaction shared by SettingsActivity and SetupActivity; SettingsCitySearch still owns lookup scheduling and stale-result guards. SetupFinishView.Kind adds Weather to the existing two-choice surface. SetupActivity owns consent, explicit city persistence, stable page navigation and outgoing-scene lifecycle tokens. SetupState adds WEATHER7 without reusing retired UPDATES4. Smooth SetupRemoteRenderer curves replace the unused SetupArtwork.remote_details pixel contour; weather.svg and native cubic geometry are cached like other setup artwork.
+
+### 1B171 country catalogs and broad TV targets
+LiveTvTargets owns installed package/component/TV-input discovery and safe Intent resolution; SetupActivity owns the picker and HomeApps uses the same resolver for saved targets. Existing plain-package live_tv_app values remain supported. catalog/RecommendationRegion validates ISO country identity and builds movie-release / TV-availability filters without Android or preference dependencies. Prefs stores the existing setup_country key and notifies Recs, which rejects outdated source contexts. Genre/interactive engines receive region suppliers and partition their caches.

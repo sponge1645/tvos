@@ -46,10 +46,12 @@ public class GenreHarness {
    // A callback already posted for a previous language must not publish its titles.
    c.genres(AppLanguage.current(),lists::add);io.submit(()->{}).get();int delivered=lists.size();Ui.language("en");main.deliver();check(lists.size()==delivered,"late previous-language callback rejected");c.genres(AppLanguage.current(),lists::add);main.deliver();check(lists.get(lists.size()-1).get(0).name.equals("Action"),"English genre cache and order independent of Russian");
    CountDownLatch gate=new CountDownLatch(1),started=new CountDownLatch(1);io.execute(()->{started.countDown();try{gate.await();}catch(InterruptedException e){throw new AssertionError(e);}});started.await();calls=source.calls.size();UiRequest cancelled=c.movies(new GenreCatalog.Genre(77,"queued"),AppLanguage.current(),catalogs::add);cancelled.cancel();gate.countDown();io.submit(()->{}).get();check(source.calls.size()==calls&&main.queue.isEmpty(),"cancelled queued request performs no network or delivery");
+   String[] country={"FR"};GenreCatalog regional=new GenreCatalog(source,io,main,()->country[0]);int first=source.calls.size();regional.movies(new GenreCatalog.Genre(1,"Drama"),AppLanguage.current(),catalogs::add);main.deliver();check(source.calls.subList(first,source.calls.size()).stream().allMatch(path->path.contains("&region=FR")),"genre movie queries use selected France");country[0]="RU";first=source.calls.size();regional.movies(new GenreCatalog.Genre(1,"Drama"),AppLanguage.current(),catalogs::add);main.deliver();check(source.calls.size()>first&&source.calls.get(first).contains("&region=RU"),"country-specific genre caches do not leak");regional.movies(new GenreCatalog.Genre(1,"Drama"),AppLanguage.current(),catalogs::add);io.submit(()->{}).get();int count=catalogs.size();country[0]="FR";main.deliver();check(catalogs.size()==count,"already posted old-country result suppressed");
    System.out.println("PASS: actual TMDB genre requests, RU/EN complete alphabetical lists, rating/vote/genre filters, top-25 paging, bounded LRU, cache reuse, errors, stale language and cancellation");
   }finally{io.shutdownNow();}
  }
 }'''
+sources['io/tvos/catalog/RecommendationRegion.java']=Path('app/src/io/tvos/catalog/RecommendationRegion.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-genres-') as tmp:
  root=Path(tmp)
  for name,value in sources.items():

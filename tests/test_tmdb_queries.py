@@ -41,10 +41,12 @@ public class QueryTest {
   s=new Source();Object[] many=new Object[40];for(int i=0;i<many.length;i++)many[i]=new JSONObject().put("id",i);s.replies.add(response(many));out=new ArrayList<>();new TmdbQueries<>(s,()->"en-US",MAPPER,()->new Pages(14)).acclaimed(out,()->true);check(out.size()==40&&s.paths.size()==1&&s.paths.get(0).endsWith("page=15"),"36 threshold checked between complete pages, upper page bound retained");
   s=new Source();s.replies.add(response(new JSONObject().put("id",1).put("skip",true),"bad row"));s.replies.add(response(new JSONObject().put("id",1),new JSONObject().put("id",2)));s.failAt=2;out=new ArrayList<>();failed=false;try{engine(s).acclaimed(out,()->true);}catch(IOException expected){failed=true;}check(failed&&out.size()==1&&out.get(0).key.equals("movie:2"),"ID marked before mapping, valid partial discover survives error");
   active.set(true);s=new Source();s.replies.add(response(new JSONObject().put("id",1)));s.hook=()->active.set(false);out=new ArrayList<>();engine(s).acclaimed(out,active::get);check(s.paths.size()==1&&out.isEmpty(),"discover cancels before mapping/next page");
+  s=new Source();s.replies.add(response(many));out=new ArrayList<>();new TmdbQueries<>(s,()->"en-US",MAPPER,()->new Pages(0),()->"FR").acclaimed(out,()->true);check(s.paths.get(0).contains("&region=FR"),"roulette uses selected movie release country");
   System.out.println("PASS: actual generic query engine, URLs/live locale, suffixes/pages, ordered replacement, partial IO/mapper failures, cancellation, roulette bounds/ID policy and complete-page threshold");
  }
 }'''}
 sources['io/tvos/catalog/TmdbQueries.java']=Path('app/src/io/tvos/catalog/TmdbQueries.java').read_text()
+sources['io/tvos/catalog/RecommendationRegion.java']=Path('app/src/io/tvos/catalog/RecommendationRegion.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-tmdb-queries-') as tmp:
  root=Path(tmp)
  for name,content in sources.items():

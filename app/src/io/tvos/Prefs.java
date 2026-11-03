@@ -84,6 +84,15 @@ final class Prefs {
         version++;
     }
 
+    static String recommendationRegion() {
+        return io.tvos.catalog.RecommendationRegion.resolve(sp().getString("setup_country", ""), Config.TMDB_REGION);
+    }
+    static void setRecommendationRegion(String code) {
+        String country = io.tvos.catalog.RecommendationRegion.normalize(code);
+        if (country.isEmpty() || country.equals(sp().getString("setup_country", ""))) return;
+        sp().edit().putString("setup_country", country).apply(); version++;
+        Recs.regionChanged();
+    }
     static void setLiveTvApp(String pkg) { put("live_tv_app", pkg); }
 
     static boolean homeContinue() {

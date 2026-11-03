@@ -15,17 +15,18 @@ def method(signature, text=source):
 header = r'''package io.tvos;
 import java.util.*;import java.io.*;import org.json.*;import io.tvos.Recs.Pick;import static io.tvos.TmdbMetadata.countryName;
 public class CatalogHarness {
- static class Config {static String TMDB_KEY="test";}static final String REGION="RU";
+ static class Config {static String TMDB_KEY="test";}static class Prefs {static String region="RU";static String recommendationRegion(){return region;}}
  static class AppLog {static void w(String s){}static void unexpected(String stage,RuntimeException e){}}
  List<Pick> picks=new ArrayList<>(),newPicks=new ArrayList<>();String listLanguage="";long listAt,failedAt,keyStamp;int period,notices,refreshes;String error="";
  static class Enrichment {void resetAttempts(){}}final Enrichment movieEnrichment=new Enrichment();
  final CatalogBuilder catalogBuilder=new CatalogBuilder(this::get,CatalogHarness::day);
- List<String> requests=new ArrayList<>();Runnable onGet;boolean emptyFresh;
+ List<String> requests=new ArrayList<>();Runnable onGet;boolean emptyFresh,emptyRegional;
  void notifyListeners(){notices++;}void refreshIfStale(){refreshes++;}
  static String day(int offset){return offset<0?"2026-04-27":"2026-10-24";}
  JSONObject get(String path)throws IOException, org.json.JSONException {
   requests.add(path);if(onGet!=null)onGet.run();
   if(emptyFresh&&(path.contains("primary_release_date.gte")||path.contains("first_air_date.gte")))return new JSONObject().put("results",new JSONArray());
+  if(emptyRegional&&(path.contains("&region=")||path.contains("&watch_region=")))return new JSONObject().put("results",new JSONArray());
   boolean movie=path.contains("/movie?");boolean en=path.contains("language=en-US");
   JSONObject item=new JSONObject().put("id",movie?1:2).put("title",en?"English movie":"Русский фильм").put("name",en?"English series":"Русский сериал")
    .put("backdrop_path","/image.jpg").put("poster_path",en?"/english.jpg":"/russian.jpg").put("vote_average",8.5).put("vote_count",2000)
@@ -39,7 +40,7 @@ tests = r'''
   Locale.setDefault(new Locale("ru","RU"));Ui.language("en");CatalogHarness h=new CatalogHarness();
   check(h.fetchList(1,"en"),"English fetch succeeds");
   for(String path:h.requests)check(path.contains("language=en-US"),"all catalog requests use English: "+path);
-  check(h.requests.stream().filter(p->!p.contains("with_genres")).allMatch(p->p.contains("region=RU")),"Russian ranking region retained");
+  check(h.requests.stream().allMatch(p->p.contains("region=RU")),"selected country in every movie/TV request");
   check(h.picks.get(0).title.equals("English movie") && h.newPicks.get(0).poster.equals("/english.jpg"),"localized titles/posters used");
   check(countryName("US").equals("USA") && countryName("GB").equals("UK") && countryName("FR").equals("France"),"app English overrides Russian Android locale");
   JSONObject detail=new JSONObject().put("release_date","2026-09-01").put("production_countries",new JSONArray().put(new JSONObject().put("iso_3166_1","US")));
@@ -55,18 +56,18 @@ tests = r'''
   check(h.requests.size()==1&&h.listLanguage.equals("ru"),"no further old-language requests or false language stamp");
   h.onGet=null;h.emptyFresh=true;h.requests.clear();h.fetchList(1,"en");check(h.picks.size()==2&&h.newPicks.size()==2,"repeated discover pages deduplicated; empty fresh falls back to popular");
   check(h.requests.size()==12&&h.requests.stream().noneMatch(p->p.contains("with_genres")),"no retired category network requests");
-  System.out.println("PASS: catalog language, RU ranking, country locale, cache reset, stale response rejection, localized card replacement");
+  Ui.language("en");Prefs.region="FR";h.onGet=null;h.emptyFresh=false;h.requests.clear();long france=h.sourceStamp();check(h.fetchList(1,"en"),"French catalog succeeds independently of UI language");check(h.requests.stream().filter(p->p.contains("/movie?")).allMatch(p->p.contains("&region=FR")),"movie release country is France");check(h.requests.stream().filter(p->p.contains("/tv?")).allMatch(p->p.contains("&watch_region=FR")&&p.contains("with_watch_monetization_types=")),"TV availability is filtered for France");Prefs.region="RU";check(france!=h.sourceStamp(),"country changes cache and backoff identity");h.onGet=()->Prefs.region="FR";h.requests.clear();check(!h.fetchList(1,"en")&&h.requests.size()==1,"old-country response stops further requests and publication");h.onGet=null;Prefs.region="MD";h.emptyRegional=true;h.requests.clear();check(h.fetchList(1,"en")&&h.picks.size()==2&&h.newPicks.size()==2,"countries without TMDB regional records use a bounded global fallback");System.out.println("PASS: catalog language, RU ranking, country locale, cache reset, stale response rejection, localized card replacement");
  }
 }
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-language-test-') as directory:
     root = Path(directory)
     (root/'HomePosterWindow.java').write_text(Path('app/src/io/tvos/home/HomePosterWindow.java').read_text())
-    body = ''.join(method(s) for s in ['    private boolean fetchList(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
+    body = ''.join(method(s) for s in ['    private static boolean sameSource(', '    private boolean fetchList(', '    private synchronized void resetLanguage(', '    private long sourceStamp(', '    static String key('])
     body += 'static boolean samePicks(java.util.List<Pick> a,java.util.List<Pick> b){return io.tvos.home.HomePosterWindow.select(a,0,Math.max(1,a.size()),b)==b;}'
     (root/'CatalogHarness.java').write_text(header+body+tests)
     dependencies=files()
-    for name in ['CatalogBuilder','TmdbSource']:dependencies['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
+    for name in ['CatalogBuilder','TmdbSource','catalog/RecommendationRegion']:dependencies['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
     dependencies['io/tvos/AppLog.java']='package io.tvos;final class AppLog {static void w(String s){}static void unexpected(String s,RuntimeException e){}}'
     for name,content in dependencies.items():
         path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)

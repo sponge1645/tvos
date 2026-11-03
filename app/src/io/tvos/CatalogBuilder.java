@@ -24,23 +24,31 @@ final class CatalogBuilder {
     CatalogBuilder(TmdbSource source, IntFunction<String> date) { this.source = source; this.date = date; }
     private static String key(Pick p) { return Recs.key(p); }
     private static void add(List<Pick> list, JSONObject o, String kind) { TmdbMetadata.add(list, o, kind); }
-    Result fetch(String language) throws IOException, org.json.JSONException {
+    Result fetch(String language, String region, java.util.function.BooleanSupplier active) throws IOException, org.json.JSONException {
         String apiLanguage = AppLanguage.from(language).apiTag;
-        // Popularity is TMDB's global popularity score, filtered by Russian release context.
-        // It is NOT a measurement of viewing figures in Russia.
+        // TMDB popularity is global; country filters release context / TV availability, not local viewing figures.
         List<Pick> popular = new ArrayList<>();
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (String kind : new String[] {"movie", "tv"}) {
             for (int page = 1; page <= 2; page++) {
-                String path = "/discover/" + kind + "?language=" + apiLanguage + "&region=RU"
+                String path = "/discover/" + kind + "?language=" + apiLanguage + io.tvos.catalog.RecommendationRegion.filter(kind, region)
                         + "&sort_by=popularity.desc&include_adult=false&page=" + page;
-                if (!language.equals(Ui.language)) return null;
+                if (!active.getAsBoolean()) return null;
                 JSONArray results = source.get(path).getJSONArray("results");
                 for (int i = 0; i < results.length(); i++) {
                     List<Pick> one = new ArrayList<>();
                     add(one, results.getJSONObject(i), kind);
                     if (!one.isEmpty() && seen.add(key(one.get(0)))) popular.add(one.get(0));
                 }
+            }
+        }
+        // Some countries have no release/provider records. Keep the home screen usable without claiming local rankings.
+        if (popular.isEmpty()) {
+            for (String kind : new String[]{"movie", "tv"}) {
+                if (!active.getAsBoolean()) return null;
+                JSONArray fallback = source.get("/discover/" + kind + "?language=" + apiLanguage
+                        + "&sort_by=popularity.desc&include_adult=false&page=1").getJSONArray("results");
+                for (int i = 0; i < fallback.length(); i++) add(popular, fallback.getJSONObject(i), kind);
             }
         }
         if (popular.isEmpty()) throw new IOException("TMDB returned no popular titles");
@@ -53,11 +61,11 @@ final class CatalogBuilder {
         for (String kind : new String[] {"movie", "tv"}) {
             String dateField = "movie".equals(kind) ? "primary_release_date" : "first_air_date";
             for (int page = 1; page <= 4; page++) {
-                String path = "/discover/" + kind + "?language=" + apiLanguage + "&region=RU"
+                String path = "/discover/" + kind + "?language=" + apiLanguage + io.tvos.catalog.RecommendationRegion.filter(kind, region)
                         + "&sort_by=popularity.desc&vote_count.gte=200&include_adult=false"
                         + "&" + dateField + ".gte=" + from + "&" + dateField + ".lte=" + to
                         + "&page=" + page;
-                if (!language.equals(Ui.language)) return null;
+                if (!active.getAsBoolean()) return null;
                 JSONArray results = source.get(path).getJSONArray("results");
                 for (int i = 0; i < results.length(); i++) {
                     JSONObject o = results.getJSONObject(i);
@@ -85,7 +93,7 @@ final class CatalogBuilder {
         if (fresh.isEmpty()) {
             for (Pick pick : popular) if (fresh.size() < 12) fresh.add(pick);
         }
-        if (!language.equals(Ui.language)) return null;
+        if (!active.getAsBoolean()) return null;
         return new Result(popular, fresh);
     }
     private static void alternate(List<Pick> out, java.util.Set<String> seen, List<Pick> a, List<Pick> b, int max) {

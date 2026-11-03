@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,8 +43,6 @@ final class Recs {
 
     private static final long LIST_EVERY = 6 * 3600_000L;
     private static final String[] WANTED_KINDS = {null, "movie", "tv"};
-    /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
-    private static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
 
     private static Recs instance;
 
@@ -89,6 +86,12 @@ final class Recs {
         if (current != null) current.resetLanguage();
     }
 
+    static void regionChanged() { languageChanged(); }
+
+    private static boolean sameSource(String language, String region) {
+        return language.equals(Ui.language) && region.equals(Prefs.recommendationRegion());
+    }
+
     private synchronized void resetLanguage() {
         picks = new ArrayList<>();
         newPicks = new ArrayList<>();
@@ -105,8 +108,8 @@ final class Recs {
         posterCache = new PosterCache(c, this::notifyListeners, AppLog::w);
         backdropCache = new BackdropCache(c, io, this::notifyListeners, () -> newPicks);
         catalogBuilder = new CatalogBuilder(this::get);
-        genreCatalog = new GenreCatalog(this::get, requestIo, main);
-        interactive = new TmdbQueries<>(this::get, Recs::lang, QUERY_MAPPER);
+        genreCatalog = new GenreCatalog(this::get, requestIo, main, Prefs::recommendationRegion);
+        interactive = new TmdbQueries<>(this::get, Recs::lang, QUERY_MAPPER, java.util.Random::new, Prefs::recommendationRegion);
         movieEnrichment = new MovieEnrichment(Executors.newSingleThreadExecutor(), main::post,
                 this::get, () -> { save(); notifyListeners(); });
         store = new RecsStore(c.getSharedPreferences("recs", Context.MODE_PRIVATE));
@@ -117,6 +120,9 @@ final class Recs {
         listAt = saved.listAt;
         listLanguage = saved.listLanguage;
         keyStamp = saved.keyStamp;
+        if (keyStamp != sourceStamp()) {
+            picks = new ArrayList<>(); newPicks = new ArrayList<>(); listAt = 0; listLanguage = "";
+        }
     }
 
     void addListener(Listener l) { if (!listeners.contains(l)) listeners.add(l); }
@@ -172,7 +178,8 @@ final class Recs {
         if (!hasKey(context) || fetching) return;
         long now = System.currentTimeMillis();
         final String language = Ui.language;
-        long stamp = sourceStamp();   // a new key, country or installed streaming-app set refetches
+        final String region = Prefs.recommendationRegion();
+        long stamp = sourceStamp();   // a new key, country or UI language refetches
         boolean newKey = stamp != keyStamp;
         long sinceFail = now - failedAt;    // negative = the clock went back: don't wait
         if (!newKey && failedAt != 0 && sinceFail >= 0 && sinceFail < 10 * 60_000L) return;
@@ -186,16 +193,16 @@ final class Recs {
         fetching = true;
         io.execute(() -> {
             try {
-                if (!language.equals(Ui.language)) return;
+                if (!sameSource(language, region)) return;
                 if (stale && !fetchList(p, language)) return;
                 // One failing title doesn't stop the others; whatever has no app on the TV is not downloaded.
                 int failures = 0, tried = 0;
                 String last = "";
                 for (Pick pick : wanted()) {
-                    if (!language.equals(Ui.language)) return;
+                    if (!sameSource(language, region)) return;
                     tried++;
                     try {
-                        if (!pick.detailed) fetchDetails(pick);
+                        if (!pick.detailed) fetchDetails(pick, region);
                         if (pick.backdrop != null) backdropCache.download(pick);
                     } catch (IOException | org.json.JSONException e) {
                         failures++;
@@ -206,20 +213,20 @@ final class Recs {
                         last = e.getClass().getSimpleName();
                     }
                 }
-                if (!language.equals(Ui.language)) return;
+                if (!sameSource(language, region)) return;
                 save();
                 if (tried > 0 && failures == tried) throw new IOException(last);
                 error = "";
                 failedAt = 0;
             } catch (IOException | org.json.JSONException e) {
-                if (language.equals(Ui.language)) {
+                if (sameSource(language, region)) {
                     error = e.getMessage() == null ? e.toString() : e.getMessage();
                     failedAt = System.currentTimeMillis();
                     AppLog.w("recommendations: " + error);
                 }
             } catch (RuntimeException e) {
                 AppLog.unexpected("recommendation refresh", e);
-                if (language.equals(Ui.language)) {
+                if (sameSource(language, region)) {
                     error = e.getClass().getSimpleName();
                     failedAt = System.currentTimeMillis();
                 }
@@ -227,7 +234,7 @@ final class Recs {
                 fetching = false;
                 writeStatus();
                 notifyListeners();
-                if (!language.equals(Ui.language)) main.post(this::refreshIfStale);
+                if (!sameSource(language, region)) main.post(this::refreshIfStale);
             }
         });
     }
@@ -267,6 +274,7 @@ final class Recs {
         List<Pick> todo = new ArrayList<>();
         for (Pick p : picks) if (!p.detailed || !backdropCache.hasImage(p)) todo.add(p);
         if (todo.isEmpty()) return;
+        final String language = Ui.language, region = Prefs.recommendationRegion();
         fetching = true;
         io.execute(() -> {
             int failures = 0;
@@ -274,8 +282,9 @@ final class Recs {
             try {
                 // One failing title (gone from TMDB, an image that won't download) doesn't stop the others.
                 for (Pick p : todo) {
+                    if (!sameSource(language, region)) return;
                     try {
-                        if (!p.detailed) fetchDetails(p);
+                        if (!p.detailed) fetchDetails(p, region);
                         if (p.backdrop != null) backdropCache.download(p);
                     } catch (IOException | org.json.JSONException e) {
                         failures++;
@@ -286,6 +295,7 @@ final class Recs {
                         last = e.getClass().getSimpleName();
                     }
                 }
+                if (!sameSource(language, region)) return;
                 save();
                 if (failures == todo.size()) {
                     error = last;
@@ -295,6 +305,7 @@ final class Recs {
             } finally {
                 fetching = false;
                 notifyListeners();
+                if (!sameSource(language, region)) main.post(this::refreshIfStale);
             }
         });
     }
@@ -321,10 +332,11 @@ final class Recs {
     // MARK: - TMDB
 
     private boolean fetchList(int p, String language) throws IOException, org.json.JSONException {
-        CatalogBuilder.Result result = catalogBuilder.fetch(language);
+        final String region = Prefs.recommendationRegion();
+        CatalogBuilder.Result result = catalogBuilder.fetch(language, region, () -> sameSource(language, region));
         if (result == null) return false;
         synchronized (this) {
-            if (!language.equals(Ui.language)) return false;
+            if (!sameSource(language, region)) return false;
             picks = result.popular;
             newPicks = result.fresh;
             period = p;
@@ -344,21 +356,22 @@ final class Recs {
     }
 
     private UiRequest query(String text, boolean acclaimed, java.util.function.Consumer<List<Pick>> callback) {
+        final String language = Ui.language, region = Prefs.recommendationRegion();
         UiRequest request = new UiRequest(requestIo);
         request.start(() -> {
             List<Pick> result = new ArrayList<>();
             if (!acclaimed) java.util.Objects.requireNonNull(text);
             try {
-                if (acclaimed) interactive.acclaimed(result, request::active);
-                else interactive.search(text, result, request::active);
+                if (acclaimed) interactive.acclaimed(result, () -> request.active() && sameSource(language, region));
+                else interactive.search(text, result, () -> request.active() && sameSource(language, region));
             } catch (IOException | org.json.JSONException e) {
                 if (acclaimed) AppLog.w("random recommendations: " + e.getClass().getSimpleName());
                 else android.util.Log.w("tvOS", "TMDB search failed", e);
             } catch (RuntimeException e) {
                 AppLog.unexpected(acclaimed ? "random recommendations" : "TMDB search", e);
             }
-            if (request.active()) main.post(() -> {
-                if (request.active()) callback.accept(result);
+            if (request.active() && sameSource(language, region)) main.post(() -> {
+                if (request.active() && sameSource(language, region)) callback.accept(result);
             });
         });
         return request;
@@ -374,10 +387,10 @@ final class Recs {
 
 
     /** Genre, runtime (or seasons) and the service it's on, among the ones the TV has. */
-    private void fetchDetails(Pick p) throws IOException, org.json.JSONException {
+    private void fetchDetails(Pick p, String region) throws IOException, org.json.JSONException {
         JSONObject o = get("/" + p.kind + "/" + p.id
                 + "?language=" + lang() + "&append_to_response=watch/providers,images&include_image_language=null," + Ui.language + ",en");
-        TmdbMetadata.applyDetails(p, o, REGION, this::installed);
+        TmdbMetadata.applyDetails(p, o, region, this::installed);
     }
 
     /** Whether a provider has a launchable app on this TV. */
@@ -391,7 +404,8 @@ final class Recs {
     }
 
     private long sourceStamp() {
-        return (Config.TMDB_KEY.hashCode() * 31L + REGION.hashCode()) * 31L + Ui.language.hashCode();
+        // Revision 1 replaces the former hardcoded-RU query policy, invalidating its saved catalog.
+        return ((Config.TMDB_KEY.hashCode() * 31L + Prefs.recommendationRegion().hashCode()) * 31L + Ui.language.hashCode()) * 31L + 1;
     }
 
     private JSONObject get(String path) throws IOException, org.json.JSONException {

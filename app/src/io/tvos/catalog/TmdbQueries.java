@@ -31,12 +31,18 @@ public final class TmdbQueries<T> {
     private final Supplier<String> language;
     private final Mapper<T> mapper;
     private final Supplier<Random> random;
+    private final Supplier<String> region;
 
     public TmdbQueries(Source source, Supplier<String> language, Mapper<T> mapper) {
         this(source, language, mapper, Random::new);
     }
 
     public TmdbQueries(Source source, Supplier<String> language, Mapper<T> mapper, Supplier<Random> random) {
+        this(source, language, mapper, random, () -> "");
+    }
+
+    public TmdbQueries(Source source, Supplier<String> language, Mapper<T> mapper, Supplier<Random> random, Supplier<String> region) {
+        this.region = region;
         this.source = source;
         this.language = language;
         this.mapper = mapper;
@@ -51,6 +57,7 @@ public final class TmdbQueries<T> {
             if (!active.getAsBoolean()) return;
             int page = 1 + pages.nextInt(15);
             JSONObject response = source.get("/discover/movie?language=" + language.get()
+                    + RecommendationRegion.filter("movie", region.get())
                     + "&sort_by=vote_average.desc&vote_count.gte=1000"
                     + "&vote_average.gte=7&include_adult=false&page=" + page);
             if (!active.getAsBoolean()) return;

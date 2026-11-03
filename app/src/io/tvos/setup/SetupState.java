@@ -11,7 +11,8 @@ public final class SetupState {
     public static int next(int value) { return value == WIFI ? WEATHER : value == WEATHER ? TV : step(value + 1); }
     public static int previous(int value) { return value == TV ? WEATHER : value == WEATHER ? WIFI : Math.max(HELLO, value - 1); }
     public static boolean backgroundTransition(int from, int to) {
-        return from >= HELLO && from <= REGION && to >= HELLO && to <= REGION && from != to;
+        return from >= HELLO && from <= WEATHER && from != UPDATES
+                && to >= HELLO && to <= WEATHER && to != UPDATES && from != to;
     }
     public static String language(String system) { return system != null && system.toLowerCase(java.util.Locale.ROOT).startsWith("ru") ? "ru" : "en"; }
 }

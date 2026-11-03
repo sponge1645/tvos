@@ -294,4 +294,5 @@
     <string name="settings_setup_weather_description">Выберите город для прогноза погоды.\nЕго можно изменить позже.</string>
     <string name="settings_setup_manual">Вручную</string>
     <string name="settings_setup_city_failed">Определить город ещё раз</string>
+    <string name="settings_setup_tv_unavailable">У этого приложения или службы нет доступного экрана или ТВ-входа.</string>
 </resources>

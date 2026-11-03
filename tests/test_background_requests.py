@@ -17,6 +17,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import org.json.*;import io.tvos.catalog.TmdbQueries;
 public class AsyncHarness {
+ static class Ui {static String language="en";}static class Prefs {static String region="RU";static String recommendationRegion(){return region;}}
  static class TmdbMetadata {static Pick search(JSONObject item){return null;}}
  static class Pick {int id; String kind,title,originalTitle,poster,backdrop,movieOrigin,tvOrigin;double rating;}
  static class Main {
@@ -49,6 +50,7 @@ tests='''
    check(h.requestIo.getQueue().isEmpty(),"cancelled queries removed from queue");
    UiRequest live=h.search("current",r->delivered.incrementAndGet());gate.release.countDown();h.flush();
    check(h.calls.get()>0,"latest query runs");h.main.drain();check(delivered.get()==1,"only latest query delivered");
+   delivered.set(0);h.search("old-country",r->delivered.incrementAndGet());h.flush();Prefs.region="FR";h.main.drain();check(delivered.get()==0,"old-country posted response suppressed");Prefs.region="RU";
    int baseline=h.calls.get();delivered.set(0);
    UiRequest late=h.search("late",r->delivered.incrementAndGet());h.flush();late.cancel();h.main.drain();
    check(delivered.get()==0,"cancel after completion suppresses queued callback");
@@ -79,12 +81,12 @@ tests='''
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-background-test-') as directory:
     root=Path(directory)
-    (root/'AsyncHarness.java').write_text(header+method('    UiRequest loadAcclaimed(')+method('    UiRequest search(')+method('    private UiRequest query(')+tests)
+    (root/'AsyncHarness.java').write_text(header+method('    private static boolean sameSource(')+method('    UiRequest loadAcclaimed(')+method('    UiRequest search(')+method('    private UiRequest query(')+tests)
     (root/'Log.java').write_text('package android.util; public class Log {public static int w(String t,String s,Throwable e){return 0;}}')
     (root/'JSONException.java').write_text('package org.json;public class JSONException extends Exception {}')
     (root/'JSONObject.java').write_text('package org.json;public class JSONObject {public JSONArray optJSONArray(String s){return new JSONArray();}public int optInt(String s,int d){return d;}public int optInt(String s){return 0;}}')
     (root/'JSONArray.java').write_text('package org.json;public class JSONArray {public int length(){return 0;}public JSONObject optJSONObject(int i){return null;}}')
     (root/'TmdbQueries.java').write_text(Path('app/src/io/tvos/catalog/TmdbQueries.java').read_text())
     java=str(Path(os.environ['JAVA_HOME'])/'bin/java') if os.environ.get('JAVA_HOME') else 'java'
-    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UiRequest.java',str(root/'AsyncHarness.java'),str(root/'Log.java'),str(root/'JSONException.java'),str(root/'JSONObject.java'),str(root/'JSONArray.java'),str(root/'TmdbQueries.java')],check=True)
+    subprocess.run([java,'com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/UiRequest.java',str(root/'AsyncHarness.java'),str(root/'Log.java'),str(root/'JSONException.java'),str(root/'JSONObject.java'),str(root/'JSONArray.java'),str(root/'TmdbQueries.java'),'app/src/io/tvos/catalog/RecommendationRegion.java'],check=True)
     subprocess.run([java,'-cp',directory,'io.tvos.AsyncHarness'],check=True)

@@ -87,6 +87,7 @@ public class SetupActivity extends Activity {
     }
     private void render() {
         cancelWork(); citySearch.cancel(); dismissCityDialog(); stopHello(); regionPicker = null; leaveScene = null; transitioning = false; transitionEpoch++;
+        if (page != SetupState.TV) tvApps.clear();
         if (page == SetupState.HELLO) {
             welcome = new SetupWelcomeView(this, () -> { if (active && page == SetupState.HELLO) next(); }); leaveScene = welcome::leave; setContentView(welcome); welcome.requestFocus(); return;
         }
@@ -96,7 +97,7 @@ public class SetupActivity extends Activity {
         }
         if (page == SetupState.REGION) {
             regionPicker = new SetupLanguageView(this, () -> { }, code -> {
-                settings().edit().putString("setup_country", code).apply();
+                Prefs.setRecommendationRegion(code);
                 skip();
             });
             leaveScene = regionPicker::leave; setContentView(regionPicker); regionPicker.requestFocus();
@@ -108,25 +109,30 @@ public class SetupActivity extends Activity {
             SetupPermissionsView permissions = new SetupPermissionsView(this, this::allowPermissions, () -> {
                 markPermissionChoice(); skip();
             });
-            setContentView(permissions); permissions.requestFocus(); return;
+            leaveScene = permissions::leave; setContentView(permissions); permissions.requestFocus(); return;
         }
         if (page == SetupState.WEATHER) {
             finishView = new SetupFinishView(this, SetupFinishView.Kind.WEATHER, weatherLabel(), this::chooseDetectedCity, this::askCity);
-            setContentView(finishView); finishView.requestFocus();
+            leaveScene = finishView::leave; setContentView(finishView); finishView.requestFocus();
             if (detectedCity == null) detectWeather();
             return;
         }
         if (page == SetupState.TV) {
             finishView = new SetupFinishView(this, true, tvLabel(), this::chooseTv, this::next);
-            setContentView(finishView); finishView.requestFocus(); loadTv(); return;
+            leaveScene = finishView::leave; setContentView(finishView); finishView.requestFocus(); loadTv(); return;
         }
         finishView = new SetupFinishView(this, false, "", () -> {
             setup().edit().putBoolean("home_request", true).apply(); HomeDefault.request(this);
         }, this::skip);
-        setContentView(finishView); finishView.requestFocus();
+        leaveScene = finishView::leave; setContentView(finishView); finishView.requestFocus();
+    }
+    private String tvTargetLabel() {
+        for (String[] choice : tvApps) if (choice[0].equals(tvPackage)) return choice[1];
+        String pkg = LiveTvTargets.packageName(tvPackage);
+        return pkg.isEmpty() ? tvPackage : appLabel(pkg);
     }
     private String tvLabel() {
-        return tvPackage.isEmpty() ? text(R.string.settings_automatic) + ": " + (autoTvLabel.isEmpty() ? text(R.string.settings_setup_detecting) : autoTvLabel) : appLabel(tvPackage);
+        return tvPackage.isEmpty() ? text(R.string.settings_automatic) + ": " + (autoTvLabel.isEmpty() ? text(R.string.settings_setup_detecting) : autoTvLabel) : tvTargetLabel();
     }
     private void updateRegionText() { if (regionPicker != null) regionPicker.status(regionStatus); }
     private void detectCountry() {
@@ -211,16 +217,7 @@ public class SetupActivity extends Activity {
     private void loadTv() {
         task(() -> {
             try {
-            List<String[]> apps = new ArrayList<>();
-            Intent query = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-            for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(query, 0)) {
-                if (info.activityInfo != null) {
-                    String pkg = info.activityInfo.packageName; if (pkg.equals(getPackageName())) continue; boolean seen = false;
-                    for (String[] old : apps) if (old[0].equals(pkg)) { seen = true; break; }
-                    if (!seen) apps.add(new String[]{pkg, String.valueOf(info.loadLabel(getPackageManager()))});
-                }
-            }
-            apps.sort((a, b) -> a[1].compareToIgnoreCase(b[1]));
+            List<String[]> apps = LiveTvTargets.load(this);
             Intent automaticIntent = HomeApps.automaticLiveTv(this);
             String pkg = automaticIntent == null ? null : automaticIntent.getPackage();
             if (automaticIntent != null && automaticIntent.getComponent() != null) pkg = automaticIntent.getComponent().getPackageName();
@@ -245,8 +242,13 @@ public class SetupActivity extends Activity {
         names[0] = text(R.string.settings_automatic) + ": " + autoTvLabel;
         for (int i = 0; i < choices.size(); i++) names[i + 1] = choices.get(i)[1];
         new AlertDialog.Builder(this).setTitle(text(R.string.settings_setup_tv_choose)).setItems(names, (d, at) -> {
-            if (page != SetupState.TV) return;
-            tvPackage = at == 0 ? "" : choices.get(at - 1)[0];
+            if (!active || transitioning || page != SetupState.TV) return;
+            String selected = at == 0 ? "" : choices.get(at - 1)[0];
+            if (!selected.isEmpty() && LiveTvTargets.intent(this, selected) == null) {
+                new AlertDialog.Builder(this).setMessage(text(R.string.settings_setup_tv_unavailable))
+                        .setPositiveButton(android.R.string.ok, null).show(); return;
+            }
+            tvPackage = selected;
             if (finishView != null) finishView.application(tvLabel());
         }).setNegativeButton(text(R.string.settings_setup_back), null).show();
     }
@@ -259,8 +261,15 @@ public class SetupActivity extends Activity {
         permissionFlow = pendingAccessibility = false;
         cancelWork();
         if (page == SetupState.HOME) {
-            setup().edit().putBoolean("complete", true).putBoolean("started", false).remove("step").remove("home_request").apply();
-            startActivity(new Intent(this, HomeDefault.selected(this) ? HomeActivity.class : SettingsActivity.class)); finish(); return;
+            int token = ++transitionEpoch;
+            Runnable complete = () -> {
+                if (token != transitionEpoch || page != SetupState.HOME) return;
+                setup().edit().putBoolean("complete", true).putBoolean("started", false).remove("step").remove("home_request").apply();
+                startActivity(new Intent(this, HomeDefault.selected(this) ? HomeActivity.class : SettingsActivity.class)); finish();
+            };
+            if (active && leaveScene != null) { transitioning = true; leaveScene.accept(complete); }
+            else complete.run();
+            return;
         }
         navigate(SetupState.next(page));
     }

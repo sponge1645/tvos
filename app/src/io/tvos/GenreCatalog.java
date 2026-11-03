@@ -31,10 +31,15 @@ final class GenreCatalog {
     private final TmdbSource source;
     private final ThreadPoolExecutor executor;
     private final Handler main;
+    private final java.util.function.Supplier<String> region;
     private final LinkedHashMap<String, Cached<List<Genre>>> genres = new LinkedHashMap<>();
     private final LinkedHashMap<String, Cached<List<Recs.Pick>>> movies = new LinkedHashMap<>(8, .75f, true);
 
     GenreCatalog(TmdbSource source, ThreadPoolExecutor executor, Handler main) {
+        this(source, executor, main, () -> "");
+    }
+    GenreCatalog(TmdbSource source, ThreadPoolExecutor executor, Handler main, java.util.function.Supplier<String> region) {
+        this.region = region;
         this.source = source; this.executor = executor; this.main = main;
     }
     UiRequest genres(AppLanguage language, Consumer<List<Genre>> callback) {
@@ -70,19 +75,21 @@ final class GenreCatalog {
         return titles("movie", genre, language, callback);
     }
     UiRequest titles(String kind, Genre genre, AppLanguage language, Consumer<List<Recs.Pick>> callback) {
+        final String country = region.get();
         return submit(language, request -> {
             if (genre.id <= 0) throw new IOException("Invalid genre");
-            String key = kind + ":" + language.code + ":" + genre.id;
+            String key = kind + ":" + language.code + ":" + country + ":" + genre.id;
             Cached<List<Recs.Pick>> old = movies.get(key);
             if (old != null && old.fresh()) return old.value;
             List<Recs.Pick> result = new ArrayList<>();
             HashSet<Integer> seen = new HashSet<>();
             for (int page = 1; page <= 2; page++) {
-                if (!request.active()) return null;
+                if (!request.active() || !country.equals(region.get())) return null;
                 JSONObject response = source.get("/discover/" + kind + "?language=" + language.apiTag
+                        + io.tvos.catalog.RecommendationRegion.filter(kind, country)
                         + "&with_genres=" + genre.id + "&sort_by=vote_average.desc&vote_count.gte=1000"
                         + "&include_adult=false" + ("movie".equals(kind) ? "&include_video=false" : "") + "&page=" + page);
-                if (!request.active()) return null;
+                if (!request.active() || !country.equals(region.get())) return null;
                 JSONArray items = response.getJSONArray("results");
                 for (int i = 0; i < items.length(); i++) {
                     JSONObject item = items.getJSONObject(i);
@@ -103,17 +110,19 @@ final class GenreCatalog {
         }, callback);
     }
     UiRequest random(String kind, int genre, AppLanguage language, Consumer<Recs.Pick> callback) {
+        final String country = region.get();
         return submit(language, request -> {
             String query = "/discover/" + kind + "?language=" + language.apiTag
+                    + io.tvos.catalog.RecommendationRegion.filter(kind, country)
                     + "&sort_by=popularity.desc&vote_average.gte=6.5&vote_count.gte=1000&include_adult=false"
                     + ("movie".equals(kind) ? "&include_video=false" : "")
                     + (genre > 0 ? "&with_genres=" + genre : "");
             JSONObject first = source.get(query + "&page=1");
-            if (!request.active()) return null;
+            if (!request.active() || !country.equals(region.get())) return null;
             int pages = Math.max(1, Math.min(500, first.optInt("total_pages", 1)));
             int page = java.util.concurrent.ThreadLocalRandom.current().nextInt(pages) + 1;
             JSONObject response = page == 1 ? first : source.get(query + "&page=" + page);
-            if (!request.active()) return null;
+            if (!request.active() || !country.equals(region.get())) return null;
             List<Recs.Pick> eligible = new ArrayList<>();
             for (JSONObject candidate : new JSONObject[]{response, first}) {
                 JSONArray items = candidate.getJSONArray("results");
@@ -132,15 +141,16 @@ final class GenreCatalog {
     }
     private interface RequestWork<T> { T fetch(UiRequest request) throws IOException, JSONException; }
     private <T> UiRequest submit(AppLanguage language, RequestWork<T> work, Consumer<T> callback) {
+        final String country = region.get();
         UiRequest request = new UiRequest(executor);
         request.start(() -> {
             T result = null;
-            try { if (request.active() && language == AppLanguage.current()) result = work.fetch(request); }
+            try { if (request.active() && language == AppLanguage.current() && country.equals(region.get())) result = work.fetch(request); }
             catch (IOException | JSONException e) { AppLog.w("TMDB genres: " + e.getClass().getSimpleName()); }
             catch (RuntimeException e) { AppLog.unexpected("TMDB genres", e); }
             final T ready = result;
             if (request.active()) main.post(() -> {
-                if (request.active() && language == AppLanguage.current()) callback.accept(ready);
+                if (request.active() && language == AppLanguage.current() && country.equals(region.get())) callback.accept(ready);
             });
         });
         return request;

@@ -10,6 +10,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Rect;
 import android.graphics.Shader;
 import android.os.SystemClock;
 import android.view.KeyEvent;
@@ -24,6 +25,7 @@ final class SetupLanguageView extends View {
     private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final RectF row = new RectF();
+    private final Rect moreBounds = new Rect();
     private final Shader dark = new LinearGradient(0, 1, 1, 0, 0xFF95B3BE, 0xFF95B3BE, Shader.TileMode.CLAMP);
     private final Matrix matrix = new Matrix();
     private final AppLanguage[] languages = AppLanguage.values();
@@ -127,15 +129,19 @@ final class SetupLanguageView extends View {
             if (detected.isEmpty() && !status.isEmpty()) {
                 text.setTextSize(28); canvas.drawText(status, 600, 335, text);
             }
-            text.setTextSize(40); float width = text.measureText(more);
+            text.setTypeface(Ui.displayMedium); text.setTextSize(40); float width = text.measureText(more);
             if (width > 800) text.setTextSize(40 * 800 / width);
-            canvas.drawText(more, 600, suggestion ? 425 : 330, text);
-            rowStart = suggestion ? 500 : 405;
+            float baseline = suggestion ? 425 : 330;
+            canvas.drawText(more, 600, baseline, text);
+            text.getTextBounds(more, 0, more.length(), moreBounds);
+            // Focus capsule: 70px tall, grows 1.012x. Its top is exactly 1px below the label bounds.
+            rowStart = baseline + moreBounds.bottom + 1 + 70 * 1.012f / 2;
+            text.setTypeface(Ui.displaySemibold);
         } else rowStart = 420;
         int offset = region && !detected.isEmpty() ? 1 : 0;
         scroll.target = region ? Math.max(offset, Math.min(Math.max(offset, codes.length - 6), selected - 3)) : 0;
         if (reduced) scroll.snap(scroll.target); else moving |= scroll.step(dt);
-        viewport.resize(190, region ? rowStart - 55 : 280, 1020, Math.round((getHeight() - oy) / k), 1);
+        viewport.resize(190, region ? rowStart - (scroll.value <= offset + .001f ? 74 : 55) : 280, 1020, Math.round((getHeight() - oy) / k), 1);
         viewport.draw(canvas, rows);
         // Keep the screen-space tile gradient unchanged through the remote's own transform.
         matrix.setScale(1920 * 660 / 650f, -1080 * 660 / 650f);

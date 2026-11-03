@@ -508,7 +508,7 @@ final class HomeApps {
     static Intent liveTv(Context c) {
         String selected = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("live_tv_app", "");
         if (!selected.isEmpty()) {
-            Intent intent = launchIntent(c.getPackageManager(), selected);
+            Intent intent = LiveTvTargets.intent(c, selected);
             if (intent != null) return intent;
         }
         return automaticLiveTv(c);

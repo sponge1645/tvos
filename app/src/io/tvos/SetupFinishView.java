@@ -30,7 +30,8 @@ final class SetupFinishView extends View {
  private String status="";
  private int selected;
  private boolean pressed,leaving,completed;
- private long frame=SystemClock.uptimeMillis();
+ private final long start=SystemClock.uptimeMillis();
+ private long frame=start;
  SetupFinishView(Context c,boolean television,String app,Runnable first,Runnable second) {
   this(c, television ? Kind.TV : Kind.HOME, app, first, second);
  }
@@ -48,9 +49,22 @@ final class SetupFinishView extends View {
  void application(String value){choices[0]=value;describe();invalidate();}
  private void describe(){setContentDescription(title+". "+description+", "+choices[selected]);}
  private void confirm(){if(kind==Kind.WEATHER){if(selected==0)first.run();else second.run();return;}if(completed||(leaving&&selected==0))return;if(selected==0){if(!television)leaving=true;first.run();}else{completed=true;leaving=true;second.run();}}
+    private long exitStart = -1;
+    private Runnable afterExit;
+    void leave(Runnable action) {
+        if (exitStart >= 0) return;
+        if (reduced) action.run();
+        else { afterExit = action; exitStart = SystemClock.uptimeMillis(); invalidate(); }
+    }
  @Override protected void onDraw(Canvas c){
   super.onDraw(c);boolean light=!HomeData.get(getContext()).isNight(System.currentTimeMillis());background.draw(c,getWidth(),getHeight(),light);
-  float k=Math.min(getWidth()/1920f,getHeight()/1080f);int saved=c.save();c.translate((getWidth()-1920*k)/2,(getHeight()-1080*k)/2);c.scale(k,k);
+        long time = SystemClock.uptimeMillis();
+        if (exitStart >= 0 && time - exitStart >= 280) {
+            Runnable action = afterExit; afterExit = null; if (action != null) post(action); return;
+        }
+  float k=Math.min(getWidth()/1920f,getHeight()/1080f);float alpha=reduced?1:Math.min(1,Math.max(0,(time-start)/260f));
+  if(exitStart>=0)alpha*=Math.max(0,1-(time-exitStart)/220f);
+  int saved=c.saveLayerAlpha(0,0,getWidth(),getHeight(),Math.round(255*alpha));c.translate((getWidth()-1920*k)/2,(getHeight()-1080*k)/2);c.scale(k,k);
   int color=light?0xFF6E7E94:0xFF95B3BE;text.setColor(color);ink.setColor(color);text.setTextAlign(Paint.Align.CENTER);text.setTypeface(Ui.displayBold);
   String[] heading=title.split("\n");text.setTextSize(80);for(int i=0;i<heading.length;i++)fit(c,heading[i],620,340+i*94,860,80);
   text.setTypeface(Ui.displaySemibold);String[] lines=description.split("\n");for(int i=0;i<lines.length;i++)fit(c,lines[i],620,490+i*48,860,36);
@@ -60,7 +74,7 @@ final class SetupFinishView extends View {
    if(f>.001f){rect.set(191.7778f,cy-30,974,cy+30);buttons.drawFocused(c,rect,1,light,f);}text.setColor(SettingsListRenderer.blend(color,0xFF1C1C1E,f));fit(c,choices[i],620,cy+14,730,40);
   }
   int mark=c.save();c.translate(1480,605);float s=kind==Kind.WEATHER?1.65f:television?.55f:.46f;c.scale(s,s);c.translate(kind==Kind.WEATHER?-185:-700,kind==Kind.WEATHER?-130:-700);c.drawPath(picture,ink);c.restoreToCount(mark);c.restoreToCount(saved);
-  if(moving&&hasWindowFocus())postInvalidateOnAnimation();
+  if((exitStart>=0||alpha<1||moving)&&hasWindowFocus())postInvalidateOnAnimation();
  }
  private void fit(Canvas c,String value,float x,float y,float width,float size){text.setTextSize(size);float w=text.measureText(value);if(w>width)text.setTextSize(size*width/w);c.drawText(value,x,y,text);}
  @Override public void onWindowFocusChanged(boolean f){super.onWindowFocusChanged(f);pressed=false;leaving=false;if(f)invalidate();}
