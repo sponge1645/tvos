@@ -45,10 +45,7 @@ Changing it invalidates Home preferences so the shortcut list refreshes. Home
 selection uses ROLE_HOME where available or system Home settings; it does not
 implicitly activate the existing full ADB-based tvOS mode or debloat packages.
 
-The welcome uses the unmodified Marck Script font, supporting Latin/Cyrillic,
-from https://github.com/google/fonts/tree/main/ofl/marckscript. Its SIL Open Font
-License/copyright is bundled in app/assets/setup/MarckScript-OFL.txt. It is an
-Apple-Hello-inspired handwritten treatment, not Apple's original font. Greeting
+The welcome uses the supplied vector stroke paths, not a script font. Greeting
 animation stops on pause/page changes and honors Reduced Motion.
 
 The reviewed techgenius1/tvOS-Launcher setup suggested optional permission steps,
@@ -63,3 +60,11 @@ Android activities/resources/DEX and verifies signing and packaged helper. Real
 TV welcome layout, DPAD focus, permission/role dialogs, city detection, OEM Live
 TV intents and a real newer signed OTA still need device testing. No release or
 production OTA change is part of this branch.
+
+## Welcome redesign (1B163)
+
+The first screen uses native vector stroke drawing from the supplied `docs/design/hello.svg` and `hello-ru.svg`, with the same day/night policy and background as Settings. The greeting fits a 570 × 210 area on a 1920 × 1080 reference screen, centered at 47% of height; the Semibold prompt is centered at 65%. Ink matches the Settings tvOS tile: light #8897AC, dark #51595B–#55646B gradient.
+
+English and Russian handwriting alternate with overlapping fades; the bilingual center-button instruction crossfades near completion of each incoming word. Only a complete, uncanceled center/Enter press advances; arrows do not advance. Back keeps the existing session-defer behavior. Reduced Motion shows a static localized greeting. Drawing stops on pause/detach and does not schedule frames without window focus. Geometry, PathMeasure and paints are cached; no video decoder or frame bitmaps are used. The obsolete Marck Script font/license bundle and font-based greeting timer were removed.
+
+Native drawing/input/timeline boundaries are covered by `test_setup_welcome.py`. Physical TV layout, contrast and smoothness still require device review.

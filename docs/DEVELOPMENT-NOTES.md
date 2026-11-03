@@ -280,3 +280,6 @@ search, Wi-Fi permission, update consent, TV app and native default-Home selecti
 Keep existing installs/settings, allow replay from General, and preserve production
 release/OTA. Correct the volume adapter test double to invoke active callbacks
 outside its connection monitor, matching the real Adb.stream lock behavior.
+
+### 1.1.2 (1B163)
+Welcome screen: replace script-font/buttons with native hello/привет stroke animation, Settings day/night background and tile ink, Semibold center-button instructions and independent text crossfade. Keep wizard persistence and later steps. Remove unused font bundle. Add actual view/input/clock regression; physical TV review pending.

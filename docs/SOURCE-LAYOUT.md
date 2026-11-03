@@ -434,3 +434,6 @@ HomeDefault uses Android Home-role/settings UI without disabling packages.
 HomeUpdatePrompt owns foreground offers, snooze, download/install intent and a
 sparse timer; SelfUpdate retains transport, SHA/signature checks and offer cache.
 See SETUP-AND-UPDATES.md for behavior, provenance and physical-device checks.
+
+### 1B163 welcome
+`SetupWelcomeView` owns the native vector welcome, lifecycle and center-button handling. `setup/WelcomePaths` contains supplied cubic stroke geometry; reference SVGs are in `docs/design`. The setup activity coordinates navigation only.

@@ -242,7 +242,6 @@
     <string name="settings_remote_system_help" formatted="false">Сначала выдайте разрешение через ADB, затем включите «Удержание громкости» на предыдущем экране. После выдачи разрешения этому способу не нужен постоянный ADB. Регистрация слушателя не гарантирует получение кнопок прошивкой. Если удержание не работает, вернитесь к помощнику ADB.</string>
     <string name="settings_remote_gesture_help" formatted="false">Назначения включаются только для добавленных кнопок. Интервал между нажатиями — до 300 мс. Двойное и тройное нажатие задерживают обычное действие. Удержание OK с обычным действием передаётся экрану «Домой» после 500 мс; его меню удержания появится позже. Во всех приложениях назначенная кнопка полностью перехватывается и требует включённой службы tvOS. OK доступен только на «Домой». Стрелки, Назад, Home, питание и громкость не переназначаются. Действие VPN управляет только INCY.</string>
     <string name="settings_setup_repeat" formatted="false">Повторить начальную настройку</string>
-    <string name="settings_setup_welcome" formatted="false">Добро пожаловать. Нажмите OK, чтобы настроить tvOS.</string>
     <string name="settings_setup_language" formatted="false">Выберите язык</string>
     <string name="settings_setup_language_hint" formatted="false">На первой установке предлагается язык Android. Если он не поддерживается, используется English.</string>
     <string name="settings_setup_continue" formatted="false">Продолжить</string>
@@ -277,6 +276,5 @@
     <string name="settings_setup_downloading" formatted="false">Загрузка обновления…</string>
     <string name="settings_setup_background" formatted="false">Продолжить в фоне</string>
     <string name="settings_setup_retry" formatted="false">Повторить загрузку</string>
-    <string name="settings_setup_hello_en" formatted="false">hello</string>
-    <string name="settings_setup_hello_ru" formatted="false">привет</string>
+    <string name="settings_setup_center_hint">Чтобы продолжить, нажмите центральную кнопку.</string>
 </resources>

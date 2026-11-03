@@ -18,6 +18,8 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  app/assets/setup/MarckScript-Regular.ttf \
+  app/assets/setup/MarckScript-OFL.txt \
   app/res/raw/apple_root_ca.cer \
   tools/test-ota-from-1.0.1.sh tests/test_ota_test_script.py \
   app/assets/avatars/cat_face.webp \

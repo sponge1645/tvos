@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,10 +31,10 @@ public class SetupActivity extends Activity {
     private UiRequest request;
     private int page, epoch;
     private volatile boolean active;
-    private boolean automatic, updates, helloRussian;
+    private boolean automatic, updates;
     private LinearLayout body;
-    private TextView hello, regionText;
-    private Typeface script;
+    private TextView regionText;
+    private SetupWelcomeView welcome;
     private AutoRegion.Result detected;
     private String[] manual;
     private String regionStatus = "";
@@ -57,8 +56,7 @@ public class SetupActivity extends Activity {
         page = SetupState.step(setup().getInt("step", 0));
         automatic = settings().getBoolean("region_auto", true); updates = settings().getBoolean("auto_update", true);
         tvPackage = settings().getString("live_tv_app", "");
-        try { script = Typeface.createFromAsset(getAssets(), "setup/MarckScript-Regular.ttf"); }
-        catch (RuntimeException error) { script = Typeface.create("cursive", Typeface.NORMAL); }
+
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent); setIntent(intent);
@@ -71,19 +69,7 @@ public class SetupActivity extends Activity {
     @Override protected void onResume() { super.onResume(); active = true; render(); }
     @Override protected void onPause() { active = false; cancelWork(); stopHello(); super.onPause(); }
     @Override protected void onDestroy() { cancelWork(); io.shutdownNow(); super.onDestroy(); }
-    private void stopHello() { main.removeCallbacks(greeting); if (hello != null) { hello.animate().cancel(); hello.setAlpha(1); } }
-    private final Runnable greeting = new Runnable() {
-        @Override public void run() {
-            if (!active || page != SetupState.HELLO || hello == null) return;
-            helloRussian = !helloRussian;
-            if (settings().getBoolean("reduce_motion", false)) hello.setText(helloRussian ? text(R.string.settings_setup_hello_ru) : text(R.string.settings_setup_hello_en));
-            else hello.animate().alpha(0).setDuration(250).withEndAction(() -> {
-                if (!active || page != SetupState.HELLO || hello == null) return;
-                hello.setText(helloRussian ? text(R.string.settings_setup_hello_ru) : text(R.string.settings_setup_hello_en)); hello.animate().alpha(1).setDuration(350).start();
-            }).start();
-            main.postDelayed(this, 2200);
-        }
-    };
+    private void stopHello() { if (welcome != null) { welcome.stop(); welcome = null; } }
     private void cancelWork() { epoch++; if (request != null) { request.cancel(); request = null; } }
     private void task(java.util.concurrent.Callable<Runnable> work) {
         cancelWork(); final int token = epoch; UiRequest pending = new UiRequest(io); request = pending;
@@ -107,16 +93,16 @@ public class SetupActivity extends Activity {
     }
     private Button nextButton;
     private void render() {
-        cancelWork(); stopHello(); hello = regionText = null;
+        cancelWork(); stopHello(); regionText = null;
+        if (page == SetupState.HELLO) {
+            welcome = new SetupWelcomeView(this, this::next); setContentView(welcome); welcome.requestFocus(); return;
+        }
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
         scroll.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF142C45, 0xFF080B14}));
         body = new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); body.setGravity(Gravity.CENTER);
         body.setPadding(dp(80), dp(20), dp(80), dp(20)); scroll.addView(body); setContentView(scroll);
         label("tvOS", 23);
         switch (page) {
-            case SetupState.HELLO:
-                helloRussian = false; hello = label(text(R.string.settings_setup_hello_en), 100); hello.setTypeface(script); main.postDelayed(greeting, 2200);
-                label(text(R.string.settings_setup_welcome), 23); break;
             case SetupState.LANGUAGE:
                 label(text(R.string.settings_setup_language), 34); label(text(R.string.settings_setup_language_hint), 19);
                 for (AppLanguage language : AppLanguage.values()) button((Prefs.language().equals(language.code) ? "✓ " : "") + language.nativeName,

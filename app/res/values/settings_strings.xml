@@ -237,7 +237,6 @@
     <string name="settings_remote_system_help" formatted="false">Grant permission through ADB first, then enable Volume hold fix on the previous screen. This method needs no persistent ADB connection after the grant. Listener registration does not guarantee firmware event delivery. If hold does not work, select the ADB helper again.</string>
     <string name="settings_remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require the enabled tvOS service. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls INCY only.</string>
     <string name="settings_setup_repeat" formatted="false">Run setup again</string>
-    <string name="settings_setup_welcome" formatted="false">Welcome. Press OK to set up tvOS.</string>
     <string name="settings_setup_language" formatted="false">Choose your language</string>
     <string name="settings_setup_language_hint" formatted="false">On first install, the Android language is suggested. Unsupported languages use English.</string>
     <string name="settings_setup_continue" formatted="false">Continue</string>
@@ -272,6 +271,5 @@
     <string name="settings_setup_downloading" formatted="false">Downloading update…</string>
     <string name="settings_setup_background" formatted="false">Continue in background</string>
     <string name="settings_setup_retry" formatted="false">Retry download</string>
-    <string name="settings_setup_hello_en" formatted="false">hello</string>
-    <string name="settings_setup_hello_ru" formatted="false">привет</string>
+    <string name="settings_setup_center_hint">Press the center button to continue.</string>
 </resources>
