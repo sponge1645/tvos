@@ -21,7 +21,7 @@ final class SetupPermissionsView extends View {
     private final Path[] icons = {new Path(), new Path(), new Path()};
     private final Spring[] focus = {new Spring(.28f, .85f, 1), new Spring(.28f, .85f, 0)};
     private final Runnable allow, deny;
-    private final String title, intro;
+    private final String title, intro, summary;
     private final String[] names, first, second, choices;
     private final boolean reduced;
     private int selected;
@@ -35,6 +35,9 @@ final class SetupPermissionsView extends View {
         first = new String[]{AppStrings.get(R.string.settings_setup_location_line1),AppStrings.get(R.string.settings_setup_remote_line1),AppStrings.get(R.string.settings_setup_history_line1)};
         second = new String[]{AppStrings.get(R.string.settings_setup_location_line2),AppStrings.get(R.string.settings_setup_remote_line2),AppStrings.get(R.string.settings_setup_history_line2)};
         choices = new String[]{AppStrings.get(R.string.settings_setup_allow),AppStrings.get(R.string.settings_setup_deny)};
+        StringBuilder spoken = new StringBuilder(title).append(". ").append(intro);
+        for (int i = 0; i < names.length; i++) spoken.append(". ").append(names[i]).append(": ").append(first[i]).append(' ').append(second[i]);
+        summary = spoken.toString();
         reduced = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
         // Location pointer, remote, TV/play. Geometry is created once, not every frame.
         icons[0].moveTo(0, 0); icons[0].lineTo(48, -24); icons[0].lineTo(26, 28); icons[0].lineTo(18, 8); icons[0].close();
@@ -45,7 +48,7 @@ final class SetupPermissionsView extends View {
         icons[1].setFillType(Path.FillType.EVEN_ODD); icons[2].setFillType(Path.FillType.EVEN_ODD);
         setFocusable(true); setFocusableInTouchMode(true); describe(); setOnClickListener(v -> confirm());
     }
-    private void describe() { setContentDescription(title + ", " + choices[selected]); }
+    private void describe() { setContentDescription(summary + ", " + choices[selected]); }
     private void confirm() { if (!confirmed) { confirmed = true; if (selected == 0) allow.run(); else deny.run(); } }
     @Override protected void onDraw(Canvas c) {
         super.onDraw(c); boolean light = !HomeData.get(getContext()).isNight(System.currentTimeMillis());
