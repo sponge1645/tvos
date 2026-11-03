@@ -1,5 +1,9 @@
 # Source layout
 
+> Remote/volume sections below describe earlier implementations. The current branch
+> removes both volume helpers and accessibility key filtering; see
+> [Remote assignments](REMOTE-SHORTCUTS.md) for the replacement input-method path.
+
 Source directories follow Java packages. The first isolated modules are:
 
 - `io.tvos.watching`: service aliases and source identities.

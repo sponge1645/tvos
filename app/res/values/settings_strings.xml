@@ -194,19 +194,9 @@
     <string name="settings_home_screen" formatted="false">Home Screen</string>
     <string name="settings_home_recommendations" formatted="false">Recommendations</string>
     <string name="settings_help_home_screen" formatted="false">Used when all Home categories are turned off. Choose service recommendations or selectable Continue Watching cards.</string>
-    <string name="settings_volume_hold" formatted="false">Volume hold fix</string>
-    <string name="settings_help_volume_hold" formatted="false">Restores held volume buttons. Choose the ADB helper or experimental system method in Button shortcuts. The system method needs a one-time ADB grant; the helper needs a persistent connection. Both require the tvOS accessibility service. Enable only if hold is broken. External audio equipment may behave differently.</string>
-    <string name="settings_volume_unavailable" formatted="false">Unavailable: check ADB</string>
-    <string name="settings_volume_starting" formatted="false">Connecting…</string>
-    <string name="settings_volume_waiting" formatted="false">Waiting for service</string>
     <string name="settings_remote_shortcuts" formatted="false">Button shortcuts</string>
     <string name="settings_remote_taps" formatted="false">1×, 2×, 3×</string>
     <string name="settings_remote_add" formatted="false">Add a button</string>
-    <string name="settings_remote_volume_method" formatted="false">Volume hold method</string>
-    <string name="settings_remote_system_method" formatted="false">System — experimental</string>
-    <string name="settings_remote_adb_method" formatted="false">ADB helper</string>
-    <string name="settings_remote_grant_volume" formatted="false">Grant system volume listener through ADB</string>
-    <string name="settings_remote_accessibility" formatted="false">Enable tvOS accessibility service</string>
     <string name="settings_remote_press" formatted="false">Press a remote button</string>
     <string name="settings_remote_capture_help" formatted="false">Press the desired button once. Back cancels capture. Arrows, volume, power and Home are reserved. Firmware may not deliver some buttons to apps.</string>
     <string name="settings_remote_reserved" formatted="false">This button is reserved for system navigation</string>
@@ -231,10 +221,7 @@
     <string name="settings_remote_app" formatted="false">Open an app…</string>
     <string name="settings_remote_action" formatted="false">Choose action</string>
     <string name="settings_remote_save_failed" formatted="false">Could not save button settings</string>
-    <string name="settings_remote_granted" formatted="false">Permission granted. Enable the volume hold fix and test your remote.</string>
-    <string name="settings_remote_grant_failed" formatted="false">Permission was not granted. Check ADB authorization on the TV.</string>
-    <string name="settings_remote_system_help" formatted="false">Grant permission through ADB first, then enable Volume hold fix on the previous screen. This method needs no persistent ADB connection after the grant. Listener registration does not guarantee firmware event delivery. If hold does not work, select the ADB helper again.</string>
-    <string name="settings_remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require the enabled tvOS service. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls INCY only.</string>
+    <string name="settings_remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require tvOS to be selected as the current keyboard. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls INCY only.</string>
     <string name="settings_setup_repeat" formatted="false">Run setup again</string>
     <string name="settings_setup_continue" formatted="false">Continue</string>
     <string name="settings_setup_finish" formatted="false">Finish</string>
@@ -269,12 +256,12 @@
     <string name="settings_setup_permissions">Permissions</string>
     <string name="settings_setup_permissions_hint">You can change access later in Settings.</string>
     <string name="settings_setup_location">Location</string>
-    <string name="settings_setup_remote_access">Accessibility</string>
+    <string name="settings_setup_remote_access">Remote buttons</string>
     <string name="settings_setup_history_access">Watch history</string>
     <string name="settings_setup_location_line1">Show your Wi-Fi network name.</string>
     <string name="settings_setup_location_line2">Weather uses your chosen city.</string>
-    <string name="settings_setup_remote_line1">Accessibility lets you remap</string>
-    <string name="settings_setup_remote_line2">buttons across apps.</string>
+    <string name="settings_setup_remote_line1">Configure button assignments</string>
+    <string name="settings_setup_remote_line2">later in Settings.</string>
     <string name="settings_setup_history_line1">Show Continue Watching</string>
     <string name="settings_setup_history_line2">on your Home screen.</string>
     <string name="settings_setup_deny">Do not allow</string>

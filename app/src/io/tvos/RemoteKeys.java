@@ -8,7 +8,7 @@ import android.util.Log;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 
-/** Global remote app-key handling through the enabled accessibility key filter. */
+/** Remote app-key handling through Home or the selected tvOS input method. */
 final class RemoteKeys {
     private RemoteKeys() {}
     private static final int KEY_YOUTUBE_TCL = 4065;

@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.widget.ArrayAdapter;
@@ -13,7 +12,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import io.tvos.remote.RemoteBindings;
 import io.tvos.remote.RemoteBindings.Binding;
-import io.tvos.remote.VolumeHoldStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -37,10 +35,8 @@ public class RemoteShortcutSettingsActivity extends Activity {
         list.setOnItemClickListener((p, v, at, id) -> {
             if (busy) return;
             if (at == 0) capture();
-            else if (at == 1) volumeMode();
-            else if (at == 2) grantVolume();
-            else if (at == 3) startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            else edit(at - 4);
+            else if (at == 1) RemoteInputMethod.choose(this);
+            else edit(at - 2);
         });
         setContentView(list); render();
     }
@@ -49,10 +45,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
     private void render() {
         List<String> rows = new ArrayList<>();
         rows.add(text(R.string.settings_remote_add));
-        rows.add(text(R.string.settings_remote_volume_method) + ": " + text(VolumeHoldStore.system(getFilesDir())
-                ? R.string.settings_remote_system_method : R.string.settings_remote_adb_method));
-        rows.add(text(R.string.settings_remote_grant_volume));
-        rows.add(text(R.string.settings_remote_accessibility));
+        rows.add(text(R.string.settings_remote_input));
         for (Binding b : bindings) rows.add(name(b) + " — " + text(b.global ? R.string.settings_remote_global : R.string.settings_remote_home));
         list.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, rows) {
             @Override public android.view.View getView(int at, android.view.View view, android.view.ViewGroup parent) {
@@ -178,32 +171,6 @@ public class RemoteShortcutSettingsActivity extends Activity {
                 if (!saved) { bindings.clear(); bindings.addAll(RemoteBindings.read(getFilesDir()));
                     Toast.makeText(this, text(R.string.settings_remote_save_failed), Toast.LENGTH_LONG).show(); }
                 render();
-            });
-        });
-    }
-    private void volumeMode() {
-        dialog(R.string.settings_remote_volume_method).setSingleChoiceItems(new String[] {text(R.string.settings_remote_adb_method), text(R.string.settings_remote_system_method)},
-                VolumeHoldStore.system(getFilesDir()) ? 1 : 0, (d, row) -> {
-                    try {
-                        VolumeHoldStore.setSystem(getFilesDir(), row == 1);
-                        sendBroadcast(new Intent(RemoteVolume.CHANGE).setPackage(getPackageName()));
-                    } catch (java.io.IOException error) { Toast.makeText(this, text(R.string.settings_remote_save_failed), Toast.LENGTH_LONG).show(); }
-                    d.dismiss(); render();
-                    if (row == 1) dialog(R.string.settings_remote_system_method).setMessage(text(R.string.settings_remote_system_help))
-                            .setPositiveButton(android.R.string.ok, null).show();
-                }).setNegativeButton(text(R.string.settings_remote_cancel), null).show();
-    }
-    private void grantVolume() {
-        busy = true;
-        io.execute(() -> {
-            try (Adb adb = Adb.connect(getApplicationContext(), 10000, null)) {
-                adb.shell("pm grant io.tvos android.permission.SET_VOLUME_KEY_LONG_PRESS_LISTENER");
-            } catch (java.io.IOException | RuntimeException error) { AppLog.w("Volume listener grant unavailable"); }
-            runOnUiThread(() -> {
-                busy = false; if (!resumed || isFinishing() || isDestroyed()) return;
-                boolean granted = checkSelfPermission(SystemVolume.PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
-                sendBroadcast(new Intent(RemoteVolume.CHANGE).setPackage(getPackageName()));
-                Toast.makeText(this, text(granted ? R.string.settings_remote_granted : R.string.settings_remote_grant_failed), Toast.LENGTH_LONG).show();
             });
         });
     }

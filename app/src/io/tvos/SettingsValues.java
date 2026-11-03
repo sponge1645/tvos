@@ -47,6 +47,15 @@ final class SettingsValues {
     }
 
     private String tvTarget, tvLabel, tvLanguage;
+    private String automaticTvLabel() {
+        try {
+            android.content.Intent intent = HomeApps.automaticLiveTv(activity);
+            android.content.pm.ResolveInfo info = intent == null ? null : activity.getPackageManager().resolveActivity(intent, 0);
+            if (info != null && info.activityInfo != null)
+                return String.valueOf(info.activityInfo.applicationInfo.loadLabel(activity.getPackageManager()));
+        } catch (RuntimeException unavailable) { AppLog.w("Automatic TV label unavailable"); }
+        return AppStrings.get(R.string.settings_tv_unselected);
+    }
     private String tvProviderLabel(String target) {
         String language = AppLanguage.current().code;
         if (target.equals(tvTarget) && language.equals(tvLanguage)) return tvLabel;
@@ -72,7 +81,7 @@ final class SettingsValues {
             v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
             v[1] = onOff(localPrefs().getBoolean("navigation_clicks", true));
             String target = localPrefs().getString("live_tv_app", "");
-            v[2] = target.isEmpty() ? AppStrings.get(R.string.settings_tv_unselected) : tvProviderLabel(target);
+            v[2] = target.isEmpty() || "automatic".equals(target) ? automaticTvLabel() : tvProviderLabel(target);
         } else if (screen == HOME_SCREEN) {
             v[Prefs.homeContinue() ? 1 : 0] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == MOVIE_SERVICE) {
@@ -191,7 +200,7 @@ final class SettingsValues {
 
     static String[] keyLabels() {
         return new String[] {AppStrings.get(R.string.settings_netflix_button), AppStrings.get(R.string.settings_youtube_button),
-                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_volume_hold), AppStrings.get(R.string.settings_remote_shortcuts)};
+                AppStrings.get(R.string.settings_prime_video_button), AppStrings.get(R.string.settings_tcl_channel_button), AppStrings.get(R.string.settings_mi_button), AppStrings.get(R.string.settings_remote_input), AppStrings.get(R.string.settings_remote_shortcuts)};
     }
 
     static String[] keyValues(List<String> appPkgs, List<String> appLabels) {
@@ -202,12 +211,7 @@ final class SettingsValues {
             v[i] = pkg != null && !pkg.isEmpty() && at >= 0 ? appLabels.get(at)
                     : AppStrings.get(R.string.settings_not_configured);
         }
-        String state = Prefs.volumeHoldStatus();
-        v[Prefs.KEYS.length] = !Prefs.volumeHold() ? AppStrings.get(R.string.settings_off)
-                : "READY".equals(state) ? AppStrings.get(R.string.settings_on)
-                : "ERROR".equals(state) ? AppStrings.get(R.string.settings_volume_unavailable)
-                : "STARTING".equals(state) ? AppStrings.get(R.string.settings_volume_starting)
-                : AppStrings.get(R.string.settings_volume_waiting);
+        v[Prefs.KEYS.length] = "";
         v[Prefs.KEYS.length + 1] = AppStrings.get(R.string.settings_remote_taps);
         return v;
     }

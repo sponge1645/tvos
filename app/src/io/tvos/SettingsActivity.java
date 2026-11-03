@@ -54,13 +54,6 @@ public class SettingsActivity extends Activity {
     private SettingsView view;
     private SettingsPreview preview;
     private HomeUpdatePrompt automaticUpdates;
-    private final BroadcastReceiver volumeStatus = new BroadcastReceiver() {
-        @Override public void onReceive(Context context, Intent intent) {
-            Prefs.reloadVolumeHold();
-            if (view != null) view.invalidate();
-        }
-    };
-
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         RegionVpnRecovery.request(this);
@@ -76,10 +69,6 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        IntentFilter volumeFilter = new IntentFilter(RemoteVolume.STATUS);
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(volumeStatus, volumeFilter, RemoteVolume.PERMISSION, null, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(volumeStatus, volumeFilter, RemoteVolume.PERMISSION, null);
-        Prefs.reloadVolumeHold();
         view.resume();
         SetupGate.route(this);
         if (automaticUpdates != null) automaticUpdates.resume();
@@ -98,7 +87,6 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onPause() {
         if (automaticUpdates != null) automaticUpdates.pause();
-        unregisterReceiver(volumeStatus);
         preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
         super.onPause();
@@ -729,18 +717,9 @@ public class SettingsActivity extends Activity {
             return SettingsActions.canAdjust(screen, focus, buttonEditor.size());
         }
 
-        private void toggleVolumeHold() {
-            Context c = getContext();
-            if (Prefs.setVolumeHold(!Prefs.volumeHold())) {
-                c.sendBroadcast(new Intent(RemoteVolume.CHANGE).setPackage(c.getPackageName()));
-            }
-            invalidate();
-        }
-
         private void adjustMenu(int dir) {
             switch (SettingsActions.adjustment(screen, focus)) {
                 case HOME: adjust(dir); return;
-                case VOLUME_HOLD: toggleVolumeHold(); return;
                 case WEATHER: preferenceEditor.cycleWeather(dir); return;
                 case TEMPERATURE: preferenceEditor.temperature(dir); return;
                 case DATE: toggleDateTime(); return;
@@ -892,9 +871,10 @@ public class SettingsActivity extends Activity {
                     tvProviderLoading = false;
                     if (!running || screen != MEDIA) return;
                     pickFor = PICK_TV; pickLabels.clear(); choiceKeys.clear();
-                    choiceKeys.add(""); pickLabels.add(AppStrings.get(R.string.settings_tv_unselected));
+                    choiceKeys.add("automatic"); pickLabels.add(AppStrings.get(R.string.settings_automatic));
                     for (String[] target : found) { choiceKeys.add(target[0]); pickLabels.add(target[1]); }
-                    pickCurrent = choiceKeys.indexOf(localPrefs().getString("live_tv_app", ""));
+                    String selected = localPrefs().getString("live_tv_app", "");
+                    pickCurrent = choiceKeys.indexOf(selected.isEmpty() ? "automatic" : selected);
                     focus = listWindow.openPicker(pickCurrent, pickLabels.size());
                     listScroll.snap(listWindow.offset()); screen = PICKER;
                     invalidate(); spoken.focusMoved();
@@ -944,7 +924,7 @@ public class SettingsActivity extends Activity {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 setApprovedRowRect(i);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
-                boolean chevron = keys ? i != REMOTE_VOLUME_ROW : (settingsGroup != SYSTEM && i == CITY_ROW);
+                boolean chevron = keys ? true : (settingsGroup != SYSTEM && i == CITY_ROW);
                 row.marker = chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
                 row.markerAfterValue = true;
@@ -1016,14 +996,13 @@ public class SettingsActivity extends Activity {
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
-                case VOLUME_HOLD: toggleVolumeHold(); invalidate(); return;
+                case INPUT_METHOD: RemoteInputMethod.choose(activity); return;
                 case ADVANCED_KEYS: activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class)); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;
                 case HOME_ADJUST: adjust(1); invalidate(); return;
                 case AIRPLAY: launchAirPlay(); return;
                 case REMOTES:
-                    HomeMode.ensureRemoteService(c, 0);
                     loadApps(() -> { screen = REMOTE_KEYS; focus = 0; });
                     break;
                 case SHELF_EDITOR: openShelfEditor(); return;

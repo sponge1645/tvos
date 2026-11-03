@@ -25,7 +25,7 @@ public class SetupActivity extends Activity {
     private UiRequest request;
     private int page, epoch;
     private volatile boolean active;
-    private boolean permissionFlow, pendingAccessibility;
+    private boolean permissionFlow, pendingPermissions;
     private SetupLanguageView regionPicker;
     private String detectedCountry = "";
     private SetupWelcomeView welcome;
@@ -67,12 +67,13 @@ public class SetupActivity extends Activity {
         page = SetupState.step(setup().getInt("step", 0));
 
         tvPackage = settings().getString("live_tv_app", "");
+        if ("automatic".equals(tvPackage)) tvPackage = "";
 
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent); setIntent(intent);
         if (intent.getBooleanExtra("replay", false)) {
-            intent.removeExtra("replay"); permissionFlow = pendingAccessibility = false; page = SetupState.HELLO; SetupGate.restart();
+            intent.removeExtra("replay"); permissionFlow = pendingPermissions = false; page = SetupState.HELLO; SetupGate.restart();
             setup().edit().putBoolean("complete", false).putBoolean("started", true).putInt("step", page).remove("home_request").apply();
             if (active) render();
         }
@@ -82,7 +83,7 @@ public class SetupActivity extends Activity {
             setup().edit().remove("home_request").apply();
             if (HomeDefault.selected(this)) { skip(); return; }
         }
-        render(); if (pendingAccessibility) main.post(this::continuePermissionFlow); }
+        render(); if (pendingPermissions) main.post(this::continuePermissionFlow); }
     @Override protected void onPause() { homeMode.stop(); active = false; transitionEpoch++; transitioning = false; leaveScene = null; citySearch.cancel(); dismissCityDialog(); cancelWork(); stopHello(); super.onPause(); }
     @Override protected void onDestroy() { citySearch.cancel(); dismissCityDialog(); cancelWork(); io.shutdownNow(); super.onDestroy(); }
     private void stopHello() { if (welcome != null) { welcome.stop(); welcome = null; } }
@@ -265,12 +266,12 @@ public class SetupActivity extends Activity {
         }).setNegativeButton(text(R.string.settings_setup_back), null).show();
     }
     private void next() {
-        if (page == SetupState.TV) Prefs.setLiveTvApp(tvPackage);
+        if (page == SetupState.TV) Prefs.setLiveTvApp(tvPackage.isEmpty() ? "automatic" : tvPackage);
         skip();
     }
     private void skip() {
         if (transitioning) return;
-        permissionFlow = pendingAccessibility = false;
+        permissionFlow = pendingPermissions = false;
         cancelWork();
         if (page == SetupState.HOME) {
             int token = ++transitionEpoch;
@@ -300,7 +301,7 @@ public class SetupActivity extends Activity {
     @SuppressWarnings("deprecation") // Android 9-compatible TV Back handling.
     @Override public void onBackPressed() {
         if (transitioning) return;
-        permissionFlow = pendingAccessibility = false;
+        permissionFlow = pendingPermissions = false;
         if (page > SetupState.HELLO) navigate(SetupState.previous(page));
         else { SetupGate.defer(); finish(); }
     }
@@ -320,38 +321,24 @@ public class SetupActivity extends Activity {
         String[] pending = SetupPermissionPlan.runtime(android.os.Build.VERSION.SDK_INT,
                 granted(Manifest.permission.ACCESS_FINE_LOCATION),
                 tvRuntime, granted("android.permission.READ_TV_LISTINGS"));
-        if (pending.length == 0) { accessibilityPermission(); return; }
+        if (pending.length == 0) { permissionsComplete(); return; }
         try { requestPermissions(pending, 5042); }
-        catch (RuntimeException unavailable) { accessibilityPermission(); }
+        catch (RuntimeException unavailable) { permissionsComplete(); }
     }
-    @SuppressWarnings("deprecation") // Platform result API supports Android 9 without AndroidX.
-    private void accessibilityPermission() {
-        if (!active || page != SetupState.WIFI) { permissionFlow = false; return; }
-        android.content.ComponentName wanted = new android.content.ComponentName(this, RemoteKeyService.class);
-        String services = null;
-        try { services = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES); }
-        catch (RuntimeException unavailable) { /* Still offer the system accessibility screen. */ }
-        if (services != null) for (String service : services.split(":")) {
-            if (wanted.equals(android.content.ComponentName.unflattenFromString(service))) { permissionFlow = false; skip(); return; }
-        }
-        try { startActivityForResult(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS), 5043); }
-        catch (RuntimeException unavailable) { permissionFlow = false; skip(); }
-    }
-    @SuppressWarnings("deprecation") // Paired with the Android 9-compatible settings request.
-    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 5043 && page == SetupState.WIFI) { permissionFlow = false; skip(); }
+    private void permissionsComplete() {
+        permissionFlow = false;
+        if (active && page == SetupState.WIFI) skip();
     }
     private void continuePermissionFlow() {
-        if (active && pendingAccessibility && page == SetupState.WIFI && !isFinishing()) {
-            pendingAccessibility = false; accessibilityPermission();
+        if (active && pendingPermissions && page == SetupState.WIFI && !isFinishing()) {
+            pendingPermissions = false; permissionsComplete();
         }
     }
     @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(code, permissions, results);
         if (code == 5042 && page == SetupState.WIFI) {
             // Runtime callbacks may arrive before onResume after the system dialog.
-            pendingAccessibility = true; main.post(this::continuePermissionFlow);
+            pendingPermissions = true; main.post(this::continuePermissionFlow);
         }
     }
 }

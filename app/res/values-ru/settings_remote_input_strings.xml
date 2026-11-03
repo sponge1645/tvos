@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_remote_input" formatted="false">Ввод и кнопки tvOS</string>
+    <string name="settings_remote_input_enable" formatted="false">Включить</string>
+    <string name="settings_remote_input_choose" formatted="false">Выбрать</string>
+    <string name="settings_remote_input_help" formatted="false">Включите tvOS в настройках клавиатур, затем выберите текущей клавиатурой. Назначения работают без специальных возможностей. Громкостью управляет телевизор. Кнопки, перехваченные прошивкой или приложением, могут быть недоступны. Этот режим заменяет текущую клавиатуру; кнопка клавиатуры позволяет переключиться обратно. Если раньше включали специальные возможности tvOS ради кнопок, отключите их.</string>
+</resources>

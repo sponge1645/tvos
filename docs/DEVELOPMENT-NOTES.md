@@ -1,5 +1,9 @@
 # Deferred work
 
+> Remote/volume sections below describe earlier implementations. The current branch
+> removes both volume helpers and accessibility key filtering; see
+> [Remote assignments](REMOTE-SHORTCUTS.md) for the replacement input-method path.
+
 ## Volume-key hold with accessibility enabled — 2026-11-02
 
 The user reports that holding volume +/− changes volume only once while tvOS is

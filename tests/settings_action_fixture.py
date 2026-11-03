@@ -57,7 +57,7 @@ public class CLASSNAME {
  static class Spoken {void focusMoved(){note("spoken");}}final Spoken spoken=new Spoken();
  CLASSNAME(){for(int i=0;i<20;i++){appPkgs.add("app"+i);cities.add(new String[]{"city","Name","1","2","3","Zone"});}rebuildMenuButtonRows(-1);events.clear();Prefs.shelf=null;Prefs.theme="auto";Prefs.language="en";Prefs.unit="auto";Prefs.h24=false;Prefs.auto=false;}
  int settingIndex(){return selectedSetting;}boolean busy(){return busyFlag;}boolean freeActive(){return freeFlag;}boolean vpnTopEnabled(){return vpnFlag;}
- void toggleVolumeHold(){events.add("volume-hold");}void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
+ static class RemoteInputMethod {static void choose(Activity a){note("input-method");}}void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
  void toggleCategory(){note("category");}void toggleShelfApp(){note("shelf-toggle");}void adjust(int d){note("adjust:"+d);}
  void launchAirPlay(){note("airplay");}void loadApps(Runnable ready){note("load-apps");ready.run();}void openTvSettings(){note("tv-settings");}
  void openPicker(int p){pickFor=p;screen=PICKER;focus=0;note("picker:"+p);}

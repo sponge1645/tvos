@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_remote_input" formatted="false">tvOS button input</string>
+    <string name="settings_remote_input_enable" formatted="false">Enable</string>
+    <string name="settings_remote_input_choose" formatted="false">Select</string>
+    <string name="settings_remote_input_help" formatted="false">Enable tvOS in the keyboard settings, then select it as the current keyboard. Button assignments will work without accessibility. Volume remains controlled by the TV. Buttons intercepted by firmware or apps may be unavailable. This replaces the current keyboard; use the keyboard key to switch back. Disable the old tvOS accessibility service if it was enabled for buttons.</string>
+</resources>

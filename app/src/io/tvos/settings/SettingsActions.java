@@ -8,7 +8,7 @@ public final class SettingsActions {
 
     public enum Action {
         NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_COUNTRY, SELECT_TV, SELECT_LANGUAGE, TV_PICKER, OPEN_REGION, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
-        KEY_PICKER, ADVANCED_KEYS, VOLUME_HOLD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
+        KEY_PICKER, ADVANCED_KEYS, INPUT_METHOD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
         BUTTON_EDITOR, HOME_CHOICE, TV_SETTINGS, RESET_CONFIRM, RESTART,
@@ -25,7 +25,7 @@ public final class SettingsActions {
 
     public enum Adjustment {
         NONE, HOME, WEATHER, DATE, DREAM_SOURCE, DREAM_CLOCK, DREAM_LOCATION, DREAM_WEATHER,
-        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, TEMPERATURE, CLICKS, VOLUME_HOLD
+        AUTO_UPDATE, TRANSPARENCY, MOTION, REGION_MODE, MENU_BUTTON, GENERAL, TEMPERATURE, CLICKS
     }
 
     public static boolean canAdjust(int screen, int row, int buttonCount) {
@@ -33,7 +33,7 @@ public final class SettingsActions {
             case HOME_SETTINGS: case DATE_TIME: return true;
             case WEATHER: return row != 1;
             case TOP_PANEL: return row == 2;
-            case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW;
+            case REMOTE_KEYS: return false;
             case MEDIA: return row == 1;
             case GENERAL: return row == 1 || row == 4;
             case SCREENSAVER: return row >= 0 && row < 4;
@@ -48,7 +48,7 @@ public final class SettingsActions {
     public static Adjustment adjustment(int screen, int row) {
         switch (screen) {
             case HOME_SETTINGS: return Adjustment.HOME;
-            case REMOTE_KEYS: return row == REMOTE_VOLUME_ROW ? Adjustment.VOLUME_HOLD : Adjustment.NONE;
+            case REMOTE_KEYS: return Adjustment.NONE;
             case WEATHER: return row == 2 ? Adjustment.TEMPERATURE : row == 0 ? Adjustment.WEATHER : Adjustment.NONE;
             case TOP_PANEL: return row == 2 ? Adjustment.DATE : Adjustment.NONE;
             case DATE_TIME: return Adjustment.DATE;
@@ -79,7 +79,7 @@ public final class SettingsActions {
             case CATEGORY_EDIT: return Action.CATEGORY;
             case SHELF_EDIT: return Action.SHELF;
             case REMOTE_KEYS: return row == REMOTE_ADVANCED_ROW ? Action.ADVANCED_KEYS
-                    : row == REMOTE_VOLUME_ROW ? Action.VOLUME_HOLD : Action.KEY_PICKER;
+                    : row == REMOTE_INPUT_ROW ? Action.INPUT_METHOD : Action.KEY_PICKER;
             case HOME_SETTINGS: return citySetting ? Action.CITY_PICKER : Action.HOME_ADJUST;
             case MAIN:
                 switch (row) {

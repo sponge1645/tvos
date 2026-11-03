@@ -1,5 +1,9 @@
 # Final audit — 1.1.1 (1B159)
 
+> Remote/volume sections below describe earlier implementations. The current branch
+> removes both volume helpers and accessibility key filtering; see
+> [Remote assignments](REMOTE-SHORTCUTS.md) for the replacement input-method path.
+
 ## Changes
 
 - Fix volume listener recovery after AccessibilityService.onInterrupt: restart

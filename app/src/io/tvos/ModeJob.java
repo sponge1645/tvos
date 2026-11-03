@@ -28,7 +28,7 @@ public class ModeJob extends JobService {
                     case REVERT: HomeMode.revertHomeNow(app); break;
                     case MEMORY: HomeMode.measureMemoryNow(app, mode); break;
                     case VPN_RESTORE: RegionVpnRecovery.recover(app); break;
-                    case REMOTE: HomeMode.ensureRemoteServiceNow(app); break;
+                    case REMOTE: break; // Legacy scheduled job; assignments no longer enable accessibility.
                     default: break;
                 }
             } catch (Throwable t) {

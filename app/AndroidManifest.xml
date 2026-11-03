@@ -4,8 +4,8 @@
     android:versionCode="10"
     android:versionName="1.1.2">
 
-    <permission android:name="io.tvos.permission.VOLUME_CONTROL" android:protectionLevel="signature" />
-    <uses-permission android:name="io.tvos.permission.VOLUME_CONTROL" />
+    <permission android:name="io.tvos.permission.REMOTE_CONTROL" android:protectionLevel="signature" />
+    <uses-permission android:name="io.tvos.permission.REMOTE_CONTROL" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -53,7 +53,6 @@
 
         <uses-permission android:name="yandex.tv.permission.ACCESS_TV_SOURCE" />
 
-    <uses-permission android:name="android.permission.SET_VOLUME_KEY_LONG_PRESS_LISTENER" />
 
     <application
         android:name=".App"
@@ -161,8 +160,13 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
-        <!-- The remote's app buttons from inside any app (Settings > Remote Buttons). Its own process: the system waits for it on
-             every key, so the home screen must never be able to slow it down. -->
+        <!-- Input method for button assignments; optional accessibility component only guards CHiQ cold boot. -->
+        <service android:name=".RemoteInputMethod" android:process=":keys"
+            android:exported="true" android:label="@string/settings_remote_input"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/remote_input_method" />
+        </service>
         <service
             android:name=".RemoteKeyService"
             android:process=":keys"

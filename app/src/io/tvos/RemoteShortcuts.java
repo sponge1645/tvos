@@ -39,8 +39,8 @@ final class RemoteShortcuts implements AutoCloseable {
         context = c; this.globalOnly = globalOnly; this.original = original;
         bindings = RemoteBindings.read(c.getFilesDir());
         IntentFilter filter = new IntentFilter(CHANGE); filter.addAction(Intent.ACTION_SCREEN_OFF);
-        if (Build.VERSION.SDK_INT >= 33) c.registerReceiver(changes, filter, RemoteVolume.PERMISSION, null, Context.RECEIVER_NOT_EXPORTED);
-        else c.registerReceiver(changes, filter, RemoteVolume.PERMISSION, null);
+        if (Build.VERSION.SDK_INT >= 33) c.registerReceiver(changes, filter, "io.tvos.permission.REMOTE_CONTROL", null, Context.RECEIVER_NOT_EXPORTED);
+        else c.registerReceiver(changes, filter, "io.tvos.permission.REMOTE_CONTROL", null);
     }
     static String device(KeyEvent e) { InputDevice d = e.getDevice(); return d == null ? "" : d.getName(); }
     private Binding find(KeyEvent e) {

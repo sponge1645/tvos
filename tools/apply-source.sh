@@ -65,6 +65,19 @@ for RETIRED_FILE in \
   app/src/io/tvos/SettingsBackground.java \
   app/src/io/tvos/SettingsPopupBackdrop.java \
   app/src/io/tvos/ScreensaverWindow.java \
+  app/src/io/tvos/RemoteVolume.java \
+  app/src/io/tvos/SystemVolume.java \
+  app/src/io/tvos/remote/VolumeHoldStore.java \
+  app/src/io/tvos/remote/VolumeHoldRunner.java \
+  tools/test-volume-hold-device.py \
+  tools/volume-hold/VolumeHoldDevice.java \
+  tests/test_remote_volume.py \
+  tests/test_volume_binding.py \
+  tests/test_system_volume.py \
+  tests/test_volume_adb_stream.py \
+  tests/integration_volume_helper.py \
+  tests/test_volume_device_helper.py \
+  tests/test_volume_runtime.py \
   tools/test-volume-hold.py tests/test_volume_hold_prototype.py; do
   rm -f -- "$TARGET/$RETIRED_FILE"
 done

@@ -74,6 +74,7 @@ final class LiveTvTargets {
     }
     @SuppressWarnings("deprecation") // Package component flags support Android 9.
     static Intent intent(Context context, String key) {
+        if ("automatic".equals(key)) return HomeApps.automaticLiveTv(context);
         PackageManager pm = context.getPackageManager();
         try {
             if (key.startsWith(ACTIVITY)) {

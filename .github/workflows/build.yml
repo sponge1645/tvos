@@ -36,8 +36,6 @@ jobs:
         run: |
           bash build.sh
           python3 tests/integration_signing_rotation.py
-      - name: Verify bundled volume helper
-        run: python3 tests/integration_volume_helper.py
       - name: Verify compiled UI strings
         env:
           ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
@@ -60,7 +58,7 @@ jobs:
           python3 tests/test_settings_list_window.py
           python3 tests/test_settings_preference_editor.py
 
-  jdk25-volume:
+  jdk25-remote:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -71,5 +69,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Strict volume-helper regression on JDK 25
-        run: python3 tests/test_volume_device_helper.py
+      - name: Remote input regressions on JDK 25
+        run: |
+          python3 tests/test_remote_input_method.py
+          python3 tests/test_remote_taps.py

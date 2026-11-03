@@ -127,7 +127,7 @@ final class SettingsContent {
                 break;
             case REMOTE_KEYS:
                 info = AppStrings.get(focus == REMOTE_ADVANCED_ROW ? R.string.settings_remote_gesture_help
-                        : focus == REMOTE_VOLUME_ROW ? R.string.settings_help_volume_hold : R.string.settings_help_remote, language);
+                        : focus == REMOTE_INPUT_ROW ? R.string.settings_remote_input_help : R.string.settings_help_remote, language);
                 break;
         }
         return info;
