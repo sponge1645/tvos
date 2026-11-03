@@ -77,7 +77,7 @@ sources = {
             static void close(float a,float b){check(Math.abs(a-b)<.01f,a+" != "+b);}
             public static void main(String[] args)throws Exception{
                 File assets=new File(args[0]);Context c=new Context(assets);File symbols=new File(assets,"symbols");
-                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg")&&!name.startsWith("wifi"));
+                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg")&&!name.startsWith("wifi")&&!name.startsWith("airport_"));
                 check(files.length==32,"32 reference-matched SVG symbols");double worst=0;
                 for(File file:files){String name=file.getName().replace(".svg","");SvgSymbol icon;
                     try(InputStream in=new FileInputStream(file)){icon=SvgSymbol.read(in);}
@@ -107,6 +107,17 @@ sources = {
                 check(device.paths>0&&device.depth()==0,"device symbol renders as native paths");
                 close(Symbols.aspect(c,"apple_tv_device"),1f);
                 check(BitmapFactory.decodes==0,"all reference symbols loaded as SVG, zero PNG decoding");
+                for(int level=0;level<=5;level++){
+                    SvgSymbol dots;
+                    try(InputStream in=new FileInputStream(new File(symbols,"airport_"+level+".svg"))){dots=SvgSymbol.read(in);}
+                    Canvas out=new Canvas(120,24);dots.draw(out,0,0,120,24,0xFFFFFFFF,new Paint(1));
+                    for(int i=0;i<5;i++){
+                        int center=out.image.getRGB(12+24*i,12)>>>24;
+                        check(i<level?center>250:center==0,"filled versus hollow Wi-Fi dot "+level+":"+i);
+                        check((out.image.getRGB(21+24*i,12)>>>24)>100,"visible outline on every Wi-Fi dot");
+                    }
+                }
+
                 check(Bitmap.allocations==0,"ordinary vector drawing does not allocate bitmap masks");
                 close(Symbols.width(c,"home",40),37.5f);close(Symbols.width(c,"wifi",36),38);
                 int opens=c.getAssets().count();for(int i=0;i<100;i++)Symbols.draw(c,new Canvas(100,100),"wifi",50,50,36,0xaaffffff);

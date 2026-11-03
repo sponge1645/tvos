@@ -6,6 +6,9 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 harness='''package io.tvos;import android.graphics.*;import io.tvos.settings.*;import io.tvos.settings.SettingsListRenderer.Kind;import io.tvos.settings.SettingsListRenderer.Marker;import static io.tvos.settings.SettingsScreen.*;import java.util.*;
 public class BindingHarness {
+ Object getContext(){return this;}boolean lightSettings(){return true;}
+ static class Symbols {static float width(Object c,String name,float size){return size;}static void draw(Object context,Canvas c,String name,float x,float y,float size,int color){}}
+
  boolean running=true,reduced;int frames;boolean localFlag(String key){return reduced;}void postInvalidateDelayed(long d){check(d==80,"spinner frame delay");frames++;}
  int screen,focus,settingsGroup,pickCurrent;float k=1;static final int CITY_ROW=4;
  static class Position {float value;}final Position mainScroll=new Position(),listScroll=new Position();final Position[] pop=new Position[12];{for(int i=0;i<12;i++)pop[i]=new Position();}

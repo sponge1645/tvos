@@ -18,8 +18,7 @@ public class Test extends Base {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  public static void main(String[] args){Test t=new Test();KeyEvent e=new KeyEvent();
   t.shortcuts.handles=true;check(t.dispatchKeyEvent(e)&&log.equals(Arrays.asList("shortcut")),"global action consumed before Settings navigation");
-  log.clear();t.shortcuts.handles=false;RemoteKeys.handles=true;check(t.dispatchKeyEvent(e)&&log.equals(Arrays.asList("shortcut","legacy")),"vendor app keys also work in Settings");
-  log.clear();RemoteKeys.handles=false;t.view.handles=true;check(t.dispatchKeyEvent(e)&&log.equals(Arrays.asList("shortcut","legacy","preview","view")),"unassigned navigation reaches Settings once");
+  log.clear();t.shortcuts.handles=false;t.view.handles=true;check(t.dispatchKeyEvent(e)&&log.equals(Arrays.asList("shortcut","preview","view")),"unassigned navigation reaches Settings without retired presets");
   log.clear();t.onWindowFocusChanged(false);check(log.equals(Arrays.asList("cancel")),"dialog focus loss cancels pending taps");
   log.clear();t.onPause();check(log.indexOf("cancel")<log.indexOf("pause"),"pause cancels before view teardown");
   log.clear();t.onDestroy();check(t.shortcuts==null&&log.equals(Arrays.asList("close")),"destroy unregisters adapter");

@@ -191,7 +191,7 @@ final class VideoDream extends FrameLayout implements SurfaceHolder.Callback {
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
 
     private void loadPlaylist() {
-        aerialMode = "apple".equals(settings.getString("video_dream_source", "google"));
+        aerialMode = "apple".equals(settings.getString("video_dream_source", "apple"));
         // Google and National Geographic use DreamView's photo catalogs.
     }
 

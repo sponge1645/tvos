@@ -107,7 +107,7 @@ public class SettingsActivity extends Activity {
         super.onDestroy();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
-        if (shortcuts != null && shortcuts.onKey(event) || RemoteKeys.onKey(this, event)) return true;
+        if (shortcuts != null && shortcuts.onKey(event)) return true;
         if (preview.onKey(event)) return true;
         if (!preview.active() && view.onKey(event)) return true;
         return super.dispatchKeyEvent(event);
@@ -537,7 +537,15 @@ public class SettingsActivity extends Activity {
                 row.showValue = screen != MOVIE_SERVICE && screen != LANGUAGE;
                 if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.SERVICE_CHECK;
                 if (screen == LANGUAGE && i == ("ru".equals(Prefs.language()) ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
+                boolean signal = screen == ABOUT && i == 8 && values[i] != null && values[i].matches("[0-5]/5");
+                if (signal) row.showValue = false;
                 drawRow(c);
+                if (signal) {
+                    String icon = "airport_" + values[i].charAt(0);
+                    float size = 150 * k, width = Symbols.width(getContext(), icon, size);
+                    Symbols.draw(getContext(), c, icon, rowRect.right - 30 * k - width / 2,
+                            rowRect.centerY(), size, SettingsListRenderer.valueInk(lightSettings(), 0));
+                }
             }
         }
 
@@ -560,9 +568,9 @@ public class SettingsActivity extends Activity {
             String info = screen == WEATHER && focus == 0 ? AppStrings.get(
                     preferenceEditor.weatherVisible(true) && preferenceEditor.weatherVisible(false) ? R.string.settings_weather_both_help
                     : preferenceEditor.weatherVisible(false) ? R.string.settings_weather_bottom_help : R.string.settings_weather_home_help)
-                    : screen == UPDATES ? updateDetailsText()
+                    : screen == UPDATES && focus == 0 ? updateDetailsText()
                     : SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size());
-            if (screen == UPDATES && updateProgress.active()) {
+            if (screen == UPDATES && focus == 0 && updateProgress.active()) {
                 updateProgress.draw(c, k, lightSettings());
                 return;
             }

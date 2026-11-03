@@ -161,7 +161,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         this.settings = settings;
         weatherBadge = new ScreensaverWeather(c);
         data = HomeData.get(c);
-        String source = settings.getString("video_dream_source", "google");
+        String source = settings.getString("video_dream_source", "apple");
         gallery = new GalleryPhotos(c, ("na".equals(source) || "nasa".equals(source)) ? "na" : "google");
         Shaders.dream(scene.palette);
         scene.setMotion(0.4f, 0.32f);

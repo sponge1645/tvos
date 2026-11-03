@@ -91,7 +91,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
     private void goBack() { if (busy) return; click.back(); if (back == null) finish(); else back.run(); }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (capturing) return learn(event);
-        if (shortcuts != null && shortcuts.onKey(event) || RemoteKeys.onKey(this, event)) return true;
+        if (shortcuts != null && shortcuts.onKey(event)) return true;
         if (input.onKey(event, false, new SettingsRemoteInput.Actions() {
             @Override public void vertical(int direction, boolean down, boolean first) { if (down && !busy) view.move(direction); }
             @Override public void horizontal(int direction, boolean down, boolean first) { }
@@ -104,7 +104,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         List<Row> rows = new ArrayList<>();
         for (int i = 0; i < bindings.size(); i++) {
             final int at = i; Binding b = bindings.get(i);
-            String value = b.actions()[1].isEmpty() && b.actions()[2].isEmpty()
+            String value = unselected(b.actions()[1]) && unselected(b.actions()[2])
                     ? label(b.actions()[0]) : text(R.string.remote_multiple);
             rows.add(row(name(b), value, () -> edit(at)));
         }
@@ -112,6 +112,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         rows.add(row(R.string.remote_input_options, this::connection));
         show(text(R.string.remote_buttons), text(R.string.remote_root_hint), rows, null, 0);
     }
+    private static boolean unselected(String action) { return action.isEmpty() || "none".equals(action); }
     private String name(Binding b) {
         if (RemoteBindings.ok(b.code)) return "OK";
         if (b.scan == 400 && "Xiaomi RC".equalsIgnoreCase(b.device)) return "MI";
@@ -162,7 +163,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         for (int i = 0; i < bindings.size(); i++) if (bindings.get(i).matches(code, event.getScanCode(), device)) { edit(i); return true; }
         if (bindings.size() >= RemoteBindings.MAX) { message(R.string.remote_limit); return true; }
         bindings.add(new Binding(code, event.getScanCode(), device, !RemoteBindings.ok(code),
-                new String[]{RemoteBindings.ok(code) ? "default" : "none", "", ""}));
+                new String[]{RemoteBindings.ok(code) ? "default" : "", "", ""}));
         int at = bindings.size() - 1; capturing = false; save(() -> edit(at)); return true;
     }
     private void edit(int at) {
@@ -185,12 +186,10 @@ public class RemoteShortcutSettingsActivity extends Activity {
         show(text(R.string.remote_works), RemoteBindings.ok(b.code) ? text(R.string.settings_remote_ok_home) : "", rows, () -> edit(at), b.global ? 1 : 0);
     }
     private void delete(int at) {
-        List<Row> rows = new ArrayList<>();
-        rows.add(row(R.string.settings_remote_delete, () -> { bindings.remove(at); save(this::root); }));
-        rows.add(row(R.string.settings_remote_cancel, () -> edit(at)));
-        show(text(R.string.remote_delete_title), "", rows, () -> edit(at), 1);
+        if (at < 0 || at >= bindings.size() || busy) return;
+        bindings.remove(at); save(this::root);
     }
-    private static final String[] ACTIONS = {"none", "vpn", "settings", "play", "next", "previous", "mute"};
+    private static final String[] ACTIONS = {"vpn", "settings", "play", "next", "previous", "mute"};
     private String label(String action) {
         switch (action) {
             case "default": return text(R.string.settings_remote_original);
@@ -212,11 +211,12 @@ public class RemoteShortcutSettingsActivity extends Activity {
     private void actions(int at, int tap) {
         Binding b = bindings.get(at); List<Row> rows = new ArrayList<>(); List<String> ids = new ArrayList<>();
         if (tap == 0 && !b.global && RemoteBindings.ok(b.code)) ids.add("default");
-        if (tap > 0) ids.add("");
+        ids.add("");
         java.util.Collections.addAll(ids, ACTIONS);
-        for (String id : ids) rows.add(new Row(label(id), "", id.equals(b.actions()[tap]), () -> assign(at, tap, id)));
+        String assigned = "none".equals(b.actions()[tap]) ? "" : b.actions()[tap];
+        for (String id : ids) rows.add(new Row(label(id), "", id.equals(assigned), () -> assign(at, tap, id)));
         rows.add(row(R.string.settings_remote_app, () -> apps(pkg -> assign(at, tap, "app:" + pkg), () -> actions(at, tap), false)));
-        show(text(R.string.settings_remote_action), "", rows, () -> edit(at), Math.max(0, ids.indexOf(b.actions()[tap])));
+        show(text(R.string.settings_remote_action), "", rows, () -> edit(at), Math.max(0, ids.indexOf(assigned)));
     }
     private void assign(int at, int tap, String action) {
         Binding b = bindings.get(at); String[] actions = b.actions(); actions[tap] = action;
@@ -227,7 +227,6 @@ public class RemoteShortcutSettingsActivity extends Activity {
         rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
         rows.add(row(R.string.remote_select, () -> ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker()));
         rows.add(row(R.string.settings_remote_text_keyboard, this::keyboards));
-        rows.add(row(R.string.remote_app_buttons, this::legacy));
         show(text(R.string.remote_input_options), text(R.string.remote_connection_hint), rows, this::root, 0);
     }
     private void keyboards() {
@@ -245,15 +244,6 @@ public class RemoteShortcutSettingsActivity extends Activity {
                 }));
         if (rows.isEmpty()) rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
         show(text(R.string.settings_remote_text_keyboard), "", rows, this::connection, 0);
-    }
-    private void legacy() {
-        List<Row> rows = new ArrayList<>(); String[] names = SettingsValues.keyLabels();
-        for (int i = 0; i < Prefs.KEYS.length; i++) {
-            final int key = Prefs.KEYS[i]; String pkg = Prefs.keyApp(key);
-            rows.add(row(names[i], pkg.isEmpty() ? text(R.string.settings_remote_none) : appLabel(pkg), () ->
-                    apps(selected -> { Prefs.setKeyApp(key, selected); legacy(); }, this::legacy, true)));
-        }
-        show(text(R.string.remote_app_buttons), "", rows, this::connection, 0);
     }
     private void apps(java.util.function.Consumer<String> select, Runnable previous, boolean allowNone) {
         show(text(R.string.settings_remote_app), text(R.string.remote_loading), new ArrayList<>(), previous, 0);

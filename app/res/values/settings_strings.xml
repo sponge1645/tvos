@@ -22,7 +22,7 @@
     <string name="settings_show_in_menu_bar" formatted="false">Show in Menu Bar</string>
     <string name="settings_show_in_bottom_menu" formatted="false">Show in Bottom Menu</string>
     <string name="settings_update_software" formatted="false">Update Software</string>
-    <string name="settings_automatically_update" formatted="false">Check for updates automatically</string>
+    <string name="settings_automatically_update" formatted="false">Automatic Updates</string>
     <string name="settings_restart_tvos" formatted="false">Restart tvOS</string>
     <string name="settings_clear_cache" formatted="false">Clear cache</string>
     <string name="settings_reset_tvos" formatted="false">Reset tvOS</string>
@@ -52,7 +52,7 @@
     <string name="settings_general" formatted="false">General</string>
     <string name="settings_widgets" formatted="false">Widgets</string>
     <string name="settings_system" formatted="false">System</string>
-    <string name="settings_help_airplay" formatted="false">AirPlay requires an additional app.\nInstall it from the Apps section.</string>
+    <string name="settings_help_airplay" formatted="false">AirPlay lets you stream content from an iOS device or computer to this TV.</string>
     <string name="settings_help_dock" formatted="false">Choose the apps shown in the Dock.</string>
     <string name="settings_help_region" formatted="false">The city used for weather forecasts.</string>
     <string name="settings_help_weather_city" formatted="false">Set the weather city in Region.</string>
@@ -67,7 +67,7 @@
     <string name="settings_help_button_editor" formatted="false">OK turns a button on or off; left and right change its order.</string>
     <string name="settings_help_reset" formatted="false">Clearing cache preserves settings. Reset tvOS erases all app data.</string>
     <string name="settings_help_remote" formatted="false">Choose remote button actions. Some buttons may be controlled by the TV.</string>
-    <string name="settings_app_airplay_description" formatted="false">Share your screen, videos and music\nfrom iPhone, iPad or Mac to your TV.</string>
+    <string name="settings_app_airplay_description" formatted="false">AirPlay lets you stream content from an iOS device or computer to this TV.</string>
     <string name="settings_app_music_description" formatted="false">Music, albums and playlists on your TV.\nA third-party client; Apple Music subscription required.</string>
     <string name="settings_app_tizentube_description" formatted="false">An alternative YouTube client\nwith a TV interface and remote control support.</string>
     <string name="settings_app_incy_description" formatted="false">A VPN client for connecting to your own servers.\nImport configurations and subscription links.</string>
@@ -206,7 +206,7 @@
     <string name="settings_remote_ok_home" formatted="false">OK shortcuts are available only on the Home screen</string>
     <string name="settings_remote_cancel" formatted="false">Cancel</string>
     <string name="settings_remote_edit" formatted="false">Button setup</string>
-    <string name="settings_remote_delete" formatted="false">Remove binding</string>
+    <string name="settings_remote_delete" formatted="false">Delete Button Configuration</string>
     <string name="settings_remote_help" formatted="false">How it works</string>
     <string name="settings_remote_done" formatted="false">Done</string>
     <string name="settings_remote_original" formatted="false">Original OK action</string>
@@ -216,8 +216,8 @@
     <string name="settings_remote_next" formatted="false">Next track</string>
     <string name="settings_remote_previous" formatted="false">Previous track</string>
     <string name="settings_remote_mute" formatted="false">Toggle mute</string>
-    <string name="settings_remote_none" formatted="false">Do nothing</string>
-    <string name="settings_remote_unassigned" formatted="false">Not assigned</string>
+    <string name="settings_remote_none" formatted="false">Not Selected</string>
+    <string name="settings_remote_unassigned" formatted="false">Not Selected</string>
     <string name="settings_remote_app" formatted="false">Open an app…</string>
     <string name="settings_remote_action" formatted="false">Choose action</string>
     <string name="settings_remote_save_failed" formatted="false">Could not save button settings</string>
@@ -276,4 +276,6 @@
     <string name="settings_setup_manual">Manually</string>
     <string name="settings_setup_city_failed">Try detecting the city again</string>
     <string name="settings_setup_tv_unavailable">This app or service has no accessible screen or TV input.</string>
+    <string name="settings_auto_update_help" formatted="false">When updates are available, tvOS may install them automatically.</string>
+    <string name="settings_signal_strength" formatted="false">Signal Strength</string>
 </resources>

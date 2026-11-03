@@ -78,6 +78,7 @@ for RETIRED_FILE in \
   tests/integration_volume_helper.py \
   tests/test_volume_device_helper.py \
   tests/test_volume_runtime.py \
+  app/src/io/tvos/RemoteKeys.java tests/test_mi_remote.py \
   tools/test-volume-hold.py tests/test_volume_hold_prototype.py; do
   rm -f -- "$TARGET/$RETIRED_FILE"
 done

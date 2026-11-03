@@ -22,7 +22,7 @@
     <string name="settings_show_in_menu_bar" formatted="false">Показывать на верхней панели</string>
     <string name="settings_show_in_bottom_menu" formatted="false">Показывать на нижней панели</string>
     <string name="settings_update_software" formatted="false">Обновление ПО</string>
-    <string name="settings_automatically_update" formatted="false">Проверять обновления автоматически</string>
+    <string name="settings_automatically_update" formatted="false">Автоматическое обновление</string>
     <string name="settings_restart_tvos" formatted="false">Перезагрузить tvOS</string>
     <string name="settings_clear_cache" formatted="false">Очистить кеш</string>
     <string name="settings_reset_tvos" formatted="false">Сброс tvOS</string>
@@ -37,7 +37,7 @@
     <string name="settings_reduce_motion" formatted="false">Уменьшение движения</string>
     <string name="settings_tv_settings" formatted="false">Настройки ТВ</string>
     <string name="settings_vpn" formatted="false">VPN-служба</string>
-    <string name="settings_current_selection" formatted="false">Источник</string>
+    <string name="settings_current_selection" formatted="false">Текущий выбор</string>
     <string name="settings_show_clock" formatted="false">Показывать часы</string>
     <string name="settings_show_location" formatted="false">Показывать место съёмки</string>
     <string name="settings_show_weather" formatted="false">Показывать погоду</string>
@@ -52,7 +52,7 @@
     <string name="settings_general" formatted="false">Основные</string>
     <string name="settings_widgets" formatted="false">Виджеты</string>
     <string name="settings_system" formatted="false">Система</string>
-    <string name="settings_help_airplay" formatted="false">Для AirPlay нужно дополнительное приложение.\nУстановите его в разделе «Приложения».</string>
+    <string name="settings_help_airplay" formatted="false">Через AirPlay можно выполнять потоковую передачу контента с устройства iOS или компьютера на этот ТВ.</string>
     <string name="settings_help_dock" formatted="false">Настройка приложений на панели Dock.</string>
     <string name="settings_help_region" formatted="false">Город для прогноза погоды.</string>
     <string name="settings_help_weather_city" formatted="false">Город для погоды указывается в пункте «Регион».</string>
@@ -67,7 +67,7 @@
     <string name="settings_help_button_editor" formatted="false">OK — включить или выключить, стрелки — изменить порядок.</string>
     <string name="settings_help_reset" formatted="false">Очистка кеша не удаляет настройки. Сброс tvOS удалит все данные приложения.</string>
     <string name="settings_help_remote" formatted="false">Выберите назначение кнопок пульта. Некоторые кнопки могут управляться самим телевизором.</string>
-    <string name="settings_app_airplay_description" formatted="false">Трансляция экрана, видео и музыки\nс iPhone, iPad и Mac на телевизор.</string>
+    <string name="settings_app_airplay_description" formatted="false">Через AirPlay можно выполнять потоковую передачу контента с устройства iOS или компьютера на этот ТВ.</string>
     <string name="settings_app_music_description" formatted="false">Музыка, альбомы и плейлисты на телевизоре.\nСторонний клиент; нужна подписка Apple Music.</string>
     <string name="settings_app_tizentube_description" formatted="false">Альтернативный клиент YouTube\nс интерфейсом для телевизора и управлением с пульта.</string>
     <string name="settings_app_incy_description" formatted="false">VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.</string>
@@ -211,7 +211,7 @@
     <string name="settings_remote_ok_home" formatted="false">Сочетания OK доступны только на экране «Домой»</string>
     <string name="settings_remote_cancel" formatted="false">Отмена</string>
     <string name="settings_remote_edit" formatted="false">Настройка кнопки</string>
-    <string name="settings_remote_delete" formatted="false">Удалить назначение</string>
+    <string name="settings_remote_delete" formatted="false">Удалить конфигурацию кнопки</string>
     <string name="settings_remote_help" formatted="false">Как это работает</string>
     <string name="settings_remote_done" formatted="false">Готово</string>
     <string name="settings_remote_original" formatted="false">Обычное действие OK</string>
@@ -221,8 +221,8 @@
     <string name="settings_remote_next" formatted="false">Следующая запись</string>
     <string name="settings_remote_previous" formatted="false">Предыдущая запись</string>
     <string name="settings_remote_mute" formatted="false">Включить / выключить звук</string>
-    <string name="settings_remote_none" formatted="false">Ничего не делать</string>
-    <string name="settings_remote_unassigned" formatted="false">Не назначено</string>
+    <string name="settings_remote_none" formatted="false">Не выбрано</string>
+    <string name="settings_remote_unassigned" formatted="false">Не выбрано</string>
     <string name="settings_remote_app" formatted="false">Открыть приложение…</string>
     <string name="settings_remote_action" formatted="false">Выберите действие</string>
     <string name="settings_remote_save_failed" formatted="false">Не удалось сохранить настройки кнопок</string>
@@ -281,4 +281,6 @@
     <string name="settings_setup_manual">Вручную</string>
     <string name="settings_setup_city_failed">Определить город ещё раз</string>
     <string name="settings_setup_tv_unavailable">У этого приложения или службы нет доступного экрана или ТВ-входа.</string>
+    <string name="settings_auto_update_help" formatted="false">При наличии обновлений tvOS может устанавливать их автоматически.</string>
+    <string name="settings_signal_strength" formatted="false">Интенсивность сигнала</string>
 </resources>

@@ -18,10 +18,8 @@
     <string name="remote_single" formatted="false">Одно нажатие</string>
     <string name="remote_double" formatted="false">Два нажатия</string>
     <string name="remote_triple" formatted="false">Три нажатия</string>
-    <string name="remote_delete_title" formatted="false">Удалить кнопку?</string>
     <string name="remote_enable" formatted="false">Включить tvOS</string>
     <string name="remote_select" formatted="false">Выбрать tvOS для кнопок</string>
-    <string name="remote_app_buttons" formatted="false">Кнопки приложений</string>
     <string name="remote_connection_hint" formatted="false">Для работы везде выберите клавиатуру tvOS.</string>
     <string name="remote_loading" formatted="false">Загрузка…</string>
     <string name="remote_no_apps" formatted="false">Приложения не найдены.</string>

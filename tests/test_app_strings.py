@@ -37,7 +37,7 @@ public class StringsHarness {
   system.setLocale(Locale.US);Locale.setDefault(Locale.US);
   check(AppStrings.get(id,AppLanguage.RUSSIAN).equals("Заставка"),"app Russian overrides English Android");
   check(AppStrings.get(id,AppLanguage.ENGLISH).equals("Screen Saver"),"switching language reuses correct text");
-  check(AppStrings.get(R.string.settings_help_airplay,AppLanguage.ENGLISH).contains("\\n"),"description newline preserved");
+  check(AppStrings.get(R.string.settings_help_airplay,AppLanguage.ENGLISH).contains("iOS"),"updated AirPlay description");
   check(AppStrings.get(R.string.settings_help_launcher,AppLanguage.ENGLISH).contains("TV's"),"Android apostrophe escaping preserved");
   check(AppStrings.get(R.string.settings_position,AppLanguage.RUSSIAN).equals("Позиция "),"trailing space preserved for spoken position");
   check(AppStrings.get(R.string.settings_ms,AppLanguage.ENGLISH).equals(" ms"),"leading space preserved for metric suffix");

@@ -29,7 +29,7 @@ public class RemoteInputMethod extends InputMethodService {
         if (targetPackage.isEmpty() || getPackageName().equals(targetPackage)) return false;
         // Firmware receives original volume/power/navigation keys, including repeats and releases.
         if (!io.tvos.remote.RemoteBindings.allowed(event.getKeyCode())) return false;
-        return shortcuts != null && shortcuts.onKey(event) || RemoteKeys.onKey(this, event);
+        return shortcuts != null && shortcuts.onKey(event);
     }
     @Override public boolean onKeyDown(int code, KeyEvent event) {
         return handle(event) || super.onKeyDown(code, event);

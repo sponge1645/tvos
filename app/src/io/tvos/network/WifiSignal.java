@@ -44,6 +44,16 @@ public final class WifiSignal {
             return info == null ? -1 : levelForRssi(info.getRssi());
         } catch (RuntimeException ignored) { return -1; }
     }
+    /** Five filled circles for the device-information signal indicator. */
+    public static int strengthForRssi(int rssi) {
+        if (rssi <= -127 || rssi >= 0) return -1;
+        if (rssi < -90) return 0;
+        if (rssi < -80) return 1;
+        if (rssi < -70) return 2;
+        if (rssi < -60) return 3;
+        if (rssi < -50) return 4;
+        return 5;
+    }
     public static int levelForRssi(int rssi) {
         if (rssi <= -127 || rssi >= 0) return -1;
         if (rssi < -85) return 0;

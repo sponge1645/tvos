@@ -42,16 +42,17 @@ edge fades and description renderer as the main Settings screens. Saved buttons
 appear first, followed by Add a Button and Input Settings. Adding a button learns
 one matching physical DOWN/UP pair; capture never runs existing assignments.
 The editor shows Works (Everywhere/Home), Single Press, Double Press, Triple Press
-and a confirmed Delete action. The default for new buttons is Everywhere; OK is
+and a direct Delete Button Configuration action. The default for new buttons is Everywhere; OK is
 always Home-only and initially keeps its original action. Existing scope choices
-are preserved. Global bindings and legacy app buttons now also work inside the
+are preserved. Global bindings now also work inside the
 main Settings activity and the editor outside capture mode. Both local adapters
 cancel on pause/focus loss and unregister on destruction. The IME continues to
 skip tvOS windows to avoid duplicate execution.
 
-Existing Netflix/YouTube/Prime/TCL/MI choices are preserved under Input Settings →
-App Buttons. Text keyboard selection also uses the tvOS checkmark interface; only
-the Android enable/select-keyboard system screens leave the custom UI.
+The old App Buttons section, manufacturer preset dispatcher and stored preset
+choices are retired. Only learned configurations dispatch actions. Button names
+may still recognize printed Netflix/YouTube/Prime/TCL/MI labels. The action list
+has one Not Selected choice; legacy empty/none values display the same label.
 
 Bindings match Android code, Linux scan code and remote name, with up to 32 keys.
 Tap interval is 300 ms. Single-only assignments execute on release. Double/triple
@@ -72,7 +73,7 @@ ADB failure/rollback, manual selection and foreground cleanup; policy tests cove
 binding/close debounce, malformed firmware output, show timeout, screen-off and
 atomic target storage. Editor tests execute capture/release matching, reserved keys,
 Home-only OK, default global scope, duplicate preservation, gesture assignment and
-confirmed deletion. Settings lifecycle tests execute global/vendor dispatch,
+direct deletion. Settings lifecycle tests execute global dispatch,
 navigation fallback and adapter cleanup. Existing tap/remote tests still pass.
 Java source compilation against Android API 35 passes. Full APK assembly and
 real-TV testing were not available in the implementation environment.

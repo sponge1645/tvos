@@ -18,10 +18,8 @@
     <string name="remote_single" formatted="false">Single Press</string>
     <string name="remote_double" formatted="false">Double Press</string>
     <string name="remote_triple" formatted="false">Triple Press</string>
-    <string name="remote_delete_title" formatted="false">Delete Button?</string>
     <string name="remote_enable" formatted="false">Enable tvOS</string>
     <string name="remote_select" formatted="false">Use tvOS for Buttons</string>
-    <string name="remote_app_buttons" formatted="false">App Buttons</string>
     <string name="remote_connection_hint" formatted="false">For use everywhere, select the tvOS keyboard.</string>
     <string name="remote_loading" formatted="false">Loading…</string>
     <string name="remote_no_apps" formatted="false">No apps found.</string>

@@ -24,7 +24,7 @@ public final class ScreensaverSettingsProvider extends ContentProvider {
         if (!"snapshot".equals(method)) throw new IllegalArgumentException("Unknown method");
         SharedPreferences prefs = getContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
         Bundle result = new Bundle();
-        result.putString("video_dream_source", prefs.getString("video_dream_source", "google"));
+        result.putString("video_dream_source", prefs.getString("video_dream_source", "apple"));
         for (String key : new String[]{"aerial_show_clock", "aerial_show_location", "screensaver_show_weather"})
             result.putBoolean(key, prefs.getBoolean(key, false));
         return result;

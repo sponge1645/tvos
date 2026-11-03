@@ -64,7 +64,7 @@ final class SettingsContent {
             case ACCESSIBILITY: return new String[] {AppStrings.get(R.string.settings_reduce_transparency, language), AppStrings.get(R.string.settings_reduce_motion, language), AppStrings.get(R.string.settings_tv_settings, language)};
             case CITY: return new String[] {AppStrings.get(R.string.settings_automatic_value, language), AppStrings.get(R.string.settings_manual, language)};
             case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, language), AppStrings.get(R.string.settings_show_clock, language), AppStrings.get(R.string.settings_show_location, language), AppStrings.get(R.string.settings_show_weather, language), AppStrings.get(R.string.settings_preview, language)};
-            case ABOUT: return new String[] {AppStrings.get(R.string.settings_name, language), AppStrings.get(R.string.settings_model, language), AppStrings.get(R.string.settings_serial_number, language), "tvOS", AppStrings.get(R.string.settings_os, language), AppStrings.get(R.string.settings_resolution, language), AppStrings.get(R.string.settings_wi_fi_network_name, language), AppStrings.get(R.string.settings_ip_address, language)};
+            case ABOUT: return new String[] {AppStrings.get(R.string.settings_name, language), AppStrings.get(R.string.settings_model, language), AppStrings.get(R.string.settings_serial_number, language), "tvOS", AppStrings.get(R.string.settings_os, language), AppStrings.get(R.string.settings_resolution, language), AppStrings.get(R.string.settings_wi_fi_network_name, language), AppStrings.get(R.string.settings_ip_address, language), AppStrings.get(R.string.settings_signal_strength, language)};
             default: return new String[] {AppStrings.get(R.string.settings_general, language), AppStrings.get(R.string.settings_video_audio, language), AppStrings.get(R.string.settings_screen_saver, language), "AirPlay", AppStrings.get(R.string.settings_remotes_and_devices, language), AppStrings.get(R.string.settings_accessibility, language), AppStrings.get(R.string.settings_apps, language), "Dock", AppStrings.get(R.string.settings_menu_bar, language), AppStrings.get(R.string.settings_system, language)};
         }
     }
@@ -82,6 +82,7 @@ final class SettingsContent {
                 break;
             case HOME_SCREEN: return AppStrings.get(R.string.settings_help_home_screen, language);
             case CITY: return AppStrings.get(R.string.settings_help_auto_region, language);
+            case UPDATES: return focus == 1 ? AppStrings.get(R.string.settings_auto_update_help, language) : null;
             case MEDIA: return focus == 0 ? AppStrings.get(R.string.settings_help_default_service, language) : null;
             case GENERAL:
                 if (focus == 3) info = AppStrings.get(R.string.settings_help_country, language);

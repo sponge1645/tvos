@@ -21,7 +21,7 @@ public class Test {
  Row row(int id,Runnable action){return new Row(text(id),"",false,action);}Row row(String l,String v,Runnable action){return new Row(l,v,false,action);}
  static class View {void announceForAccessibility(String s){}}final View view=new View();
  final List<Binding> bindings=new ArrayList<>();List<Row> rows;Runnable previous;String title,hint;int selected,saves,roots,messages,editedAction;
- boolean capturing,captureBackDown;KeyEvent learned;
+ boolean capturing,captureBackDown,busy;KeyEvent learned;
  String text(int id){return "text"+id;}String name(Binding b){return "Button "+b.code;}String label(String a){return a;}
  void show(String t,String h,List<Row> r,Runnable p,int at){title=t;hint=h;rows=r;previous=p;selected=at;capturing=false;learned=null;captureBackDown=false;}
  void root(){roots++;capturing=false;}void goBack(){if(previous!=null)previous.run();}void message(int id){messages++;}
@@ -41,7 +41,7 @@ public class Test {
   t.capture();check(!t.learn(new KeyEvent(0,24,115)),"volume remains native during capture");tap(t,19,2);check(t.bindings.size()==2,"arrows cannot be added");
   KeyEvent gamepad=new KeyEvent(0,100,9);gamepad.source=InputDevice.SOURCE_GAMEPAD;check(!t.learn(gamepad),"gamepad excluded");
   t.learn(new KeyEvent(1,4,0));check(t.capturing,"orphan Back release cannot cancel");tap(t,4,0);check(!t.capturing&&t.roots>0,"Back cancels learning");
-  t.delete(0);check(t.bindings.size()==2&&t.selected==1,"delete requires confirmation with Cancel selected");t.rows.get(0).action.run();check(t.bindings.size()==1&&t.bindings.get(0).code==23,"confirmed deletion removes only chosen binding");
+  t.delete(0);check(t.bindings.size()==1&&t.bindings.get(0).code==23,"delete immediately removes only chosen configuration");
   System.out.println("PASS: actual editor learns on release, defaults to Everywhere, keeps OK local, preserves duplicate bindings, handles scope/gestures and confirms deletion");
  }
 }'''

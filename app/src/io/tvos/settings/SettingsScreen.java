@@ -22,7 +22,7 @@ public final class SettingsScreen {
             case APPS_DOWNLOADS: return 7;
             case GENERAL: return 5;
             case LANGUAGE: return 2;
-            case ABOUT: return 8;
+            case ABOUT: return 9;
             default: return -1;
         }
     }

@@ -114,7 +114,7 @@ final class SettingsValues {
                 v[i] = Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off);
             }
         } else if (screen == SCREENSAVER) {
-            String src = localPrefs().getString("video_dream_source", "google");
+            String src = localPrefs().getString("video_dream_source", "apple");
             v[0] = "apple".equals(src) ? "Aerial" : "na".equals(src) ? "National Geographic" : "Google";
             v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
             v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
@@ -162,6 +162,7 @@ final class SettingsValues {
         v[5] = AppStrings.get(R.string.settings_network_unavailable);
         v[6] = "—";
         v[7] = localPrefs().getString("device_name", "ТВ");
+        if (rowCount > 8) v[8] = "—";
         LocalNetwork.Info network = LocalNetwork.read(activity);
         if (network != null) {
             v[6] = network.address;
@@ -173,6 +174,8 @@ final class SettingsValues {
                             activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                     android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
                     String ssid = wi == null ? null : wi.getSSID();
+                    int strength = wi == null ? -1 : io.tvos.network.WifiSignal.strengthForRssi(wi.getRssi());
+                    if (rowCount > 8 && strength >= 0) v[8] = strength + "/5";
                     if (ssid != null && !ssid.isEmpty() && !ssid.contains("unknown ssid"))
                         v[5] = ssid.replace("\"", "");
                 } catch (Exception ignored) {}

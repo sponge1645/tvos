@@ -24,7 +24,7 @@ final class SettingsPreferenceEditor {
 
     void cycleDreamSource(int direction) {
         String[] choices = DREAM_SOURCES;
-        String value = preferences.getString("video_dream_source", "google");
+        String value = preferences.getString("video_dream_source", "apple");
         int at = 0;
         for (int i = 0; i < choices.length; i++) if (choices[i].equals(value)) at = i;
         preferences.edit().putString("video_dream_source", choices[(at + direction + choices.length) % choices.length]).apply();

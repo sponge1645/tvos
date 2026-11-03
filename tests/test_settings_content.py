@@ -8,7 +8,7 @@ def method(sig):
  a=source.index(sig);b=source.index('{',a);d=1;i=b+1
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-assert 'screen == UPDATES ? updateDetailsText()' in method('        private void drawTileDescription(')
+assert 'screen == UPDATES && focus == 0 ? updateDetailsText()' in method('        private void drawTileDescription(')
 assert 'SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size())' in source
 harness='''package io.tvos;
 import java.util.*;import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsScreen;
@@ -23,7 +23,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,CITY,SCREENSAVER,ABOUT,LANGUAGE};
-  int[] rows={10,3,5,2,5,2,3,1,2,4,2,5,7,3,2,5,8,2};
+  int[] rows={10,3,5,2,5,2,3,1,2,4,2,5,7,3,2,5,9,2};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -48,7 +48,7 @@ public class ContentHarness {
    for(int i=0;i<7;i++){
     check(h.menuLabels()[i].endsWith(expected[i]),"download app order");
     String description=SettingsContent.description(h.screen,i,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH));
-    check(description!=null&&description.contains("\\n"),"each download keeps its two-line description");
+    check(description!=null&&(i==0||description.contains("\\n")),"each download keeps its two-line description");
    }
    check(SettingsContent.description(APPS_DOWNLOADS,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"no stale description beyond downloads");
    h.screen=PICKER;h.pickFor=PICK_CITY;check(h.screenTitle().equals(russian?"Город":"City"),"city picker title");

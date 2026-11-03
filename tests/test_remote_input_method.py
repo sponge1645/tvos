@@ -21,7 +21,7 @@ public class Test {
    for(int repeat=0;repeat<8;repeat++)check(!t.handle(new KeyEvent(code)),"native reserved key stream");
   check(t.shortcuts.calls==0&&RemoteKeys.calls==0,"volume and navigation never enter gesture engine");
   check(t.handle(new KeyEvent(185))&&t.shortcuts.calls==1&&RemoteKeys.calls==0,"global binding consumes first");
-  t.shortcuts.consumes=false;RemoteKeys.consumes=true;check(t.handle(new KeyEvent(185))&&RemoteKeys.calls==1,"legacy app mapping fallback");
+  t.shortcuts.consumes=false;RemoteKeys.consumes=true;check(!t.handle(new KeyEvent(185))&&RemoteKeys.calls==0,"retired preset layer cannot intercept keys");
   RemoteKeys.consumes=false;check(!t.handle(new KeyEvent(185)),"unassigned key reaches target app");
   System.out.println("PASS: IME routes assignments, avoids Home duplicates and leaves native volume/navigation streams untouched");
  }
