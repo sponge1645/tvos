@@ -44,3 +44,14 @@ The downloaded APK must still have package `watch.kino` and the existing reviewe
 signing-certificate fingerprint; updates must also match the installed signer.
 This explicitly trusts new versions signed by that identity rather than pinning
 each binary hash. Discovery failure is reported instead of installing an old fallback.
+
+## Shared stable release discovery
+
+AirPlay, Apple Music TV, TizenTube and Lampa now resolve GitHub stable releases
+on both first installation and update. Historical catalog artifact records no
+longer select the first-install download. Drafts/prereleases/debug APKs are
+excluded; compatible ABI selection is shared between install and update.
+First installations require the selected release asset's SHA-256 digest; when
+provided on updates it is checked too. Invalid digests fail closed. There is no
+silent fallback to the old catalog APK on metadata failures. Package, Android
+version, pinned signer and installed signer checks remain in effect.

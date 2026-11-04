@@ -56,7 +56,7 @@ final class AppDownloadCatalog {
         new Entry("Apple Music", "com.applemusicktv",
                 "e1d2be1a073146ea4d159a96f6e9133a3605c2580b890a37335fd6d54db4bfb5",
                 source("https://github.com/JObersi10/apple-music-tv/releases/download/v1.2/AM-TV-1.2.apk",
-                        "27d44b8b2586a8d2eeb2b15ffd9ace15ccf4b02c74cbcf9fb783d1e38752b3d0"), null, true, 3),
+                        "27d44b8b2586a8d2eeb2b15ffd9ace15ccf4b02c74cbcf9fb783d1e38752b3d0"), "JObersi10/apple-music-tv", false, 3),
         new Entry("TizenTube", "io.gh.reisxd.tizentube.cobalt",
                 "378ea3935af1b95c32f6ce193f4ff7f420cdc2d7160c8c866d28d6a91042ec9a",
                 source("https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.3/cobalt-arm.apk",
@@ -123,15 +123,8 @@ final class AppDownloadCatalog {
         if ("llc.itdev.incy".equals(app.packageName)) return incy(app, cancelled);
         if ("com.seena.app".equals(app.packageName)) return seena(abis, cancelled);
         if ("KinoPub".equals(app.name)) return kinoPub(cancelled);
-        if (!installed || app.fixedArtifact) {
+        if (app.fixedArtifact) {
             if (app.bootstrap == null) throw new IOException(AppStrings.get(R.string.runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru));
-            if ("TizenTube".equals(app.name)) {
-                if (supports(abis, "armeabi-v7a")) return app.bootstrap;
-                if (supports(abis, "arm64-v8a")) return source(
-                        "https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.3/cobalt-arm64.apk",
-                        "4e3df211abb243cb06b06ba3676fe62c3d5b59baa47c1a0050cb180b3493e539");
-                throw new IOException("No TizenTube APK for this CPU");
-            }
             return app.bootstrap;
         }
         JSONArray releases = new JSONArray(ApkTransfer.json(
@@ -142,14 +135,21 @@ final class AppDownloadCatalog {
             if (release.optBoolean("draft") || release.optBoolean("prerelease")) continue;
             JSONArray assets = release.optJSONArray("assets");
             if (assets == null) continue;
-            String best = null;
+            JSONObject best = null;
             int bestScore = Integer.MIN_VALUE;
             for (int i = 0; i < assets.length(); i++) {
                 JSONObject asset = assets.getJSONObject(i);
                 int score = assetScore(asset.optString("name"), abis);
-                if (score > bestScore) { bestScore = score; best = asset.optString("browser_download_url"); }
+                if (score > bestScore) { bestScore = score; best = asset; }
             }
-            if (best != null && bestScore != Integer.MIN_VALUE) return source(best, null);
+            if (best != null && bestScore != Integer.MIN_VALUE) {
+                String digest = best.optString("digest");
+                if (!digest.isEmpty() && !digest.matches("sha256:[0-9a-f]{64}"))
+                    throw new IOException("Invalid release APK digest");
+                if (!installed && digest.isEmpty())
+                    throw new IOException("Latest release has no verified APK digest");
+                return source(best.optString("browser_download_url"), digest.isEmpty() ? null : digest.substring(7));
+            }
         }
         throw new IOException(AppStrings.get(R.string.runtime_no_compatible_apk_in_releases));
     }

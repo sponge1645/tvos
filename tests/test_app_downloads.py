@@ -64,6 +64,12 @@ public class DownloadHarness {
   Response r=new Response(bytes,size);replies.add(r);return r;
  }
  static PackageInfo signed(String key){PackageInfo p=new PackageInfo();p.signingInfo.signers=new Signature[]{new Signature(key)};return p;}
+ static void githubAssets(String... names)throws Exception {
+  java.util.List<org.json.JSONObject> assets=new java.util.ArrayList<>();
+  for(String name:names)assets.add(new org.json.JSONObject().put("name",name).put("browser_download_url","https://test.invalid/v99/"+name).put("digest","sha256:"+"a".repeat(64)));
+  org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("prerelease",true).put("assets",new org.json.JSONArray(assets)),new org.json.JSONObject().put("assets",new org.json.JSONArray(assets)));
+  reply("[]".getBytes(),2);
+ }
  public static void main(String[] args)throws Exception{
   URL.setURLStreamHandlerFactory(protocol -> "https".equals(protocol)?new URLStreamHandler(){
    protected URLConnection openConnection(URL url)throws IOException{
@@ -79,16 +85,20 @@ public class DownloadHarness {
   check(AppDownloadCatalog.assetScore("cobalt-arm.apk",arm64)>AppDownloadCatalog.assetScore("cobalt-arm64.apk",arm64),"supported arm32 preferred");
   check(AppDownloadCatalog.assetScore("debug.apk",arm64)==Integer.MIN_VALUE,"debug asset rejected");
   check(AppDownloadCatalog.assetScore("cobalt-arm.apk",x64)==Integer.MIN_VALUE,"Intel rejects ARM-specific APK");
+  githubAssets("app-release.apk");
   AppDownloadCatalog.Source first=AppDownloadCatalog.resolve(AppDownloadCatalog.get(0),false,arm32,()->false);
-  check(first.sha256!=null && first.url.contains("/v0.0.36/"),"first install uses pinned bootstrap");
+  check(first.sha256!=null && first.url.contains("/v99/"),"first install discovers new stable release with digest");
   AppDownloadCatalog.Entry kino=AppDownloadCatalog.get(6);
   org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","kino-watch-2.19.apk"),new org.json.JSONObject().put("name","kino-watch-2.23.apk"),new org.json.JSONObject().put("name","beta.apk"));
   reply("[]".getBytes(),2);
   AppDownloadCatalog.Source kinoFirst=AppDownloadCatalog.resolve(kino,false,arm32,()->false);
   check(kinoFirst.sha256==null && kino.signerSha256!=null && kinoFirst.url.endsWith("/kino-watch-2.23.apk"),"KinoPub first install discovers latest numeric release with pinned signer");
   check(!ApkTrust.requiresInstalledApp(kino,kinoFirst),"KinoPub rolling first install uses existing package signer pin");
+  githubAssets("cobalt-arm.apk","cobalt-arm64.apk");
   rejects(()->AppDownloadCatalog.resolve(AppDownloadCatalog.get(2),false,x64,()->false),"Tizen bootstrap checks CPU");
+  githubAssets("cobalt-arm.apk","cobalt-arm64.apk");
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(2),false,arm64,()->false).url.endsWith("/cobalt-arm.apk"),"Tizen first install prefers ARM32 on dual-ABI system");
+  githubAssets("cobalt-arm.apk","cobalt-arm64.apk");
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(2),false,new String[]{"arm64-v8a"},()->false).url.endsWith("/cobalt-arm64.apk"),"Tizen ARM64-only fallback");
   check(AppDownloadCatalog.assetScore("app-x86.apk",new String[]{"x86_64","x86"})>AppDownloadCatalog.assetScore("app-x86_64.apk",new String[]{"x86_64","x86"}),"supported Intel32 preferred");
   org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("assets",new org.json.JSONArray(Arrays.asList(
@@ -103,6 +113,13 @@ public class DownloadHarness {
   reply("[]".getBytes(),2);
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(6),true,arm32,()->false).url.endsWith("2.19.apk"),"KinoPub numeric selection");
 
+  for(int index:new int[]{0,1,2,5}) {
+   githubAssets("universal.apk");AppDownloadCatalog.Source fresh=AppDownloadCatalog.resolve(AppDownloadCatalog.get(index),false,arm32,()->false);
+   githubAssets("universal.apk");AppDownloadCatalog.Source update=AppDownloadCatalog.resolve(AppDownloadCatalog.get(index),true,arm32,()->false);
+   check(fresh.url.equals(update.url)&&fresh.sha256.equals(update.sha256),"first install and update share stable discovery for "+index);
+  }
+  org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("assets",new org.json.JSONArray(Arrays.asList(new org.json.JSONObject().put("name","universal.apk").put("browser_download_url","https://test.invalid/app.apk")))));reply("[]".getBytes(),2);
+  rejects(()->AppDownloadCatalog.resolve(AppDownloadCatalog.get(0),false,arm32,()->false),"first installation without current release digest fails instead of silently using old APK");
   byte[] bytes=new byte[12000];Arrays.fill(bytes,(byte)7);
   String hash=ApkTransfer.hex(ApkTransfer.digest().digest(bytes));
   AppDownloadCatalog.Source src=new AppDownloadCatalog.Source("https://test.invalid/app.apk",hash);
