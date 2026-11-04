@@ -29,6 +29,7 @@ import io.tvos.settings.SettingsRowRenderer;
 import io.tvos.settings.SettingsListRenderer;
 import io.tvos.settings.SettingsListViewport;
 import io.tvos.settings.SettingsTextRenderer;
+import io.tvos.settings.SettingsTransitions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -62,18 +63,22 @@ public class RemoteShortcutSettingsActivity extends Activity {
     }
     private Row row(String label, String value, Runnable action) { Row row = new Row(label, value, false, action); row.picker = false; return row; }
     private Row row(int label, Runnable action) { return row(text(label), "", action); }
-    private void show(String title, String hint, List<Row> rows, Runnable previous, int selected) {
+    private void show(String title, String hint, List<Row> rows, Runnable previous, int selected, int depth) {
+        view.captureOutgoing(capturing, depth);
         generation++; capturing = false; learned = null; captureBackDown = false; input.reset();
         if (shortcuts != null) shortcuts.cancel();
-        back = previous; view.show(title, hint, rows, selected);
+        back = previous; view.show(title, hint, rows, selected, depth);
     }
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved); Ui.init(this);
         bindings.addAll(RemoteBindings.read(getFilesDir()));
         shortcuts = new RemoteShortcuts(this, true, null); click = new Click(this);
         view = new Menu(); setContentView(view);
+        suppressWindowAnimation();
         if (getIntent().getBooleanExtra("input_options", false)) connection(); else root();
     }
+    @SuppressWarnings("deprecation")
+    private void suppressWindowAnimation() { overridePendingTransition(0, 0); }
     @Override protected void onResume() { super.onResume(); resumed = true; if (shortcuts != null) shortcuts.reload(); view.invalidate(); }
     @Override protected void onPause() {
         resumed = false; input.reset(); learned = null; captureBackDown = false;
@@ -88,7 +93,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         if (shortcuts != null) shortcuts.close(); if (click != null) click.release();
         view.background.clear(); super.onDestroy();
     }
-    private void goBack() { if (busy) return; click.back(); if (back == null) finish(); else back.run(); }
+    private void goBack() { if (busy || !view.ready()) return; click.back(); if (back == null) finish(); else back.run(); }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (capturing) return learn(event);
         if (shortcuts != null && shortcuts.onKey(event)) return true;
@@ -110,7 +115,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         }
         rows.add(row(R.string.settings_remote_add, this::capture));
         rows.add(row(R.string.remote_input_options, this::connection));
-        show(text(R.string.remote_buttons), text(R.string.remote_root_hint), rows, null, 0);
+        show(text(R.string.remote_buttons), text(R.string.remote_root_hint), rows, null, 0, 1);
     }
     private static boolean unselected(String action) { return action.isEmpty() || "none".equals(action); }
     private String name(Binding b) {
@@ -135,7 +140,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
     }
     private void capture() {
         List<Row> rows = new ArrayList<>();
-        show(text(R.string.settings_remote_add), text(R.string.remote_capture_hint), rows, this::root, 0);
+        show(text(R.string.settings_remote_add), text(R.string.remote_capture_hint), rows, this::root, 0, 2);
         capturing = true; view.announceForAccessibility(text(R.string.settings_remote_press));
     }
     private boolean learn(KeyEvent event) {
@@ -173,7 +178,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         int[] taps = {R.string.remote_single, R.string.remote_double, R.string.remote_triple};
         for (int i = 0; i < 3; i++) { final int tap = i; rows.add(row(text(taps[i]), label(actions[i]), () -> actions(at, tap))); }
         rows.add(row(R.string.settings_remote_delete, () -> delete(at)));
-        show(name(b), "", rows, this::root, 1);
+        show(name(b), "", rows, this::root, 1, 2);
     }
     private void scope(int at) {
         Binding b = bindings.get(at); List<Row> rows = new ArrayList<>();
@@ -183,7 +188,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
                 bindings.set(at, new Binding(b.code, b.scan, b.device, global, b.actions())); save(() -> edit(at));
             }));
         }
-        show(text(R.string.remote_works), RemoteBindings.ok(b.code) ? text(R.string.settings_remote_ok_home) : "", rows, () -> edit(at), b.global ? 1 : 0);
+        show(text(R.string.remote_works), RemoteBindings.ok(b.code) ? text(R.string.settings_remote_ok_home) : "", rows, () -> edit(at), b.global ? 1 : 0, 3);
     }
     private void delete(int at) {
         if (at < 0 || at >= bindings.size() || busy) return;
@@ -216,7 +221,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         String assigned = "none".equals(b.actions()[tap]) ? "" : b.actions()[tap];
         for (String id : ids) rows.add(new Row(label(id), "", id.equals(assigned), () -> assign(at, tap, id)));
         rows.add(row(R.string.settings_remote_app, () -> apps(pkg -> assign(at, tap, "app:" + pkg), () -> actions(at, tap), false)));
-        show(text(R.string.settings_remote_action), "", rows, () -> edit(at), Math.max(0, ids.indexOf(assigned)));
+        show(text(R.string.settings_remote_action), "", rows, () -> edit(at), Math.max(0, ids.indexOf(assigned)), 3);
     }
     private void assign(int at, int tap, String action) {
         Binding b = bindings.get(at); String[] actions = b.actions(); actions[tap] = action;
@@ -227,7 +232,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
         rows.add(row(R.string.remote_select, () -> ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker()));
         rows.add(row(R.string.settings_remote_text_keyboard, this::keyboards));
-        show(text(R.string.remote_input_options), text(R.string.remote_connection_hint), rows, this::root, 0);
+        show(text(R.string.remote_input_options), text(R.string.remote_connection_hint), rows, this::root, 0, 2);
     }
     private void keyboards() {
         List<Row> rows = new ArrayList<>(); String selected = RemoteKeyboardBridge.target(this);
@@ -243,10 +248,10 @@ public class RemoteShortcutSettingsActivity extends Activity {
                     });
                 }));
         if (rows.isEmpty()) rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
-        show(text(R.string.settings_remote_text_keyboard), "", rows, this::connection, 0);
+        show(text(R.string.settings_remote_text_keyboard), "", rows, this::connection, 0, 3);
     }
     private void apps(java.util.function.Consumer<String> select, Runnable previous, boolean allowNone) {
-        show(text(R.string.settings_remote_app), text(R.string.remote_loading), new ArrayList<>(), previous, 0);
+        show(text(R.string.settings_remote_app), text(R.string.remote_loading), new ArrayList<>(), previous, 0, 4);
         final int token = generation;
         io.execute(() -> {
             List<String[]> apps = new ArrayList<>();
@@ -264,7 +269,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
                 List<Row> rows = new ArrayList<>();
                 if (allowNone) rows.add(row(text(R.string.settings_remote_none), "", () -> select.accept("")));
                 for (String[] app : apps) rows.add(row(app[1], "", () -> select.accept(app[0])));
-                show(text(R.string.settings_remote_app), rows.isEmpty() ? text(R.string.remote_no_apps) : "", rows, previous, 0);
+                show(text(R.string.settings_remote_app), rows.isEmpty() ? text(R.string.remote_no_apps) : "", rows, previous, 0, 4);
             });
         });
     }
@@ -298,6 +303,34 @@ public class RemoteShortcutSettingsActivity extends Activity {
                     }
                 }, (c, x, y, scale, color) -> { });
         final SettingsListViewport.Content rowsContent = this::drawRows;
+        final SettingsTransitions transitions = new SettingsTransitions();
+        final java.util.function.IntUnaryOperator parent = page -> this.forward
+                ? (page == this.screen ? this.previousScreen : -1)
+                : (page == this.previousScreen ? this.screen : -1);
+        final SettingsTransitions.ScreenPainter painter = this::drawTransitionPage;
+        List<Row> previousRows = new ArrayList<>();
+        int depth, screen, previousScreen, previousOffset, previousFocus;
+        boolean forward;
+        boolean previousCapturing;
+        void captureOutgoing(boolean wasCapturing, int nextDepth) {
+            if (nextDepth == depth) return;
+            previousRows = rows; previousOffset = offset;
+            previousFocus = focus; previousCapturing = wasCapturing;
+        }
+        boolean reduced() { return getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false); }
+        boolean ready() { return reduced() || transitions.focusReady(SystemClock.uptimeMillis()); }
+        void drawTransitionPage(Canvas c, int page) {
+            List<Row> activeRows = rows; int activeOffset = offset, activeFocus = focus;
+            boolean outgoing = page != screen;
+            try {
+                if (outgoing) { rows = previousRows; offset = previousOffset; focus = previousFocus; }
+                if (outgoing ? previousCapturing : capturing) {
+                    labelPaint.setColor(SettingsListRenderer.normalInk(drawLight));
+                    typography.drawTracked(c, text(R.string.settings_remote_press), 1093 * k, 465 * k, labelPaint, .02f);
+                }
+                viewport.draw(c, rowsContent);
+            } finally { rows = activeRows; offset = activeOffset; focus = activeFocus; }
+        }
         final RectF rect = new RectF();
         boolean drawLight, drawReduced, rowsMoving;
         float drawDt;
@@ -307,6 +340,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         final Spoken spoken;
         Menu() {
             super(RemoteShortcutSettingsActivity.this); setFocusable(true); setFocusableInTouchMode(true);
+            transitions.sync(0, SystemClock.uptimeMillis(), true, false, parent);
             spoken = new Spoken(this, new Spoken.Source() {
                 @Override public void items(List<Integer> out) { for (int i = offset; i < Math.min(rows.size(), offset + 10); i++) out.add(i + 1); }
                 @Override public String text(int id) { if (id <= 0 || id > rows.size()) return ""; Row row = rows.get(id - 1); return row.label + (row.value.isEmpty() ? "" : ", " + row.value); }
@@ -318,15 +352,19 @@ public class RemoteShortcutSettingsActivity extends Activity {
             });
         }
         @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() { return spoken; }
-        void show(String nextTitle, String nextHint, List<Row> nextRows, int selected) {
+        void show(String nextTitle, String nextHint, List<Row> nextRows, int selected, int nextDepth) {
             title = nextTitle; hint = nextHint; rows = nextRows; focus = Math.max(0, Math.min(selected, rows.size() - 1)); offset = 0;
             reveal(); fit(); entered = SystemClock.uptimeMillis(); last = entered;
+            if (depth != nextDepth) {
+                previousScreen = screen++; forward = nextDepth > depth; depth = nextDepth;
+                transitions.sync(screen, entered, reduced(), false, parent);
+            }
             setContentDescription(title + (hint.isEmpty() ? "" : ", " + hint)); requestFocus(); invalidate(); spoken.focusMoved();
         }
         void reveal() { offset = Math.max(0, Math.min(offset, focus)); if (focus >= offset + 10) offset = focus - 9; }
-        void move(int direction) { int next = Math.max(0, Math.min(rows.size() - 1, focus + direction)); if (next == focus || rows.isEmpty()) return;
+        void move(int direction) { if (!ready()) return; int next = Math.max(0, Math.min(rows.size() - 1, focus + direction)); if (next == focus || rows.isEmpty()) return;
             focus = next; reveal(); click.move(); invalidate(); spoken.focusMoved(); }
-        void activate() { if (busy || rows.isEmpty() || focus >= rows.size()) return; click.open(); rows.get(focus).action.run(); }
+        void activate() { if (!ready() || busy || rows.isEmpty() || focus >= rows.size()) return; click.open(); rows.get(focus).action.run(); }
         void clearCaches() { background.clear(); shadows.clear(); typography.clear(); }
         @Override protected void onSizeChanged(int w, int h, int oldW, int oldH) {
             k = w / 1920f; clearCaches(); viewport.resize(w, h, k); fit();
@@ -348,19 +386,14 @@ public class RemoteShortcutSettingsActivity extends Activity {
             drawReduced = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false);
             background.draw(c, getWidth(), getHeight(), drawLight); logo.draw(c, k, drawLight, Ui.displaySemibold);
             long now = SystemClock.uptimeMillis();
-            float alpha = drawReduced ? 1 : Math.min(1, (now - entered) / 280f);
             titlePaint.setColor(drawLight ? 0xFF738190 : 0xFF5A676D);
-            int saved = c.saveLayerAlpha(0, 0, getWidth(), getHeight(), Math.round(255 * alpha));
-            typography.drawTracked(c, shownTitle, getWidth() / 2f, 111 * k, titlePaint, .02f);
+            boolean moving = transitions.drawTitle(c, shownTitle, now, drawReduced,
+                    getWidth() / 2f, 111 * k, titlePaint, typography);
             typography.drawDescription(c, hint, k, drawLight, Ui.displaySemibold);
-            if (capturing) {
-                labelPaint.setColor(SettingsListRenderer.normalInk(drawLight));
-                typography.drawTracked(c, text(R.string.settings_remote_press), 1093 * k, 465 * k, labelPaint, .02f);
-            }
             drawDt = Math.min(.05f, Math.max(0, now - last) / 1000f); last = now; rowsMoving = false;
-            viewport.draw(c, rowsContent);
-            c.restoreToCount(saved);
-            if ((rowsMoving || alpha < 1) && resumed) postInvalidateOnAnimation();
+            moving |= transitions.drawList(c, screen, now, k, getWidth(), getHeight(), parent, painter);
+            if ((rowsMoving || moving) && resumed) postInvalidateOnAnimation();
+            if (!moving && !previousRows.isEmpty()) previousRows = new ArrayList<>();
         }
         private void drawRows(Canvas c) {
             int end = Math.min(rows.size(), offset + 10);

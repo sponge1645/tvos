@@ -23,7 +23,7 @@ public class Test {
  final List<Binding> bindings=new ArrayList<>();List<Row> rows;Runnable previous;String title,hint;int selected,saves,roots,messages,editedAction;
  boolean capturing,captureBackDown,busy;KeyEvent learned;
  String text(int id){return "text"+id;}String name(Binding b){return "Button "+b.code;}String label(String a){return a;}
- void show(String t,String h,List<Row> r,Runnable p,int at){title=t;hint=h;rows=r;previous=p;selected=at;capturing=false;learned=null;captureBackDown=false;}
+ void show(String t,String h,List<Row> r,Runnable p,int at,int depth){title=t;hint=h;rows=r;previous=p;selected=at;capturing=false;learned=null;captureBackDown=false;}
  void root(){roots++;capturing=false;}void goBack(){if(previous!=null)previous.run();}void message(int id){messages++;}
  void save(Runnable complete){saves++;complete.run();}void actions(int at,int tap){editedAction=tap;}
 '''+methods+'''
