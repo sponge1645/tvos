@@ -197,13 +197,15 @@ final class HomeBackground {
         c.drawBitmap(image, null, screen, imagePaint);
     }
 
-    void draw(Canvas c, float drawer) {
+    void draw(Canvas c, float drawer) { draw(c, drawer, false); }
+
+    void draw(Canvas c, float drawer, boolean wideArtworkMode) {
         long up = SystemClock.uptimeMillis();
 
         float e = bgFadeAt == 0 ? 1 : fadeEase(bgFadeAt, up);
         boolean fading = bgFadeAt != 0;
-        // Drawer open: the background lightens (by day) or darkens (at night), as a filter on the drawing itself.
-        android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer), blend(0xFFFFFFFF, 0xFF000000, night));
+        // Wide artwork dims in both themes; poster categories keep their day/night treatment.
+        android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer), wideArtworkMode ? 0xFF000000 : blend(0xFFFFFFFF, 0xFF000000, night));
         if (bgTo == null || (fading && bgFrom == null)) {
             fill.setColorFilter(v); fill.setColor(0xFF1C1C1E);
             c.drawRect(screen, fill);

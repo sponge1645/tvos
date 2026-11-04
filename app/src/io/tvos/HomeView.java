@@ -209,7 +209,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             // not redrawn while they move).
             scene.setOffset(0, kind == DRAWER || kind == STATUS ? 0 : getTranslationY());
             switch (kind) {
-                case SKY: background.draw(c, drawer.motion.value); break;
+                case SKY: background.draw(c, drawer.motion.value, !search.active && Prefs.categoryCount() == 0); break;
                 case HERO: drawLightTop(c); break;
                 case STATUS: {
                     HomeHeaderRenderer.Frame topFrame = headerFrame();
