@@ -96,7 +96,7 @@ final class DockArtwork {
 
     static JSONObject match(JSONArray items, String title, String poster, String year, String expectedKind) {
         if (items == null) return null;
-        JSONObject named = null; int names = 0;
+        JSONObject named = null; int names = 0, best = 0;
         String[] normalized = titles(title);
         for (int i = 0; i < normalized.length; i++) normalized[i] = normalize(normalized[i]);
         String filename = filename(poster);
@@ -111,9 +111,15 @@ final class DockArtwork {
             if (!year.isEmpty() && !date.startsWith(year)) continue;
             String name = item.optString("movie".equals(kind) ? "title" : "name", "");
             String original = item.optString("movie".equals(kind) ? "original_title" : "original_name", "");
+            int score = 0;
+            java.util.Set<String> matchedAliases = new java.util.HashSet<>();
             for (String variant : normalized) {
-                if (variant.equals(normalize(name)) || variant.equals(normalize(original))) { named = item; names++; break; }
+                if (!variant.isEmpty() && (variant.equals(normalize(name)) || variant.equals(normalize(original))))
+                    matchedAliases.add(variant);
             }
+            score = matchedAliases.size();
+            if (score > best) { best = score; named = item; names = 1; }
+            else if (score > 0 && score == best) names++;
         }
         return names == 1 ? named : null;
     }
