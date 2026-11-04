@@ -32,7 +32,9 @@ public final class ResumeRowRenderer {
     private final RectF shadowRect = new RectF();
     private final Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG), rim = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private LinearGradient focusSheen, focusRim, bottomShade;
+    private LinearGradient focusSheen, focusRim, bottomShade, logoShade;
+    private float logoShadeWidth = -1, logoShadeHeight = -1;
+    private final Paint logoShadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float shadeHeight = -1;
     private final Paint overlay = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -112,8 +114,18 @@ public final class ResumeRowRenderer {
         clip.reset(); clip.addRoundRect(shadowRect, 28 * k, 28 * k, Path.Direction.CW);
         c.clipPath(clip);
         if (logo != null && image != null && image.getWidth() > image.getHeight()) {
-            float logoScale = Math.min(360 * k / logo.getWidth(), 136 * k / logo.getHeight());
-            float lx = -width / 2 + 24 * k, ly = -height / 2 + 24 * k;
+            float logoScale = Math.min(288 * k / logo.getWidth(), 108.8f * k / logo.getHeight());
+            if (logoShade == null || logoShadeWidth != width || logoShadeHeight != height) {
+                logoShadeWidth = width; logoShadeHeight = height;
+                logoShade = new LinearGradient(-width / 2, -height / 2,
+                        -width / 2 + 430 * k, -height / 2 + 250 * k,
+                        new int[]{0xA6000000, 0x55000000, 0x00000000},
+                        new float[]{0, .4f, 1}, Shader.TileMode.CLAMP);
+            }
+            logoShadePaint.setShader(logoShade);
+            logoShadePaint.setAlpha(imageAlpha);
+            c.drawRect(shadowRect, logoShadePaint);
+            float lx = -width / 2 + 32 * k, ly = -height / 2 + 32 * k;
             imageRect.set(lx, ly, lx + logo.getWidth() * logoScale, ly + logo.getHeight() * logoScale);
             paint.setAlpha(imageAlpha);
             c.drawBitmap(logo, null, imageRect, paint);
