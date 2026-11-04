@@ -130,6 +130,7 @@ final class DockContinue {
                 } catch (RuntimeException e) {
                     AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
                 }
+                year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
                 try {
                     if (url.isEmpty()) {
                         resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
