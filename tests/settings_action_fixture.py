@@ -12,6 +12,7 @@ public class CLASSNAME {
  static void note(String s){events.add(s);}
  static final int CITY_ROW=4;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
+ String screenTitle(){return "Settings";}
  int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,selectedSetting,buttonCount=6;
  final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;final ModeMonitor modeMonitor=new ModeMonitor();class ModeMonitor {long pendingAt;void markPending(){pendingAt=SystemClock.uptimeMillis();}}
@@ -28,7 +29,7 @@ public class CLASSNAME {
   Intent(String s){action=s;}Intent(Object activity,Class<?> type){action=type.getSimpleName();}
   Intent addFlags(int f){flags|=f;return this;}Intent putExtra(String k,boolean b){note("extra:"+k+":"+b);return this;}
  }
- static class SetupActivity {}static class RemoteShortcutSettingsActivity {}static class HomeActivity {}static class Settings {static final String ACTION_DATE_SETTINGS="date",ACTION_SETTINGS="settings";}
+ static class SetupActivity {}static class RemoteShortcutSettingsActivity {static void open(Activity activity,Object source,String title){if(source==null||title.isEmpty())throw new AssertionError();note("remote-source-frame");activity.startActivity(new Intent(activity,RemoteShortcutSettingsActivity.class));}}static class HomeActivity {}static class Settings {static final String ACTION_DATE_SETTINGS="date",ACTION_SETTINGS="settings";}
  static class Activity {void startActivity(Intent i){note("start:"+i.action+":"+i.flags);}void finish(){note("finish");}void showPreview(){note("preview");}}
  final Activity activity=new Activity();
  static class Prefs {static boolean homeContinue(){return home;}static boolean home;static void setHomeContinue(boolean v){home=v;}
