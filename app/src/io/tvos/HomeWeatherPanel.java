@@ -142,7 +142,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
                 solarForecast = w; solarMinute = now/60_000L;
                 weatherDay = io.tvos.weather.WeatherCardStyle.day(w, now);
             }
-            boolean animate = background.draw(c, panel, w, now, weatherDay, reduced());
+            background.draw(c, panel, w, now, weatherDay);
             int saved = c.save(); c.scale(k, k); c.translate(0, -10);
             label(c, Prefs.city(), 76, 108, 32, ink, Paint.Align.LEFT, 490);
             label(c, HomeData.degrees(w.temp), 76, 194, 88, ink, Paint.Align.LEFT, 350);
@@ -192,7 +192,6 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             }
             if (first == w.days.size()) label(c, AppStrings.get(R.string.weather_loading), 390, 540, 26, muted, Paint.Align.CENTER, 620);
             c.restoreToCount(saved);
-            if (animate && isShowing() && !closing) postInvalidateDelayed(50);
         }
     }
 }
