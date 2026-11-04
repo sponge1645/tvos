@@ -25,6 +25,8 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
     private final HomeData data;
     private final ForecastView forecast;
     private boolean closing;
+    private java.util.function.DoubleConsumer triggerOpacity = value -> { };
+    void setTriggerOpacityListener(java.util.function.DoubleConsumer listener) { triggerOpacity = listener; }
     private final Runnable minute = new Runnable() {
         @Override public void run() {
             if (!isShowing() || closing) return;
@@ -56,14 +58,16 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             forecast.setPivotX(390*k); forecast.setPivotY(390*k);
             forecast.setScaleX(reduced() ? 1 : .96f); forecast.setScaleY(reduced() ? 1 : .96f);
             forecast.setTranslationY(reduced() ? 0 : 18*k);
-            forecast.animate().alpha(1).scaleX(1).scaleY(1).translationY(0)
+            triggerOpacity.accept(reduced() ? 0 : 1);
+            forecast.animate().setUpdateListener(animation -> triggerOpacity.accept(1-forecast.getAlpha()))
+                    .alpha(1).scaleX(1).scaleY(1).translationY(0)
                     .setDuration(reduced() ? 0 : 280)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f)).start();
         });
     }
     private boolean reduced() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false); }
     @Override protected void onStart() { super.onStart(); data.addListener(this); data.refreshIfStale(); onData(); forecast.postDelayed(minute, 60_000); }
-    @Override protected void onStop() { data.removeListener(this); forecast.removeCallbacks(minute); forecast.animate().cancel(); super.onStop(); }
+    @Override protected void onStop() { data.removeListener(this); forecast.removeCallbacks(minute); forecast.animate().cancel(); triggerOpacity.accept(1); super.onStop(); }
     @Override public void onData() {
         WeatherForecast w = data.weather;
         forecast.setContentDescription(Prefs.city() + ", " + HomeData.degrees(w.temp) + ", "

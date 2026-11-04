@@ -104,6 +104,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private static final int Z_WEATHER = 6;
     private HomeWeatherPanel weatherPanel;
+    private float weatherTriggerAlpha = 1;
     private boolean weatherTouch, weatherWasFocused;
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
     private final WatchingCatalog watching;
@@ -207,7 +208,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 case HERO: drawLightTop(c); break;
                 case STATUS: {
                     HomeHeaderRenderer.Frame topFrame = headerFrame();
-                    header.drawDateWeather(c, topFrame);
+                    header.measureDateWeather(topFrame);
+                    if (weatherTriggerAlpha > .001f) {
+                        if (weatherTriggerAlpha < .999f) {
+                            RectF weather = header.weatherBounds();
+                            int saved = c.saveLayerAlpha(weather.left-80*k, weather.top-80*k,
+                                    weather.right+80*k, weather.bottom+80*k, Math.round(255*weatherTriggerAlpha));
+                            header.drawDateWeather(c, topFrame); c.restoreToCount(saved);
+                        } else header.drawDateWeather(c, topFrame);
+                    }
                     header.drawButtons(c, topFrame);
                     break;
                 }
@@ -1048,7 +1057,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!canOpenWeather() || weatherPanel != null) return;
         zone = Z_WEATHER; okDown = false; click.open(); retarget(false); status.invalidate();
         weatherPanel = new HomeWeatherPanel(activity, scene, data);
+        weatherPanel.setTriggerOpacityListener(value -> {
+            weatherTriggerAlpha = (float) Math.max(0, Math.min(1, value));
+            status.invalidate();
+        });
         weatherPanel.setOnDismissListener(dialog -> {
+            weatherTriggerAlpha = 1;
             weatherPanel = null;
             if (running) { zone = canOpenWeather() ? Z_WEATHER : Z_TOP; retarget(false); status.invalidate(); requestFocus(); spoken.focusMoved(); }
         });
