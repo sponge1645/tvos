@@ -61,3 +61,14 @@ and signer verification, equal-code KinoPub builds compare numeric versionName:
 a strictly newer name can be handed to Android's installer. Equal/older names,
 unknown name formats, and lower Android version codes are not offered. Other
 packages retain the normal version-code comparison.
+
+## tvOS build-aware OTA ordering
+
+Release preparation writes `buildSequence` from `SoftwareBuild.SEQUENCE` into
+update.json. When Android versionCode and versionName are equal, a greater
+buildSequence is offered and accepted after the usual package/version, file hash
+and signer verification. Lower codes and equal/older builds are rejected.
+Legacy manifests without buildSequence remain supported for higher versionCode
+updates but cannot authorize an equal-code update. Snooze and ready-APK identity
+include the build. Old installed updater code must first be replaced manually or
+by a release with a higher Android versionCode to gain this behavior.

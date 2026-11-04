@@ -69,8 +69,8 @@ final class SelfUpdate {
         try {
             if (cached.length() > 65536) throw new IOException("Cached manifest too large");
             UpdateRelease release = UpdateRelease.parse(new JSONObject(cached));
-            long installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).getLongVersionCode();
-            if (release.versionCode > installed) { status = new Status(AVAILABLE, release, -1, ""); return; }
+            PackageInfo installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            if (release.newerThan(installed.getLongVersionCode(), installed.versionName, io.tvos.version.SoftwareBuild.SEQUENCE)) { status = new Status(AVAILABLE, release, -1, ""); return; }
         } catch (Exception error) { AppLog.w("Cached update offer unavailable"); }
         prefs.edit().remove("self_update_offer").apply();
     }
@@ -102,7 +102,7 @@ final class SelfUpdate {
                 String manifest = readManifest();
                 UpdateRelease release = UpdateRelease.parse(new JSONObject(manifest));
                 PackageInfo installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
-                boolean newer = release.versionCode > installed.getLongVersionCode();
+                boolean newer = release.newerThan(installed.getLongVersionCode(), installed.versionName, io.tvos.version.SoftwareBuild.SEQUENCE);
                 android.content.SharedPreferences.Editor saved = context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit();
                 if (newer) saved.putString("self_update_offer", manifest); else saved.remove("self_update_offer");
                 saved.apply();
@@ -180,7 +180,7 @@ final class SelfUpdate {
             throw new IOException(AppStrings.get(R.string.runtime_apk_version_differs_from_release_metadata)
                     + archive.versionName + " (" + archive.getLongVersionCode() + "), "
                     + AppStrings.get(R.string.runtime_expected) + release.versionName + " (" + release.versionCode + ")");
-        if (archive.getLongVersionCode() <= installed.getLongVersionCode())
+        if (!release.newerThan(installed.getLongVersionCode(), installed.versionName, io.tvos.version.SoftwareBuild.SEQUENCE))
             throw new IOException(AppStrings.get(R.string.runtime_installed_version_is_equal_to_or_newer_than_the_update)
                     + installed.versionName + " (" + installed.getLongVersionCode() + ")");
         PackageInfo signedArchive, signedInstalled;
@@ -200,7 +200,7 @@ final class SelfUpdate {
     }
 
     private static boolean sameRelease(UpdateRelease a, UpdateRelease b) {
-        return a != null && b != null && a.versionCode == b.versionCode && a.size == b.size
+        return a != null && b != null && a.versionCode == b.versionCode && a.buildSequence == b.buildSequence && a.size == b.size
                 && a.versionName.equals(b.versionName) && a.tag.equals(b.tag) && a.sha256.equals(b.sha256);
     }
 

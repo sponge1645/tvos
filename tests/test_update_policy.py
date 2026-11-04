@@ -42,6 +42,12 @@ tests = r'''
   Object[][] invalid={{"packageName","other.app"},{"asset","evil.apk"},{"tag","../bad"},{"tag","v1/evil"},{"tag",".."},{"sha256","abc"},{"versionCode",0L},{"versionCode",2100000001L},{"size",9999L},{"size",268435457L},{"versionName","x/y"}};
   check(UpdateRelease.LATEST.endsWith("/releases/download/ota-v1/update.json"),"bridge/modern updater never follows legacy latest");
   for(Object[] bad:invalid){Map<String,Object> m=manifest();m.put((String)bad[0],bad[1]);boolean failed=false;try{release(m);}catch(Exception expected){failed=true;}check(failed,"unsafe manifest accepted: "+bad[0]);}
+  Map<String,Object> buildManifest=manifest();buildManifest.put("buildSequence",172L);UpdateRelease built=release(buildManifest);
+  check(built.newerThan(3,"1.2",171),"higher build at same version code offered");
+  check(!built.newerThan(3,"1.2",172)&&!built.newerThan(3,"1.2",173),"same or older build rejected");
+  check(!built.newerThan(4,"1.2",1),"lower Android code never offered");
+  check(!r.newerThan(3,"1.2",171),"legacy manifest without build cannot update equal-code app");
+  check(built.offerKey()!=r.offerKey(),"snooze identity includes build");
   UpdatePolicyHarness h=new UpdatePolicyHarness();PackageInfo installed=new PackageInfo(),archive=new PackageInfo();installed.code=2;
   installed.signingInfo.signers=new Signature[]{new Signature("owner")};archive.signingInfo.signers=new Signature[]{new Signature("owner")};h.context.pm.installed=installed;h.context.pm.archive=archive;
   h.verifyApk(new File("test.apk"),r);
@@ -93,11 +99,12 @@ tests = r'''
  }
 }
 '''
-json_stub = '''package org.json;import java.util.Map;public class JSONObject {private Map<String,Object> map;public JSONObject(Map<String,Object> map){this.map=map;}public String getString(String key){return (String)map.get(key);}public long getLong(String key){return ((Number)map.get(key)).longValue();}}'''
+json_stub = '''package org.json;import java.util.Map;public class JSONObject {private Map<String,Object> map;public JSONObject(Map<String,Object> map){this.map=map;}public boolean has(String key){return map.containsKey(key);}public String getString(String key){return (String)map.get(key);}public long getLong(String key){return ((Number)map.get(key)).longValue();}}'''
 with tempfile.TemporaryDirectory(prefix='tvos-update-policy-') as directory:
     root = Path(directory)
     (root / 'JSONObject.java').write_text(json_stub)
     (root / 'UpdatePolicyHarness.java').write_text(header + ' private static final int SIGNER_FLAGS=PackageManager.GET_SIGNING_CERTIFICATES|PackageManager.GET_SIGNATURES;\n' + method('    private void verifyApk(') + method('    private static Signature[] currentSigners(') + method('    private static boolean compatibleSigners(') + method('    private static Signature[] signingHistory(') + method('    private static boolean sameRelease(') + method('    private static String hex(') + tests)
+    build=root/'SoftwareBuild.java';build.write_text(Path('app/src/io/tvos/version/SoftwareBuild.java').read_text())
     write_strings(root)
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, 'app/src/io/tvos/updates/UpdateRelease.java', *map(str,root.rglob('*.java'))], check=True)

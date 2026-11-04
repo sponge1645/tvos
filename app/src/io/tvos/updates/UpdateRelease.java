@@ -8,14 +8,15 @@ public final class UpdateRelease {
     public static final String REPOSITORY = "https://github.com/sponge1645/tvos";
     public static final String LATEST = REPOSITORY + "/releases/download/ota-v1/update.json";
     public final String versionName, tag, sha256;
-    public final long versionCode, size;
+    public final long versionCode, size, buildSequence;
 
-    private UpdateRelease(String name, long code, String tag, String digest, long size) {
+    private UpdateRelease(String name, long code, String tag, String digest, long size, long build) {
         this.versionName = name;
         this.versionCode = code;
         this.tag = tag;
         this.sha256 = digest;
         this.size = size;
+        this.buildSequence = build;
     }
 
     public static UpdateRelease parse(JSONObject json) throws Exception {
@@ -23,17 +24,25 @@ public final class UpdateRelease {
         String tag = json.getString("tag");
         String digest = json.getString("sha256").toLowerCase(Locale.ROOT);
         long code = json.getLong("versionCode"), size = json.getLong("size");
+        long build = json.has("buildSequence") ? json.getLong("buildSequence") : 0;
         if (!"io.tvos".equals(json.getString("packageName"))
                 || !"tvOS.apk".equals(json.getString("asset"))
                 || !name.matches("[A-Za-z0-9.+_-]{1,32}")
                 || !tag.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}")
                 || tag.equals(".") || tag.equals("..")
                 || !digest.matches("[0-9a-f]{64}")
-                || code < 1 || code > 2100000000L || size < 10000 || size > 256L * 1024 * 1024) {
+                || build < 0 || build > 999999 || code < 1 || code > 2100000000L || size < 10000 || size > 256L * 1024 * 1024) {
             throw new IllegalArgumentException("Invalid update manifest");
         }
-        return new UpdateRelease(name, code, tag, digest, size);
+        return new UpdateRelease(name, code, tag, digest, size, build);
     }
+
+    public boolean newerThan(long installedCode, String installedName, long installedBuild) {
+        if (versionCode != installedCode) return versionCode > installedCode;
+        return versionName.equals(installedName) && buildSequence > installedBuild;
+    }
+
+    public long offerKey() { return versionCode * 1_000_000L + buildSequence; }
 
     public String apkUrl() { return REPOSITORY + "/releases/download/" + tag + "/tvOS.apk"; }
 }

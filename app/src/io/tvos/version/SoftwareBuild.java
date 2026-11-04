@@ -2,10 +2,10 @@ package io.tvos.version;
 
 import java.util.Locale;
 
-/** Display identity only; Android installation order continues to use versionCode. */
+/** Display and OTA build identity; Android package compatibility still uses versionCode. */
 public final class SoftwareBuild {
     private SoftwareBuild() { }
-    public static final int SEQUENCE = 171;
+    public static final int SEQUENCE = 172;
 
     public static String display(String version) {
         if (version == null || !version.matches("[0-9]+\\.[0-9]+(?:\\.[0-9]+)?")) return version;

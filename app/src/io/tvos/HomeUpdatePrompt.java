@@ -58,7 +58,7 @@ final class HomeUpdatePrompt {
         if ( activity.isFinishing() || activity.isDestroyed() || dialog == null && !canShow.getAsBoolean()) return;
         SelfUpdate.Status status = updater.status();
         if (status.release == null) return;
-        long code = status.release.versionCode;
+        long code = status.release.offerKey();
         if (status.kind == SelfUpdate.READY && installRequested) {
             installRequested = false; dismiss(); updater.install(activity); return;
         }
