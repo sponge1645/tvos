@@ -67,6 +67,20 @@ final class DockArtwork {
             // Provider type is a hint: an unambiguous title/year remains usable
             // when a publisher has mislabeled a series as a movie.
             if (matched == null && !expectedKind.isEmpty()) matched = match(items, title, poster, year, "");
+            StringBuilder trace = new StringBuilder("Artwork search: title=").append(title.replace('\n', ' '))
+                    .append(", year=").append(year).append(", kind=").append(expectedKind)
+                    .append(", language=").append(language).append(", selected=")
+                    .append(matched == null ? 0 : matched.optInt("id")).append(", candidates=");
+            if (items != null) for (int n = 0; n < Math.min(10, items.length()); n++) {
+                JSONObject candidate = items.optJSONObject(n);
+                if (candidate == null) continue;
+                trace.append('[').append(candidate.optInt("id")).append('|')
+                        .append(candidate.optString("media_type", "")).append('|')
+                        .append(candidate.optString("title", candidate.optString("name", "")).replace('\n', ' ')).append('|')
+                        .append(candidate.optString("original_title", candidate.optString("original_name", "")).replace('\n', ' ')).append('|')
+                        .append(candidate.optString("release_date", candidate.optString("first_air_date", ""))).append(']');
+            }
+            AppLog.w(trace.toString());
             if (matched != null) return matched;
         }
         return null;
@@ -96,7 +110,7 @@ final class DockArtwork {
 
     static JSONObject match(JSONArray items, String title, String poster, String year, String expectedKind) {
         if (items == null) return null;
-        JSONObject named = null; int names = 0, best = 0;
+        JSONObject named = null; int names = 0;
         String[] normalized = titles(title);
         for (int i = 0; i < normalized.length; i++) normalized[i] = normalize(normalized[i]);
         String filename = filename(poster);
@@ -111,15 +125,11 @@ final class DockArtwork {
             if (!year.isEmpty() && !date.startsWith(year)) continue;
             String name = item.optString("movie".equals(kind) ? "title" : "name", "");
             String original = item.optString("movie".equals(kind) ? "original_title" : "original_name", "");
-            int score = 0;
-            java.util.Set<String> matchedAliases = new java.util.HashSet<>();
             for (String variant : normalized) {
-                if (!variant.isEmpty() && (variant.equals(normalize(name)) || variant.equals(normalize(original))))
-                    matchedAliases.add(variant);
+                if (!variant.isEmpty() && (variant.equals(normalize(name)) || variant.equals(normalize(original)))) {
+                    named = item; names++; break;
+                }
             }
-            score = matchedAliases.size();
-            if (score > best) { best = score; named = item; names = 1; }
-            else if (score > 0 && score == best) names++;
         }
         return names == 1 ? named : null;
     }
