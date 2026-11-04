@@ -50,6 +50,10 @@ public final class SearchActivity extends Activity {
     private final List<LocalApp> apps = new ArrayList<>();
     private FrameLayout root, detail;
     private LinearLayout screen, results;
+    private ScrollView page;
+    private final List<Art> posterViews = new ArrayList<>();
+    private int preferredColumn;
+    private boolean movingByRow;
     private EditText query;
     private View returnFocus;
     private PosterCache images;
@@ -115,7 +119,7 @@ public final class SearchActivity extends Activity {
             super(SearchActivity.this); setText(value); setTextColor(ink()); setTypeface(Ui.displayMedium);
             setTextSize(TypedValue.COMPLEX_UNIT_PX, px(28)); setIncludeFontPadding(false);
         }
-        @Override protected void onDraw(Canvas c) {
+        @Override public void draw(Canvas c) {
             if (hasFocus()) {
                 int saved = c.save(); c.scale(scale, scale);
                 float width = getWidth()/scale, height = getHeight()/scale;
@@ -123,7 +127,7 @@ public final class SearchActivity extends Activity {
                 rect.set(insetX, insetY, width - insetX, height - insetY);
                 surface.draw(c, rect, 1, night ? 1 : 0, 1); c.restoreToCount(saved);
             }
-            super.onDraw(c);
+            super.draw(c);
         }
     }
     @Override protected void onCreate(Bundle saved) {
@@ -159,7 +163,7 @@ public final class SearchActivity extends Activity {
         });
         shortcuts = new RemoteShortcuts(this, true, null);
         screen = column(); screen.setPadding(px(60), px(50), px(60), px(24));
-        ScrollView page = new ScrollView(this); page.setFillViewport(true); page.setClipChildren(false); page.setClipToPadding(false); page.setVerticalScrollBarEnabled(false);
+        page = new ScrollView(this); page.setFillViewport(true); page.setClipChildren(true); page.setClipToPadding(true); page.setVerticalScrollBarEnabled(false);
         page.addView(screen, new ScrollView.LayoutParams(-1, -2));
         root.addView(page, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
@@ -186,6 +190,11 @@ public final class SearchActivity extends Activity {
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 focusAfterSearch = false; matches = new ArrayList<>(); problem = ""; search.changed(s.toString().trim()); render();
             }
+        });
+        query.setOnKeyListener((v, key, event) -> {
+            if (key != KeyEvent.KEYCODE_DPAD_DOWN || posterViews.isEmpty() || detail != null) return false;
+            if (event.getAction() == KeyEvent.ACTION_DOWN) { hideKeyboard(); preferredColumn = 0; posterViews.get(0).requestFocus(); }
+            return true;
         });
         query.setOnClickListener(v -> keyboard());
         query.setOnEditorActionListener((v, action, event) -> { focusAfterSearch = true; search.flush(); remember(); hideKeyboard(); focusResult(); return true; });
@@ -225,7 +234,7 @@ public final class SearchActivity extends Activity {
     private void setQuery(String value) { query.setText(value); query.setSelection(query.length()); hideKeyboard(); focusAfterSearch = true; search.flush(); }
     private void render() {
         if (closed || detail != null) return;
-        artwork.clear(); results.removeAllViews();
+        artwork.clear(); posterViews.clear(); results.removeAllViews();
         String value = query.getText().toString().trim();
         if (value.isEmpty()) {
             List<String> recent = recent();
@@ -258,20 +267,53 @@ public final class SearchActivity extends Activity {
     /** Only the poster is a focus target; captions have no extra frame or focus padding. */
     private void posters(List<Recs.Pick> picks) {
         android.widget.GridLayout grid = new android.widget.GridLayout(this);
-        grid.setColumnCount(6); grid.setClipChildren(false); grid.setClipToPadding(false); grid.setPadding(px(14), px(16), px(14), px(16));
+        grid.setColumnCount(6); grid.setClipChildren(false); grid.setClipToPadding(false); grid.setPadding(px(14), px(16), px(14), px(554));
         for (Recs.Pick pick : picks) {
             Art art = new Art(pick.poster, 0); art.pick = pick;
             art.poster = new PosterRenderer(Recs.get(this), shadows, roundedImages, 1);
             android.widget.GridLayout.LayoutParams box = new android.widget.GridLayout.LayoutParams();
             box.width = px(268); box.height = px(502); box.rightMargin = grid.getChildCount() % 6 == 5 ? 0 : px(32); box.bottomMargin = px(32);
-            grid.addView(art, box); art.setContentDescription(pick.title); art.setBackgroundColor(0x00000000); art.setClipToOutline(false);
+            grid.addView(art, box); posterViews.add(art); art.setContentDescription(pick.title); art.setBackgroundColor(0x00000000); art.setClipToOutline(false);
             art.setFocusable(true); art.setClickable(true); art.setDefaultFocusHighlightEnabled(false);
             art.setOnFocusChangeListener((v, focused) -> {
-                art.focused = focused; art.poster.focus(focused ? 0 : -1, 0, 0, android.os.SystemClock.uptimeMillis()); art.invalidate();
+                if (focused && !movingByRow) preferredColumn = posterViews.indexOf(art) % 6;
+                art.focused = focused; art.poster.focus(focused ? 0 : -1, 0, 0, android.os.SystemClock.uptimeMillis());
+                if (art.focusAnimation != null) art.focusAnimation.cancel();
+                art.focusAnimation = android.animation.ValueAnimator.ofFloat(art.focusAmount, focused ? 1 : 0);
+                art.focusAnimation.setDuration(220); art.focusAnimation.setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f));
+                art.focusAnimation.addUpdateListener(animation -> { art.focusAmount = (float) animation.getAnimatedValue(); art.invalidate(); });
+                art.focusAnimation.start();
+                if (focused) page.post(() -> alignPoster(art));
             });
+            art.setOnKeyListener((v, key, event) -> navigatePoster(art, key, event));
             art.setOnClickListener(v -> showDetail(pick, art));
         }
         results.addView(grid, new LinearLayout.LayoutParams(-1, -2));
+    }
+    private void alignPoster(Art art) {
+        if (detail != null || !art.hasFocus()) return;
+        Rect bounds = new Rect(); art.getDrawingRect(bounds); screen.offsetDescendantRectToMyCoords(art, bounds);
+        int index = posterViews.indexOf(art);
+        if (index >= 0 && index < 6) page.smoothScrollTo(0, 0);
+        else page.smoothScrollTo(0, Math.max(0, bounds.top - px(24)));
+    }
+    private boolean navigatePoster(Art art, int key, KeyEvent event) {
+        if (key != KeyEvent.KEYCODE_DPAD_UP && key != KeyEvent.KEYCODE_DPAD_DOWN
+                && key != KeyEvent.KEYCODE_DPAD_LEFT && key != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
+        if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
+        int index = posterViews.indexOf(art), target = index;
+        if (index < 0) return true;
+        if (key == KeyEvent.KEYCODE_DPAD_UP && index < 6) {
+            query.requestFocus(); page.post(() -> page.smoothScrollTo(0, 0)); return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            target = SearchGridNavigation.horizontal(index, posterViews.size(), key == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+            preferredColumn = target % 6;
+        } else {
+            target = SearchGridNavigation.vertical(index, posterViews.size(), preferredColumn, key == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1);
+        }
+        movingByRow = key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN;
+        posterViews.get(target).requestFocus(); movingByRow = false; return true;
     }
     private void loadSuggestions() {
         metadataIo.execute(() -> {
@@ -318,10 +360,6 @@ public final class SearchActivity extends Activity {
             if (pkg.isEmpty()) continue;
             String name = MovieService.label(i, AppLanguage.current());
             TextView action = button(String.format(Ui.locale(), text(R.string.search_watch_in), name), () -> launcher.openIn(pick, pkg, name));
-            try {
-                android.graphics.drawable.Drawable icon = getPackageManager().getApplicationIcon(pkg); icon.setBounds(0, 0, px(46), px(46));
-                action.setCompoundDrawables(icon, null, null, null); action.setCompoundDrawablePadding(px(20));
-            } catch (android.content.pm.PackageManager.NameNotFoundException e) { AppLog.w("Search provider removed"); }
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(76)); params.topMargin = px(16); content.addView(action, params); if (first == null) first = action;
         }
         if (first == null) { TextView note = label(text(R.string.search_no_apps), 28); addSpace(content, note, 20); }
@@ -355,12 +393,14 @@ public final class SearchActivity extends Activity {
     private void windowImages() {
         if (images == null || closed) return;
         Set<String> wanted = new HashSet<>();
-        for (Art art : artwork) if (!art.path.isEmpty() && art.getGlobalVisibleRect(visibleBounds) && wanted.size() < 10) wanted.add(art.path);
+        for (Art art : artwork) if (!art.path.isEmpty() && art.getGlobalVisibleRect(visibleBounds) && wanted.size() < 18) wanted.add(art.path);
         images.setWindow(wanted); for (Art art : artwork) art.invalidate();
     }
     private final class Art extends View {
         String path;
         boolean focused;
+        float focusAmount;
+        android.animation.ValueAnimator focusAnimation;
         Recs.Pick pick;
         PosterRenderer poster;
         private final Paint title = Ui.text(Ui.semibold, 31 * scale, ink());
@@ -377,7 +417,7 @@ public final class SearchActivity extends Activity {
             if (pick != null) {
                 bounds.set(0, 0, getWidth(), px(402));
                 poster.begin(scale, night ? 1 : 0, 0, 0, true, focused, title, meta);
-                poster.draw(canvas, pick, bounds, focused ? 1 : 0, 0, bitmap);
+                poster.draw(canvas, pick, bounds, focusAmount, 0, bitmap);
                 if (focused) postInvalidateDelayed(poster.nextDelay(android.os.SystemClock.uptimeMillis()));
                 return;
             }
