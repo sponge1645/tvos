@@ -71,6 +71,10 @@ public final class ResumeRowRenderer {
         card(c, position, focusValue, label, caption, image, imageAlpha, -1);
     }
     public void card(Canvas c, float position, float focusValue, String label, String caption, Bitmap image, int imageAlpha, float progress) {
+        card(c, position, focusValue, label, caption, image, imageAlpha, progress, null);
+    }
+    public void card(Canvas c, float position, float focusValue, String label, String caption,
+            Bitmap image, int imageAlpha, float progress, Bitmap logo) {
         Paint title = titlePaint, meta = metaPaint;
         float left = 85 * k + position * (width + 50 * k);
         if (left >= 1920 * k) return;
@@ -107,6 +111,14 @@ public final class ResumeRowRenderer {
         shadowRect.set(-width / 2, -height / 2, width / 2, height / 2);
         clip.reset(); clip.addRoundRect(shadowRect, 28 * k, 28 * k, Path.Direction.CW);
         c.clipPath(clip);
+        if (logo != null && image != null && image.getWidth() > image.getHeight()) {
+            float logoScale = Math.min(180 * k / logo.getWidth(), 68 * k / logo.getHeight());
+            float lx = -width / 2 + 24 * k, ly = -height / 2 + 24 * k;
+            imageRect.set(lx, ly, lx + logo.getWidth() * logoScale, ly + logo.getHeight() * logoScale);
+            paint.setAlpha(imageAlpha);
+            c.drawBitmap(logo, null, imageRect, paint);
+            paint.setAlpha(255);
+        }
         if (!caption.isEmpty() || progress >= 0) {
             if (bottomShade == null || shadeHeight != height) {
                 shadeHeight = height;

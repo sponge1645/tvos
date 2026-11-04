@@ -31,6 +31,7 @@ final class DockContinue {
     private final java.util.concurrent.Executor worker;
     private final PosterCache images;
     private final Map<String, String> paths = new HashMap<>();
+    private final Map<String, String> logoPaths = new HashMap<>();
     private final Set<String> pending = new HashSet<>();
     private List<Recs.Pick> items = Collections.emptyList();
     private String signature = "";
@@ -82,7 +83,7 @@ final class DockContinue {
                 .append(p.watchingYear).append(p.kind).append(p.meta).append('\n').append(p.watchingProgress).append('\n').append(p.backdrop).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
         if (signature.equals(key.toString())) return;
         String selected = index < items.size() ? items.get(index).watchingKey : null;
-        signature = key.toString(); generation++; pending.clear(); paths.clear(); imageAppeared.clear();
+        signature = key.toString(); generation++; pending.clear(); paths.clear(); logoPaths.clear(); imageAppeared.clear();
         items = new ArrayList<>(picks.subList(0, Math.min(10, picks.size())));
         index = 0;
         for (int i = 0; i < items.size(); i++) if (java.util.Objects.equals(selected, items.get(i).watchingKey)) index = i;
@@ -101,7 +102,7 @@ final class DockContinue {
         java.util.Arrays.fill(cardFocus, 0);
         main.removeCallbacks(frame); opacity = 0; imageAppeared.clear();
         scroll = 0;
-        items = Collections.emptyList(); paths.clear(); pending.clear();
+        items = Collections.emptyList(); paths.clear(); logoPaths.clear(); pending.clear();
         shadows.clear();
         images.setWindow(Collections.emptySet()); changed.run();
     }
@@ -116,6 +117,7 @@ final class DockContinue {
             worker.execute(() -> {
                 if (token != generation) return;
                 String url = "";
+                DockArtwork resolved = null;
                 String year = p.watchingYear == null ? "" : p.watchingYear, source = "history-fallback";
                 try {
                     io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
@@ -127,7 +129,8 @@ final class DockContinue {
                 }
                 try {
                     if (url.isEmpty()) {
-                        url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE).backdrop;
+                        resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
+                        url = resolved.backdrop;
                         if (!url.isEmpty()) source = "tmdb-landscape";
                     }
                 }
@@ -140,6 +143,25 @@ final class DockContinue {
                     if (!visible || token != generation) return;
                     pending.remove(key); paths.put(key, resumeImage(ready));
                     window(); changed.run();
+                });
+                final String logoYear = year;
+                final DockArtwork resolvedArtwork = resolved;
+                // Queue optional metadata after the current poster lookup so images
+                // can appear before logos; never create bitmaps in the draw loop.
+                worker.execute(() -> {
+                    if (token != generation) return;
+                    try {
+                        DockArtwork artwork = resolvedArtwork != null ? resolvedArtwork : DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster,
+                                logoYear, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
+                        DockArtwork.loadLogo(artwork, io.tvos.network.ConnectionObserver.NONE);
+                        if (artwork.logo.isEmpty() || token != generation) return;
+                        main.post(() -> {
+                            if (!visible || token != generation) return;
+                            logoPaths.put(key, artwork.logo); window(); changed.run();
+                        });
+                    } catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
+                        AppLog.w("Dock resume logo unavailable: " + e.getClass().getSimpleName());
+                    }
                 });
             });
         }
@@ -160,6 +182,8 @@ final class DockContinue {
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             String path = paths.get(items.get(i).watchingKey);
             if (path != null && !path.isEmpty()) wanted.add(path);
+            String logo = logoPaths.get(items.get(i).watchingKey);
+            if (logo != null && !logo.isEmpty()) wanted.add(logo);
         }
         images.setWindow(wanted);
         for (String path : wanted) images.poster(path);
@@ -267,7 +291,9 @@ final class DockContinue {
                 fadingImage |= progress < 1;
                 alpha = Math.round(255 * progress * progress * (3 - 2 * progress));
             }
-            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.overlay(pick), image, alpha, pick.watchingProgress);
+            String logoPath = logoPaths.get(pick.watchingKey);
+            Bitmap logo = logoPath == null ? null : images.poster(logoPath);
+            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.overlay(pick), image, alpha, pick.watchingProgress, logo);
         }
         renderer.end(c);
         if (fadingImage) { main.removeCallbacks(frame); main.postDelayed(frame, 16); }
