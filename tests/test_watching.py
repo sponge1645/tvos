@@ -41,7 +41,7 @@ public class WatchingHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static class Worker implements Executor {ArrayDeque<Runnable> tasks=new ArrayDeque<>();public void execute(Runnable r){tasks.add(r);}void drain(){while(!tasks.isEmpty())tasks.remove().run();}}
  static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.flags=0x7fffffff;intent.selector=new Object();intent.clip=new Object();intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
- static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3,"https://cdn.example/landscape-thumbnail.jpg",0,"2026-01-01"};}
+ static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3,"https://cdn.example/landscape-thumbnail.jpg",0,null};}
  static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
  public static void main(String[] args){
   String safe=link("safe-policy","com.seena.app","payload");Intent original=Intent.data.get(safe);Intent cleaned=io.tvos.watching.ResumeIntentPolicy.parse(safe,"com.seena.app");
@@ -88,7 +88,7 @@ public class WatchingHarness {
   catalog.start();check(worker.tasks.isEmpty()&&catalog.picks().isEmpty(),"no permission no query");
   catalog.requestPermission(context);check(context.requested==WatchingCatalog.PERMISSION_REQUEST,"runtime permission requested");
   context.permitted=true;
-  JSONObject.encoded.put("resume",new JSONObject().put("id",42).put("posterBig","https://cdn.example/portrait.jpg"));
+  JSONObject.encoded.put("resume",new JSONObject().put("id",42).put("year",2008).put("posterBig","https://cdn.example/portrait.jpg"));
   String target=link("target","watch.kino.mod","resume");
   context.resolver.rows.add(row("watch.kino.mod","s42:1:2","Serial",300,target));
   context.resolver.rows.add(row("watch.kino.mod","s42:1:1","Old episode",100,target));
@@ -101,7 +101,7 @@ public class WatchingHarness {
   check(catalog.picks().size()==2,"foreign rows, broken intents and duplicate episodes excluded");
   Recs.Pick serial=catalog.picks().get(0),film=catalog.picks().get(1);
   check(serial.id==0&&serial.watchingKey.equals("kinopub:42"),"source identity never becomes TMDB id");
-  check(serial.watchingYear.equals("2026"),"release year survives history reading");check(serial.backdrop.equals("https://cdn.example/landscape-thumbnail.jpg"),"separate landscape thumbnail is read instead of portrait poster");
+  check(serial.watchingYear.equals("2008"),"KinoPub resume year is preserved when provider date is missing");check(serial.backdrop.equals("https://cdn.example/landscape-thumbnail.jpg"),"separate landscape thumbnail is read instead of portrait poster");
   check(serial.watchingProgress>0&&serial.watchingProgress<1,"provider progress retained");
   check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
   check(serial.meta.equals("С1 / Э2 · Осталось: 16 мин."),"serial caption");

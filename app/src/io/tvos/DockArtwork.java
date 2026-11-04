@@ -135,8 +135,13 @@ final class DockArtwork {
                 ? "https://image.tmdb.org/t/p/" + size + path : "";
     }
     private static String[] titles(String title) {
-        String[] parts = title.trim().split("\\s+/\\s+", 2);
-        if (parts.length == 2 && (parts[0].length() < 2 || parts[1].length() < 2)) return new String[]{title};
+        String clean = title.trim();
+        String[] parts = clean.split("\\s*/\\s*", 2);
+        if (parts.length == 2 && (parts[0].length() < 2 || parts[1].length() < 2)) parts = new String[]{clean};
+        for (int i = 0; i < parts.length; i++) {
+            // A provider's display label may end with a parenthesized year.
+            parts[i] = parts[i].replaceFirst("\\s*[\\(\\[]([12][0-9]{3})[\\)\\]]\\s*$", "").trim();
+        }
         return parts;
     }
 

@@ -63,6 +63,10 @@ final class WatchingCardReader {
         if (resume != null && resume.length() <= 131072) {
             try {
                 JSONObject data = new JSONObject(resume);
+                // KinoPub can omit the TV Provider release_date while retaining
+                // the release year in its resume payload.
+                String year = data.optString("year", "").trim();
+                if (pick.watchingYear.isEmpty() && year.matches("[0-9]{4}")) pick.watchingYear = year;
                 if (data.optInt("id") > 0) pick.watchingKey = "kinopub:" + data.optInt("id");
                 // The system row may deliberately use a landscape thumbnail; keep the portrait poster.
                 String portrait = poster(data.optString("posterBig", ""), owner);

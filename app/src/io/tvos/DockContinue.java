@@ -134,7 +134,7 @@ final class DockContinue {
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
                     AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
-                AppLog.w("Resume artwork: package=" + p.pkg + ", item=" + itemIndex + ", source=" + source);
+                AppLog.w("Resume artwork: package=" + p.pkg + ", item=" + itemIndex + ", source=" + source + ", kind=" + p.kind + ", year=" + year);
                 final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
                 main.post(() -> {
                     if (!visible || token != generation) return;
