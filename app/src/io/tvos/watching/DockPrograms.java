@@ -90,7 +90,9 @@ public final class DockPrograms {
             int rows = 0;
             if (c != null) while (rows++ < 512 && c.moveToNext()) {
                 String owner = value(c, 0);
-                if (!service.equals(WatchingSources.id(owner)) || !resumeTitle(title).equals(resumeTitle(value(c, 5)))) continue;
+                if (!service.equals(WatchingSources.id(owner))) continue;
+                boolean samePoster = poster != null && !poster.isEmpty() && poster.equals(value(c, 1));
+                if (!samePoster && !resumeTitle(title).equals(resumeTitle(value(c, 5)))) continue;
                 String date = value(c, 6);
                 Candidate candidate = new Candidate(title, value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
                 if (c.getInt(4) == 0 && allowed.test(value(c, 2), owner)) add(candidate.urls, value(c, 2));

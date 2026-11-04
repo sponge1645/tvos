@@ -43,7 +43,7 @@ public class WatchingHarness {
  static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.flags=0x7fffffff;intent.selector=new Object();intent.clip=new Object();intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
  static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3,"https://cdn.example/landscape-thumbnail.jpg",0,null};}
  static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
- public static void main(String[] args){
+ public static void main(String[] args){check(WatchingCardReader.labelYear("Сумерки / Twilight (2008)").equals("2008"),"explicit label year preserved");check(WatchingCardReader.labelYear("2001: A Space Odyssey").isEmpty(),"title numbers are not release years");
   String safe=link("safe-policy","com.seena.app","payload");Intent original=Intent.data.get(safe);Intent cleaned=io.tvos.watching.ResumeIntentPolicy.parse(safe,"com.seena.app");
   check(cleaned!=original&&cleaned.owner.equals("com.seena.app")&&cleaned.flags==Intent.FLAG_ACTIVITY_NEW_TASK&&cleaned.selector==null&&cleaned.clip==null&&cleaned.extra.equals("payload")&&cleaned.uri.toString().equals(original.uri.toString()),"resume policy strips grants/selector/clip while preserving URI/extras and owner");
   check(original.flags==0x7fffffff&&original.selector!=null&&original.clip!=null,"resume parsing never edits original provider data");

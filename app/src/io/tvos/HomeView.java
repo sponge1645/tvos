@@ -1695,9 +1695,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 }
                 break;
             case Z_TOP:
-                if (dy < 0 && canOpenWeather()) {
-                    zone = Z_WEATHER; status.invalidate();
-                } else if (dx != 0) {
+                if (dy < 0) return true; // All header controls share one row.
+                if (dx != 0) {
                     if (dx < 0 && canOpenWeather() && topIndex == firstTopControl()) {
                         zone = Z_WEATHER; status.invalidate(); break;
                     }

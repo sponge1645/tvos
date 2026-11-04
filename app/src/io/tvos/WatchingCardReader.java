@@ -53,6 +53,7 @@ final class WatchingCardReader {
         String service = WatchingSources.id(owner);
         if (!"kinopub".equals(service)) {
             pick.watchingKey = service + ":" + pick.kind + ":" + title.trim().toLowerCase(java.util.Locale.ROOT);
+            if (pick.watchingYear.isEmpty()) pick.watchingYear = labelYear(title);
             return pick;
         }
         String internalId = text(cursor, 2);
@@ -76,6 +77,7 @@ final class WatchingCardReader {
                 Log.w(TAG, "Invalid KinoPub resume metadata");
             }
         }
+        if (pick.watchingYear.isEmpty()) pick.watchingYear = labelYear(title);
         if (pick.watchingKey == null) {
             // Some versions use a plain item ID instead of the MOD's m/s prefix.
             Uri data = intent.getData();
@@ -84,6 +86,12 @@ final class WatchingCardReader {
             else pick.watchingKey = "kinopub:" + pick.kind + ":" + title;
         }
         return pick;
+    }
+
+    /** Only an explicitly marked trailing year; never infer dates from numbers in titles. */
+    static String labelYear(String title) {
+        Matcher year = Pattern.compile("\\s*[\\(\\[]([12][0-9]{3})[\\)\\]]\\s*$").matcher(title);
+        return year.find() ? year.group(1) : "";
     }
 
     private String poster(String value, String owner) {
