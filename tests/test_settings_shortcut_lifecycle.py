@@ -13,6 +13,7 @@ class Preview {boolean showing,handles;boolean active(){return showing;}boolean 
 class View {boolean handles;boolean onKey(KeyEvent e){Test.log.add("view");return handles;}void pause(){Test.log.add("pause");}}
 class Updates {void pause(){Test.log.add("updates-pause");}void changed(){}}
 public class Test extends Base {
+ static class RemoteShortcutSettings {void pause(){}void close(){}void windowFocus(boolean f){}boolean dispatchKeyEvent(KeyEvent e){return false;}}RemoteShortcutSettings remoteSettings;
  static final List<String> log=new ArrayList<>();RemoteShortcuts shortcuts=new RemoteShortcuts();Preview preview=new Preview();View view=new View();Updates automaticUpdates=new Updates();
 '''+methods+'''
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}

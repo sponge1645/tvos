@@ -2,7 +2,7 @@
 from pathlib import Path
 import re,subprocess,tempfile
 from tmdb_metadata_fixture import block
-source=Path('app/src/io/tvos/RemoteShortcutSettingsActivity.java').read_text()
+source=Path('app/src/io/tvos/RemoteShortcutSettings.java').read_text()
 methods='\n'.join(block(source,sig) for sig in ['    private void capture(', '    private boolean learn(', '    private void edit(', '    private void scope(', '    private void assign(', '    private void delete('])
 ids=sorted(set(re.findall(r'R\.string\.(\w+)',methods)))
 r='static class R {static class string {'+''.join('static final int '+name+'='+str(i+1)+';' for i,name in enumerate(ids))+'}}'

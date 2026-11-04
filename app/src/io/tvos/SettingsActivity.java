@@ -52,6 +52,21 @@ import java.util.List;
  */
 public class SettingsActivity extends Activity {
     private SettingsView view;
+    private RemoteShortcutSettings remoteSettings;
+    void openRemoteSettings(View source, String title) {
+        if (remoteSettings != null) return;
+        android.view.ViewGroup host = (android.view.ViewGroup) source.getParent();
+        remoteSettings = new RemoteShortcutSettings(this, source, title, () -> {
+            RemoteShortcutSettings old = remoteSettings; remoteSettings = null;
+            if (old == null) return;
+            host.removeView(old.content()); old.close();
+            source.setVisibility(View.VISIBLE); source.requestFocus(); source.invalidate();
+            if (shortcuts != null) shortcuts.reload();
+        });
+        host.addView(remoteSettings.content(), new android.view.ViewGroup.LayoutParams(-1, -1));
+        source.setVisibility(View.INVISIBLE);
+        remoteSettings.start(false);
+    }
     private SettingsPreview preview;
     private RemoteShortcuts shortcuts;
     private HomeUpdatePrompt automaticUpdates;
@@ -64,7 +79,7 @@ public class SettingsActivity extends Activity {
         view = new SettingsView(this);
         preview = new SettingsPreview(this, view, view::resume);
         setContentView(preview.host());
-        automaticUpdates = new HomeUpdatePrompt(this, () -> hasWindowFocus() && !preview.active()
+        automaticUpdates = new HomeUpdatePrompt(this, () -> remoteSettings == null && hasWindowFocus() && !preview.active()
                 && !view.updateDialog.visible() && !SetupGate.blocking(this));
         WifiPermission.requestOnce(this);
     }
@@ -72,6 +87,7 @@ public class SettingsActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (shortcuts != null) shortcuts.reload();
+        if (remoteSettings != null) remoteSettings.resume();
         view.resume();
         SetupGate.route(this);
         if (automaticUpdates != null) automaticUpdates.resume();
@@ -89,6 +105,7 @@ public class SettingsActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        if (remoteSettings != null) remoteSettings.pause();
         if (shortcuts != null) shortcuts.cancel();
         if (automaticUpdates != null) automaticUpdates.pause();
         preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
@@ -98,15 +115,21 @@ public class SettingsActivity extends Activity {
 
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
+        if (remoteSettings != null) remoteSettings.windowFocus(focused);
         if (!focused && shortcuts != null) shortcuts.cancel();
         if (focused && automaticUpdates != null) automaticUpdates.changed();
     }
 
     @Override protected void onDestroy() {
+        if (remoteSettings != null) { remoteSettings.close(); remoteSettings = null; }
         if (shortcuts != null) { shortcuts.close(); shortcuts = null; }
         super.onDestroy();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (remoteSettings != null) {
+            if (remoteSettings.dispatchKeyEvent(event)) return true;
+            return super.dispatchKeyEvent(event);
+        }
         if (shortcuts != null && shortcuts.onKey(event)) return true;
         if (preview.onKey(event)) return true;
         if (!preview.active() && view.onKey(event)) return true;
@@ -451,6 +474,7 @@ public class SettingsActivity extends Activity {
         }
 
         private boolean lightSettings() { return lightAppearance; }
+        SettingsBackground remoteBackground() { return background; }
 
         private String screenTitle() {
             return SettingsContent.screenTitle(screen, settingsGroup, pickFor);

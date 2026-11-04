@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from settings_transitions_fixture import write
 from tmdb_metadata_fixture import block
-source=Path('app/src/io/tvos/RemoteShortcutSettingsActivity.java').read_text()
+source=Path('app/src/io/tvos/RemoteShortcutSettings.java').read_text()
 methods='\n'.join(block(source,s) for s in ['        void captureOutgoing(', '        void show(String nextTitle', '        void drawTransitionPage('])
 harness='''import java.util.*;import android.graphics.*;import io.tvos.settings.*;
 class SystemClock {static long now;static long uptimeMillis(){return now;}}
@@ -12,7 +12,7 @@ public class RemoteMenuHarness {
  List<Row> rows=new ArrayList<>(),previousRows=new ArrayList<>();
  String title="",hint="";int focus,offset,depth,screen,previousScreen,previousOffset,previousFocus;
  boolean forward,capturing,previousCapturing,drawLight,reduced,hasDrawn=true,exiting;
- static class Entry {Object bitmap;} Entry entry; final RectF rect=new RectF();
+ static class Source {void draw(Canvas c){}} Source sourceView; final RectF rect=new RectF();
  int getWidth(){return 1920;}int getHeight(){return 1080;}float k=1;long entered,last;
  Paint labelPaint=new Paint();SettingsTextRenderer typography=new SettingsTextRenderer();
  static class R {static class string {static int settings_remote_press;}}
@@ -33,7 +33,7 @@ public class RemoteMenuHarness {
  RemoteMenuHarness m=new RemoteMenuHarness();m.transitions.sync(0,0,true,false,m.parent);
  m.transitions.seedTitle("Settings");
  SystemClock.now=100;m.navigate("root",1);m.render();check(m.viewport.drawn.equals(Arrays.asList("empty","root")));
- m.entry=new Entry();m.render();check(m.viewport.drawn.equals(Arrays.asList("root")));m.entry=null;
+ m.sourceView=new Source();m.render();check(m.viewport.drawn.equals(Arrays.asList("root")));m.sourceView=null;
  SystemClock.now=400;m.navigate("edit",2);m.render();check(m.viewport.drawn.equals(Arrays.asList("root","edit")));
  SystemClock.now=700;m.navigate("loading apps",4);m.navigate("loaded apps",4);m.render();check(m.viewport.drawn.equals(Arrays.asList("edit","loaded apps")));
  SystemClock.now=1000;m.navigate("edit",2);m.render();check(m.viewport.drawn.equals(Arrays.asList("loaded apps","edit")));check(!m.forward);

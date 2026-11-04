@@ -49,8 +49,17 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
         }
         forecast.setFocusable(true); forecast.setFocusableInTouchMode(true); forecast.requestFocus();
-        forecast.setAlpha(0); forecast.animate().alpha(1).setDuration(reduced() ? 0 : 240)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f)).start();
+        forecast.setAlpha(0);
+        forecast.post(() -> {
+            if (closing || !isShowing()) return;
+            float k = Math.min(forecast.getWidth()/1920f, forecast.getHeight()/1080f);
+            forecast.setPivotX(390*k); forecast.setPivotY(400*k);
+            forecast.setScaleX(reduced() ? 1 : .96f); forecast.setScaleY(reduced() ? 1 : .96f);
+            forecast.setTranslationY(reduced() ? 0 : 18*k);
+            forecast.animate().alpha(1).scaleX(1).scaleY(1).translationY(0)
+                    .setDuration(reduced() ? 0 : 280)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f)).start();
+        });
     }
     private boolean reduced() { return getContext().getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false); }
     @Override protected void onStart() { super.onStart(); data.addListener(this); data.refreshIfStale(); onData(); forecast.postDelayed(minute, 60_000); }
@@ -63,8 +72,14 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
     }
     private void close() {
         if (closing) return; closing = true;
+        forecast.animate().cancel();
         if (reduced()) dismiss();
-        else forecast.animate().alpha(0).setDuration(180).withEndAction(this::dismiss).start();
+        else {
+            float k = Math.min(forecast.getWidth()/1920f, forecast.getHeight()/1080f);
+            forecast.animate().alpha(0).scaleX(.97f).scaleY(.97f).translationY(12*k)
+                    .setDuration(220).setInterpolator(new android.view.animation.AccelerateInterpolator(1.2f))
+                    .withEndAction(this::dismiss).start();
+        }
     }
     @Override public void onBackPressed() { close(); }
     @Override public boolean onKeyDown(int key, KeyEvent event) {

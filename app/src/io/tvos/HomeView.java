@@ -207,7 +207,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 case HERO: drawLightTop(c); break;
                 case STATUS: {
                     HomeHeaderRenderer.Frame topFrame = headerFrame();
-                    if (weatherPanel == null) header.drawDateWeather(c, topFrame);
+                    header.drawDateWeather(c, topFrame);
                     header.drawButtons(c, topFrame);
                     break;
                 }
