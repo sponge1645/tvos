@@ -112,7 +112,7 @@ public final class ResumeRowRenderer {
         clip.reset(); clip.addRoundRect(shadowRect, 28 * k, 28 * k, Path.Direction.CW);
         c.clipPath(clip);
         if (logo != null && image != null && image.getWidth() > image.getHeight()) {
-            float logoScale = Math.min(180 * k / logo.getWidth(), 68 * k / logo.getHeight());
+            float logoScale = Math.min(360 * k / logo.getWidth(), 136 * k / logo.getHeight());
             float lx = -width / 2 + 24 * k, ly = -height / 2 + 24 * k;
             imageRect.set(lx, ly, lx + logo.getWidth() * logoScale, ly + logo.getHeight() * logoScale);
             paint.setAlpha(imageAlpha);
