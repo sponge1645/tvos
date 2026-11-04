@@ -4,7 +4,7 @@ package io.tvos.home;
 public final class HomeLayout {
     private HomeLayout() { }
     public static final float WIDTH = 1920, HEIGHT = 1080, EDGE = 40, RIGHT = WIDTH - EDGE;
-    public static final float TOP = 50, DOCK_BOTTOM = 60, BUTTON_SCALE = 0.9f;
+    public static final float TOP = EDGE, DOCK_BOTTOM = 60, BUTTON_SCALE = 0.9f;
     public static final float BUTTON = 68 * BUTTON_SCALE, HEADER_CY = TOP + BUTTON / 2;
     public static final float TAB_TOP = TOP, TAB_HEIGHT = BUTTON;
     public static final float POSTER_TITLE_BASELINE = 46, POSTER_META_BASELINE = 85;

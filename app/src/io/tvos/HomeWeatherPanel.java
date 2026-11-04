@@ -53,7 +53,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
         forecast.post(() -> {
             if (closing || !isShowing()) return;
             float k = Math.min(forecast.getWidth()/1920f, forecast.getHeight()/1080f);
-            forecast.setPivotX(390*k); forecast.setPivotY(400*k);
+            forecast.setPivotX(390*k); forecast.setPivotY(390*k);
             forecast.setScaleX(reduced() ? 1 : .96f); forecast.setScaleY(reduced() ? 1 : .96f);
             forecast.setTranslationY(reduced() ? 0 : 18*k);
             forecast.animate().alpha(1).scaleX(1).scaleY(1).translationY(0)
@@ -116,7 +116,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             super.onDraw(c);
             float k = Math.min(getWidth() / 1920f, getHeight() / 1080f);
             int ink = 0xFFF9FAFC, muted = 0xFFBFC2C9, lowInk = 0xFF818690;
-            panel.set(40*k, 50*k, 740*k, 750*k);
+            panel.set(40*k, 40*k, 740*k, 740*k);
             WeatherForecast w = data.weather;
             long now = System.currentTimeMillis();
             if (solarForecast != w || solarMinute != now/60_000L) {
@@ -124,7 +124,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
                 weatherDay = io.tvos.weather.WeatherCardStyle.day(w, now);
             }
             boolean animate = background.draw(c, panel, w, now, weatherDay, reduced());
-            int saved = c.save(); c.scale(k, k);
+            int saved = c.save(); c.scale(k, k); c.translate(0, -10);
             label(c, Prefs.city(), 76, 108, 32, ink, Paint.Align.LEFT, 490);
             label(c, HomeData.degrees(w.temp), 76, 194, 88, ink, Paint.Align.LEFT, 350);
             icon(c, w.code, weatherDay, 684, 104, 38, ink);
