@@ -124,7 +124,7 @@ final class DockArtwork {
             String path = item.optString("file_path", "");
             if (!path.endsWith(".png")) continue;
             String lang = item.optString("iso_639_1", "");
-            int score = language.equals(lang) ? 4 : "en".equals(lang) ? 3 : (lang.isEmpty() || "null".equals(lang)) ? 2 : (!originalLanguage.isEmpty() && originalLanguage.equals(lang)) ? 1 : 0;
+            int score = language.equals(lang) ? 4 : "en".equals(lang) ? 3 : (!originalLanguage.isEmpty() && originalLanguage.equals(lang)) ? 2 : (lang.isEmpty() || "null".equals(lang)) ? 1 : 0;
             if (score > best && score > 0) { best = score; selected = path; }
         }
         return selected;
