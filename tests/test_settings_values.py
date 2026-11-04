@@ -55,7 +55,7 @@ public class ValuesHarness {
    for(int i=0;i<5;i++)check(mappings[i].equals(ru?"Не настроено":"Not configured"),"empty catalog uses same status for all five app buttons");
    check(mappings[5].isEmpty(),"input setup has no obsolete volume status");
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,9);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B172)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");check(about[8].equals("—"),"Ethernet has no Wi-Fi signal");
+   String[] about=v.menu(ABOUT,9);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B173)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");check(about[8].equals("—"),"Ethernet has no Wi-Fi signal");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,9)[6].equals("Home"),"SSID quotes removed");check(v.menu(ABOUT,9)[8].equals("4/5"),"fifth-dot signal value remains accessible");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,9);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");

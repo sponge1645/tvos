@@ -72,6 +72,7 @@ public final class SearchActivity extends Activity {
     private boolean running, closed, initialInput = true, focusAfterSearch;
     private boolean night;
     private android.animation.ValueAnimator scrolling;
+    private boolean transitioning;
     private final List<Spring> focus = new ArrayList<>();
 
     private static final class LocalApp {
@@ -235,6 +236,7 @@ public final class SearchActivity extends Activity {
         query.requestFocus(); scrollTo(0, true); page.invalidate();
     }
     private boolean key(KeyEvent event) {
+        if (transitioning) return true;
         int key = event.getKeyCode();
         boolean arrow = key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN || key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT;
         boolean ok = key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER || key == KeyEvent.KEYCODE_NUMPAD_ENTER;
@@ -284,6 +286,29 @@ public final class SearchActivity extends Activity {
         return StaticLayout.Builder.obtain(value, 0, value.length(), p, width).setMaxLines(lines).setEllipsize(TextUtils.TruncateAt.END).setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(4, 1).setIncludePad(false).build();
     }
     private void openDetail(Recs.Pick pick) {
+        transitionPage(() -> showDetail(pick), true);
+    }
+    private void transitionPage(Runnable change, boolean forward) {
+        if (transitioning || closed) return;
+        if (reduced()) { change.run(); return; }
+        transitioning = true;
+        if (scrolling != null) scrolling.cancel();
+        float offset = 28 * scale * (forward ? 1 : -1);
+        page.animate().cancel();
+        page.animate().alpha(0).translationX(-offset).setDuration(100)
+                .withEndAction(() -> {
+                    if (closed || !running) { resetPageTransition(); return; }
+                    change.run();
+                    page.setTranslationX(offset);
+                    page.animate().alpha(1).translationX(0).setDuration(220)
+                            .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f))
+                            .withEndAction(() -> transitioning = false).start();
+                }).start();
+    }
+    private void resetPageTransition() {
+        page.animate().cancel(); page.setAlpha(1); page.setTranslationX(0); transitioning = false;
+    }
+    private void showDetail(Recs.Pick pick) {
         remember(); hideKeyboard(); search.cancel(); savedSelected = selected; searchScroll = scroll; detail = pick; generation++;
         int expected = generation; detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
         buildDetail(null); scrollTo(0, false); select(0, false);
@@ -317,7 +342,8 @@ public final class SearchActivity extends Activity {
         if (selected >= 0) focus.get(selected).snap(1);
         contentHeight = Math.max(1080, y+100); refreshImages(); page.invalidate();
     }
-    private void closeDetail() {
+    private void closeDetail() { transitionPage(this::returnToResults, false); }
+    private void returnToResults() {
         generation++; if (detailWork != null) detailWork.cancel(false); detail = null; query.setVisibility(View.VISIBLE);
         rebuild(); int index = savedSelected; scrollTo(searchScroll, false); if (index >= 0 && index < targets.size()) select(index, false); else input();
     }
@@ -386,6 +412,7 @@ public final class SearchActivity extends Activity {
         }
         private void paragraph(Canvas c, StaticLayout layout, float x, float y) { int saved = c.save(); c.translate(x,y); layout.draw(c); c.restoreToCount(saved); }
         @Override public boolean onTouchEvent(MotionEvent e) {
+            if (transitioning) return true;
             if (e.getAction() == MotionEvent.ACTION_DOWN) { touchY = e.getY(); startScroll = scroll; dragging = false; return true; }
             if (e.getAction() == MotionEvent.ACTION_MOVE) { if (Math.abs(e.getY()-touchY) > 12*scale) dragging = true; if (dragging) SearchActivity.this.scrollTo(startScroll+(touchY-e.getY())/scale, false); return true; }
             if (e.getAction() == MotionEvent.ACTION_UP) {
@@ -397,7 +424,7 @@ public final class SearchActivity extends Activity {
     }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); if (focused && initialInput) { initialInput = false; query.post(() -> { if (running && detail == null && query.hasFocus()) keyboard(); }); } }
     @Override protected void onResume() { super.onResume(); running = true; shortcuts.reload(); search.resume(query.getText().toString().trim()); search.restore(query.getText().toString().trim(), !matches.isEmpty()); page.invalidate(); }
-    @Override protected void onPause() { running = false; search.pause(detail == null); shortcuts.cancel(); if (scrolling != null) scrolling.cancel(); super.onPause(); }
+    @Override protected void onPause() { running = false; resetPageTransition(); search.pause(detail == null); shortcuts.cancel(); if (scrolling != null) scrolling.cancel(); super.onPause(); }
     @Override protected void onSaveInstanceState(Bundle state) { state.putString("query", query.getText().toString()); super.onSaveInstanceState(state); }
     @Override protected void onDestroy() { closed = true; search.cancel(); shortcuts.close(); images.setWindow(new HashSet<>()); metadataIo.shutdownNow(); artworkIo.shutdownNow(); main.removeCallbacksAndMessages(null); rounded.clear(); shadows.clear(); posters.clear(); super.onDestroy(); }
     @Override public boolean dispatchKeyEvent(KeyEvent e) { if (shortcuts != null && shortcuts.onKey(e)) return true; if (page != null && key(e)) return true; return super.dispatchKeyEvent(e); }
