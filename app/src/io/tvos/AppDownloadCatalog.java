@@ -74,11 +74,10 @@ final class AppDownloadCatalog {
                 source("https://github.com/lampa-app/LAMPA/releases/download/v1.13.5/app-lite-release.apk",
                         "4d53f2038cb99dc7a05f346e943dd6ec7cedd25e42b878ce383cb4e31d6c24c8"),
                 "lampa-app/LAMPA", false, 581),
-        // Explicitly accepted mirror snapshot; pins identify this artifact, not the mirror's publisher.
+        // Rolling KinoPub discovery; first installs remain anchored to the reviewed signing identity.
         new Entry("KinoPub", "watch.kino",
                 "e3e5f1d63be9737e932a5851f64838b64730f9b68998754fbff78dd9350b9568",
-                source("https://raw.githubusercontent.com/kotlinbestuser/apk/6f6691147168550aca587564c291bef15358503b/kino-watch-2.19.apk",
-                        "5cf6002f897f34b32db28c60bf0a6e5dc9015761af7591ca800e7c48d183bcd8"),
+                source("https://raw.githubusercontent.com/kotlinbestuser/apk/HEAD/kino-watch-2.23.apk", null),
                 "kotlinbestuser/apk", false, 169)
     };
 
@@ -123,6 +122,7 @@ final class AppDownloadCatalog {
     static Source resolve(Entry app, boolean installed, String[] abis, BooleanSupplier cancelled) throws Exception {
         if ("llc.itdev.incy".equals(app.packageName)) return incy(app, cancelled);
         if ("com.seena.app".equals(app.packageName)) return seena(abis, cancelled);
+        if ("KinoPub".equals(app.name)) return kinoPub(cancelled);
         if (!installed || app.fixedArtifact) {
             if (app.bootstrap == null) throw new IOException(AppStrings.get(R.string.runtime_no_verified_apk_for_first_installation_install_the_app_from_a_tru));
             if ("TizenTube".equals(app.name)) {
@@ -134,7 +134,6 @@ final class AppDownloadCatalog {
             }
             return app.bootstrap;
         }
-        if ("KinoPub".equals(app.name)) return kinoPub(cancelled);
         JSONArray releases = new JSONArray(ApkTransfer.json(
                 "https://api.github.com/repos/" + app.repository + "/releases?per_page=12", cancelled));
         for (int r = 0; r < releases.length(); r++) {

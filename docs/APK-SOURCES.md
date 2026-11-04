@@ -34,3 +34,13 @@ URL; missing/malformed metadata fails closed. APK bytes must match that digest,
 then package and existing pinned signer checks still apply. No unsigned or
 hashless fallback is used. Replacement between metadata and download is rejected;
 retry obtains fresh metadata. GitHub rate limits/network failures remain errors.
+
+## KinoPub rolling downloads
+
+First installs and updates both discover the greatest numeric `kino-watch-X.apk`
+version in `kotlinbestuser/apk`. Beta and unrelated file names are excluded.
+The former 2.19 snapshot is no longer selected on first installation.
+The downloaded APK must still have package `watch.kino` and the existing reviewed
+signing-certificate fingerprint; updates must also match the installed signer.
+This explicitly trusts new versions signed by that identity rather than pinning
+each binary hash. Discovery failure is reported instead of installing an old fallback.

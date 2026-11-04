@@ -82,9 +82,11 @@ public class DownloadHarness {
   AppDownloadCatalog.Source first=AppDownloadCatalog.resolve(AppDownloadCatalog.get(0),false,arm32,()->false);
   check(first.sha256!=null && first.url.contains("/v0.0.36/"),"first install uses pinned bootstrap");
   AppDownloadCatalog.Entry kino=AppDownloadCatalog.get(6);
+  org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","kino-watch-2.19.apk"),new org.json.JSONObject().put("name","kino-watch-2.23.apk"),new org.json.JSONObject().put("name","beta.apk"));
+  reply("[]".getBytes(),2);
   AppDownloadCatalog.Source kinoFirst=AppDownloadCatalog.resolve(kino,false,arm32,()->false);
-  check(kinoFirst.sha256!=null && kino.signerSha256!=null && kinoFirst.url.contains("/6f6691147168550aca587564c291bef15358503b/")
-    && kinoFirst.url.endsWith("/kino-watch-2.19.apk"),"accepted KinoPub snapshot pins file and signer for first installation");
+  check(kinoFirst.sha256==null && kino.signerSha256!=null && kinoFirst.url.endsWith("/kino-watch-2.23.apk"),"KinoPub first install discovers latest numeric release with pinned signer");
+  check(!ApkTrust.requiresInstalledApp(kino,kinoFirst),"KinoPub rolling first install uses existing package signer pin");
   rejects(()->AppDownloadCatalog.resolve(AppDownloadCatalog.get(2),false,x64,()->false),"Tizen bootstrap checks CPU");
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(2),false,arm64,()->false).url.endsWith("/cobalt-arm.apk"),"Tizen first install prefers ARM32 on dual-ABI system");
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(2),false,new String[]{"arm64-v8a"},()->false).url.endsWith("/cobalt-arm64.apk"),"Tizen ARM64-only fallback");
@@ -110,7 +112,7 @@ public class DownloadHarness {
   check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(4),true,arm32,()->false).url.equals("https://seena.su/d.apk"),"invalid release metadata uses official stable endpoint");
   org.json.JSONObject.version="1.9.3";
   check(!ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(4),new AppDownloadCatalog.Source("https://seena.su/d.apk",null)),"Seena rolling first install authenticated by signer pin");
-  check(ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(6),new AppDownloadCatalog.Source("https://example.test/update.apk",null)),"unpinned mirror update still requires installed app");
+  check(ApkTrust.requiresInstalledApp(new AppDownloadCatalog.Entry("Mirror","test.app",null,null,null,false,0),new AppDownloadCatalog.Source("https://example.test/update.apk",null)),"unpinned mirror update still requires installed app");
   AppDownloadCatalog.Entry incy=AppDownloadCatalog.get(3);
   org.json.JSONObject asset=new org.json.JSONObject().put("name","Incy.apk").put("browser_download_url",incy.bootstrap.url).put("digest","sha256:"+hash);
   org.json.JSONArray.next=Arrays.asList(asset);
