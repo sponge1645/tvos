@@ -31,6 +31,8 @@ final class WeatherCardBackground {
         }
         int saved = c.save(); c.translate(panel.left, panel.top); c.scale(panel.width()/700, panel.height()/700);
         c.save(); c.clipPath(clip);
+        // The preceding frame ends with a translucent rim. Shaders inherit Paint alpha.
+        paint.setColor(0xFFFFFFFF); paint.setAlpha(255);
         paint.setStyle(Paint.Style.FILL); paint.setShader(sky); c.drawRect(bounds, paint);
         paint.setShader(veil); c.drawRect(bounds, paint); paint.setShader(null);
         c.restore();
