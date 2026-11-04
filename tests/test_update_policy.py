@@ -15,7 +15,7 @@ def method(signature):
         cursor += 1
     return source[start:cursor]
 
-header = r'''package io.tvos;import io.tvos.updates.UpdateRelease;
+header = r'''package io.tvos;import io.tvos.updates.UpdateRelease;import io.tvos.version.SoftwareBuild;
 import java.util.*;import java.io.*;
 public class UpdatePolicyHarness {
  static class Signature {String value;Signature(String v){value=v;}public boolean equals(Object o){return o instanceof Signature && value.equals(((Signature)o).value);}public int hashCode(){return value.hashCode();}}
@@ -30,6 +30,7 @@ public class UpdatePolicyHarness {
   PackageInfo getPackageArchiveInfo(String p,int f){flags(f);if(f!=0&&failSigning)throw new SecurityException();return f!=0&&missingSignedArchive?null:archive;}
  }
  static class Context {PackageManager pm=new PackageManager();PackageManager getPackageManager(){return pm;}String getPackageName(){return "io.tvos";}}
+ java.util.concurrent.ExecutorService io;
  Context context=new Context();static String text(String r,String e){return e;}
  static Map<String,Object> manifest(){Map<String,Object> m=new HashMap<>();m.put("packageName","io.tvos");m.put("versionName","1.2");m.put("versionCode",3L);m.put("tag","v1.2");m.put("asset","tvOS.apk");m.put("sha256",String.join("",Collections.nCopies(64,"a")));m.put("size",20000L);return m;}
  static UpdateRelease release(Map<String,Object> m)throws Exception{return UpdateRelease.parse(new org.json.JSONObject(m));}
