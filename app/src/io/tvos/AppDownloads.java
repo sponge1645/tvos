@@ -101,7 +101,7 @@ public final class AppDownloads {
                 if (installed == null && ApkTrust.requiresInstalledApp(app, source))
                     throw new IOException(AppStrings.get(R.string.runtime_app_was_removed_during_download_retry_with_the_reviewed_installat));
                 PackageInfo archive = ApkTrust.verify(context.getPackageManager(), temporary, app, installed);
-                if (installed != null && installed.getLongVersionCode() >= archive.getLongVersionCode()) {
+                if (ApkTrust.alreadyInstalled(app, installed, archive)) {
                     result = AppStrings.get(R.string.runtime_app_is_already_installed);
                 } else {
                     ApkTransfer.checkCancelled(cancelled::get);

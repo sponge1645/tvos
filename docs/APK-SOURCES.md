@@ -55,3 +55,9 @@ First installations require the selected release asset's SHA-256 digest; when
 provided on updates it is checked too. Invalid digests fail closed. There is no
 silent fallback to the old catalog APK on metadata failures. Package, Android
 version, pinned signer and installed signer checks remain in effect.
+
+KinoPub 2.19 and 2.23 both declare Android versionCode 169. After APK identity
+and signer verification, equal-code KinoPub builds compare numeric versionName:
+a strictly newer name can be handed to Android's installer. Equal/older names,
+unknown name formats, and lower Android version codes are not offered. Other
+packages retain the normal version-code comparison.

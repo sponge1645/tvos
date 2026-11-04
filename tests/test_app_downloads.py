@@ -18,7 +18,7 @@ stubs = {
  'android/content/pm/ApplicationInfo.java': '''package android.content.pm; public class ApplicationInfo {
  public int minSdkVersion=28;}''',
  'android/content/pm/PackageInfo.java': '''package android.content.pm; public class PackageInfo {
- public String packageName="test.app";public long code=2;
+ public String packageName="test.app",versionName="1.0";public long code=2;
  public Signature[] signatures;public SigningInfo signingInfo=new SigningInfo();public ApplicationInfo applicationInfo=new ApplicationInfo();
  public long getLongVersionCode(){return code;} }''',
  'android/content/pm/PackageManager.java': '''package android.content.pm; public class PackageManager {
@@ -89,6 +89,14 @@ public class DownloadHarness {
   AppDownloadCatalog.Source first=AppDownloadCatalog.resolve(AppDownloadCatalog.get(0),false,arm32,()->false);
   check(first.sha256!=null && first.url.contains("/v99/"),"first install discovers new stable release with digest");
   AppDownloadCatalog.Entry kino=AppDownloadCatalog.get(6);
+  PackageInfo oldKino=new PackageInfo(),newKino=new PackageInfo();oldKino.code=newKino.code=169;oldKino.versionName="2.19";newKino.versionName="2.23";
+  check(!ApkTrust.alreadyInstalled(kino,oldKino,newKino),"KinoPub reused code accepts newer numeric name");
+  check(ApkTrust.alreadyInstalled(kino,newKino,oldKino),"KinoPub reused code rejects older numeric name");
+  check(ApkTrust.alreadyInstalled(kino,newKino,newKino),"KinoPub identical version skipped");
+  check(ApkTrust.alreadyInstalled(AppDownloadCatalog.get(0),oldKino,newKino),"other apps retain version-code policy");
+  newKino.code=168;check(ApkTrust.alreadyInstalled(kino,oldKino,newKino),"lower Android version code still rejected");newKino.code=169;
+  newKino.versionName="unknown";check(ApkTrust.alreadyInstalled(kino,oldKino,newKino),"unknown version name cannot bypass equal-code check");
+
   org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","kino-watch-2.19.apk"),new org.json.JSONObject().put("name","kino-watch-2.23.apk"),new org.json.JSONObject().put("name","beta.apk"));
   reply("[]".getBytes(),2);
   AppDownloadCatalog.Source kinoFirst=AppDownloadCatalog.resolve(kino,false,arm32,()->false);

@@ -44,6 +44,19 @@ final class ApkTrust {
         return archive;
     }
 
+    static boolean alreadyInstalled(AppDownloadCatalog.Entry app, PackageInfo installed, PackageInfo archive) {
+        if (installed == null) return false;
+        long current = installed.getLongVersionCode(), incoming = archive.getLongVersionCode();
+        if (current != incoming) return current > incoming;
+        // KinoPub 2.19 and 2.23 both publish code 169. Only a strictly newer
+        // numeric versionName can authorize replacement at the same code.
+        if ("watch.kino".equals(app.packageName)) {
+            Integer order = io.tvos.version.AppVersions.compare(archive.versionName, installed.versionName);
+            if (order != null) return order <= 0;
+        }
+        return true;
+    }
+
     static boolean requiresInstalledApp(AppDownloadCatalog.Entry app, AppDownloadCatalog.Source source) {
         // A declared rolling bootstrap is authenticated by its pinned package signer on first install.
         boolean rollingBootstrap = app.bootstrap != null && app.bootstrap.sha256 == null
