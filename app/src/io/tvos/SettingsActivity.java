@@ -1018,13 +1018,13 @@ public class SettingsActivity extends Activity {
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
                 case INPUT_METHOD: RemoteInputMethod.choose(activity); return;
-                case ADVANCED_KEYS: activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class)); break;
+                case ADVANCED_KEYS: RemoteShortcutSettingsActivity.open(activity, this, screenTitle()); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;
                 case HOME_ADJUST: adjust(1); invalidate(); return;
                 case AIRPLAY: launchAirPlay(); return;
                 case REMOTES:
-                    activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class));
+                    RemoteShortcutSettingsActivity.open(activity, this, screenTitle());
                     return;
                 case SHELF_EDITOR: openShelfEditor(); break;
                 case DOWNLOAD: AppDownloads.start(activity, focus); return;

@@ -3,6 +3,7 @@ package io.tvos;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Canvas;
+import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -37,6 +38,30 @@ import java.util.concurrent.Executors;
 
 /** A small tvOS settings flow: button -> gesture -> action. Learning never executes mappings. */
 public class RemoteShortcutSettingsActivity extends Activity {
+    private static Entry pendingEntry;
+    private Entry entry;
+    private static final class Entry {
+        final Bitmap bitmap; final String title;
+        Entry(Bitmap bitmap, String title) { this.bitmap = bitmap; this.title = title; }
+        void close() { bitmap.recycle(); }
+    }
+    /** Carry a bounded source frame across the Activity window handoff. */
+    static void open(Activity activity, View source, String title) {
+        if (pendingEntry != null) { pendingEntry.close(); pendingEntry = null; }
+        if (source.getWidth() > 0 && source.getHeight() > 0) {
+            float scale = Math.min(1f, 1920f / source.getWidth());
+            Bitmap bitmap = Bitmap.createBitmap(Math.max(1, Math.round(source.getWidth()*scale)),
+                    Math.max(1, Math.round(source.getHeight()*scale)), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap); canvas.scale(scale, scale); source.draw(canvas);
+            pendingEntry = new Entry(bitmap, title);
+        }
+        try { activity.startActivity(new Intent(activity, RemoteShortcutSettingsActivity.class)); }
+        catch (RuntimeException error) {
+            if (pendingEntry != null) { pendingEntry.close(); pendingEntry = null; }
+            throw error;
+        }
+        suppressWindowAnimation(activity);
+    }
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final List<Binding> bindings = new ArrayList<>();
     private final SettingsRemoteInput input = new SettingsRemoteInput();
@@ -71,14 +96,16 @@ public class RemoteShortcutSettingsActivity extends Activity {
     }
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved); Ui.init(this);
+        entry = pendingEntry; pendingEntry = null;
         bindings.addAll(RemoteBindings.read(getFilesDir()));
         shortcuts = new RemoteShortcuts(this, true, null); click = new Click(this);
         view = new Menu(); setContentView(view);
-        suppressWindowAnimation();
+        suppressWindowAnimation(this);
         if (getIntent().getBooleanExtra("input_options", false)) connection(); else root();
     }
     @SuppressWarnings("deprecation")
-    private void suppressWindowAnimation() { overridePendingTransition(0, 0); }
+    private static void suppressWindowAnimation(Activity activity) { activity.overridePendingTransition(0, 0); }
+    private void finishToSettings() { finish(); suppressWindowAnimation(this); }
     @Override protected void onResume() { super.onResume(); resumed = true; if (shortcuts != null) shortcuts.reload(); view.invalidate(); }
     @Override protected void onPause() {
         resumed = false; input.reset(); learned = null; captureBackDown = false;
@@ -91,9 +118,9 @@ public class RemoteShortcutSettingsActivity extends Activity {
     @Override protected void onDestroy() {
         generation++; io.shutdown();
         if (shortcuts != null) shortcuts.close(); if (click != null) click.release();
-        view.background.clear(); super.onDestroy();
+        view.background.clear(); if (entry != null) { entry.close(); entry = null; } super.onDestroy();
     }
-    private void goBack() { if (busy || !view.ready()) return; click.back(); if (back == null) finish(); else back.run(); }
+    private void goBack() { if (busy || !view.ready()) return; click.back(); if (back == null) view.exitToSettings(); else back.run(); }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (capturing) return learn(event);
         if (shortcuts != null && shortcuts.onKey(event)) return true;
@@ -310,7 +337,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         final SettingsTransitions.ScreenPainter painter = this::drawTransitionPage;
         List<Row> previousRows = new ArrayList<>();
         int depth, screen, previousScreen, previousOffset, previousFocus;
-        boolean forward;
+        boolean forward, hasDrawn, exiting;
         boolean previousCapturing;
         void captureOutgoing(boolean wasCapturing, int nextDepth) {
             if (nextDepth == depth) return;
@@ -318,8 +345,20 @@ public class RemoteShortcutSettingsActivity extends Activity {
             previousFocus = focus; previousCapturing = wasCapturing;
         }
         boolean reduced() { return getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false); }
-        boolean ready() { return reduced() || transitions.focusReady(SystemClock.uptimeMillis()); }
+        boolean ready() { return !exiting && (reduced() || transitions.focusReady(SystemClock.uptimeMillis())); }
+        void exitToSettings() {
+            if (exiting) return;
+            if (entry == null || reduced()) { finishToSettings(); return; }
+            captureOutgoing(capturing, 0); exiting = true;
+            previousScreen = screen++; forward = false; depth = 0;
+            title = entry.title; hint = ""; fit();
+            transitions.sync(screen, SystemClock.uptimeMillis(), false, false, parent);
+            invalidate(); postDelayed(RemoteShortcutSettingsActivity.this::finishToSettings, 280);
+        }
         void drawTransitionPage(Canvas c, int page) {
+            if (entry != null && (page == 0 || exiting && page == screen)) {
+                rect.set(0, 0, getWidth(), getHeight()); c.drawBitmap(entry.bitmap, null, rect, null); return;
+            }
             List<Row> activeRows = rows; int activeOffset = offset, activeFocus = focus;
             boolean outgoing = page != screen;
             try {
@@ -341,6 +380,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
         Menu() {
             super(RemoteShortcutSettingsActivity.this); setFocusable(true); setFocusableInTouchMode(true);
             transitions.sync(0, SystemClock.uptimeMillis(), true, false, parent);
+            if (entry != null) transitions.seedTitle(entry.title);
             spoken = new Spoken(this, new Spoken.Source() {
                 @Override public void items(List<Integer> out) { for (int i = offset; i < Math.min(rows.size(), offset + 10); i++) out.add(i + 1); }
                 @Override public String text(int id) { if (id <= 0 || id > rows.size()) return ""; Row row = rows.get(id - 1); return row.label + (row.value.isEmpty() ? "" : ", " + row.value); }
@@ -357,7 +397,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
             reveal(); fit(); entered = SystemClock.uptimeMillis(); last = entered;
             if (depth != nextDepth) {
                 previousScreen = screen++; forward = nextDepth > depth; depth = nextDepth;
-                transitions.sync(screen, entered, reduced(), false, parent);
+                if (hasDrawn) transitions.sync(screen, entered, reduced(), false, parent);
             }
             setContentDescription(title + (hint.isEmpty() ? "" : ", " + hint)); requestFocus(); invalidate(); spoken.focusMoved();
         }
@@ -386,6 +426,10 @@ public class RemoteShortcutSettingsActivity extends Activity {
             drawReduced = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false);
             background.draw(c, getWidth(), getHeight(), drawLight); logo.draw(c, k, drawLight, Ui.displaySemibold);
             long now = SystemClock.uptimeMillis();
+            if (!hasDrawn) {
+                hasDrawn = true; last = now;
+                transitions.sync(screen, now, drawReduced, false, parent);
+            }
             titlePaint.setColor(drawLight ? 0xFF738190 : 0xFF5A676D);
             boolean moving = transitions.drawTitle(c, shownTitle, now, drawReduced,
                     getWidth() / 2f, 111 * k, titlePaint, typography);
@@ -399,7 +443,7 @@ public class RemoteShortcutSettingsActivity extends Activity {
             int end = Math.min(rows.size(), offset + 10);
             for (int pass = 0; pass < end - offset; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, offset, end, focus);
-                Row row = rows.get(i); row.focus.target = i == focus ? 1 : 0;
+                Row row = rows.get(i); row.focus.target = transitions.focusReady(SystemClock.uptimeMillis()) && !exiting && i == focus ? 1 : 0;
                 if (drawReduced) row.focus.snap(row.focus.target); else rowsMoving |= row.focus.step(drawDt);
                 rowBounds(i);
                 rowData.set(row.shownLabel, row.shownValue, row.focus.value);

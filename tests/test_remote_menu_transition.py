@@ -11,7 +11,9 @@ public class RemoteMenuHarness {
  static class Row {String name;Row(String n){name=n;}}
  List<Row> rows=new ArrayList<>(),previousRows=new ArrayList<>();
  String title="",hint="";int focus,offset,depth,screen,previousScreen,previousOffset,previousFocus;
- boolean forward,capturing,previousCapturing,drawLight,reduced;float k=1;long entered,last;
+ boolean forward,capturing,previousCapturing,drawLight,reduced,hasDrawn=true,exiting;
+ static class Entry {Object bitmap;} Entry entry; final RectF rect=new RectF();
+ int getWidth(){return 1920;}int getHeight(){return 1080;}float k=1;long entered,last;
  Paint labelPaint=new Paint();SettingsTextRenderer typography=new SettingsTextRenderer();
  static class R {static class string {static int settings_remote_press;}}
  static class SettingsListRenderer {static int normalInk(boolean light){return 0;}}
@@ -29,7 +31,9 @@ public class RemoteMenuHarness {
  void render(){viewport.drawn.clear();transitions.drawList(new Canvas(),screen,SystemClock.now,1,1920,1080,parent,this::drawTransitionPage);}
  public static void main(String[] args){
  RemoteMenuHarness m=new RemoteMenuHarness();m.transitions.sync(0,0,true,false,m.parent);
+ m.transitions.seedTitle("Settings");
  SystemClock.now=100;m.navigate("root",1);m.render();check(m.viewport.drawn.equals(Arrays.asList("empty","root")));
+ m.entry=new Entry();m.render();check(m.viewport.drawn.equals(Arrays.asList("root")));m.entry=null;
  SystemClock.now=400;m.navigate("edit",2);m.render();check(m.viewport.drawn.equals(Arrays.asList("root","edit")));
  SystemClock.now=700;m.navigate("loading apps",4);m.navigate("loaded apps",4);m.render();check(m.viewport.drawn.equals(Arrays.asList("edit","loaded apps")));
  SystemClock.now=1000;m.navigate("edit",2);m.render();check(m.viewport.drawn.equals(Arrays.asList("loaded apps","edit")));check(!m.forward);
@@ -41,6 +45,8 @@ public class RemoteMenuHarness {
 # Paint's recording adapter needs the color API used by the production adapter.
 with tempfile.TemporaryDirectory() as directory:
  root=Path(directory);write(root)
+ p=root/'android/graphics/RectF.java';p.write_text('package android.graphics;public class RectF {public void set(float a,float b,float c,float d){}}')
+ p=root/'android/graphics/Canvas.java';p.write_text(p.read_text().replace('public int depth;', 'public void drawBitmap(Object bitmap,Object source,RectF dest,Object paint){} public int depth;'))
  p=root/'android/graphics/Paint.java';p.write_text(p.read_text().replace('public int getAlpha()', 'public void setColor(int color){} public int getAlpha()'))
  p=root/'RemoteMenuHarness.java';p.write_text(harness)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)

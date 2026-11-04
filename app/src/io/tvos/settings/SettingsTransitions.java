@@ -13,6 +13,9 @@ public final class SettingsTransitions {
     private String pageTitleShown, pageTitlePrevious;
     private long pageTitleStarted;
 
+    /** Seed the title when a settings flow continues in another window. */
+    public void seedTitle(String title) { if (pageTitleShown == null) pageTitleShown = title; }
+
     /** Returns true only when the caller must reset inherited row focus. */
     public boolean sync(int screen, long now, boolean reduceMotion, boolean modal,
             IntUnaryOperator parent) {
