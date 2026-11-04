@@ -293,7 +293,17 @@ final class DockContinue {
             }
             String logoPath = logoPaths.get(pick.watchingKey);
             Bitmap logo = logoPath == null ? null : images.poster(logoPath);
-            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.overlay(pick), image, alpha, pick.watchingProgress, logo);
+            int logoAlpha = 0;
+            if (logo != null) {
+                long now = SystemClock.uptimeMillis();
+                Long appeared = imageAppeared.get(logoPath);
+                if (appeared == null) { appeared = now; imageAppeared.put(logoPath, appeared); }
+                float t = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
+                        ? 1 : Ui.clamp((now - appeared) / 300f);
+                fadingImage |= t < 1;
+                logoAlpha = Math.min(alpha, Math.round(255 * t * t * (3 - 2 * t)));
+            }
+            renderer.card(c, i - scroll, cardFocus[i], pick.title, WatchingText.overlay(pick), image, alpha, pick.watchingProgress, logo, logoAlpha);
         }
         renderer.end(c);
         if (fadingImage) { main.removeCallbacks(frame); main.postDelayed(frame, 16); }

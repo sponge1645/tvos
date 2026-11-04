@@ -77,6 +77,10 @@ public final class ResumeRowRenderer {
     }
     public void card(Canvas c, float position, float focusValue, String label, String caption,
             Bitmap image, int imageAlpha, float progress, Bitmap logo) {
+        card(c, position, focusValue, label, caption, image, imageAlpha, progress, logo, imageAlpha);
+    }
+    public void card(Canvas c, float position, float focusValue, String label, String caption,
+            Bitmap image, int imageAlpha, float progress, Bitmap logo, int logoAlpha) {
         Paint title = titlePaint, meta = metaPaint;
         float left = 85 * k + position * (width + 50 * k);
         if (left >= 1920 * k) return;
@@ -123,11 +127,11 @@ public final class ResumeRowRenderer {
                         new float[]{0, .4f, 1}, Shader.TileMode.CLAMP);
             }
             logoShadePaint.setShader(logoShade);
-            logoShadePaint.setAlpha(imageAlpha);
+            logoShadePaint.setAlpha(logoAlpha);
             c.drawRect(shadowRect, logoShadePaint);
             float lx = -width / 2 + 32 * k, ly = -height / 2 + 32 * k;
             imageRect.set(lx, ly, lx + logo.getWidth() * logoScale, ly + logo.getHeight() * logoScale);
-            paint.setAlpha(imageAlpha);
+            paint.setAlpha(logoAlpha);
             c.drawBitmap(logo, null, imageRect, paint);
             paint.setAlpha(255);
         }
@@ -173,7 +177,7 @@ public final class ResumeRowRenderer {
         }
         String shown = android.text.TextUtils.ellipsize(label, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
         title.setAlpha(Math.round(255 * (.65f + .35f * focus)));
-        c.drawText(shown, cx - title.measureText(shown) / 2, top + height + 32 * k, title);
+        c.drawText(shown, cx - title.measureText(shown) / 2, top + height + 37 * k, title);
     }
     public void end(Canvas canvas) { canvas.restore(); canvas.restoreToCount(layer); }
     private static float clamp(float value) { return Math.max(0, Math.min(1, value)); }
