@@ -12,22 +12,27 @@ with tempfile.TemporaryDirectory() as d:
    socket.getOutputStream().write(head.getBytes(StandardCharsets.US_ASCII));if(body!=null)socket.getOutputStream().write(body);socket.getOutputStream().flush();
    ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[1024];int n;while((n=socket.getInputStream().read(b))!=-1)out.write(b,0,n);return out.toString("UTF-8");}
  }
+ static String uploadPath(AvatarUploadServer server)throws Exception {
+  String page=request(server,"GET",new URI(server.url()).getPath(),"",null);
+  return "/"+page.split("script-src 'nonce-")[1].split("'")[0]+"/upload";
+ }
  public static void main(String[] args)throws Exception{
   AtomicInteger writes=new AtomicInteger();CountDownLatch uploaded=new CountDownLatch(1);
   AvatarUploadServer server=new AvatarUploadServer(InetAddress.getLoopbackAddress(),"<script nonce={{NONCE}}>ok</script>".getBytes(StandardCharsets.UTF_8), bytes->{
    if(bytes[0]!=42)throw new IOException("not a photo");return new AvatarUploadServer.Prepared(){public void commit(){writes.incrementAndGet();}public void close(){}};
-  },uploaded::countDown);server.start();String path=new URI(server.url()).getPath();
+  },uploaded::countDown);server.start();String path=new URI(server.url()).getPath();String uploadPath=uploadPath(server);check(path.equals("/avatar"),"short manual URL");
   String page=request(server,"GET",path,"",null);check(page.startsWith("HTTP/1.1 200"),"QR URL works");check(!page.contains("{{NONCE}}")&&page.contains("frame-ancestors 'none'"),"rendered nonce and restricted page");
   String[] split=page.split("\\r\\n\\r\\n",2);int length=Integer.parseInt(split[0].split("Content-Length: ")[1].split("\\r\\n")[0]);check(split[1].getBytes(StandardCharsets.UTF_8).length==length,"rendered Content-Length");
-  check(request(server,"GET","/","",null).startsWith("HTTP/1.1 404"),"token required");
-  check(request(server,"POST",path+"upload","Origin: http://evil.example\\r\\nContent-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 403"),"foreign origin rejected");
-  check(request(server,"POST",path+"upload","Content-Type: application/zip\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 415"),"non-photo MIME refused");
-  check(request(server,"POST",path+"upload","Content-Type: image/jpeg\\r\\nContent-Length: 2097153\\r\\n",null).startsWith("HTTP/1.1 413"),"oversized body rejected before allocation/read");
-  check(request(server,"POST",path+"upload","Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{1}).startsWith("HTTP/1.1 422"),"sink validates actual content");
-  check(request(server,"POST",path+"upload","Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 200"),"valid photo succeeds");check(uploaded.await(2,TimeUnit.SECONDS)&&writes.get()==1,"exactly one commit");server.close();
+  check(request(server,"POST","/avatar/upload","Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 404"),"short page URL does not authorize upload endpoint");
+  check(request(server,"GET","/","",null).startsWith("HTTP/1.1 404"),"unknown path rejected");
+  check(request(server,"POST",uploadPath,"Origin: http://evil.example\\r\\nContent-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 403"),"foreign origin rejected");
+  check(request(server,"POST",uploadPath,"Content-Type: application/zip\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 415"),"non-photo MIME refused");
+  check(request(server,"POST",uploadPath,"Content-Type: image/jpeg\\r\\nContent-Length: 2097153\\r\\n",null).startsWith("HTTP/1.1 413"),"oversized body rejected before allocation/read");
+  check(request(server,"POST",uploadPath,"Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{1}).startsWith("HTTP/1.1 422"),"sink validates actual content");
+  check(request(server,"POST",uploadPath,"Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42}).startsWith("HTTP/1.1 200"),"valid photo succeeds");check(uploaded.await(2,TimeUnit.SECONDS)&&writes.get()==1,"exactly one commit");server.close();
   CountDownLatch preparing=new CountDownLatch(1),release=new CountDownLatch(1),discarded=new CountDownLatch(1);AtomicInteger late=new AtomicInteger();
-  AvatarUploadServer cancelled=new AvatarUploadServer(InetAddress.getLoopbackAddress(),new byte[0],bytes->{preparing.countDown();try{release.await(2,TimeUnit.SECONDS);}catch(InterruptedException e){throw new IOException(e);}return new AvatarUploadServer.Prepared(){public void commit(){late.incrementAndGet();}public void close(){discarded.countDown();}};},()->{});cancelled.start();
-  Thread client=new Thread(()->{try{request(cancelled,"POST",new URI(cancelled.url()).getPath()+"upload","Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42});}catch(Exception expected){}});client.start();check(preparing.await(2,TimeUnit.SECONDS),"prepare in progress");cancelled.close();release.countDown();client.join(2000);check(discarded.await(2,TimeUnit.SECONDS)&&late.get()==0,"leaving QR cancels publication and discards prepared image");
+  AvatarUploadServer cancelled=new AvatarUploadServer(InetAddress.getLoopbackAddress(),new byte[0],bytes->{preparing.countDown();try{release.await(2,TimeUnit.SECONDS);}catch(InterruptedException e){throw new IOException(e);}return new AvatarUploadServer.Prepared(){public void commit(){late.incrementAndGet();}public void close(){discarded.countDown();}};},()->{});cancelled.start();String cancelledUpload=uploadPath(cancelled);
+  Thread client=new Thread(()->{try{request(cancelled,"POST",cancelledUpload,"Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42});}catch(Exception expected){}});client.start();check(preparing.await(2,TimeUnit.SECONDS),"prepare in progress");cancelled.close();release.countDown();client.join(2000);check(discarded.await(2,TimeUnit.SECONDS)&&late.get()==0,"leaving QR cancels publication and discards prepared image");
   System.out.println("PASS: real HTTP, session token, nonce/length, type/body bounds, Origin, single commit and cancellation race");
  }}''')
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',d,*map(str,root.glob('*.java'))],check=True)

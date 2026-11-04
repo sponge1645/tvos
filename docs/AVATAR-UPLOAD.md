@@ -6,7 +6,7 @@ permission on the TV, WebView or persistent background service is required.
 
 The TV uses the physical Ethernet/Wi-Fi address resolved by LocalNetwork,
 excluding VPN routes. One ephemeral-port TCP listener accepts one request at a
-time with a small backlog. A fresh 128-bit URL token authorizes the session;
+time with a small backlog. The displayed URL ends in `/avatar`. The page embeds a fresh 128-bit token for the upload endpoint;
 Host and browser Origin are checked. Requests have bounded headers, body bytes
 and time. Sessions expire after ten minutes and accept only one successful
 publication. The original cleartext outbound network policy is unchanged.

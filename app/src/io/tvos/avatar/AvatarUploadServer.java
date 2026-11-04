@@ -32,7 +32,7 @@ public final class AvatarUploadServer implements AutoCloseable {
         catch(IOException|RuntimeException failed){try{server.close();}catch(IOException ignored){}throw failed;}
         authority=address.getHostAddress()+":"+server.getLocalPort();
     }
-    public String url() { return "http://"+authority+"/"+token+"/"; }
+    public String url() { return "http://"+authority+"/avatar"; }
     public void start() { Thread thread=new Thread(this::serve,"avatar-upload");thread.setDaemon(true);thread.start(); }
     private void serve() {
         try {
@@ -60,8 +60,8 @@ public final class AvatarUploadServer implements AutoCloseable {
                 String name=header.substring(0,colon).toLowerCase(Locale.ROOT),value=header.substring(colon+1).trim();
                 if(headers.put(name,value)!=null)throw new IOException("Duplicate header");
             }
-            if(!authority.equals(headers.get("host")) || !parts[1].startsWith("/"+token+"/")) {reply(out,404,"application/json","{}");return;}
-            if(parts[0].equals("GET")&&parts[1].equals("/"+token+"/")){reply(out,200,"text/html; charset=utf-8",page);return;}
+            if(!authority.equals(headers.get("host"))) {reply(out,404,"application/json","{}");return;}
+            if(parts[0].equals("GET")&&(parts[1].equals("/avatar")||parts[1].equals("/avatar/"))){reply(out,200,"text/html; charset=utf-8",page);return;}
             if(!parts[0].equals("POST")||!parts[1].equals("/"+token+"/upload")){reply(out,404,"application/json","{}");return;}
             String origin=headers.get("origin");
             if(origin!=null&&!origin.equals("http://"+authority)){reply(out,403,"application/json","{}");return;}
@@ -85,7 +85,7 @@ public final class AvatarUploadServer implements AutoCloseable {
     }
     private void reply(OutputStream out,int code,String type,String body)throws IOException{reply(out,code,type,body.getBytes(StandardCharsets.UTF_8));}
     private void reply(OutputStream out,int code,String type,byte[] body)throws IOException {
-        if(type.startsWith("text/html"))body=new String(body,StandardCharsets.UTF_8).replace("{{NONCE}}",token).getBytes(StandardCharsets.UTF_8);
+        if(type.startsWith("text/html"))body=new String(body,StandardCharsets.UTF_8).replace("{{NONCE}}",token).replace("{{UPLOAD_PATH}}","/"+token+"/upload").getBytes(StandardCharsets.UTF_8);
         String headers="HTTP/1.1 "+code+" "+(code==200?"OK":"Error")+"\r\nContent-Type: "+type+"\r\nContent-Length: "+body.length+
                 "\r\nCache-Control: no-store\r\nConnection: close\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n"+
                 "Content-Security-Policy: default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'\r\n\r\n";

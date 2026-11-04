@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 script=r'''
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
-const html=fs.readFileSync('app/assets/avatar/upload.html','utf8');const js=html.match(/<script nonce="\{\{NONCE\}\}">([\s\S]*?)<\/script>/)[1];
+const html=fs.readFileSync('app/assets/avatar/upload.html','utf8');const js=html.replace('{{UPLOAD_PATH}}','/secret/upload').match(/<script nonce="\{\{NONCE\}\}">([\s\S]*?)<\/script>/)[1];
 const elements=new Map();let opened=0,revoked=0,requests=[],draws=[];
 function node(id){if(!elements.has(id))elements.set(id,{textContent:'',style:{},value:'1',disabled:false,files:[],click(){opened++},setPointerCapture(){},getBoundingClientRect(){return {width:360}},getContext(){return {fillRect(){},drawImage(...args){draws.push(args)}}},toBlob(callback,type){assert.equal(type,'image/jpeg');callback(new Blob(['avatar'],{type}))}});return elements.get(id)}
 class Photo {constructor(){this.naturalWidth=1024;this.naturalHeight=512}set src(v){this.onload()}}
