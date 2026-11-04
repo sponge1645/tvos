@@ -70,6 +70,38 @@ public final class DockPrograms {
         return result;
     }
 
+    /** Look up this resume title, rather than the first six recommended titles. */
+    public Candidate forResume(String pkg, String title, String poster) {
+        if (pkg == null || title == null || title.trim().isEmpty()) return null;
+        String service = WatchingSources.id(pkg);
+        Candidate selected = null, exact = null;
+        boolean ambiguous = false;
+        try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/preview_program"),
+                PROGRAM_COLUMNS, "title = ?", new String[]{title}, "_id ASC")) {
+            int rows = 0;
+            if (c != null) while (rows++ < 64 && c.moveToNext()) {
+                String owner = value(c, 0);
+                if (!service.equals(WatchingSources.id(owner)) || !title.equals(value(c, 5))) continue;
+                String date = value(c, 6);
+                Candidate candidate = new Candidate(title, value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
+                if (c.getInt(4) == 0 && allowed.test(value(c, 2), owner)) add(candidate.urls, value(c, 2));
+                if (c.getInt(3) == 0 && allowed.test(value(c, 1), owner)) add(candidate.urls, value(c, 1));
+                if (candidate.urls.isEmpty()) continue;
+                if (!identity(poster).isEmpty() && identity(poster).equals(identity(candidate.poster))) exact = candidate;
+                if (selected == null) selected = candidate;
+                else if (!identity(selected.poster).equals(identity(candidate.poster)) || !selected.year.equals(candidate.year)) ambiguous = true;
+            }
+        }
+        return exact != null ? exact : ambiguous ? null : selected;
+    }
+
+    private static String identity(String url) {
+        if (url == null) return "";
+        int query = url.indexOf('?');
+        String path = query < 0 ? url : url.substring(0, query);
+        return path.substring(path.lastIndexOf('/') + 1);
+    }
+
     private void collect(String uri, String service, String order, List<Candidate> result) {
         long started = System.nanoTime();
         int rows = 0, owned = 0, before = result.size();

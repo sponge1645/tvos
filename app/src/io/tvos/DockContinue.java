@@ -116,7 +116,16 @@ final class DockContinue {
             worker.execute(() -> {
                 if (token != generation) return;
                 String url = "";
-                try { url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, "", io.tvos.network.ConnectionObserver.NONE).backdrop; }
+                String year = "";
+                try {
+                    io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
+                            (image, owner) -> ProviderImages.allowed(context, image, owner));
+                    io.tvos.watching.DockPrograms.Candidate published = programs.forResume(p.pkg, p.title, p.poster);
+                    if (published != null) { url = published.urls.get(0); year = published.year; }
+                } catch (RuntimeException e) {
+                    AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
+                }
+                try { if (url.isEmpty()) url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, io.tvos.network.ConnectionObserver.NONE).backdrop; }
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
                     AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
