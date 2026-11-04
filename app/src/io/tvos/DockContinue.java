@@ -112,23 +112,29 @@ final class DockContinue {
             Recs.Pick p = items.get(i);
             String key = p.watchingKey;
             if (paths.containsKey(key) || !pending.add(key)) continue;
-            int token = generation;
+            int token = generation, itemIndex = i;
             worker.execute(() -> {
                 if (token != generation) return;
                 String url = "";
-                String year = "";
+                String year = "", source = "history-fallback";
                 try {
                     io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
                             (image, owner) -> ProviderImages.allowed(context, image, owner));
                     io.tvos.watching.DockPrograms.Candidate published = programs.forResume(p.pkg, p.title, p.poster);
-                    if (published != null) { url = published.urls.get(0); year = published.year; }
+                    if (published != null) { url = published.urls.get(0); year = published.year; source = "published-landscape"; }
                 } catch (RuntimeException e) {
                     AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
                 }
-                try { if (url.isEmpty()) url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, io.tvos.network.ConnectionObserver.NONE).backdrop; }
+                try {
+                    if (url.isEmpty()) {
+                        url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, io.tvos.network.ConnectionObserver.NONE).backdrop;
+                        if (!url.isEmpty()) source = "tmdb-landscape";
+                    }
+                }
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
                     AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
+                AppLog.w("Resume artwork: package=" + p.pkg + ", item=" + itemIndex + ", source=" + source);
                 final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
                 main.post(() -> {
                     if (!visible || token != generation) return;
@@ -251,7 +257,11 @@ final class DockContinue {
             if (image != null) {
                 long now = SystemClock.uptimeMillis();
                 Long appeared = imageAppeared.get(url);
-                if (appeared == null) { appeared = now; imageAppeared.put(url, appeared); }
+                if (appeared == null) {
+                    appeared = now; imageAppeared.put(url, appeared);
+                    AppLog.w("Resume decoded: package=" + pick.pkg + ", item=" + i
+                            + ", size=" + image.getWidth() + "x" + image.getHeight());
+                }
                 float progress = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 240f);
                 fadingImage |= progress < 1;
