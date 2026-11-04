@@ -222,11 +222,11 @@ public final class SearchActivity extends Activity {
         TextView title = label(text(id), 30); title.setTextColor(muted());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.topMargin = px(26); params.bottomMargin = px(20); results.addView(title, params);
     }
-    private LinearLayout row(int height) {
+    private LinearLayout row() {
         HorizontalScrollView scroll = new HorizontalScrollView(this); scroll.setHorizontalScrollBarEnabled(false); scroll.setClipChildren(false); scroll.setClipToPadding(false);
         LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setClipChildren(false); row.setPadding(px(14), px(22), px(20), px(24));
-        scroll.addView(row, new HorizontalScrollView.LayoutParams(-2, -1));
-        results.addView(scroll, new LinearLayout.LayoutParams(-1, px(height))); return row;
+        scroll.addView(row, new HorizontalScrollView.LayoutParams(-2, -2));
+        results.addView(scroll, new LinearLayout.LayoutParams(-1, -2)); return row;
     }
     private void chip(LinearLayout row, String title, Runnable action) {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, px(66)); params.rightMargin = px(28); row.addView(button(title, action), params);
@@ -240,6 +240,7 @@ public final class SearchActivity extends Activity {
             List<String> recent = recent();
             if (!recent.isEmpty()) {
                 LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
+                header.setClipChildren(false); header.setClipToPadding(false); header.setPadding(0, px(8), 0, px(8));
                 TextView title = label(text(R.string.search_recent), 30); title.setTextColor(muted());
                 header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
                 TextView clear = button(text(R.string.search_clear), () -> {
@@ -247,14 +248,14 @@ public final class SearchActivity extends Activity {
                 });
                 header.addView(clear, new LinearLayout.LayoutParams(-2, px(58)));
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.topMargin = px(16); results.addView(header, params);
-                LinearLayout row = row(100); for (String item : recent) chip(row, item, () -> setQuery(item));
+                LinearLayout row = row(); for (String item : recent) chip(row, item, () -> setQuery(item));
             }
             if (!trending.isEmpty()) { heading(R.string.search_trending); posters(trending); }
         } else {
             List<LocalApp> found = new ArrayList<>();
             String lower = value.toLowerCase(Ui.locale());
             for (LocalApp app : apps) if (app.label.toLowerCase(Ui.locale()).contains(lower)) found.add(app);
-            if (!found.isEmpty()) { heading(R.string.search_apps); LinearLayout row = row(116); for (LocalApp app : found) chip(row, app.label,
+            if (!found.isEmpty()) { heading(R.string.search_apps); LinearLayout row = row(); for (LocalApp app : found) chip(row, app.label,
                     () -> { remember(); Intent intent = HomeApps.launchIntent(getPackageManager(), app.pkg); if (intent != null) AppLaunch.start(this, intent, "Search app"); }); }
             heading(R.string.search_titles);
             if (matches.isEmpty()) {
