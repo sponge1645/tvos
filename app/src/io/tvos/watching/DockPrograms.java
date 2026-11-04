@@ -76,8 +76,17 @@ public final class DockPrograms {
         String service = WatchingSources.id(pkg);
         Candidate selected = null, exact = null;
         boolean ambiguous = false;
-        try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/preview_program"),
-                PROGRAM_COLUMNS, "package_name = ?", new String[]{pkg}, "_id ASC")) {
+        List<Long> channelIds = new ArrayList<>();
+        try (Cursor channels = context.getContentResolver().query(Uri.parse("content://android.media.tv/channel"),
+                CHANNEL_COLUMNS, null, null, null)) {
+            if (channels != null) while (channelIds.size() < 16 && channels.moveToNext())
+                if (service.equals(WatchingSources.id(value(channels, 1)))) channelIds.add(channels.getLong(0));
+        }
+        // TV Provider can deny selection clauses and unscoped program queries.
+        // Read through the same channel-scoped route used by recommendations.
+        for (long channel : channelIds) {
+        try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/preview_program?channel=" + channel),
+                PROGRAM_COLUMNS, null, null, "_id ASC")) {
             int rows = 0;
             if (c != null) while (rows++ < 512 && c.moveToNext()) {
                 String owner = value(c, 0);
@@ -91,6 +100,7 @@ public final class DockPrograms {
                 if (selected == null) selected = candidate;
                 else if (!identity(selected.poster).equals(identity(candidate.poster)) || !selected.year.equals(candidate.year)) ambiguous = true;
             }
+        }
         }
         return exact != null ? exact : ambiguous ? null : selected;
     }

@@ -28,6 +28,10 @@ final class DockArtwork {
         // Providers may keep Russian titles/posters even when the launcher requests English metadata.
         if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
             match = search(title, poster, year, "ru-RU", observer);
+        // An English provider title can differ from both the localized Russian
+        // name and the original Korean/Japanese title. Resolve in English too.
+        if (match == null && !"en".equals(requestedLanguage.code) && !hasCyrillic(title))
+            match = search(title, poster, year, "en-US", observer);
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
