@@ -47,38 +47,36 @@ public final class ResumeRowRenderer {
         k = frame.scale; night = frame.night;
         float bottom = frame.bottom, opacity = frame.opacity;
         layer = opacity < .999f ? c.saveLayerAlpha(0, 0, 1920 * k, bottom, Math.round(255 * opacity)) : c.save();
-        titlePaint.setTypeface(frame.titleFont); titlePaint.setTextSize(36 * k); titlePaint.setColor(frame.ink);
-        metaPaint.setTypeface(frame.metaFont); metaPaint.setTextSize(26 * k); metaPaint.setColor(frame.ink);
+        titlePaint.setTypeface(frame.titleFont); titlePaint.setTextSize(30 * k); titlePaint.setColor(frame.ink);
+        metaPaint.setTypeface(frame.metaFont); metaPaint.setTextSize(24 * k); metaPaint.setColor(frame.ink);
         Paint meta = metaPaint;
-        headingPaint.setTypeface(frame.headingFont); headingPaint.setTextSize(54 * k); headingPaint.setColor(frame.ink);
-        float headingBaseline = Math.max(170 * k, bottom - 550 * k);
-        c.drawText(frame.heading, 60 * k, headingBaseline - 20 * k, headingPaint);
+        headingPaint.setTypeface(frame.headingFont); headingPaint.setTextSize(44 * k); headingPaint.setColor(alpha(frame.ink, .55f));
+        float headingBaseline = Math.max(150 * k, bottom - 600 * k);
+        c.drawText(frame.heading, 60 * k, headingBaseline - 10 * k, headingPaint);
         if (frame.empty) { c.drawText(frame.emptyMessage, 60 * k, headingBaseline + 65 * k, meta); c.restoreToCount(layer); return false; }
         if (shadowScale != k) {
             shadowScale = k;
             shadow.setMaskFilter(new BlurMaskFilter(30 * k, BlurMaskFilter.Blur.NORMAL));
         }
-        float areaTop = headingBaseline + 40 * k;
-        height = Math.min(410 * k, Math.max(180 * k, bottom - areaTop - 100 * k));
-        width = height * 16 / 9;
-        top = areaTop + (bottom - areaTop - height - 90 * k) / 2;
-        c.save(); c.clipRect(40 * k, headingBaseline + 15 * k, 1920 * k, bottom);
+        width = 850 * k; height = width * 9 / 16;
+        top = headingBaseline + 25 * k;
+        c.save(); c.clipRect(0, headingBaseline + 5 * k, 1920 * k, bottom);
         return true;
     }
     public boolean visible(float position) {
-        float left = 60 * k + position * (width + 45 * k);
-        return left < 1920 * k && left + width > 40 * k;
+        float left = 85 * k + position * (width + 50 * k);
+        return left < 1920 * k && left + width > 0;
     }
     public void card(Canvas c, float position, float focusValue, String label, String caption, Bitmap image, int imageAlpha) {
         card(c, position, focusValue, label, caption, image, imageAlpha, -1);
     }
     public void card(Canvas c, float position, float focusValue, String label, String caption, Bitmap image, int imageAlpha, float progress) {
         Paint title = titlePaint, meta = metaPaint;
-        float left = 60 * k + position * (width + 45 * k);
+        float left = 85 * k + position * (width + 50 * k);
         if (left >= 1920 * k) return;
-        if (left + width <= 40 * k) return;
+        if (left + width <= 0) return;
         float scaleFocus = 1 + .05f * focusValue;
-        float cx = left + width / 2, cy = top + height / 2 - 20 * k - 6 * k * focusValue;
+        float cx = left + width / 2, cy = top + height / 2 - 6 * k * focusValue;
         rect.set(cx - width * scaleFocus / 2, cy - height * scaleFocus / 2, cx + width * scaleFocus / 2, cy + height * scaleFocus / 2);
         float focus = clamp(focusValue);
         c.save(); c.translate(cx, cy); c.scale(scaleFocus, scaleFocus);
@@ -147,7 +145,8 @@ public final class ResumeRowRenderer {
             c.restore();
         }
         String shown = android.text.TextUtils.ellipsize(label, titlePaint, width, android.text.TextUtils.TruncateAt.END).toString();
-        c.drawText(shown, cx - title.measureText(shown) / 2, top + height + 37 * k, title);
+        title.setAlpha(Math.round(255 * (.65f + .35f * focus)));
+        c.drawText(shown, cx - title.measureText(shown) / 2, top + height + 32 * k, title);
     }
     public void end(Canvas canvas) { canvas.restore(); canvas.restoreToCount(layer); }
     private static float clamp(float value) { return Math.max(0, Math.min(1, value)); }

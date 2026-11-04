@@ -142,7 +142,7 @@ final class DockContinue {
         for (String path : wanted) images.poster(path);
     }
 
-    private int windowStart() { return Math.max(0, Math.min(Math.max(0, index - 1), (int) Math.floor(scroll))); }
+    private int windowStart() { return Math.max(0, Math.min(Math.max(0, index - 1), (int) Math.floor(scroll) - 1)); }
 
     private void animateFocus() {
         if (focusAnimation != null) focusAnimation.cancel();
@@ -224,7 +224,7 @@ final class DockContinue {
         drawFrame.emptyMessage = AppStrings.get(R.string.home_watching_empty); drawFrame.empty = items.isEmpty();
         if (!renderer.begin(c, drawFrame)) return;
         boolean fadingImage = false;
-        int first = Math.max(0, (int) Math.floor(scroll));
+        int first = Math.max(0, (int) Math.floor(scroll) - 1);
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             if (!renderer.visible(i - scroll)) continue;
             Recs.Pick pick = items.get(i);
