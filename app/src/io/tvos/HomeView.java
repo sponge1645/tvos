@@ -1666,7 +1666,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     zone = Z_TOP;
                     topIndex = search.active || !picksOn() ? availableTopButton(5) : tab;
                 } else if (!picksOn() || (cards.isEmpty() && true)) {
-                    focusHeaderAbove(dock.rects[dock.index].centerX());
+                    if (dock.index == dock.items.size() - 1 && dock.index > 0) {
+                        zone = Z_TOP; topIndex = posterCornerTarget(true);
+                        status.invalidate();
+                    } else focusHeaderAbove(dock.rects[dock.index].centerX());
                 } else {
                     zone = Z_CARDS;
                     cardIndex = nearest(cardRects, cards.size(), dock.rects[dock.index].centerX());
