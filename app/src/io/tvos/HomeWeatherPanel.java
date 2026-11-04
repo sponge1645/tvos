@@ -4,10 +4,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -60,7 +58,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
     @Override public void onData() {
         WeatherForecast w = data.weather;
         forecast.setContentDescription(Prefs.city() + ", " + HomeData.degrees(w.temp) + ", "
-                + HomeData.condition(w.code, w.isDay) + ". " + AppStrings.get(R.string.weather_open_forecast));
+                + HomeData.condition(w.code, io.tvos.weather.WeatherCardStyle.day(w, System.currentTimeMillis())) + ". " + AppStrings.get(R.string.weather_open_forecast));
         forecast.invalidate();
     }
     private void close() {
@@ -78,6 +76,10 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
 
     private final class ForecastView extends View {
         private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
+        private WeatherForecast solarForecast;
+        private long solarMinute = -1;
+        private boolean weatherDay;
+        private final WeatherCardBackground background = new WeatherCardBackground();
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF panel = new RectF(), bar = new RectF();
         ForecastView(Context context) { super(context); }
@@ -99,26 +101,25 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             super.onDraw(c);
             float k = Math.min(getWidth() / 1920f, getHeight() / 1080f);
             int ink = 0xFFF9FAFC, muted = 0xFFBFC2C9, lowInk = 0xFF818690;
-            // The matte charcoal surface stays legible over every home background.
             panel.set(40*k, 50*k, 740*k, 750*k);
-            fill.setShader(new LinearGradient(0, panel.top, 0, panel.bottom,
-                    0xFF3C414C, 0xFF2C313B, Shader.TileMode.CLAMP));
-            c.drawRoundRect(panel, 58*k, 58*k, fill); fill.setShader(null);
-            fill.setStyle(Paint.Style.STROKE); fill.setStrokeWidth(1.5f*k); fill.setColor(0x457F8797);
-            c.drawRoundRect(panel, 58*k, 58*k, fill); fill.setStyle(Paint.Style.FILL);
-            int saved = c.save(); c.scale(k, k);
             WeatherForecast w = data.weather;
+            long now = System.currentTimeMillis();
+            if (solarForecast != w || solarMinute != now/60_000L) {
+                solarForecast = w; solarMinute = now/60_000L;
+                weatherDay = io.tvos.weather.WeatherCardStyle.day(w, now);
+            }
+            boolean animate = background.draw(c, panel, w, now, weatherDay, reduced());
+            int saved = c.save(); c.scale(k, k);
             label(c, Prefs.city(), 76, 108, 32, ink, Paint.Align.LEFT, 490);
             label(c, HomeData.degrees(w.temp), 76, 194, 88, ink, Paint.Align.LEFT, 350);
-            icon(c, w.code, w.isDay, 684, 104, 38, ink);
-            label(c, HomeData.condition(w.code, w.isDay), 704, 160, 28, ink, Paint.Align.RIGHT, 300);
+            icon(c, w.code, weatherDay, 684, 104, 38, ink);
+            label(c, HomeData.condition(w.code, weatherDay), 704, 160, 28, ink, Paint.Align.RIGHT, 300);
             label(c, "↑" + HomeData.degrees(w.max) + " ↓" + HomeData.degrees(w.min),
                     704, 194, 27, ink, Paint.Align.RIGHT, 300);
             fill.setColor(0x658E939E); c.drawRect(76, 238, 704, 239, fill);
             TimeZone zone = TimeZone.getTimeZone(w.timezone);
             SimpleDateFormat hours = new SimpleDateFormat(android.text.format.DateFormat.is24HourFormat(getContext()) ? "HH" : "h a", Ui.locale());
             hours.setTimeZone(zone);
-            long now = System.currentTimeMillis();
             int next = 0;
             while (next < w.hours.size() && w.hours.get(next) <= now) next++;
             int count = Math.min(6, w.hours.size() - next);
@@ -157,6 +158,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             }
             if (first == w.days.size()) label(c, AppStrings.get(R.string.weather_loading), 390, 540, 26, muted, Paint.Align.CENTER, 620);
             c.restoreToCount(saved);
+            if (animate && isShowing() && !closing) postInvalidateDelayed(50);
         }
     }
 }
