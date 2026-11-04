@@ -33,6 +33,7 @@ final class Recs {
         String kind;            // "movie" or "tv"
         String title, originalTitle = "", backdrop, poster, meta = "", duration = "", tvOrigin = "", movieOrigin = "", app, pkg;
         String watchingKey, resumeUri;
+        String watchingYear = "";
         String watchingSeason = "", watchingEpisode = "";
         long watchingRemaining = -1, watchingUpdated;
         float watchingProgress = -1;

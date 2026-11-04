@@ -18,20 +18,25 @@ final class DockArtwork {
 
     static DockArtwork lookup(String title, String poster, String year,
             ConnectionObserver observer) throws IOException, org.json.JSONException {
+        return lookup(title, poster, year, "", observer);
+    }
+
+    static DockArtwork lookup(String title, String poster, String year, String expectedKind,
+            ConnectionObserver observer) throws IOException, org.json.JSONException {
         DockArtwork result = new DockArtwork();
         if (!TmdbClient.hasKey() || title.isEmpty()) return result;
         AppLanguage requestedLanguage = AppLanguage.current();
         String language = requestedLanguage.apiTag;
-        String key = language + "\n" + year + "\n" + poster + "\n" + title;
+        String key = expectedKind + "\n" + language + "\n" + year + "\n" + poster + "\n" + title;
         synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) return cached; }
-        JSONObject match = search(title, poster, year, language, observer);
+        JSONObject match = search(title, poster, year, expectedKind, language, observer);
         // Providers may keep Russian titles/posters even when the launcher requests English metadata.
         if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
-            match = search(title, poster, year, "ru-RU", observer);
+            match = search(title, poster, year, expectedKind, "ru-RU", observer);
         // An English provider title can differ from both the localized Russian
         // name and the original Korean/Japanese title. Resolve in English too.
         if (match == null && !"en".equals(requestedLanguage.code) && !hasCyrillic(title))
-            match = search(title, poster, year, "en-US", observer);
+            match = search(title, poster, year, expectedKind, "en-US", observer);
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
@@ -51,13 +56,13 @@ final class DockArtwork {
         return false;
     }
 
-    private static JSONObject search(String title, String poster, String year, String language,
+    private static JSONObject search(String title, String poster, String year, String expectedKind, String language,
             ConnectionObserver observer) throws IOException, org.json.JSONException {
         String[] variants = titles(title);
         for (int i = variants.length - 1; i >= 0; i--) {
             JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
                     + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", observer).optJSONArray("results");
-            JSONObject matched = match(items, title, poster, year);
+            JSONObject matched = match(items, title, poster, year, expectedKind);
             if (matched != null) return matched;
         }
         return null;
@@ -77,6 +82,10 @@ final class DockArtwork {
     }
 
     static JSONObject match(JSONArray items, String title, String poster, String year) {
+        return match(items, title, poster, year, "");
+    }
+
+    static JSONObject match(JSONArray items, String title, String poster, String year, String expectedKind) {
         if (items == null) return null;
         JSONObject named = null; int names = 0;
         String[] normalized = titles(title);
@@ -87,6 +96,7 @@ final class DockArtwork {
             if (item == null) continue;
             String kind = item.optString("media_type", "");
             if (!"movie".equals(kind) && !"tv".equals(kind)) continue;
+            if (!expectedKind.isEmpty() && !expectedKind.equals(kind)) continue;
             if (!filename.isEmpty() && filename.equals(filename(item.optString("poster_path", "")))) return item;
             String date = item.optString("movie".equals(kind) ? "release_date" : "first_air_date", "");
             if (!year.isEmpty() && !date.startsWith(year)) continue;

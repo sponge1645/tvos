@@ -46,6 +46,10 @@ final class WatchingCardReader {
             String thumbnail = poster(text(cursor, 12), owner);
             if (cursor.getInt(13) == 0 && !thumbnail.isEmpty()) pick.backdrop = thumbnail;
         } catch (IndexOutOfBoundsException ignored) { /* Compatibility with older row adapters. */ }
+        try {
+            String date = text(cursor, 14);
+            if (date.matches("[0-9]{4}.*")) pick.watchingYear = date.substring(0, 4);
+        } catch (IndexOutOfBoundsException ignored) { /* Older row adapter. */ }
         String service = WatchingSources.id(owner);
         if (!"kinopub".equals(service)) {
             pick.watchingKey = service + ":" + pick.kind + ":" + title.trim().toLowerCase(java.util.Locale.ROOT);

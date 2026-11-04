@@ -79,7 +79,7 @@ final class DockContinue {
         visible = true;
         StringBuilder key = new StringBuilder();
         for (Recs.Pick p : picks) key.append(p.watchingKey).append('\n').append(p.resumeUri).append('\n')
-                .append(p.meta).append('\n').append(p.watchingProgress).append('\n').append(p.backdrop).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
+                .append(p.watchingYear).append(p.kind).append(p.meta).append('\n').append(p.watchingProgress).append('\n').append(p.backdrop).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
         if (signature.equals(key.toString())) return;
         String selected = index < items.size() ? items.get(index).watchingKey : null;
         signature = key.toString(); generation++; pending.clear(); paths.clear(); imageAppeared.clear();
@@ -116,7 +116,7 @@ final class DockContinue {
             worker.execute(() -> {
                 if (token != generation) return;
                 String url = "";
-                String year = "", source = "history-fallback";
+                String year = p.watchingYear == null ? "" : p.watchingYear, source = "history-fallback";
                 try {
                     io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
                             (image, owner) -> ProviderImages.allowed(context, image, owner));
@@ -127,7 +127,7 @@ final class DockContinue {
                 }
                 try {
                     if (url.isEmpty()) {
-                        url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, io.tvos.network.ConnectionObserver.NONE).backdrop;
+                        url = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE).backdrop;
                         if (!url.isEmpty()) source = "tmdb-landscape";
                     }
                 }

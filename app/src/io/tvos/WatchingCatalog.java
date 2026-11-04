@@ -30,7 +30,7 @@ final class WatchingCatalog {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private static final String[] COLUMNS = {"_id", "package_name", "internal_provider_id", "title",
             "poster_art_uri", "intent_uri", "season_display_number", "episode_display_number",
-            "duration_millis", "last_playback_position_millis", "last_engagement_time_utc_millis", "type", "thumbnail_uri", "thumbnail_aspect_ratio"};
+            "duration_millis", "last_playback_position_millis", "last_engagement_time_utc_millis", "type", "thumbnail_uri", "thumbnail_aspect_ratio", "release_date"};
     private final Context context;
     private final WatchingCardReader reader;
     private final HistoryChannels history;
