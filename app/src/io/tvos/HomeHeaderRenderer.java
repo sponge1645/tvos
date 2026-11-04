@@ -18,7 +18,7 @@ final class HomeHeaderRenderer {
         int tab, networkState;
         int wifiLevel = -1;
         int hiddenTab = -1;
-        boolean weatherFocused, showDate, weatherTop, searchMode, largePostersWithoutWidgets;
+        boolean continueWatching, weatherFocused, showDate, weatherTop, searchMode, largePostersWithoutWidgets;
         String clockText, dateText, searchQuery;
         String[] tabs;
         RectF[] topRects;
@@ -91,7 +91,8 @@ final class HomeHeaderRenderer {
         if (!date.isEmpty()) date = date.substring(0, 1).toUpperCase(Ui.locale()) + date.substring(1);
         float k = frame.k, cy = widgetsCapsule.centerY();
         float grow = drawTextSurface(c, widgetsCapsule, frame.weatherAmount);
-        int ink = blend(frame.lTab.getColor(), L_INK, Ui.clamp(frame.weatherAmount));
+        int restingInk = frame.continueWatching ? Ui.alpha(WHITE, .55f) : frame.lTab.getColor();
+        int ink = blend(restingInk, L_INK, Ui.clamp(frame.weatherAmount));
         Paint datePaint = headerDateScratch, weatherPaint = headerWeatherScratch;
         datePaint.setTypeface(Ui.medium); weatherPaint.setTypeface(Ui.medium);
         datePaint.setColor(ink); weatherPaint.setColor(ink);
