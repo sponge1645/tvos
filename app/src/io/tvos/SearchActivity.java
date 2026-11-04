@@ -5,31 +5,31 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.RectF;
-import android.graphics.drawable.GradientDrawable;
+import android.graphics.Shader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.Editable;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 import io.tvos.artwork.PosterCache;
+import io.tvos.artwork.RoundedImages;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,414 +39,364 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.json.JSONArray;
 
-/** TV search and title page. Android owns keyboard input; movie apps retain playback ownership. */
+/** A single drawing surface owns search geometry, focus and scrolling. Only text input is native. */
 public final class SearchActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
-    // A slow suggestions request must not hold up an opened title or KinoPub resolution.
-    private final ExecutorService metadataIo = Executors.newFixedThreadPool(2);
-    private final ExecutorService artworkIo = Executors.newSingleThreadExecutor();
-    private final List<Art> artwork = new ArrayList<>();
-    private final List<Recs.Pick> trending = new ArrayList<>();
+    private final ExecutorService metadataIo = Executors.newFixedThreadPool(2), artworkIo = Executors.newSingleThreadExecutor();
+    private final List<Recs.Pick> trending = new ArrayList<>(), matches = new ArrayList<>();
     private final List<LocalApp> apps = new ArrayList<>();
-    private FrameLayout root, detail;
-    private LinearLayout screen, results;
-    private ScrollView page;
-    private final List<Art> posterViews = new ArrayList<>();
-    private int preferredColumn;
-    private boolean movingByRow;
+    private final List<Target> targets = new ArrayList<>();
+    private final List<Integer> posterTargets = new ArrayList<>();
+    private final Shadows shadows = new Shadows();
+    private final RoundedImages rounded = new RoundedImages(Ui.LEGACY);
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final TextPaint heading = new TextPaint(Paint.ANTI_ALIAS_FLAG), textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG), metaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF scratch = new RectF();
+    private SearchPage page;
     private EditText query;
-    private View returnFocus;
     private PosterCache images;
+    private PosterRenderer posters;
     private SearchController search;
     private MovieAppLauncher launcher;
     private RemoteShortcuts shortcuts;
     private SharedPreferences history;
+    private Bitmap backdrop;
     private Future<?> detailWork;
-    private boolean running, closed, focusAfterSearch, initialInput = true;
-    private int detailGeneration;
-    private float scale;
-    private boolean night;
-    private Bitmap pageBackdrop;
-    private final Scene buttonScene = new Scene();
-    private final Shadows shadows = new Shadows();
-    private final io.tvos.artwork.RoundedImages roundedImages = new io.tvos.artwork.RoundedImages(Ui.LEGACY);
-    private int ink() { return detail != null || night ? 0xFFF4F4F6 : 0xFF1D1D1F; }
-    private int muted() { return detail != null || night ? 0xFFB4B8BF : 0xFF626873; }
-    private String problem = "";
-    private List<Recs.Pick> matches = new ArrayList<>();
+    private Recs.Pick detail;
+    private StaticLayout detailTitle, detailOverview, detailMeta;
+    private String detailArt = "", problem = "";
+    private float scale, scroll, contentHeight, detailActionsTop, searchScroll;
+    private int selected = -1, savedSelected = -1, column, generation;
+    private long lastFrame;
+    private boolean running, closed, initialInput = true, focusAfterSearch;
+    private boolean night, hasRecent;
+    private android.animation.ValueAnimator scrolling;
+    private final List<Spring> focus = new ArrayList<>();
 
     private static final class LocalApp {
         final String pkg, label;
         LocalApp(String pkg, String label) { this.pkg = pkg; this.label = label; }
     }
-    private int px(float value) { return Math.max(1, Math.round(value * scale)); }
+    private static final class Target {
+        final RectF bounds;
+        final String label;
+        final Runnable action;
+        final int poster;
+        Target(RectF bounds, String label, int poster, Runnable action) { this.bounds = bounds; this.label = label; this.poster = poster; this.action = action; }
+    }
     private String text(int id) { return AppStrings.get(id); }
-    private void toast(int id) { Toast.makeText(this, text(id), Toast.LENGTH_SHORT).show(); }
-    private LinearLayout column() { LinearLayout out = new LinearLayout(this); out.setOrientation(LinearLayout.VERTICAL); out.setClipChildren(false); return out; }
-    private TextView label(String value, float size) {
-        TextView out = new TextView(this); out.setText(value); out.setTextColor(ink());
-        out.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size)); out.setTypeface(Ui.medium);
-        out.setIncludeFontPadding(false); return out;
-    }
-    private GradientDrawable rounded(int color, float radius) {
-        GradientDrawable out = new GradientDrawable(); out.setColor(color); out.setCornerRadius(px(radius)); return out;
-    }
-    private void focusable(View view, boolean grow) {
-        view.setFocusable(true); view.setClickable(true); view.setDefaultFocusHighlightEnabled(false);
-        view.setOnFocusChangeListener((v, focused) -> {
-            v.animate().cancel(); v.animate().scaleX(focused && grow ? 1.07f : 1).scaleY(focused && grow ? 1.07f : 1).setDuration(180).start();
-            if (v instanceof ProfileButton) {
-                ((ProfileButton) v).setTextColor(focused ? 0xFF17191E : ink());
-                v.invalidate();
-            } else if (v instanceof Art) {
-                ((Art) v).focused = focused;
-                v.setElevation(focused ? px(14) : 0); v.invalidate();
-            }
-            windowImages();
-        });
-    }
-    private TextView button(String value, Runnable action) {
-        TextView out = new ProfileButton(value); out.setGravity(Gravity.CENTER);
-        out.setPadding(px(26), 0, px(26), 0);
-        out.setMaxLines(1); out.setEllipsize(TextUtils.TruncateAt.END);
-        focusable(out, true); out.setOnClickListener(v -> action.run()); return out;
-    }
-    /** The same ActionSurface used by the avatar chooser, at a smaller native-view size. */
-    private final class ProfileButton extends TextView {
-        private final ActionSurface surface = new ActionSurface(buttonScene, shadows);
-        private final RectF rect = new RectF();
-        ProfileButton(String value) {
-            super(SearchActivity.this); setText(value); setTextColor(ink()); setTypeface(Ui.displayMedium);
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, px(28)); setIncludeFontPadding(false);
-        }
-        @Override public void draw(Canvas c) {
-            if (hasFocus()) {
-                int saved = c.save(); c.scale(scale, scale);
-                float width = getWidth()/scale, height = getHeight()/scale;
-                float insetX = width * (1 - 1/1.1f)/2, insetY = height * (1 - 1/1.1f)/2;
-                rect.set(insetX, insetY, width - insetX, height - insetY);
-                surface.draw(c, rect, 1, night ? 1 : 0, 1); c.restoreToCount(saved);
-            }
-            super.draw(c);
-        }
-    }
-    @Override protected void onCreate(Bundle saved) {
-        super.onCreate(saved); Ui.init(this);
+    private int ink() { return detail != null || night ? 0xFFF5F5F7 : 0xFF1D1D1F; }
+    private int muted() { return detail != null || night ? 0xFFA6A5AD : 0xFF65616C; }
+    private boolean reduced() { return getSharedPreferences("settings", MODE_PRIVATE).getBoolean("reduce_motion", false); }
+    @Override protected void onCreate(Bundle state) {
+        super.onCreate(state); Ui.init(this); Watchdog.install(this);
         scale = getResources().getDisplayMetrics().widthPixels / 1920f;
-        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-        night = HomeData.get(this).isNight(System.currentTimeMillis());
-        int[] frost = getIntent().getIntArrayExtra("profile_frost"); getIntent().removeExtra("profile_frost");
-        pageBackdrop = ProfileActivity.backdrop(frost, night);
-        int[] pixels = new int[Backdrop.FW * Backdrop.FH]; pageBackdrop.getPixels(pixels, 0, Backdrop.FW, 0, 0, Backdrop.FW, Backdrop.FH);
-        buttonScene.setFrost(pixels);
-        Bitmap glass = Bitmap.createScaledBitmap(pageBackdrop, Backdrop.GW, Backdrop.GH, true);
-        int[] glassPixels = new int[Backdrop.GW * Backdrop.GH]; glass.getPixels(glassPixels, 0, Backdrop.GW, 0, 0, Backdrop.GW, Backdrop.GH);
-        buttonScene.setGlassImage(glassPixels); glass.recycle();
-        root = new FrameLayout(this); setContentView(root);
-        View background = new View(this) {
-            private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-            private final Rect target = new Rect();
-            @Override protected void onDraw(Canvas c) { target.set(0, 0, getWidth(), getHeight()); c.drawBitmap(pageBackdrop, null, target, paint); }
-        };
-        root.addView(background, new FrameLayout.LayoutParams(-1, -1));
-        images = new PosterCache(this, () -> main.post(() -> {
-            if (!closed) for (Art art : artwork) art.invalidate();
-        }), artworkIo, AppLog::w);
-        images.setWindow(new HashSet<>());
+        night = true; // The supplied search reference uses a stable warm charcoal surface.
+        getIntent().removeExtra("profile_frost");
+        backdrop = Bitmap.createBitmap(192, 108, Bitmap.Config.ARGB_8888);
+        Canvas backgroundCanvas = new Canvas(backdrop);
+        Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+        backgroundPaint.setShader(new LinearGradient(0, 0, 192, 108,
+                new int[]{0xFF3C3539, 0xFF302C2E, 0xFF24252B}, null, Shader.TileMode.CLAMP));
+        backgroundCanvas.drawPaint(backgroundPaint);
+        backgroundPaint.setShader(new android.graphics.RadialGradient(100, 115, 90, 0x503E3042, 0, Shader.TileMode.CLAMP));
+        backgroundCanvas.drawPaint(backgroundPaint);
         history = getSharedPreferences("search-history", MODE_PRIVATE);
-        search = new SearchController(main, Recs.get(this), () -> running && detail == null,
-                found -> { matches = found; problem = found.isEmpty() ? text(R.string.search_empty) : ""; render(); if (focusAfterSearch) { focusAfterSearch = false; focusResult(); } });
-        launcher = new MovieAppLauncher(this, root, metadataIo, main, new MovieAppLauncher.Host() {
+        page = new SearchPage();
+        images = new PosterCache(this, () -> main.post(() -> { if (!closed) page.invalidate(); }), artworkIo, AppLog::w);
+        images.setWindow(new HashSet<>());
+        posters = new PosterRenderer(Recs.get(this), shadows, rounded, 64);
+        search = new SearchController(main, Recs.get(this), () -> running && detail == null, found -> {
+            matches.clear(); matches.addAll(found); problem = found.isEmpty() ? text(R.string.search_empty) : ""; rebuild();
+            if (focusAfterSearch) { focusAfterSearch = false; selectFirstPoster(); }
+        });
+        launcher = new MovieAppLauncher(this, page, metadataIo, main, new MovieAppLauncher.Host() {
             public boolean running() { return running && detail != null; }
-            public int epoch() { return detailGeneration; }
+            public int epoch() { return generation; }
             public void toast(String value) { Toast.makeText(SearchActivity.this, value, Toast.LENGTH_SHORT).show(); }
         });
         shortcuts = new RemoteShortcuts(this, true, null);
-        screen = column(); screen.setPadding(px(60), px(50), px(60), px(24));
-        page = new ScrollView(this); page.setFillViewport(true); page.setClipChildren(true); page.setClipToPadding(true); page.setVerticalScrollBarEnabled(false);
-        page.addView(screen, new ScrollView.LayoutParams(-1, -2));
-        root.addView(page, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
-        View magnifier = new View(this) {
-            @Override protected void onDraw(Canvas c) { Symbols.draw(SearchActivity.this, c, "search", getWidth()/2f, getHeight()/2f, 42*scale, muted()); }
-        };
-        magnifier.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        header.addView(magnifier, new LinearLayout.LayoutParams(px(64), px(64)));
-        query = new EditText(this, null, 0, R.style.SearchPageInput); query.setDefaultFocusHighlightEnabled(false); query.setSingleLine(true); query.setTypeface(Ui.displaySemibold);
-        query.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(44)); query.setTextColor(ink()); query.setHintTextColor(muted());
-        query.setHint(text(R.string.search_hint)); query.setBackgroundColor(0x00000000);
-        query.setPadding(px(32), 0, px(20), 0); query.setSelectAllOnFocus(false);
+        query = new EditText(this, null, 0, R.style.SearchPageInput);
+        query.setSingleLine(true); query.setTypeface(Ui.displaySemibold); query.setIncludeFontPadding(false);
+        query.setTextSize(TypedValue.COMPLEX_UNIT_PX, 54 * scale); query.setTextColor(ink()); query.setHintTextColor(muted());
+        query.setHint(text(R.string.search_hint)); query.setPadding(0, 0, 0, 0); query.setBackgroundColor(0);
+        query.setDefaultFocusHighlightEnabled(false);
+        query.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
         query.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
-        query.setInputType(android.text.InputType.TYPE_CLASS_TEXT); query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-        header.addView(query, new LinearLayout.LayoutParams(0, px(84), 1)); screen.addView(header);
-        View divider = new View(this); divider.setBackgroundColor(night ? 0x26FFFFFF : 0x261D1D1F);
-        LinearLayout.LayoutParams line = new LinearLayout.LayoutParams(-1, px(1)); line.topMargin = px(26);
-        screen.addView(divider, line);
-        results = column(); results.setPadding(0, px(12), 0, px(40));
-        screen.addView(results, new LinearLayout.LayoutParams(-1, -2));
+        query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         query.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            public void afterTextChanged(Editable value) { }
+            public void afterTextChanged(Editable e) { }
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                focusAfterSearch = false; matches = new ArrayList<>(); problem = ""; search.changed(s.toString().trim()); render();
+                matches.clear(); problem = ""; focusAfterSearch = false; selected = -1;
+                search.changed(s.toString().trim()); rebuild(); scrollTo(0, false);
             }
-        });
-        query.setOnKeyListener((v, key, event) -> {
-            if (key != KeyEvent.KEYCODE_DPAD_DOWN || posterViews.isEmpty() || detail != null) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) { hideKeyboard(); preferredColumn = 0; posterViews.get(0).requestFocus(); }
-            return true;
         });
         query.setOnClickListener(v -> keyboard());
-        query.setOnEditorActionListener((v, action, event) -> { focusAfterSearch = true; search.flush(); remember(); hideKeyboard(); focusResult(); return true; });
-        root.getViewTreeObserver().addOnScrollChangedListener(this::windowImages);
-        if (saved != null) query.setText(saved.getString("query", ""));
-        render(); query.requestFocus();
-        loadSuggestions();
+        query.setOnEditorActionListener((v, action, event) -> {
+            remember(); hideKeyboard(); focusAfterSearch = true; search.flush(); selectFirstPoster(); return true;
+        });
+        page.addView(query); setContentView(page);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        if (state != null) query.setText(state.getString("query", ""));
+        rebuild(); query.requestFocus(); loadSuggestions();
     }
-    private void keyboard() {
-        focusAfterSearch = false; query.requestFocus(); ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(query, InputMethodManager.SHOW_IMPLICIT);
-    }
+    private void keyboard() { selected = -1; query.requestFocus(); ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(query, InputMethodManager.SHOW_IMPLICIT); }
     private void hideKeyboard() { ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(query.getWindowToken(), 0); }
-    private void focusResult() { results.post(() -> { if (detail == null) results.requestFocus(View.FOCUS_DOWN); }); }
     private List<String> recent() {
-        List<String> out = new ArrayList<>();
-        try { JSONArray list = new JSONArray(history.getString("recent", "[]")); for (int i = 0; i < list.length(); i++) out.add(list.optString(i)); }
+        List<String> result = new ArrayList<>();
+        try { JSONArray list = new JSONArray(history.getString("recent", "[]")); for (int i = 0; i < list.length(); i++) result.add(list.optString(i)); }
         catch (org.json.JSONException e) { AppLog.w("Invalid search history"); }
-        return SearchHistory.remember(out, "");
+        return SearchHistory.remember(result, "");
     }
-    private void remember() {
-        String value = query.getText().toString().trim();
-        if (!value.isEmpty()) history.edit().putString("recent", new JSONArray(SearchHistory.remember(recent(), value)).toString()).apply();
-    }
-    private void heading(int id) {
-        TextView title = label(text(id), 30); title.setTextColor(muted());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.topMargin = px(26); params.bottomMargin = px(20); results.addView(title, params);
-    }
-    private LinearLayout row() {
-        HorizontalScrollView scroll = new HorizontalScrollView(this); scroll.setHorizontalScrollBarEnabled(false); scroll.setClipChildren(false); scroll.setClipToPadding(false);
-        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setClipChildren(false); row.setPadding(px(14), px(22), px(20), px(24));
-        scroll.addView(row, new HorizontalScrollView.LayoutParams(-2, -2));
-        results.addView(scroll, new LinearLayout.LayoutParams(-1, -2)); return row;
-    }
-    private void chip(LinearLayout row, String title, Runnable action) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, px(66)); params.rightMargin = px(28); row.addView(button(title, action), params);
-    }
+    private void remember() { String value = query.getText().toString().trim(); if (!value.isEmpty()) history.edit().putString("recent", new JSONArray(SearchHistory.remember(recent(), value)).toString()).apply(); }
     private void setQuery(String value) { query.setText(value); query.setSelection(query.length()); hideKeyboard(); focusAfterSearch = true; search.flush(); }
-    private void render() {
+    private int target(float x, float y, float w, float h, String label, int poster, Runnable action) {
+        targets.add(new Target(new RectF(x, y, x+w, y+h), label, poster, action)); focus.add(new Spring(.26f, .85f, 0)); return targets.size()-1;
+    }
+    private void rebuild() {
         if (closed || detail != null) return;
-        artwork.clear(); posterViews.clear(); results.removeAllViews();
+        String focusedLabel = selected >= 0 && selected < targets.size() ? targets.get(selected).label : "";
+        boolean restoreFocus = page.hasFocus() && !query.hasFocus();
+        targets.clear(); posterTargets.clear(); focus.clear(); selected = -1;
+        target(32, 50, 205, 58, "‹  " + text(R.string.home_search), -1, this::finish);
         String value = query.getText().toString().trim();
+        hasRecent = value.isEmpty() && !recent().isEmpty();
         if (value.isEmpty()) {
-            List<String> recent = recent();
-            if (!recent.isEmpty()) {
-                LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
-                header.setClipChildren(false); header.setClipToPadding(false); header.setPadding(0, px(8), 0, px(8));
-                TextView title = label(text(R.string.search_recent), 30); title.setTextColor(muted());
-                header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-                TextView clear = button(text(R.string.search_clear), () -> {
-                    history.edit().remove("recent").apply(); render(); query.requestFocus();
-                });
-                header.addView(clear, new LinearLayout.LayoutParams(-2, px(58)));
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.topMargin = px(16); results.addView(header, params);
-                LinearLayout row = row(); for (String item : recent) chip(row, item, () -> setQuery(item));
+            float x = 80; textPaint.setTextSize(28); textPaint.setTypeface(Ui.medium);
+            for (String entry : recent()) {
+                float width = Math.max(110, textPaint.measureText(entry)+54);
+                if (x+width > 1620) break;
+                target(x, 275, width, 64, entry, -1, () -> setQuery(entry)); x += width+24;
             }
-            if (!trending.isEmpty()) { heading(R.string.search_trending); posters(trending); }
+            if (hasRecent) target(1670, 275, 170, 64, text(R.string.search_clear), -1, () -> { history.edit().remove("recent").apply(); rebuild(); query.requestFocus(); });
         } else {
-            List<LocalApp> found = new ArrayList<>();
-            String lower = value.toLowerCase(Ui.locale());
-            for (LocalApp app : apps) if (app.label.toLowerCase(Ui.locale()).contains(lower)) found.add(app);
-            if (!found.isEmpty()) { heading(R.string.search_apps); LinearLayout row = row(); for (LocalApp app : found) chip(row, app.label,
-                    () -> { remember(); Intent intent = HomeApps.launchIntent(getPackageManager(), app.pkg); if (intent != null) AppLaunch.start(this, intent, "Search app"); }); }
-            heading(R.string.search_titles);
-            if (matches.isEmpty()) {
-                TextView hint = label(!problem.isEmpty() ? problem : text(value.codePointCount(0, value.length()) < 3 ? R.string.search_minimum : R.string.search_loading), 28);
-                hint.setTextColor(muted()); results.addView(hint);
-            } else posters(matches);
+            float x = 80; textPaint.setTextSize(28); textPaint.setTypeface(Ui.medium);
+            for (LocalApp app : apps) if (app.label.toLowerCase(Ui.locale()).contains(value.toLowerCase(Ui.locale()))) {
+                float width = Math.min(420, Math.max(140, textPaint.measureText(app.label)+54)); if (x+width > 1840) break;
+                target(x, 275, width, 64, app.label, -1, () -> { remember(); Intent intent = HomeApps.launchIntent(getPackageManager(), app.pkg); if (intent != null) AppLaunch.start(this, intent, "Search app"); }); x += width+24;
+            }
         }
-        results.post(this::windowImages);
-    }
-    /** Only the poster is a focus target; captions have no extra frame or focus padding. */
-    private void posters(List<Recs.Pick> picks) {
-        android.widget.GridLayout grid = new android.widget.GridLayout(this);
-        grid.setColumnCount(6); grid.setClipChildren(false); grid.setClipToPadding(false); grid.setPadding(px(14), px(16), px(14), px(554));
-        for (Recs.Pick pick : picks) {
-            Art art = new Art(pick.poster, 0); art.pick = pick;
-            art.poster = new PosterRenderer(Recs.get(this), shadows, roundedImages, 1);
-            android.widget.GridLayout.LayoutParams box = new android.widget.GridLayout.LayoutParams();
-            box.width = px(268); box.height = px(502); box.rightMargin = grid.getChildCount() % 6 == 5 ? 0 : px(32); box.bottomMargin = px(32);
-            grid.addView(art, box); posterViews.add(art); art.setContentDescription(pick.title); art.setBackgroundColor(0x00000000); art.setClipToOutline(false);
-            art.setFocusable(true); art.setClickable(true); art.setDefaultFocusHighlightEnabled(false);
-            art.setOnFocusChangeListener((v, focused) -> {
-                if (focused && !movingByRow) preferredColumn = posterViews.indexOf(art) % 6;
-                art.focused = focused; art.poster.focus(focused ? 0 : -1, 0, 0, android.os.SystemClock.uptimeMillis());
-                if (art.focusAnimation != null) art.focusAnimation.cancel();
-                art.focusAnimation = android.animation.ValueAnimator.ofFloat(art.focusAmount, focused ? 1 : 0);
-                art.focusAnimation.setDuration(220); art.focusAnimation.setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f));
-                art.focusAnimation.addUpdateListener(animation -> { art.focusAmount = (float) animation.getAnimatedValue(); art.invalidate(); });
-                art.focusAnimation.start();
-                if (focused) page.post(() -> alignPoster(art));
-            });
-            art.setOnKeyListener((v, key, event) -> navigatePoster(art, key, event));
-            art.setOnClickListener(v -> showDetail(pick, art));
+        List<Recs.Pick> picks = value.isEmpty() ? trending : matches;
+        for (int i = 0; i < Math.min(64, picks.size()); i++) {
+            final Recs.Pick pick = picks.get(i);
+            posterTargets.add(target(80+(i%6)*300, 480+(i/6)*510, 260, 475, pick.title, i, () -> openDetail(pick)));
         }
-        results.addView(grid, new LinearLayout.LayoutParams(-1, -2));
+        contentHeight = picks.isEmpty() ? 1080 : 480 + ((Math.min(64, picks.size())-1)/6)*510 + 1080-24;
+        if (restoreFocus && !focusedLabel.isEmpty()) for (int i = 0; i < targets.size(); i++) {
+            if (focusedLabel.equals(targets.get(i).label)) { selected = i; focus.get(i).snap(1); break; }
+        }
+        refreshImages(); page.requestLayout(); page.invalidate();
     }
-    private void alignPoster(Art art) {
-        if (detail != null || !art.hasFocus()) return;
-        Rect bounds = new Rect(); art.getDrawingRect(bounds); screen.offsetDescendantRectToMyCoords(art, bounds);
-        int index = posterViews.indexOf(art);
-        if (index >= 0 && index < 6) page.smoothScrollTo(0, 0);
-        else page.smoothScrollTo(0, Math.max(0, bounds.top - px(24)));
+    private List<Recs.Pick> picks() { return query.getText().toString().trim().isEmpty() ? trending : matches; }
+    private void refreshImages() {
+        Set<String> wanted = new HashSet<>();
+        if (detail != null) { if (!detailArt.isEmpty()) wanted.add(detailArt); }
+        else for (int index : posterTargets) {
+            Target t = targets.get(index);
+            if (t.bounds.bottom >= scroll-100 && t.bounds.top <= scroll+1180) {
+                if (t.poster >= picks().size()) continue;
+                String path = picks().get(t.poster).poster; if (path != null && !path.isEmpty()) wanted.add(path);
+            }
+        }
+        images.setWindow(wanted);
     }
-    private boolean navigatePoster(Art art, int key, KeyEvent event) {
-        if (key != KeyEvent.KEYCODE_DPAD_UP && key != KeyEvent.KEYCODE_DPAD_DOWN
-                && key != KeyEvent.KEYCODE_DPAD_LEFT && key != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
+    private void scrollTo(float value, boolean animate) {
+        if (scrolling != null) scrolling.cancel();
+        float height = page.getHeight() > 0 ? page.getHeight()/scale : 1080;
+        float to = Math.max(0, Math.min(Math.max(0, contentHeight-height), value));
+        if (!animate || reduced()) { scroll = to; page.requestLayout(); refreshImages(); page.invalidate(); return; }
+        scrolling = android.animation.ValueAnimator.ofFloat(scroll, to); scrolling.setDuration(280);
+        scrolling.setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f));
+        scrolling.addUpdateListener(a -> { scroll = (float)a.getAnimatedValue(); page.requestLayout(); refreshImages(); page.invalidate(); }); scrolling.start();
+    }
+    private void select(int index, boolean preserveColumn) {
+        if (index < 0 || index >= targets.size()) return;
+        hideKeyboard(); page.requestFocus(); selected = index;
+        Target t = targets.get(index);
+        for (int i = 0; i < focus.size(); i++) { focus.get(i).target = i == index ? 1 : 0; if (reduced()) focus.get(i).snap(focus.get(i).target); }
+        if (t.poster >= 0) {
+            if (!preserveColumn) column = t.poster%6;
+            posters.focus(t.poster, 0, 0, SystemClock.uptimeMillis());
+            scrollTo(t.poster < 6 ? 0 : t.bounds.top-24, true);
+        } else if (detail == null) scrollTo(0, true);
+        else if (t.bounds.top < scroll+70 || t.bounds.bottom > scroll+970) scrollTo(Math.max(0, t.bounds.top-500), true);
+        page.setContentDescription(t.label); page.invalidate();
+    }
+    private void selectFirstPoster() { if (!posterTargets.isEmpty()) select(posterTargets.get(0), false); }
+    private void input() {
+        selected = -1; for (Spring spring : focus) spring.target = 0;
+        query.requestFocus(); scrollTo(0, true); page.invalidate();
+    }
+    private boolean key(KeyEvent event) {
+        int key = event.getKeyCode();
+        boolean arrow = key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN || key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT;
+        boolean ok = key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER || key == KeyEvent.KEYCODE_NUMPAD_ENTER;
+        if (query.hasFocus() && detail == null) {
+            if (key != KeyEvent.KEYCODE_DPAD_DOWN) return false;
+            if (event.getAction() == KeyEvent.ACTION_DOWN) { if (targets.size() > 1 && targets.get(1).poster < 0) select(1, false); else selectFirstPoster(); }
+            return true;
+        }
+        if (!arrow && !ok) return false;
         if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
-        int index = posterViews.indexOf(art), target = index;
-        if (index < 0) return true;
-        if (key == KeyEvent.KEYCODE_DPAD_UP && index < 6) {
-            query.requestFocus(); page.post(() -> page.smoothScrollTo(0, 0)); return true;
-        }
-        if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            target = SearchGridNavigation.horizontal(index, posterViews.size(), key == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
-            preferredColumn = target % 6;
+        if (selected < 0 || selected >= targets.size()) { if (detail == null) input(); return true; }
+        Target current = targets.get(selected);
+        if (ok) { if (event.getRepeatCount() == 0) current.action.run(); return true; }
+        if (current.poster >= 0) {
+            int next;
+            if (key == KeyEvent.KEYCODE_DPAD_UP && current.poster < 6) { input(); return true; }
+            if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                next = SearchGridNavigation.horizontal(current.poster, posterTargets.size(), key == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                select(posterTargets.get(next), false);
+            } else {
+                next = SearchGridNavigation.vertical(current.poster, posterTargets.size(), column, key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1);
+                if (next < 0) input(); else select(posterTargets.get(next), true);
+            }
+        } else if (detail != null) {
+            if (key == KeyEvent.KEYCODE_DPAD_UP) select(Math.max(0, selected-1), false);
+            if (key == KeyEvent.KEYCODE_DPAD_DOWN) select(Math.min(targets.size()-1, selected+1), false);
         } else {
-            target = SearchGridNavigation.vertical(index, posterViews.size(), preferredColumn, key == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1);
+            if (key == KeyEvent.KEYCODE_DPAD_UP) input();
+            else if (key == KeyEvent.KEYCODE_DPAD_DOWN) selectFirstPoster();
+            else select(Math.max(0, Math.min(posterTargets.isEmpty() ? targets.size()-1 : posterTargets.get(0)-1, selected+(key == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1))), false);
         }
-        movingByRow = key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN;
-        posterViews.get(target).requestFocus(); movingByRow = false; return true;
+        return true;
     }
     private void loadSuggestions() {
         metadataIo.execute(() -> {
-            List<LocalApp> installed = new ArrayList<>(); Set<String> seen = new HashSet<>();
-            for (String category : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
-                for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category), 0)) {
-                    if (info.activityInfo != null && seen.add(info.activityInfo.packageName) && !getPackageName().equals(info.activityInfo.packageName))
-                        installed.add(new LocalApp(info.activityInfo.packageName, String.valueOf(info.loadLabel(getPackageManager()))));
-                }
-            }
-            installed.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
-            main.post(() -> { if (!closed) { apps.addAll(installed); if (getCurrentFocus() == query || query.getText().toString().trim().isEmpty()) render(); } });
-            try {
-                List<Recs.Pick> popular = SearchData.trending();
-                main.post(() -> { if (!closed) { trending.addAll(popular); if (query.getText().toString().trim().isEmpty()) render(); } });
-            } catch (java.io.IOException | org.json.JSONException e) { AppLog.w("Search suggestions unavailable: " + e.getClass().getSimpleName()); }
+            List<LocalApp> found = new ArrayList<>(); Set<String> seen = new HashSet<>();
+            for (String category : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER})
+                for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category), 0))
+                    if (info.activityInfo != null && seen.add(info.activityInfo.packageName) && !getPackageName().equals(info.activityInfo.packageName)) found.add(new LocalApp(info.activityInfo.packageName, String.valueOf(info.loadLabel(getPackageManager()))));
+            main.post(() -> { if (!closed) { apps.addAll(found); if (query.hasFocus()) rebuild(); } });
+            try { List<Recs.Pick> popular = SearchData.trending(); main.post(() -> { if (!closed) { trending.addAll(popular); if (detail == null && query.getText().toString().trim().isEmpty()) rebuild(); } }); }
+            catch (java.io.IOException | org.json.JSONException e) { AppLog.w("Search suggestions unavailable"); }
         });
     }
-    private String metadata(Recs.Pick pick, SearchData.Detail extra) {
-        List<String> values = new ArrayList<>(); String year = "tv".equals(pick.kind) ? pick.tvOrigin : pick.movieOrigin;
-        if (year != null && !year.isEmpty()) values.add(year);
-        values.add(text("tv".equals(pick.kind) ? R.string.search_series : R.string.search_movie));
-        if (extra != null && !extra.genres.isEmpty()) values.add(extra.genres);
-        if (pick.rating > 0) values.add(String.format(Ui.locale(), "TMDB %.1f", pick.rating));
-        if (extra != null && extra.minutes > 0) values.add(String.format(Ui.locale(), text(R.string.search_runtime), extra.minutes));
-        return String.join("  ·  ", values);
+    private StaticLayout paragraph(String value, float size, int color, int width, int lines) {
+        TextPaint p = new TextPaint(Paint.ANTI_ALIAS_FLAG); p.setTypeface(Ui.medium); p.setTextSize(size); p.setColor(color);
+        return StaticLayout.Builder.obtain(value, 0, value.length(), p, width).setMaxLines(lines).setEllipsize(TextUtils.TruncateAt.END).setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(4, 1).setIncludePad(false).build();
     }
-    private void showDetail(Recs.Pick pick, View from) {
-        hideKeyboard(); remember(); search.cancel(); returnFocus = from; detailGeneration++;
-        final int generation = detailGeneration;
-        detail = new FrameLayout(this); detail.setBackgroundColor(0xFF101419); artwork.clear();
-        Art back = new Art(wide(pick.backdrop), 0); detail.addView(back, new FrameLayout.LayoutParams(-1, -1));
-        View shade = new View(this); shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xF7101419, 0xD9101419, 0x42101419})); detail.addView(shade, new FrameLayout.LayoutParams(-1, -1));
-        ScrollView scroll = new ScrollView(this); scroll.setClipChildren(false); scroll.setVerticalScrollBarEnabled(false);
-        LinearLayout content = column(); content.setPadding(px(65), px(90), px(35), px(50));
-        TextView title = label(pick.title, 64); title.setTypeface(Ui.displayBold); title.setMaxLines(2); title.setEllipsize(TextUtils.TruncateAt.END); content.addView(title);
-        TextView meta = label(metadata(pick, null), 28); meta.setTextColor(0xFFB7BAC0); addSpace(content, meta, 24);
-        TextView overview = label(text(R.string.search_loading), 30); overview.setTextColor(0xFFDDDFE4); overview.setMaxLines(5); overview.setEllipsize(TextUtils.TruncateAt.END); overview.setLineSpacing(px(4), 1); addSpace(content, overview, 28);
-        TextView how = label(text(R.string.search_how), 27); how.setTextColor(0xFFB7BAC0); addSpace(content, how, 38);
-        View first = null;
-        for (int i = 1; i < MovieService.count(); i++) {
-            String pkg = MovieService.resolve(MovieService.id(i), p -> HomeApps.launchIntent(getPackageManager(), p) != null);
-            if (pkg.isEmpty()) continue;
-            String name = MovieService.label(i, AppLanguage.current());
-            TextView action = button(String.format(Ui.locale(), text(R.string.search_watch_in), name), () -> launcher.openIn(pick, pkg, name));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(76)); params.topMargin = px(16); content.addView(action, params); if (first == null) first = action;
-        }
-        if (first == null) { TextView note = label(text(R.string.search_no_apps), 28); addSpace(content, note, 20); }
-        scroll.addView(content, new ScrollView.LayoutParams(px(940), -2));
-        detail.addView(scroll, new FrameLayout.LayoutParams(px(940), -1)); root.addView(detail, new FrameLayout.LayoutParams(-1, -1));
-        screen.setVisibility(View.INVISIBLE); detail.setAlpha(0); detail.animate().alpha(1).setDuration(220).start();
-        if (first != null) first.requestFocus(); else { detail.setFocusableInTouchMode(true); detail.requestFocus(); }
-        root.post(this::windowImages);
+    private void openDetail(Recs.Pick pick) {
+        remember(); hideKeyboard(); search.cancel(); savedSelected = selected; searchScroll = scroll; detail = pick; generation++;
+        int expected = generation; detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
+        buildDetail(null); scrollTo(0, false); select(0, false);
         if (detailWork != null) detailWork.cancel(false);
         detailWork = metadataIo.submit(() -> {
-            try {
-                SearchData.Detail data = SearchData.detail(pick);
-                main.post(() -> { if (closed || detail == null || generation != detailGeneration) return;
-                    overview.setText(data.overview.isEmpty() ? text(R.string.search_no_overview) : data.overview); meta.setText(metadata(pick, data));
-                    if (!data.backdrop.isEmpty()) back.path = wide(data.backdrop); windowImages(); back.invalidate(); });
-            } catch (java.io.IOException | org.json.JSONException e) {
-                main.post(() -> { if (!closed && detail != null && generation == detailGeneration) overview.setText(text(R.string.search_detail_unavailable)); });
-            }
+            try { SearchData.Detail data = SearchData.detail(pick); main.post(() -> {
+                if (closed || generation != expected || detail != pick) return;
+                if (!data.backdrop.isEmpty()) detailArt = wide(data.backdrop); buildDetail(data); if (selected >= 0) select(selected, false); refreshImages(); page.invalidate();
+            }); } catch (java.io.IOException | org.json.JSONException e) { main.post(() -> { if (!closed && generation == expected && detail != null) { detailOverview = paragraph(text(R.string.search_detail_unavailable), 30, 0xFFDDDFE4, 820, 5); page.invalidate(); } }); }
         });
     }
-    private void addSpace(LinearLayout col, View view, int gap) { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.topMargin = px(gap); col.addView(view, p); }
-    private static String wide(String path) { return path == null || path.isEmpty() ? "" : path.startsWith("/") ? "https://image.tmdb.org/t/p/w1280" + path : path; }
+    private void buildDetail(SearchData.Detail data) {
+        detailTitle = paragraph(detail.title, 64, 0xFFFFFFFF, 820, 2);
+        List<String> values = new ArrayList<>(); String year = "tv".equals(detail.kind) ? detail.tvOrigin : detail.movieOrigin;
+        if (year != null && !year.isEmpty()) values.add(year);
+        values.add(text("tv".equals(detail.kind) ? R.string.search_series : R.string.search_movie));
+        if (data != null && !data.genres.isEmpty()) values.add(data.genres);
+        if (detail.rating > 0) values.add(String.format(Ui.locale(), "TMDB %.1f", detail.rating));
+        if (data != null && data.minutes > 0) values.add(String.format(Ui.locale(), text(R.string.search_runtime), data.minutes));
+        detailMeta = paragraph(String.join("  ·  ", values), 27, 0xFFB7BAC0, 820, 2);
+        detailOverview = paragraph(data == null ? text(R.string.search_loading) : data.overview.isEmpty() ? text(R.string.search_no_overview) : data.overview, 30, 0xFFDDDFE4, 820, 5);
+        detailActionsTop = 90+detailTitle.getHeight()+26+detailMeta.getHeight()+32+detailOverview.getHeight()+100;
+        targets.clear(); posterTargets.clear(); focus.clear();
+        float y = detailActionsTop;
+        for (int i = 1; i < MovieService.count(); i++) {
+            String pkg = MovieService.resolve(MovieService.id(i), p -> HomeApps.launchIntent(getPackageManager(), p) != null); if (pkg.isEmpty()) continue;
+            String name = MovieService.label(i, AppLanguage.current());
+            target(80, y, 800, 72, String.format(Ui.locale(), text(R.string.search_watch_in), name), -1, () -> launcher.openIn(detail, pkg, name)); y += 96;
+        }
+        if (selected >= targets.size()) selected = targets.isEmpty() ? -1 : 0;
+        if (selected >= 0) focus.get(selected).snap(1);
+        contentHeight = Math.max(1080, y+100); refreshImages(); page.invalidate();
+    }
     private void closeDetail() {
-        detailGeneration++; if (detailWork != null) detailWork.cancel(false);
-        root.removeView(detail); detail = null; artwork.clear(); collectArt(results); screen.setVisibility(View.VISIBLE);
-        if (returnFocus != null) returnFocus.requestFocus(); results.post(this::windowImages);
+        generation++; if (detailWork != null) detailWork.cancel(false); detail = null; query.setVisibility(View.VISIBLE);
+        rebuild(); int index = savedSelected; scrollTo(searchScroll, false); if (index >= 0 && index < targets.size()) select(index, false); else input();
     }
-    private void collectArt(View view) { if (view instanceof Art) artwork.add((Art) view); else if (view instanceof ViewGroup) {
-        ViewGroup group = (ViewGroup) view; for (int i = 0; i < group.getChildCount(); i++) collectArt(group.getChildAt(i)); } }
-    private final Rect visibleBounds = new Rect();
-    private void windowImages() {
-        if (images == null || closed) return;
-        Set<String> wanted = new HashSet<>();
-        for (Art art : artwork) if (!art.path.isEmpty() && art.getGlobalVisibleRect(visibleBounds) && wanted.size() < 18) wanted.add(art.path);
-        images.setWindow(wanted); for (Art art : artwork) art.invalidate();
+    private static String wide(String path) { return path == null || path.isEmpty() ? "" : path.startsWith("/") ? "https://image.tmdb.org/t/p/w1280"+path : path; }
+    private void label(Canvas c, String value, float x, float y, float size, int color) {
+        textPaint.setTypeface(Ui.medium); textPaint.setTextSize(size); textPaint.setColor(color); c.drawText(value, x, y, textPaint);
     }
-    private final class Art extends View {
-        String path;
-        boolean focused;
-        float focusAmount;
-        android.animation.ValueAnimator focusAnimation;
-        Recs.Pick pick;
-        PosterRenderer poster;
-        private final Paint title = Ui.text(Ui.semibold, 31 * scale, ink());
-        private final Paint meta = Ui.text(Ui.medium, 25 * scale, muted());
-        private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final RectF bounds = new RectF();
-        Art(String value, int radius) {
-            super(SearchActivity.this); path = value == null ? "" : value; artwork.add(this);
-            setBackground(rounded(0xFF242A32, radius)); setClipToOutline(radius > 0);
+    private void capsule(Canvas c, Target target, float amount) {
+        amount = Ui.clamp(amount);
+        float grow = 1+.06f*amount; int saved = c.save(); c.scale(grow, grow, target.bounds.centerX(), target.bounds.centerY());
+        if (amount > .001f) {
+            paint.setShader(null); paint.setColor(Ui.alpha(0xFFFFFFFF, amount));
+            c.drawRoundRect(target.bounds, target.bounds.height()/2, target.bounds.height()/2, paint);
         }
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas); Bitmap bitmap = images.poster(path);
-            if (pick != null) {
-                bounds.set(0, 0, getWidth(), px(402));
-                poster.begin(scale, night ? 1 : 0, 0, 0, true, focused, title, meta);
-                poster.draw(canvas, pick, bounds, focusAmount, 0, bitmap);
-                if (focused) postInvalidateDelayed(poster.nextDelay(android.os.SystemClock.uptimeMillis()));
-                return;
+        textPaint.setTypeface(Ui.displayMedium); textPaint.setTextSize(target.bounds.height() < 70 ? 28 : 30);
+        textPaint.setColor(ActionSurface.blend(ink(), 0xFF1D1D1F, amount));
+        String shown = TextUtils.ellipsize(target.label, textPaint, target.bounds.width()-44, TextUtils.TruncateAt.END).toString();
+        c.drawText(shown, target.bounds.centerX()-textPaint.measureText(shown)/2, target.bounds.centerY()+Ui.halfCap(textPaint), textPaint); c.restoreToCount(saved);
+    }
+    private final class SearchPage extends ViewGroup {
+        private float touchY, startScroll; private boolean dragging;
+        SearchPage() { super(SearchActivity.this); setWillNotDraw(false); setFocusable(true); setFocusableInTouchMode(true); setClipChildren(true); }
+        @Override protected void onMeasure(int width, int height) {
+            setMeasuredDimension(MeasureSpec.getSize(width), MeasureSpec.getSize(height));
+            if (query != null) query.measure(MeasureSpec.makeMeasureSpec(Math.round(1620*scale), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(Math.round(88*scale), MeasureSpec.EXACTLY));
+        }
+        @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+            if (query != null) { int x = Math.round(195*scale), y = Math.round((150-scroll)*scale); query.layout(x, y, x+query.getMeasuredWidth(), y+query.getMeasuredHeight()); }
+        }
+        @Override protected void onDraw(Canvas c) {
+            super.onDraw(c); paint.setShader(null); paint.setAlpha(255); scratch.set(0, 0, getWidth(), getHeight());
+            c.drawBitmap(backdrop, null, scratch, paint);
+            if (detail != null) {
+                Bitmap image = images.poster(detailArt); if (image != null) rounded.draw(c, image, scratch, 0);
+                paint.setShader(new LinearGradient(0, 0, getWidth(), 0, new int[]{0xF7101419,0xD9101419,0x42101419}, null, Shader.TileMode.CLAMP)); c.drawRect(scratch, paint); paint.setShader(null);
             }
-            if (bitmap != null) {
-            float zoom = Math.max((float) getWidth() / bitmap.getWidth(), (float) getHeight() / bitmap.getHeight());
-            float w = bitmap.getWidth() * zoom, h = bitmap.getHeight() * zoom;
-            bounds.set((getWidth() - w) / 2, (getHeight() - h) / 2, (getWidth() + w) / 2, (getHeight() + h) / 2);
-            canvas.drawBitmap(bitmap, null, bounds, paint);
+            int saved = c.save(); c.clipRect(0, 0, getWidth(), getHeight()); c.scale(scale, scale); c.translate(0, -scroll);
+            long now = SystemClock.uptimeMillis(); float dt = lastFrame == 0 ? .016f : Math.min(.04f, (now-lastFrame)/1000f); lastFrame = now; boolean moving = false;
+            for (Spring spring : focus) moving |= spring.step(dt);
+            if (detail == null) {
+                Symbols.draw(SearchActivity.this, c, "search", 125, 194, 48, muted());
+                paint.setColor(night ? 0x35FFFFFF : 0x351D1D1F); c.drawRect(80,370,1840,371,paint);
+                boolean empty = query.getText().toString().trim().isEmpty();
+                if (empty && hasRecent) label(c, text(R.string.search_recent), 80, 255, 27, muted());
+                label(c, text(empty ? R.string.search_trending : R.string.search_titles), 80, 447, 30, muted());
+                if (!empty && matches.isEmpty()) label(c, !problem.isEmpty() ? problem : text(query.length() < 3 ? R.string.search_minimum : R.string.search_loading), 80, 520, 28, muted());
+                titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(31); titlePaint.setColor(ink()); metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(25); metaPaint.setColor(muted());
+                posters.begin(1, night ? 1 : 0, 0, 0, true, selected >= 0 && targets.get(selected).poster >= 0, titlePaint, metaPaint);
+                for (int i = 0; i < targets.size(); i++) {
+                    Target target = targets.get(i); if (target.bounds.bottom < scroll-90 || target.bounds.top > scroll+getHeight()/scale+90) continue;
+                    if (target.poster < 0) capsule(c, target, focus.get(i).value);
+                    else {
+                        Recs.Pick pick = picks().get(target.poster); scratch.set(target.bounds.left, target.bounds.top, target.bounds.right, target.bounds.top+390);
+                        posters.draw(c, pick, scratch, focus.get(i).value, target.poster, images.poster(pick.poster));
+                    }
+                }
+            } else {
+                paragraph(c, detailTitle, 80, 90); paragraph(c, detailMeta, 80, 116+detailTitle.getHeight());
+                paragraph(c, detailOverview, 80, 148+detailTitle.getHeight()+detailMeta.getHeight());
+                label(c, text(R.string.search_how), 80, detailActionsTop-34, 27, 0xFFB7BAC0);
+                if (targets.isEmpty()) label(c, text(R.string.search_no_apps), 80, detailActionsTop+30, 27, 0xFFDDDFE4);
+                for (int i = 0; i < targets.size(); i++) capsule(c, targets.get(i), focus.get(i).value);
             }
-            if (focused) {
-                rim.setStyle(Paint.Style.STROKE); rim.setStrokeWidth(px(3)); rim.setColor(0xE6FFFFFF);
-                bounds.set(px(2), px(2), getWidth() - px(2), getHeight() - px(2));
-                canvas.drawRoundRect(bounds, px(19), px(19), rim);
+            c.restoreToCount(saved);
+            if (moving) postInvalidateOnAnimation();
+            else if (detail == null && selected >= 0 && targets.get(selected).poster >= 0) postInvalidateDelayed(posters.nextDelay(now));
+        }
+        private void paragraph(Canvas c, StaticLayout layout, float x, float y) { int saved = c.save(); c.translate(x,y); layout.draw(c); c.restoreToCount(saved); }
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            if (e.getAction() == MotionEvent.ACTION_DOWN) { touchY = e.getY(); startScroll = scroll; dragging = false; return true; }
+            if (e.getAction() == MotionEvent.ACTION_MOVE) { if (Math.abs(e.getY()-touchY) > 12*scale) dragging = true; if (dragging) SearchActivity.this.scrollTo(startScroll+(touchY-e.getY())/scale, false); return true; }
+            if (e.getAction() == MotionEvent.ACTION_UP) {
+                if (!dragging) for (int i = targets.size()-1; i >= 0; i--) if (targets.get(i).bounds.contains(e.getX()/scale, e.getY()/scale+scroll)) { select(i,false); targets.get(i).action.run(); break; }
+                return true;
             }
+            return true;
         }
     }
-    @Override public void onWindowFocusChanged(boolean focused) {
-        super.onWindowFocusChanged(focused);
-        if (focused && initialInput && detail == null) {
-            initialInput = false;
-            query.post(() -> { if (running && detail == null && query.hasFocus()) keyboard(); });
-        }
-    }
-    @Override protected void onResume() { super.onResume(); running = true; shortcuts.reload(); search.resume(query.getText().toString().trim()); search.restore(query.getText().toString().trim(), !matches.isEmpty()); }
-    @Override protected void onPause() { running = false; search.pause(detail == null); shortcuts.cancel(); super.onPause(); }
+    @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); if (focused && initialInput) { initialInput = false; query.post(() -> { if (running && detail == null && query.hasFocus()) keyboard(); }); } }
+    @Override protected void onResume() { super.onResume(); running = true; shortcuts.reload(); search.resume(query.getText().toString().trim()); search.restore(query.getText().toString().trim(), !matches.isEmpty()); page.invalidate(); }
+    @Override protected void onPause() { running = false; search.pause(detail == null); shortcuts.cancel(); if (scrolling != null) scrolling.cancel(); super.onPause(); }
     @Override protected void onSaveInstanceState(Bundle state) { state.putString("query", query.getText().toString()); super.onSaveInstanceState(state); }
-    @Override protected void onDestroy() { closed = true; search.cancel(); shortcuts.close(); images.setWindow(new HashSet<>()); metadataIo.shutdownNow(); artworkIo.shutdownNow(); main.removeCallbacksAndMessages(null); roundedImages.clear(); shadows.clear(); pageBackdrop = null; super.onDestroy(); }
-    @Override public boolean dispatchKeyEvent(KeyEvent event) { return shortcuts != null && shortcuts.onKey(event) || super.dispatchKeyEvent(event); }
+    @Override protected void onDestroy() { closed = true; search.cancel(); shortcuts.close(); images.setWindow(new HashSet<>()); metadataIo.shutdownNow(); artworkIo.shutdownNow(); main.removeCallbacksAndMessages(null); rounded.clear(); shadows.clear(); posters.clear(); super.onDestroy(); }
+    @Override public boolean dispatchKeyEvent(KeyEvent e) { if (shortcuts != null && shortcuts.onKey(e)) return true; if (page != null && key(e)) return true; return super.dispatchKeyEvent(e); }
     @SuppressWarnings("deprecation")
     @Override public void onBackPressed() { if (detail != null) closeDetail(); else { hideKeyboard(); super.onBackPressed(); } }
 }
