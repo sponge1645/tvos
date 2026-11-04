@@ -29,7 +29,7 @@ final class HomeAppsRenderer {
         int dockLiftIndex, drawerInputs, gridIndex, w, h;
         long dockWiggleAt;
         float k, night, dockLift, scroll;
-        boolean sheetOpen, weatherBottom;
+        boolean sheetOpen, weatherBottom, wideArtworkMode;
     }
     private static final float TILE_RADIUS = 30, PLATTER_RADIUS = HomeLayout.DOCK_RADIUS, FOCUS_GROW = .2f, SHADOW_BLUR = 26, DEEP_BLUR = 30;
     private static final long DOCK_WIGGLE_MS = 300;
@@ -266,7 +266,7 @@ final class HomeAppsRenderer {
     void drawDrawer(Canvas c, Frame frame) {
         this.frame = frame;
         if (frame.drawerItems.isEmpty()) return;
-        rowTitle.setColor(tone(L_DIM, 0xB3FFFFFF));
+        rowTitle.setColor(frame.wideArtworkMode ? 0xB3FFFFFF : tone(L_DIM, 0xB3FFFFFF));
         float titleBase = frame.drawerRects[0].top - 22 * frame.k;
         if (frame.drawerInputs > 0) c.drawText(AppStrings.get(R.string.home_inputs), frame.drawerRects[0].left + 4 * frame.k, titleBase, rowTitle);
         if (frame.drawerInputs < frame.drawerItems.size()) c.drawText(AppStrings.get(R.string.home_shortcuts), frame.drawerRects[frame.drawerInputs].left + 4 * frame.k, titleBase, rowTitle);

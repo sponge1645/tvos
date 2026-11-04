@@ -973,6 +973,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         appFrame.drawerInputs = drawer.inputs; appFrame.weatherCard = drawer.weather; appFrame.weatherBottom = weatherBottom();
         appFrame.others = grid.items; appFrame.gridFocus = grid.focus; appFrame.gridIndex = grid.index; appFrame.sheetOpen = grid.open;
         appFrame.focusedCell = focusedCell; appFrame.scroll = grid.scroll.value; appFrame.platterRect = platterRect;
+        appFrame.wideArtworkMode = !search.active && Prefs.categoryCount() == 0;
         appFrame.k = k; appFrame.night = background.night(); appFrame.w = w; appFrame.h = h;
         return appFrame;
     }
