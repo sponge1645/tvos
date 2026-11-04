@@ -154,6 +154,8 @@ final class DockContinue {
                         DockArtwork artwork = resolvedArtwork != null ? resolvedArtwork : DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster,
                                 logoYear, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
                         DockArtwork.loadLogo(artwork, io.tvos.network.ConnectionObserver.NONE);
+                        AppLog.w("Resume logo: package=" + p.pkg + ", item=" + itemIndex
+                                + ", status=" + artwork.logoStatus + ", kind=" + p.kind + ", year=" + logoYear);
                         if (artwork.logo.isEmpty() || token != generation) return;
                         main.post(() -> {
                             if (!visible || token != generation) return;
@@ -297,7 +299,11 @@ final class DockContinue {
             if (logo != null) {
                 long now = SystemClock.uptimeMillis();
                 Long appeared = imageAppeared.get(logoPath);
-                if (appeared == null) { appeared = now; imageAppeared.put(logoPath, appeared); }
+                if (appeared == null) {
+                    appeared = now; imageAppeared.put(logoPath, appeared);
+                    AppLog.w("Resume logo decoded: package=" + pick.pkg + ", item=" + i
+                            + ", size=" + logo.getWidth() + "x" + logo.getHeight());
+                }
                 float t = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 300f);
                 fadingImage |= t < 1;

@@ -12,6 +12,7 @@ final class DockArtwork {
     private static final java.util.Map<String, DockArtwork> CACHE = new java.util.LinkedHashMap<>(16, .75f, true);
     String backdrop = "";
     volatile String logo = "";
+    volatile String logoStatus = "not-requested";
     private String kind, languageCode, originalLanguage = "";
     private int id;
     private volatile boolean logoLoaded;
@@ -72,14 +73,19 @@ final class DockArtwork {
     }
 
     static void loadLogo(DockArtwork result, ConnectionObserver observer) {
-        if (result.logoLoaded || result.id <= 0) return;
+        if (result.logoLoaded) return;
+        if (result.id <= 0) { result.logoStatus = "no-metadata-match"; return; }
         try {
             JSONObject images = TmdbClient.get("/" + result.kind + "/" + result.id
                     + "/images?include_image_language=" + result.languageCode + ",en,null"
                     + (result.originalLanguage.isEmpty() ? "" : "," + result.originalLanguage), observer);
             result.logo = image(logo(images.optJSONArray("logos"), result.languageCode, result.originalLanguage), "w500");
+            JSONArray logos = images.optJSONArray("logos");
+            result.logoStatus = !result.logo.isEmpty() ? "selected"
+                    : logos == null || logos.length() == 0 ? "no-logos" : "no-supported-language-or-format";
             result.logoLoaded = true;
         } catch (IOException | org.json.JSONException e) {
+            result.logoStatus = "request-failed";
             AppLog.w("Dock logo unavailable: " + e.getClass().getSimpleName());
         }
     }
