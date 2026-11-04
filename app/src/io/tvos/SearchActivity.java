@@ -66,7 +66,7 @@ public final class SearchActivity extends Activity {
     private Recs.Pick detail;
     private StaticLayout detailTitle, detailOverview, detailMeta;
     private String detailArt = "", problem = "";
-    private float scale, scroll, contentHeight, detailActionsTop, searchScroll;
+    private float scale, scroll, scrollDestination, contentHeight, detailActionsTop, searchScroll;
     private int selected = -1, savedSelected = -1, column, generation;
     private long lastFrame;
     private boolean running, closed, initialInput = true, focusAfterSearch;
@@ -183,7 +183,7 @@ public final class SearchActivity extends Activity {
             final Recs.Pick pick = picks.get(i);
             posterTargets.add(target(80+(i%6)*300, 480+(i/6)*510, 260, 475, pick.title, i, () -> openDetail(pick)));
         }
-        contentHeight = picks.isEmpty() ? 1080 : 480 + ((Math.min(64, picks.size())-1)/6)*510 + 1080-24;
+        contentHeight = picks.isEmpty() ? 1080 : Math.max(1080, 480 + ((Math.min(64, picks.size())-1)/6)*510 + 475 + 32);
         if (restoreFocus && !focusedLabel.isEmpty()) for (int i = 0; i < targets.size(); i++) {
             if (focusedLabel.equals(targets.get(i).label)) { selected = i; focus.get(i).snap(1); break; }
         }
@@ -203,11 +203,14 @@ public final class SearchActivity extends Activity {
         images.setWindow(wanted);
     }
     private void scrollTo(float value, boolean animate) {
-        if (scrolling != null) scrolling.cancel();
         float height = page.getHeight() > 0 ? page.getHeight()/scale : 1080;
         float to = Math.max(0, Math.min(Math.max(0, contentHeight-height), value));
+        if (animate && scrolling != null && scrolling.isRunning() && Math.abs(to-scrollDestination) < .5f) return;
+        if (scrolling != null) scrolling.cancel();
+        scrollDestination = to;
         if (!animate || reduced()) { scroll = to; page.requestLayout(); refreshImages(); page.invalidate(); return; }
-        scrolling = android.animation.ValueAnimator.ofFloat(scroll, to); scrolling.setDuration(280);
+        if (Math.abs(to-scroll) < .5f) return;
+        scrolling = android.animation.ValueAnimator.ofFloat(scroll, to); scrolling.setDuration(360);
         scrolling.setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f));
         scrolling.addUpdateListener(a -> { scroll = (float)a.getAnimatedValue(); page.requestLayout(); refreshImages(); page.invalidate(); }); scrolling.start();
     }
@@ -219,7 +222,9 @@ public final class SearchActivity extends Activity {
         if (t.poster >= 0) {
             if (!preserveColumn) column = t.poster%6;
             posters.focus(t.poster, 0, 0, SystemClock.uptimeMillis());
-            scrollTo(t.poster < 6 ? 0 : t.bounds.top-24, true);
+            float viewport = page.getHeight() > 0 ? page.getHeight()/scale : 1080;
+            float position = scrolling != null && scrolling.isRunning() ? scrollDestination : scroll;
+            scrollTo(SearchGridNavigation.reveal(t.bounds.top, t.bounds.bottom, viewport, position), true);
         } else if (detail == null) scrollTo(0, true);
         else if (t.bounds.top < scroll+70 || t.bounds.bottom > scroll+970) scrollTo(Math.max(0, t.bounds.top-500), true);
         page.setContentDescription(t.label); page.invalidate();

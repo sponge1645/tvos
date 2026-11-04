@@ -13,6 +13,15 @@ with tempfile.TemporaryDirectory() as d:
    if(i%6==0)check(SearchGridNavigation.horizontal(i,count,-1)==i);
    if(i%6==5)check(SearchGridNavigation.horizontal(i,count,1)==i);
   }
+  float second=SearchGridNavigation.reveal(990,1465,1080,0);
+  check(second==417); // Both complete rows remain visible with focus padding.
+  check(480-second>=32 && 1465-second<=1080-32);
+  check(SearchGridNavigation.reveal(990,1465,1080,second)==second);
+  check(SearchGridNavigation.reveal(480,955,1080,second)==second);
+  check(SearchGridNavigation.reveal(1500,1975,1080,second)==927);
+  check(SearchGridNavigation.reveal(480,955,1080,927)==448);
+  check(SearchGridNavigation.reveal(990,1465,720,0)==777);
+  check(SearchGridNavigation.reveal(480,955,1080,0)==0);
   check(SearchGridNavigation.vertical(11,15,5,1)==14);
   check(SearchGridNavigation.vertical(14,15,5,-1)==11);
   check(SearchGridNavigation.vertical(14,15,5,1)==14);
