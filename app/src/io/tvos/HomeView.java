@@ -1613,7 +1613,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         headingFrame.clockText = clockText; headingFrame.dateText = dateText; headingFrame.searchQuery = search.query;
         headingFrame.topRects = topRects; headingFrame.topFocus = topFocus; headingFrame.lightButtons = lightButtons;
         headingFrame.lDate = lDate; headingFrame.lTab = lTab; headingFrame.lTabOn = lTabOn;
-        headingFrame.continueWatching = !search.active && Prefs.categoryCount() == 0 && dockContinue.visible();
+        headingFrame.weatherActionStyle = !search.active && Prefs.categoryCount() == 0;
         headingFrame.weatherFocused = zone == Z_WEATHER; headingFrame.weatherAmount = Ui.clamp(weatherFocus.value);
         headingFrame.showDate = showHeaderPart("show_date"); headingFrame.weatherTop = weatherTop();
         headingFrame.searchMode = search.active; headingFrame.largePostersWithoutWidgets = largePostersWithoutWidgets;
