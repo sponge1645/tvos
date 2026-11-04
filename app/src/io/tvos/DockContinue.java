@@ -123,7 +123,10 @@ final class DockContinue {
                     io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
                             (image, owner) -> ProviderImages.allowed(context, image, owner));
                     io.tvos.watching.DockPrograms.Candidate published = programs.forResume(p.pkg, p.title, p.poster);
-                    if (published != null) { url = published.urls.get(0); year = published.year; source = "published-landscape"; }
+                    if (published != null) {
+                        if (!published.year.isEmpty()) year = published.year;
+                        if (!published.urls.isEmpty()) { url = published.urls.get(0); source = "published-landscape"; }
+                    }
                 } catch (RuntimeException e) {
                     AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
                 }

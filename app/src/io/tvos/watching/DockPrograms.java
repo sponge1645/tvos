@@ -95,7 +95,8 @@ public final class DockPrograms {
                 Candidate candidate = new Candidate(title, value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
                 if (c.getInt(4) == 0 && allowed.test(value(c, 2), owner)) add(candidate.urls, value(c, 2));
                 if (c.getInt(3) == 0 && allowed.test(value(c, 1), owner)) add(candidate.urls, value(c, 1));
-                if (candidate.urls.isEmpty()) continue;
+                // A portrait-only matching row can still supply the missing release year.
+                if (candidate.urls.isEmpty() && !candidate.year.matches("[0-9]{4}")) continue;
                 if (!identity(poster).isEmpty() && identity(poster).equals(identity(candidate.poster))) exact = candidate;
                 if (selected == null) selected = candidate;
                 else if (!identity(selected.poster).equals(identity(candidate.poster)) || !selected.year.equals(candidate.year)) ambiguous = true;
