@@ -16,16 +16,14 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import io.tvos.weather.WeatherForecast;
-import io.tvos.home.HomeLayout;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-/** A modal forecast using the home's existing liquid glass and weather symbols. */
+/** Compact reference-style forecast card with six hours and five daily ranges. */
 @SuppressWarnings("deprecation")
 final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
-    private final Scene scene;
     private final HomeData data;
     private final ForecastView forecast;
     private boolean closing;
@@ -37,7 +35,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
     };
 
     HomeWeatherPanel(Context context, Scene scene, HomeData data) {
-        super(context); this.scene = scene; this.data = data;
+        super(context); this.data = data;
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         forecast = new ForecastView(context);
     }
@@ -88,9 +86,8 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             return true;
         }
         private void label(Canvas c, String value, float x, float y, float size, int color, Paint.Align align, float width) {
-            size *= 1.1f;
             text.setColor(color); text.setTextSize(size); text.setTextAlign(align);
-            text.setTypeface(Ui.displaySemibold);
+            text.setTypeface(size >= 80 ? Ui.displayRegular : Ui.displayMedium);
             float measured = text.measureText(value);
             if (measured > width) text.setTextSize(size * width / measured);
             c.drawText(value, x, y, text);
@@ -101,73 +98,65 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
         @Override protected void onDraw(Canvas c) {
             super.onDraw(c);
             float k = Math.min(getWidth() / 1920f, getHeight() / 1080f);
-            boolean night = data.isNight(System.currentTimeMillis());
-            int ink = night ? 0xFFF5F5F7 : 0xFF1D1D1F, muted = night ? 0xFFB7B9C1 : 0xFF5E6570;
-            // Keep the home unchanged: only the frosted forecast panel fades in.
-            fill.setShader(null);
-            panel.set(40*k, 50*k, 740*k, 1000*k);
-            fill.setColor(night ? 0xF21C242F : 0xF2E8F1F8);
-            c.drawRoundRect(panel, HomeLayout.DOCK_RADIUS*k, HomeLayout.DOCK_RADIUS*k, fill);
-            scene.setOffset(0, 0);
-            scene.liquid(c, panel, HomeLayout.DOCK_RADIUS*k, night ? 0xFF111113 : 0xFFFFFFFF,
-                    night ? .90f : .92f, .02f, 30*k, 8*k, .45f, 1);
+            int ink = 0xFFF9FAFC, muted = 0xFFBFC2C9, lowInk = 0xFF818690;
+            // The matte charcoal surface stays legible over every home background.
+            panel.set(40*k, 50*k, 740*k, 750*k);
+            fill.setShader(new LinearGradient(0, panel.top, 0, panel.bottom,
+                    0xFF3C414C, 0xFF2C313B, Shader.TileMode.CLAMP));
+            c.drawRoundRect(panel, 58*k, 58*k, fill); fill.setShader(null);
+            fill.setStyle(Paint.Style.STROKE); fill.setStrokeWidth(1.5f*k); fill.setColor(0x457F8797);
+            c.drawRoundRect(panel, 58*k, 58*k, fill); fill.setStyle(Paint.Style.FILL);
             int saved = c.save(); c.scale(k, k);
             WeatherForecast w = data.weather;
-            label(c, Prefs.city(), 390, 108, 32, ink, Paint.Align.CENTER, 620);
-            label(c, HomeData.degrees(w.temp), 390, 208, 100, ink, Paint.Align.CENTER, 600);
-            label(c, HomeData.condition(w.code, w.isDay), 390, 250, 29, ink, Paint.Align.CENTER, 620);
-            label(c, "↑ " + HomeData.degrees(w.max) + "   ↓ " + HomeData.degrees(w.min), 390, 288, 26, muted, Paint.Align.CENTER, 600);
-            label(c, AppStrings.get(R.string.weather_hourly_title), 76, 346, 21, muted, Paint.Align.LEFT, 620);
-            String humidity = Double.isNaN(w.humidity) ? "—" : Math.round(w.humidity) + "%";
-            String wind = Double.isNaN(w.wind) ? "—" : String.valueOf(Math.round(w.wind));
-            label(c, String.format(Ui.locale(), AppStrings.get(R.string.weather_details), humidity, wind), 76, 379, 21, muted, Paint.Align.LEFT, 620);
+            label(c, Prefs.city(), 76, 108, 32, ink, Paint.Align.LEFT, 490);
+            label(c, HomeData.degrees(w.temp), 76, 194, 88, ink, Paint.Align.LEFT, 350);
+            icon(c, w.code, w.isDay, 684, 104, 38, ink);
+            label(c, HomeData.condition(w.code, w.isDay), 704, 160, 28, ink, Paint.Align.RIGHT, 300);
+            label(c, "↑" + HomeData.degrees(w.max) + " ↓" + HomeData.degrees(w.min),
+                    704, 194, 27, ink, Paint.Align.RIGHT, 300);
+            fill.setColor(0x658E939E); c.drawRect(76, 238, 704, 239, fill);
             TimeZone zone = TimeZone.getTimeZone(w.timezone);
             SimpleDateFormat hours = new SimpleDateFormat(android.text.format.DateFormat.is24HourFormat(getContext()) ? "HH" : "h a", Ui.locale());
             hours.setTimeZone(zone);
             long now = System.currentTimeMillis();
             int next = 0;
             while (next < w.hours.size() && w.hours.get(next) <= now) next++;
-            int count = Math.min(6, 1 + w.hours.size() - next);
+            int count = Math.min(6, w.hours.size() - next);
             for (int i = 0; i < count; i++) {
-                int at = next + i - 1; float x = 126 + i * 106;
-                label(c, i == 0 ? AppStrings.get(R.string.weather_now) : hours.format(new Date(w.hours.get(at))), x, 425, 23, ink, Paint.Align.CENTER, 100);
-                icon(c, i == 0 ? w.code : w.hourCode.get(at), i == 0 ? w.isDay : w.hourDay.get(at), x, 467, 44, ink);
-                label(c, HomeData.degrees(i == 0 ? w.temp : w.hourTemp.get(at)), x, 520, 28, ink, Paint.Align.CENTER, 100);
+                int at = next + i; float x = 102 + i * 115;
+                label(c, hours.format(new Date(w.hours.get(at))), x, 276, 23, muted, Paint.Align.CENTER, 100);
+                icon(c, w.hourCode.get(at), w.hourDay.get(at), x, 328, 44, ink);
+                label(c, HomeData.degrees(w.hourTemp.get(at)), x, 397, 28, ink, Paint.Align.CENTER, 100);
             }
-            label(c, AppStrings.get(R.string.weather_daily_title), 76, 584, 21, muted, Paint.Align.LEFT, 620);
+            if (count == 0) label(c, AppStrings.get(R.string.weather_loading), 390, 330, 25, muted, Paint.Align.CENTER, 620);
+            fill.setColor(0x658E939E); c.drawRect(76, 420, 704, 421, fill);
             Calendar today = Calendar.getInstance(zone); today.set(Calendar.HOUR_OF_DAY, 0); today.set(Calendar.MINUTE, 0); today.set(Calendar.SECOND, 0); today.set(Calendar.MILLISECOND, 0);
             int first = 0; while (first < w.days.size() && w.days.get(first).time < today.getTimeInMillis()) first++;
+            int end = Math.min(w.days.size(), first + 5);
             double low = Double.POSITIVE_INFINITY, high = Double.NEGATIVE_INFINITY;
-            for (int i = first; i < w.days.size(); i++) { low = Math.min(low, w.days.get(i).min); high = Math.max(high, w.days.get(i).max); }
-            if (!Double.isNaN(w.temp)) { low = Math.min(low, w.temp); high = Math.max(high, w.temp); }
+            for (int i = first; i < end; i++) {
+                WeatherForecast.Day d = w.days.get(i);
+                if (Double.isNaN(d.min) || Double.isNaN(d.max)) continue;
+                low = Math.min(low, d.min); high = Math.max(high, d.max);
+            }
             double span = Math.max(1, high - low);
             SimpleDateFormat weekdays = new SimpleDateFormat("EEE", Ui.locale()); weekdays.setTimeZone(zone);
-            for (int i = first; i < Math.min(w.days.size(), first + 5); i++) {
-                WeatherForecast.Day d = w.days.get(i); float y = 628 + (i - first) * 61;
-                fill.setShader(null); fill.setColor(night ? 0x22FFFFFF : 0x181D1D1F); c.drawRect(76, y-25, 704, y-24, fill);
-                label(c, d.time == today.getTimeInMillis() ? AppStrings.get(R.string.weather_today) : weekdays.format(new Date(d.time)), 76, y+12, 27, ink, Paint.Align.LEFT, 146);
-                icon(c, d.code, true, 258, y, 34, ink);
-                if (d.rain >= 20) label(c, d.rain+"%", 258, y+27, 17, 0xFF268CD4, Paint.Align.CENTER, 70);
-                label(c, HomeData.degrees(d.min), 365, y+12, 27, muted, Paint.Align.RIGHT, 90);
-                label(c, HomeData.degrees(d.max), 704, y+12, 27, ink, Paint.Align.RIGHT, 90);
-                fill.setColor(night ? 0x25FFFFFF : 0x201D1D1F); bar.set(385,y-4,620,y+4); c.drawRoundRect(bar,4,4,fill);
-                float a = 385+(float)((d.min-low)/span)*235, b = 385+(float)((d.max-low)/span)*235;
-                fill.setColor(Color.WHITE); fill.setShader(new LinearGradient(a,0,Math.max(a+1,b),0,tempColor(d.min),tempColor(d.max),Shader.TileMode.CLAMP));
-                bar.set(a,y-4,Math.max(a+8,b),y+4); c.drawRoundRect(bar,4,4,fill); fill.setShader(null);
-                if (d.time == today.getTimeInMillis() && !Double.isNaN(w.temp)) { fill.setColor(ink); c.drawCircle(385+(float)((w.temp-low)/span)*235,y,5,fill); }
+            for (int i = first; i < end; i++) {
+                WeatherForecast.Day d = w.days.get(i); float y = 470 + (i - first) * 55;
+                label(c, weekdays.format(new Date(d.time)), 76, y+12, 28, ink, Paint.Align.LEFT, 100);
+                icon(c, d.code, true, 206, y, 38, ink);
+                label(c, HomeData.degrees(d.min), 338, y+12, 28, lowInk, Paint.Align.RIGHT, 90);
+                label(c, HomeData.degrees(d.max), 704, y+12, 28, ink, Paint.Align.RIGHT, 72);
+                fill.setColor(0x18202731); bar.set(355,y-4,657,y+4); c.drawRoundRect(bar,4,4,fill);
+                if (!Double.isNaN(d.min) && !Double.isNaN(d.max)) {
+                    float left = 355+(float)((d.min-low)/span)*302;
+                    float right = 355+(float)((d.max-low)/span)*302;
+                    right = Math.min(657, Math.max(left+8,right)); left = Math.min(left,right-8);
+                    fill.setColor(0xFF59CBE7); bar.set(left,y-4,right,y+4); c.drawRoundRect(bar,4,4,fill);
+                }
             }
-            if (first == w.days.size()) label(c, AppStrings.get(R.string.weather_loading), 390, 670, 26, muted, Paint.Align.CENTER, 620);
-            if (data.weatherAt > 0) {
-                String time = android.text.format.DateFormat.getTimeFormat(getContext()).format(new Date(data.weatherAt));
-                label(c, "Open-Meteo · " + String.format(Ui.locale(), AppStrings.get(R.string.weather_updated), time), 390, 967, 21, muted, Paint.Align.CENTER, 620);
-            }
+            if (first == w.days.size()) label(c, AppStrings.get(R.string.weather_loading), 390, 540, 26, muted, Paint.Align.CENTER, 620);
             c.restoreToCount(saved);
         }
-    }
-    private static int tempColor(double celsius) {
-        if (celsius < 0) return 0xFF619EFF;
-        if (celsius < 12) return ActionSurface.blend(0xFF619EFF, 0xFF52D5C1, (float)(celsius/12));
-        if (celsius < 24) return ActionSurface.blend(0xFF52D5C1, 0xFFF4CF49, (float)((celsius-12)/12));
-        return ActionSurface.blend(0xFFF4CF49, 0xFFFF6349, (float)Math.min(1,(celsius-24)/12));
     }
 }
