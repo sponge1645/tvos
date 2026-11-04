@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The light background already in the window: opening the home screen never flashes another color. -->
-    <color name="home_background">#EBEBF0</color>
+    <!-- Match the neutral Home background before the first rendered frame in either theme. -->
+    <color name="home_background">#1C1C1E</color>
 
     <style name="TvOS.Home" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
         <item name="android:windowBackground">@color/home_background</item>
