@@ -11,9 +11,6 @@ import android.os.SystemClock;
 /** Background images, glass pixels, crossfade and day/night transitions. No view or focus ownership. */
 final class HomeBackground {
     private static final long FADE_MS = 400, PAN_MS = 400, NIGHT_MS = 2000;
-    interface Wordmark { void draw(Canvas canvas, float x, float y, float width, int color); }
-    private Wordmark wordmark;
-    void setFallbackWordmark(Wordmark value) { wordmark = value; }
     private final Scene scene;
     private final Runnable changed;
     private boolean nightTarget, nightPair;
@@ -93,7 +90,7 @@ final class HomeBackground {
     }
 
     private void neutralGlass() {
-        int color = blend(0xFFEFEFF2, 0xFF2A2A2C, night);
+        int color = 0xFF2A2A2C;
         java.util.Arrays.fill(neutralFrostPx, color);
         java.util.Arrays.fill(neutralGlassPx, color);
         scene.setFrost(neutralFrostPx);
@@ -212,7 +209,7 @@ final class HomeBackground {
         // Drawer open: the background lightens (by day) or darkens (at night), as a filter on the drawing itself.
         android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer), blend(0xFFFFFFFF, 0xFF000000, night));
         if (bgTo == null || (fading && bgFrom == null)) {
-            if (lightGradient == null) lightGradient = new LinearGradient(0, 0, 0, h, 0xFFEFEFF2, 0xFFEFEFF2, Shader.TileMode.CLAMP);
+            if (lightGradient == null) lightGradient = new LinearGradient(0, 0, 0, h, 0xFF2A2A2C, 0xFF2A2A2C, Shader.TileMode.CLAMP);
             if (nightGradient == null) nightGradient = new LinearGradient(0, 0, 0, h, 0xFF2A2A2C, 0xFF2A2A2C, Shader.TileMode.CLAMP);
             fill.setColorFilter(v);
             fill.setColor(0xFF000000);
@@ -228,12 +225,7 @@ final class HomeBackground {
             }
             fill.setShader(null);
             fill.setColorFilter(null);
-            if (wordmark != null) {
-                int color = blend(0xFFCCCDD2, 0xFF505052, night);
-                // Match the reference's upper visual center, above the Dock.
-                wordmark.draw(c, screen.centerX(), screen.height() * .365f,
-                        screen.width() * (300f/1920), color);
-            }
+
         }
         imagePaint.setColorFilter(v);
         if (fading && bgFrom != null) drawLightImage(c, bgFrom, bgTo == null ? 1 - e : 1, fromPan);
