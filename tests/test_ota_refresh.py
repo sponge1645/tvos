@@ -18,15 +18,15 @@ stubs={
 'org/json/JSONObject.java':'''package org.json;import java.util.*;public class JSONObject {
  public static Map<String,Map<String,Object>> fixtures=new HashMap<>();Map<String,Object> data;
  public JSONObject(String key){data=fixtures.get(key);}public String getString(String k){return (String)data.get(k);}
- public long getLong(String k){return ((Number)data.get(k)).longValue();} }'''}
-harness='''package io.tvos;import io.tvos.updates.UpdateRelease;
+ public boolean has(String k){return data.containsKey(k);}public long getLong(String k){return ((Number)data.get(k)).longValue();} }'''}
+harness='''package io.tvos;import io.tvos.updates.UpdateRelease;import io.tvos.version.SoftwareBuild;
 import java.util.*;import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.atomic.AtomicBoolean;import org.json.JSONObject;
 public class OtaRefreshHarness {
  static final int IDLE=0,CHECKING=1,CURRENT=2,AVAILABLE=3,DOWNLOADING=4,READY=5,ERROR=6;
  static final long AUTO_INTERVAL=24*60*60_000L;
  static class Status {int kind;UpdateRelease release;Status(int k,UpdateRelease r,int p,String m){kind=k;release=r;}}
  static class AppLog {static void w(String s){}}
- static class PackageInfo {long code=2;long getLongVersionCode(){return code;}}
+ static class PackageInfo {String versionName="1.0.1";long code=2;long getLongVersionCode(){return code;}}
  static class PackageManager {PackageInfo installed=new PackageInfo();PackageInfo getPackageInfo(String p,int f){return installed;}}
  static class Context {
   static final int MODE_PRIVATE=0;File dir;PackageManager pm=new PackageManager();android.content.SharedPreferences prefs=new android.content.SharedPreferences();
@@ -76,6 +76,9 @@ public class OtaRefreshHarness {
   check(apk.delete(),"remove cached APK");offered="old";h.status=new Status(READY,old,100,"");h.check(false);h.drain();
   check(h.status.kind==AVAILABLE,"missing ready file is not reused");
   h.context.pm.installed.code=3;h.check(false);h.drain();check(h.status.kind==CURRENT,"equal installed version is current");
+  Map<String,Object> nextBuild=metadata("1.0.1",3);nextBuild.put("buildSequence",(long)SoftwareBuild.SEQUENCE+1);org.json.JSONObject.fixtures.put("build",nextBuild);offered="build";h.check(false);h.drain();check(h.status.kind==AVAILABLE,"same-code higher-build release offered");
+  OtaRefreshHarness buildRestored=new OtaRefreshHarness();buildRestored.context.prefs=h.context.prefs;buildRestored.context.pm.installed.code=3;buildRestored.restoreOffer();check(buildRestored.status.kind==AVAILABLE,"same-code higher-build offer survives restart");
+  nextBuild.put("buildSequence",(long)SoftwareBuild.SEQUENCE);h.check(false);h.drain();check(h.status.kind==CURRENT,"same-code equal-build is current");
   System.out.println("PASS: cache headers/redirect nonce, ready refresh/reuse, rollback, missing file, automatic throttle and new offers");
  }
 }
@@ -86,5 +89,6 @@ with tempfile.TemporaryDirectory(prefix='tvos-ota-refresh-')as directory:
  for name,content in stubs.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(content)
  (root/'OtaRefreshHarness.java').write_text(harness)
+ (root/'SoftwareBuild.java').write_text(Path('app/src/io/tvos/version/SoftwareBuild.java').read_text())
  subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,'app/src/io/tvos/updates/UpdateRelease.java',*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',directory,'io.tvos.OtaRefreshHarness',directory],check=True)

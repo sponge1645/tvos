@@ -5,11 +5,11 @@ harness='''import io.tvos.version.SoftwareBuild;
 public class BuildHarness {
  static void check(String v,String expected){if(!expected.equals(SoftwareBuild.display(v)))throw new AssertionError(v);}
  public static void main(String[] args){
- check("1.0","1.0 (1A174)");check("1.1.1","1.1.1 (1B174)");
- check("1.1.2","1.1.2 (1B174)");check("2.0","2.0 (2A174)");
- check("2.25.0","2.25.0 (2Z174)");check("2.26.0","2.26.0 (2AA174)");
+ check("1.0","1.0 (1A175)");check("1.1.1","1.1.1 (1B175)");
+ check("1.1.2","1.1.2 (1B175)");check("2.0","2.0 (2A175)");
+ check("2.25.0","2.25.0 (2Z175)");check("2.26.0","2.26.0 (2AA175)");
  check("bad","bad");if(SoftwareBuild.display(null)!=null)throw new AssertionError("null");
- java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar"));check("1.1.1","1.1.1 (1B174)");
+ java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar"));check("1.1.1","1.1.1 (1B175)");
  }
 }'''
 with tempfile.TemporaryDirectory() as d:

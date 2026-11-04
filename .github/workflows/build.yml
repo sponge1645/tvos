@@ -20,6 +20,7 @@ jobs:
           java-version: '17'
       - name: JVM tests
         run: |
+          set -euo pipefail
           for test in tests/test_*.py; do python3 "$test"; done
       - name: Android SDK
         shell: bash
@@ -57,6 +58,12 @@ jobs:
         run: |
           python3 tests/test_settings_list_window.py
           python3 tests/test_settings_preference_editor.py
+          python3 tests/test_setup_welcome.py
+          python3 tests/test_setup_language.py
+          python3 tests/test_setup_permissions.py
+          python3 tests/test_setup_finish.py
+          python3 tests/test_ota_refresh.py
+          python3 tests/test_empty_search_focus.py
 
   jdk25-remote:
     runs-on: ubuntu-latest

@@ -1,0 +1,83 @@
+name: Build and test
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: JVM tests
+        run: |
+          set -euo pipefail
+          for test in tests/test_*.py; do python3 "$test"; done
+      - name: Android SDK
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/tvos-android-sdk/licenses"
+          cp -R "$ANDROID_HOME/licenses/." "$RUNNER_TEMP/tvos-android-sdk/licenses/"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$RUNNER_TEMP/tvos-android-sdk" "platforms;android-34" "build-tools;34.0.0"
+      - name: Strict javac checks and compile APK with disposable CI key
+        env:
+          ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
+          ANDROID_SDK_ROOT: ${{ runner.temp }}/tvos-android-sdk
+          TVOS_STRICT_JAVA: '1'
+          TVOS_SIGNING_MODE: ci
+        run: |
+          bash build.sh
+          python3 tests/integration_signing_rotation.py
+      - name: Verify compiled UI strings
+        env:
+          ANDROID_HOME: ${{ runner.temp }}/tvos-android-sdk
+        run: python3 tools/check-resource-strings.py --aapt2 "$ANDROID_HOME/build-tools/34.0.0/aapt2" tvOS.apk
+      # No production signing key or TMDB key is used; this APK is deliberately not published.
+
+  jdk21-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Strict settings regressions on JDK 21
+        run: |
+          python3 tests/test_settings_list_window.py
+          python3 tests/test_settings_preference_editor.py
+          python3 tests/test_setup_welcome.py
+          python3 tests/test_setup_language.py
+          python3 tests/test_setup_permissions.py
+          python3 tests/test_setup_finish.py
+          python3 tests/test_ota_refresh.py
+          python3 tests/test_empty_search_focus.py
+
+  jdk25-remote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Remote input regressions on JDK 25
+        run: |
+          python3 tests/test_keyboard_handoff.py
+          python3 tests/test_remote_input_method.py
+          python3 tests/test_remote_taps.py
