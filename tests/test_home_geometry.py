@@ -14,6 +14,8 @@ public class GeometryHarness {
  Paint normal=new Paint(),active=new Paint();String[] labels={"A","Long"};g.tabs(rects,new int[]{1,0},id->true,labels,normal,active,false,1);near(rects[1].left,40);near(rects[0].left,40+60+52+4);g.tabs(rects,new int[]{1,0},id->id==0,labels,normal,active,true,1);check(rects[1].width()==0,"hidden tab clears old bounds");near(rects[0].top,40);
  g.tabs(rects,new int[]{1,0},id->true,new String[]{"A much longer genre label","Another very long title"},normal,active,false,1,350,650);
  near(rects[1].left,350);near(rects[0].right,650);near(rects[0].top,HomeLayout.TOP);near(rects[0].height(),HomeLayout.BUTTON);check(rects[1].right+4<=rects[0].left+.01f,"constrained labels keep the gap and cannot overlap corner actions");
+ float scaleA=(rects[0].width()-52)/Math.max(normal.measureText("A much longer genre label"),active.measureText("A much longer genre label"));
+ float scaleB=(rects[1].width()-52)/Math.max(normal.measureText("Another very long title"),active.measureText("Another very long title"));near(scaleA,scaleB);check(scaleA<1,"all constrained labels share one reduced size");
  check(Paint.allocations==paints+2&&Paint.FontMetrics.allocations==metrics,"measurement objects remain retained across updates");
  System.out.println("PASS: geometry responds to text/typeface/order/visibility/compact inputs without repeated Paint or FontMetrics allocation");}}
 '''

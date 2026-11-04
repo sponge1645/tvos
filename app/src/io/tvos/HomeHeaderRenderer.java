@@ -70,12 +70,12 @@ final class HomeHeaderRenderer {
         String date = frame.showDate && frame.dateText != null ? frame.dateText : "";
         if (date.isEmpty() && !weather) { widgetsCapsule.setEmpty(); return; }
         float k = frame.k;
-        headerDateScratch.set(frame.lDate); headerDateScratch.setTextSize(29 * k);
-        headerWeatherScratch.set(headerDateScratch); headerWeatherScratch.setTextSize(27 * k);
+        headerDateScratch.set(frame.lDate); headerDateScratch.setTextSize(30 * k);
+        headerWeatherScratch.set(headerDateScratch); headerWeatherScratch.setTextSize(30 * k);
         String symbol = weather ? Symbols.weather(wx.code, wx.isDay) : "";
         float width = 40 * k + headerDateScratch.measureText(date)
                 + (!date.isEmpty() && weather ? 16 * k : 0)
-                + (weather ? Symbols.width(context, symbol, 28 * k) + 8 * k
+                + (weather ? Symbols.width(context, symbol, 30 * k) + 8 * k
                         + headerWeatherScratch.measureText(HomeData.degrees(wx.temp)) : 0);
         widgetsCapsule.set(MARGIN * k, HomeLayout.TOP * k, MARGIN * k + width,
                 (HomeLayout.TOP + HomeLayout.BUTTON) * k);
@@ -104,7 +104,7 @@ final class HomeHeaderRenderer {
         }
         if (weather) {
             String symbol = Symbols.weather(wx.code, wx.isDay);
-            float iconSize = 28 * k, sw = Symbols.width(context, symbol, iconSize);
+            float iconSize = 30 * k, sw = Symbols.width(context, symbol, iconSize);
             Symbols.draw(context, c, symbol, x + sw / 2, cy, iconSize, ink);
             c.drawText(HomeData.degrees(wx.temp), x + sw + 8 * k, cy + Ui.halfCap(weatherPaint), weatherPaint);
         }
@@ -201,6 +201,12 @@ final class HomeHeaderRenderer {
         // Text tabs (the selected one in bold, in the main text color); with focus on the tabs, the selected one gets
         // the white pill with a shadow and grows a little (the tvOS focus).
         float focus = Ui.clamp(frame.topFocus[frame.tab].value);
+        float textScale = 1;
+        for (int i = 0; i < 5; i++) {
+            if (!Prefs.categoryEnabled(i) || i == frame.hiddenTab || frame.topRects[i].isEmpty()) continue;
+            float width = Math.max(frame.lTab.measureText(frame.tabs[i]), frame.lTabOn.measureText(frame.tabs[i]));
+            textScale = Math.min(textScale, Math.max(0, frame.topRects[i].width() - 52 * frame.k) / Math.max(1, width));
+        }
         for (int i = 0; i < 5 && !frame.searchMode; i++) {
             if (!Prefs.categoryEnabled(i) || i == frame.hiddenTab) continue;
             RectF r = frame.topRects[i];
@@ -209,7 +215,6 @@ final class HomeHeaderRenderer {
             Paint p = i == frame.tab ? frame.lTabOn : frame.lTab;
             if (i == frame.tab) frame.lTabOn.setColor(blend(tone(L_INK, WHITE), L_INK, focus));   // always dark on the white pill
             float width = p.measureText(frame.tabs[i]);
-            float textScale = Math.min(1, Math.max(0, r.width() - 24 * frame.k) / Math.max(1, width));
             int saved = c.save();
             c.scale(textScale * grow, textScale * grow, r.centerX(), r.centerY());
             c.drawText(frame.tabs[i], r.centerX() - width / 2, r.centerY() + Ui.halfCap(p), p);

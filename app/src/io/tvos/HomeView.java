@@ -896,7 +896,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Text colors for the current night value (dark by day, white at night). */
     private void applyTone() {
-        lTab.setColor(tone(L_DIM, 0xFF8E8E93));
+        lTab.setColor(tone(0xFF55555A, 0xFF8E8E93));
         lTabOn.setColor(tone(L_INK, WHITE));
         lCardTitle.setColor(tone(L_INK, WHITE));
         lCardMeta.setColor(tone(L_DIM, 0xFF98989D));

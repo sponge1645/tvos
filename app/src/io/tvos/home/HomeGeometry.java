@@ -64,19 +64,14 @@ public final class HomeGeometry {
             total += tabWidths[i]; count++;
         }
         float available = Math.max(0, right - left - Math.max(0, count - 1) * gap);
-        float cap = Float.MAX_VALUE;
-        if (total > available) {
-            float low = 0, high = total;
-            for (int n = 0; n < 20; n++) {
-                float mid = (low + high) / 2, sum = 0;
-                for (int i : order) if (enabled.test(i)) sum += Math.min(tabWidths[i], mid);
-                if (sum > available) high = mid; else low = mid;
-            }
-            cap = low;
-        }
+        // Keep every label at the same size. Preserve padding and distribute the
+        // remaining space in proportion to the widest (normal/selected) text.
+        float textTotal = Math.max(0, total - count * 2 * pad);
+        float textScale = textTotal > 0 ? Math.min(1,
+                Math.max(0, available - count * 2 * pad) / textTotal) : 1;
         float x = left, top = HomeLayout.TOP * k;
         for (int i : order) if (enabled.test(i)) {
-            float width = Math.min(tabWidths[i], cap);
+            float width = Math.min(tabWidths[i], 2 * pad) + Math.max(0, tabWidths[i] - 2 * pad) * textScale;
             topRects[i].set(x, top, x + width, top + HomeLayout.BUTTON * k);
             x += width + gap;
         }
