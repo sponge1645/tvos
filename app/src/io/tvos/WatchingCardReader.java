@@ -39,7 +39,13 @@ final class WatchingCardReader {
         pick.watchingProgress = WatchingItems.progress(cursor.getLong(8), cursor.getLong(9));
         pick.watchingUpdated = cursor.getLong(10);
         pick.poster = poster(text(cursor, 4), owner);
-        pick.backdrop = pick.poster; // Preserve the provider thumbnail before portrait enrichment.
+        pick.backdrop = pick.poster;
+        // Watch Next/preview programs have a separate landscape thumbnail. Do not
+        // confuse poster_art_uri with thumbnail_uri (Lampa can publish both).
+        try {
+            String thumbnail = poster(text(cursor, 12), owner);
+            if (cursor.getInt(13) == 0 && !thumbnail.isEmpty()) pick.backdrop = thumbnail;
+        } catch (IndexOutOfBoundsException ignored) { /* Compatibility with older row adapters. */ }
         String service = WatchingSources.id(owner);
         if (!"kinopub".equals(service)) {
             pick.watchingKey = service + ":" + pick.kind + ":" + title.trim().toLowerCase(java.util.Locale.ROOT);

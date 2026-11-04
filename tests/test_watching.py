@@ -41,7 +41,7 @@ public class WatchingHarness {
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
  static class Worker implements Executor {ArrayDeque<Runnable> tasks=new ArrayDeque<>();public void execute(Runnable r){tasks.add(r);}void drain(){while(!tasks.isEmpty())tasks.remove().run();}}
  static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.flags=0x7fffffff;intent.selector=new Object();intent.clip=new Object();intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
- static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3};}
+ static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3,"https://cdn.example/landscape-thumbnail.jpg",0};}
  static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
  public static void main(String[] args){
   String safe=link("safe-policy","com.seena.app","payload");Intent original=Intent.data.get(safe);Intent cleaned=io.tvos.watching.ResumeIntentPolicy.parse(safe,"com.seena.app");
@@ -101,7 +101,7 @@ public class WatchingHarness {
   check(catalog.picks().size()==2,"foreign rows, broken intents and duplicate episodes excluded");
   Recs.Pick serial=catalog.picks().get(0),film=catalog.picks().get(1);
   check(serial.id==0&&serial.watchingKey.equals("kinopub:42"),"source identity never becomes TMDB id");
-  check(serial.backdrop!=null&&!serial.backdrop.equals("https://cdn.example/portrait.jpg"),"provider thumbnail preserved separately");
+  check(serial.backdrop.equals("https://cdn.example/landscape-thumbnail.jpg"),"separate landscape thumbnail is read instead of portrait poster");
   check(serial.watchingProgress>0&&serial.watchingProgress<1,"provider progress retained");
   check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
   check(serial.meta.equals("С1 / Э2 · Осталось: 16 мин."),"serial caption");

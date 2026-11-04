@@ -77,11 +77,11 @@ public final class DockPrograms {
         Candidate selected = null, exact = null;
         boolean ambiguous = false;
         try (Cursor c = context.getContentResolver().query(Uri.parse("content://android.media.tv/preview_program"),
-                PROGRAM_COLUMNS, "title = ?", new String[]{title}, "_id ASC")) {
+                PROGRAM_COLUMNS, "package_name = ?", new String[]{pkg}, "_id ASC")) {
             int rows = 0;
-            if (c != null) while (rows++ < 64 && c.moveToNext()) {
+            if (c != null) while (rows++ < 512 && c.moveToNext()) {
                 String owner = value(c, 0);
-                if (!service.equals(WatchingSources.id(owner)) || !title.equals(value(c, 5))) continue;
+                if (!service.equals(WatchingSources.id(owner)) || !resumeTitle(title).equals(resumeTitle(value(c, 5)))) continue;
                 String date = value(c, 6);
                 Candidate candidate = new Candidate(title, value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
                 if (c.getInt(4) == 0 && allowed.test(value(c, 2), owner)) add(candidate.urls, value(c, 2));
@@ -93,6 +93,12 @@ public final class DockPrograms {
             }
         }
         return exact != null ? exact : ambiguous ? null : selected;
+    }
+
+    private static String resumeTitle(String title) {
+        return java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFC)
+                .toLowerCase(java.util.Locale.ROOT).replace('ё', 'е')
+                .replaceAll("[\\p{Punct}\\s]+", " ").trim();
     }
 
     private static String identity(String url) {
