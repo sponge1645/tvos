@@ -167,17 +167,17 @@ public final class SearchActivity extends Activity {
             for (String entry : recent()) {
                 float width = Math.max(110, textPaint.measureText(entry)+54);
                 if (x+width > 1620) break;
-                target(x, 275, width, 64, entry, -1, () -> setQuery(entry)); x += width+24;
+                target(x, 205, width, 64, entry, -1, () -> setQuery(entry)); x += width+24;
             }
-            if (hasRecent) target(1670, 275, 170, 64, text(R.string.search_clear), -1, () -> { history.edit().remove("recent").apply(); rebuild(); query.requestFocus(); });
+            if (hasRecent) target(1670, 205, 170, 64, text(R.string.search_clear), -1, () -> { history.edit().remove("recent").apply(); rebuild(); query.requestFocus(); });
         } else {
             float x = 80; textPaint.setTextSize(28); textPaint.setTypeface(Ui.medium);
             for (LocalApp app : apps) if (app.label.toLowerCase(Ui.locale()).contains(value.toLowerCase(Ui.locale()))) {
                 float width = Math.min(420, Math.max(140, textPaint.measureText(app.label)+54)); if (x+width > 1840) break;
-                target(x, 275, width, 64, app.label, -1, () -> { remember(); Intent intent = HomeApps.launchIntent(getPackageManager(), app.pkg); if (intent != null) AppLaunch.start(this, intent, "Search app"); }); x += width+24;
+                target(x, 205, width, 64, app.label, -1, () -> { remember(); Intent intent = HomeApps.launchIntent(getPackageManager(), app.pkg); if (intent != null) AppLaunch.start(this, intent, "Search app"); }); x += width+24;
             }
         }
-        resultsTop = targets.isEmpty() ? 370 : 480;
+        resultsTop = targets.isEmpty() ? 300 : 410;
         List<Recs.Pick> picks = value.isEmpty() ? trending : matches;
         for (int i = 0; i < Math.min(64, picks.size()); i++) {
             final Recs.Pick pick = picks.get(i);
@@ -345,7 +345,7 @@ public final class SearchActivity extends Activity {
             if (query != null) query.measure(MeasureSpec.makeMeasureSpec(Math.round(1620*scale), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(Math.round(88*scale), MeasureSpec.EXACTLY));
         }
         @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-            if (query != null) { int x = Math.round(195*scale), y = Math.round((150-scroll)*scale); query.layout(x, y, x+query.getMeasuredWidth(), y+query.getMeasuredHeight()); }
+            if (query != null) { int x = Math.round(195*scale), y = Math.round((80-scroll)*scale); query.layout(x, y, x+query.getMeasuredWidth(), y+query.getMeasuredHeight()); }
         }
         @Override protected void onDraw(Canvas c) {
             super.onDraw(c); paint.setShader(null); paint.setAlpha(255); scratch.set(0, 0, getWidth(), getHeight());
@@ -358,7 +358,7 @@ public final class SearchActivity extends Activity {
             long now = SystemClock.uptimeMillis(); float dt = lastFrame == 0 ? .016f : Math.min(.04f, (now-lastFrame)/1000f); lastFrame = now; boolean moving = false;
             for (Spring spring : focus) moving |= spring.step(dt);
             if (detail == null) {
-                Symbols.draw(SearchActivity.this, c, "search", 125, 194, 48, muted());
+                Symbols.draw(SearchActivity.this, c, "search", 125, 124, 48, muted());
                 paint.setColor(night ? 0x35FFFFFF : 0x351D1D1F); c.drawRect(80,resultsTop-110,1840,resultsTop-109,paint);
                 boolean empty = query.getText().toString().trim().isEmpty();
                 label(c, text(empty ? R.string.search_trending : R.string.search_titles), 80, resultsTop-33, 30, muted());

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="search_voice">Голосовой поиск</string>
-    <string name="search_hint">Поиск приложений, фильмов и сериалов</string>
+    <string name="search_hint">Поиск фильмов, сериалов и приложений</string>
     <string name="search_recent">Недавние запросы</string>
     <string name="search_trending">Популярное</string>
     <string name="search_apps">Приложения</string>
