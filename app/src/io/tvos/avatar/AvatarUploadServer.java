@@ -27,7 +27,9 @@ public final class AvatarUploadServer implements AutoCloseable {
         this.page=page; this.sink=sink; this.uploaded=uploaded;
         byte[] secret=new byte[16];new SecureRandom().nextBytes(secret);
         StringBuilder value=new StringBuilder();for(byte b:secret)value.append(String.format(Locale.ROOT,"%02x",b&255));token=value.toString();
-        server=new ServerSocket();server.bind(new InetSocketAddress(address,0),2);server.setSoTimeout(1000);
+        server=new ServerSocket();
+        try {server.bind(new InetSocketAddress(address,0),2);server.setSoTimeout(1000);}
+        catch(IOException|RuntimeException failed){try{server.close();}catch(IOException ignored){}throw failed;}
         authority=address.getHostAddress()+":"+server.getLocalPort();
     }
     public String url() { return "http://"+authority+"/"+token+"/"; }
