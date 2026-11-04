@@ -34,7 +34,7 @@ final class DockBanner {
         DockBackdrop.Artwork current = transition.current(up);
         float alpha = transition.opacity(up);
         if (current == null || alpha <= .004f) return;
-        float left = (noTopWidgets ? 70 : 40) * k, top = (noTopWidgets ? 70 : 180) * k;
+        float left = (noTopWidgets ? 70 : 40) * k, top = (noTopWidgets ? 70 : io.tvos.home.HomeLayout.TOP + io.tvos.home.HomeLayout.BUTTON + 40) * k;
         if (current.logo != null) {
             float scale = Math.min(420 * k / current.logo.getWidth(), 170 * k / current.logo.getHeight());
             bounds.set(left, top, left + current.logo.getWidth() * scale, top + current.logo.getHeight() * scale);

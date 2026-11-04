@@ -94,7 +94,10 @@ public final class ResumeRowRenderer {
             paint.setAlpha(imageAlpha);
             clip.reset(); clip.addRoundRect(rect, 28 * k, 28 * k, Path.Direction.CW);
             c.save(); c.clipPath(clip);
-            float scale = Math.max(rect.width() / image.getWidth(), rect.height() / image.getHeight());
+            // A portrait fallback stays intact rather than becoming an enlarged, blurry crop.
+            float scale = image.getWidth() < image.getHeight()
+                    ? Math.min(rect.width() / image.getWidth(), rect.height() / image.getHeight())
+                    : Math.max(rect.width() / image.getWidth(), rect.height() / image.getHeight());
             float w = image.getWidth() * scale, h = image.getHeight() * scale;
             imageRect.set(rect.centerX() - w / 2, rect.centerY() - h / 2, rect.centerX() + w / 2, rect.centerY() + h / 2);
             c.drawBitmap(image, null, imageRect, paint); c.restore(); paint.setAlpha(255);

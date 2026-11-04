@@ -180,7 +180,8 @@ public final class PosterCache {
                 BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
                 BitmapFactory.decodeFile(f.getPath(), bounds);
                 BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inSampleSize = 2;
+                // Wide cards need more detail than small portrait tiles. The byte budget still applies.
+                opts.inSampleSize = bounds.outWidth > bounds.outHeight ? 1 : 2;
                 int count;
                 synchronized (posters) { count = posterWindow == null ? 6 : Math.max(1, posterWindow.size()); }
                 long budget = Math.min(2L*1024*1024, POSTER_RAM_MAX_BYTES/count);

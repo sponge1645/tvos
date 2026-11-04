@@ -86,7 +86,7 @@ final class HomeBackground {
     }
 
     private void neutralGlass() {
-        int color = 0xFF2A2A2C;
+        int color = 0xFF1C1C1E;
         java.util.Arrays.fill(neutralFrostPx, color);
         java.util.Arrays.fill(neutralGlassPx, color);
         scene.setFrost(neutralFrostPx);
@@ -205,7 +205,7 @@ final class HomeBackground {
         // Drawer open: the background lightens (by day) or darkens (at night), as a filter on the drawing itself.
         android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer), blend(0xFFFFFFFF, 0xFF000000, night));
         if (bgTo == null || (fading && bgFrom == null)) {
-            fill.setColorFilter(v); fill.setColor(0xFF2A2A2C);
+            fill.setColorFilter(v); fill.setColor(0xFF1C1C1E);
             c.drawRect(screen, fill);
             fill.setColorFilter(null);
 

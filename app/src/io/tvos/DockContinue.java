@@ -123,12 +123,20 @@ final class DockContinue {
                 final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
                 main.post(() -> {
                     if (!visible || token != generation) return;
-                    pending.remove(key); paths.put(key, ready == null ? "" : ready);
+                    pending.remove(key); paths.put(key, resumeImage(ready));
                     window(); changed.run();
                 });
             });
         }
         window();
+    }
+
+    // 780px closely matches an 850px card without decoding a 1280px image
+    // only to downsample it to 640px under the shared cache memory budget.
+    private static String resumeImage(String url) {
+        if (url == null) return "";
+        return url.startsWith("https://image.tmdb.org/t/p/")
+                ? url.replaceFirst("/t/p/(w[0-9]+|original)/", "/t/p/w780/") : url;
     }
 
     private void window() {
