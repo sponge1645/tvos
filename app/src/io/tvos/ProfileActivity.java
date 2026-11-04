@@ -87,11 +87,11 @@ public final class ProfileActivity extends Activity {
         private final Shadows shadows = new Shadows();
         private final ActionSurface surface = new ActionSurface(scene, shadows);
         private final ProfileAvatar avatars = new ProfileAvatar(ProfileActivity.this);
-        private final Spring[] buttons = {new Spring(0.26f, 0.85f, 1), new Spring(0.26f, 0.85f, 0)};
+        private final Spring[] buttons = {new Spring(0.26f, 0.85f, 1), new Spring(0.26f, 0.85f, 0), new Spring(0.26f, 0.85f, 0)};
         private final Spring[] avatarFocus = new Spring[ProfileAvatar.COUNT];
         private final Spring chooser = new Spring(0.38f, 1f, 0);
         private final Spring entrance = new Spring(0.55f, 1f, 0);
-        private final RectF[] buttonRects = {new RectF(303.6f, 0, 796.4f, 72), new RectF(303.6f, 73, 796.4f, 145)};
+        private final RectF[] buttonRects = {new RectF(303.6f, 0, 796.4f, 72), new RectF(303.6f, 73, 796.4f, 145), new RectF(303.6f,146,796.4f,218)};
         private final RectF scratch = new RectF();
         private final Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -105,6 +105,13 @@ public final class ProfileActivity extends Activity {
         private Click click;
         private int selected, focus, avatarIndex, page, previousPage;
         private final Spring pageTransition = new Spring(0.24f, 1f, 1);
+        private boolean uploading;
+        private AvatarUpload upload;
+        private android.graphics.Path qrPath;
+        private int qrModules;
+        private StaticLayout addressLayout;
+        private final TextPaint addressPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint qrPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private boolean choosing, running, scheduled, okDown, backDown, night;
         private long lastFrame;
         private float k = 1, ox, oy;
@@ -116,11 +123,11 @@ public final class ProfileActivity extends Activity {
         ProfileView(int[] frost, Bundle state) {
             super(ProfileActivity.this);
             selected = Math.max(0, ProfileAvatar.selected(getContext()));
-            avatarIndex = selected;
+            avatarIndex = selected == ProfileAvatar.CUSTOM ? 0 : selected;
             if (state != null) {
                 choosing = state.getBoolean("choosing", false);
                 avatarIndex = Math.max(0, Math.min(ProfileAvatar.COUNT - 1, state.getInt("avatar", selected)));
-                focus = Math.max(0, Math.min(1, state.getInt("focus", 0)));
+                focus = Math.max(0, Math.min(2, state.getInt("focus", 0)));
             }
             page = previousPage = avatarIndex / ProfileAvatar.PAGE_SIZE;
             avatars.prepare(page);
@@ -144,7 +151,7 @@ public final class ProfileActivity extends Activity {
                     if (choosing) {
                         for (int i = page * 9 + 1; i <= page * 9 + 9; i++) out.add(i);
                         out.add(19); out.add(20);
-                    } else { out.add(1); out.add(2); }
+                    } else if (uploading) out.add(3); else { out.add(1); out.add(2); out.add(3); }
                 }
                 @Override public String text(int id) {
                     if (choosing && id > 18) return id == 19 ? (AppStrings.get(R.string.runtime_page_1)) : (AppStrings.get(R.string.runtime_page_2));
@@ -153,7 +160,7 @@ public final class ProfileActivity extends Activity {
                     return buttonLabel(id - 1);
                 }
                 @Override public boolean bounds(int id, Rect out) {
-                    if (id < 1 || id > (choosing ? 20 : 2)) return false;
+                    if (id < 1 || id > (choosing ? 20 : 3) || uploading && id != 3) return false;
                     if (choosing && id <= 18 && (id - 1) / 9 != page) return false;
                     if (choosing && id > 18) pageButtonRect(id - 19, scratch);
                     else
@@ -164,7 +171,7 @@ public final class ProfileActivity extends Activity {
                 }
                 @Override public int focused() { return (choosing ? avatarIndex : focus) + 1; }
                 @Override public void focus(int id) {
-                    if (id < 1 || id > (choosing ? 20 : 2)) return;
+                    if (id < 1 || id > (choosing ? 20 : 3) || uploading && id != 3) return;
                     if (choosing && id > 18) { changePage(id - 19); return; }
                     if (choosing) { changePage((id - 1) / 9); avatarIndex = id - 1; } else focus = id - 1;
                     retarget(false); wake();
@@ -190,14 +197,15 @@ public final class ProfileActivity extends Activity {
         }
 
         private String buttonLabel(int index) {
-            return index == 0 ? (AppStrings.get(R.string.runtime_choose_avatar))
-                    : (AppStrings.get(R.string.runtime_back_to_home));
+            return index == 0 ? AppStrings.get(R.string.runtime_choose_avatar)
+                    : index == 1 ? AppStrings.get(R.string.profile_upload_avatar)
+                    : uploading ? AppStrings.get(R.string.profile_upload_back) : AppStrings.get(R.string.runtime_back_to_home);
         }
 
         private void updateText() {
-            String title = choosing ? (AppStrings.get(R.string.runtime_choose_nyour_avatar))
+            String title = uploading ? AppStrings.get(R.string.profile_upload_title) : choosing ? (AppStrings.get(R.string.runtime_choose_nyour_avatar))
                     : (AppStrings.get(R.string.runtime_your_profile_non_tvos));
-            String description = choosing
+            String description = uploading ? AppStrings.get(R.string.profile_upload_help) : choosing
                     ? (AppStrings.get(R.string.runtime_use_the_arrows_to_choose_then_press_ok))
                     : (AppStrings.get(R.string.runtime_make_yourself_at_home_nyour_avatar_will_appear_beside_the_clock_n));
             headingLayout = StaticLayout.Builder.obtain(title, 0, title.length(), heading, 760)
@@ -208,6 +216,8 @@ public final class ProfileActivity extends Activity {
             float buttonTop = bodyTop + bodyLayout.getHeight() + 50;
             buttonRects[0].set(303.6f, buttonTop, 796.4f, buttonTop + 72);
             buttonRects[1].set(303.6f, buttonTop + 73, 796.4f, buttonTop + 145);
+            float backTop = uploading ? buttonTop : buttonTop + 146;
+            buttonRects[2].set(303.6f, backTop, 796.4f, backTop + 72);
         }
 
         void save(Bundle state) {
@@ -227,6 +237,8 @@ public final class ProfileActivity extends Activity {
         }
 
         void pause() {
+            stopUpload();
+            if (uploading) { uploading = false; focus = 1; updateText(); }
             running = false;
             okDown = backDown = false;
             Choreographer.getInstance().removeFrameCallback(this);
@@ -294,7 +306,16 @@ public final class ProfileActivity extends Activity {
             c.translate(150, bodyTop);
             bodyLayout.draw(c);
             c.restoreToCount(textSave);
-            if (!choosing) for (int i = 0; i < buttons.length; i++) drawButton(c, i);
+            if (!choosing) for (int i = 0; i < buttons.length; i++) if (!uploading || i == 2) drawButton(c, i);
+            if (uploading) {
+                if (qrPath != null) {
+                    qrPaint.setColor(0xFFFFFFFF); c.drawRect(1249,334,1669,754,qrPaint);
+                    int qrSave = c.save(); c.translate(1249,334); c.scale(420f/qrModules,420f/qrModules);
+                    qrPaint.setColor(0xFF000000); c.drawPath(qrPath,qrPaint); c.restoreToCount(qrSave);
+                }
+                if (addressLayout != null) { int labelSave = c.save(); c.translate(1079,790); addressLayout.draw(c); c.restoreToCount(labelSave); }
+                c.restoreToCount(save); return;
+            }
             float intro = Ui.clamp(entrance.value);
             int bubbles = c.save();
             c.scale(0.9f + 0.1f * intro, 0.9f + 0.1f * intro, xs[0], ys[0]);
@@ -381,7 +402,9 @@ public final class ProfileActivity extends Activity {
         private void drawAvatar(Canvas c, int index) {
             avatarRect(index, scratch);
             float x = scratch.centerX(), y = scratch.centerY(), radius = scratch.width() / 2;
-            avatars.draw(c, index, x, y, radius, 0.8f);
+            int center = selected / 9 == index / 9 ? selected : index / 9 * 9;
+            int image = !choosing && selected == ProfileAvatar.CUSTOM && index == center ? ProfileAvatar.CUSTOM : index;
+            avatars.draw(c, image, x, y, radius, 0.8f);
             float focus = Ui.clamp(avatarFocus[index].value);
             if (focus > 0.01f) {
                 rim.setColor(Ui.alpha(night ? 0xFFFFFFFF : 0xFF304D5A, focus));
@@ -389,24 +412,52 @@ public final class ProfileActivity extends Activity {
             }
         }
 
+        private void uploadMessage(String message) {
+            addressPaint.setTypeface(Ui.displayMedium); addressPaint.setTextSize(26);
+            addressPaint.setColor(night ? 0xFFF5F5F7 : 0xFF1D1D1F);
+            addressLayout = StaticLayout.Builder.obtain(message,0,message.length(),addressPaint,760)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build(); invalidate();
+        }
+        private void stopUpload() { if (upload != null) { upload.close(); upload = null; } qrPath = null; addressLayout = null; }
+        private void startUpload() {
+            stopUpload(); uploading = true; focus = 2;
+            uploadMessage(AppStrings.get(R.string.profile_upload_connecting));
+            upload = new AvatarUpload(getContext(), new AvatarUpload.Listener() {
+                public void ready(String address, android.graphics.Path qr, int modules) {
+                    if (!uploading || !running) return; qrPath = qr; qrModules = modules; uploadMessage(address);
+                }
+                public void failed() { if (uploading && running) { qrPath = null; uploadMessage(AppStrings.get(R.string.profile_upload_no_network)); } }
+                public void expired() { if (uploading && running) { qrPath = null; uploadMessage(AppStrings.get(R.string.profile_upload_expired)); } }
+                public void uploaded() {
+                    if (!uploading || !running) return;
+                    stopUpload(); uploading = false; selected = ProfileAvatar.CUSTOM; focus = 1;
+                    avatars.customChanged(); updateText(); retarget(false); wake(); spoken.readAgain();
+                }
+            });
+        }
+
         private void activate() {
             if (click != null) click.open();
-            if (choosing) {
+            if (uploading) { stopUpload(); uploading = false; focus = 1; }
+            else if (choosing) {
                 selected = avatarIndex;
                 ProfileAvatar.select(getContext(), selected);
                 choosing = false;
             } else if (focus == 0) {
                 choosing = true;
-                avatarIndex = selected;
-            } else { finish(); return; }
+                avatarIndex = selected == ProfileAvatar.CUSTOM ? 0 : selected;
+                changePage(avatarIndex / 9);
+            } else if (focus == 1) { startUpload(); }
+            else { finish(); return; }
             updateText(); retarget(false); wake(); spoken.readAgain();
         }
 
         private void back() {
             if (click != null) click.back();
+            if (uploading) { stopUpload(); uploading = false; focus = 1; updateText(); retarget(false); wake(); spoken.readAgain(); return; }
             if (!choosing) { finish(); return; }
             choosing = false;
-            changePage(selected / 9);
+            changePage(selected == ProfileAvatar.CUSTOM ? 0 : selected / 9);
             updateText(); retarget(false); wake(); spoken.readAgain();
         }
 
@@ -427,7 +478,7 @@ public final class ProfileActivity extends Activity {
                         }
                     } else avatarIndex += dx;
                 }
-            } else if (dy != 0) focus = Math.max(0, Math.min(1, focus + dy));
+            } else if (!uploading && dy != 0) focus = Math.max(0, Math.min(2, focus + dy));
             if (before == (choosing ? avatarIndex : focus)) return;
             if (click != null) click.move();
             retarget(false); wake(); spoken.focusMoved();
@@ -466,7 +517,8 @@ public final class ProfileActivity extends Activity {
                 pageButtonRect(i, scratch);
                 if (scratch.contains(x, y)) { changePage(i); performClick(); return true; }
             }
-            for (int i = choosing ? page * 9 : 0; i < (choosing ? page * 9 + 9 : 2); i++) {
+            for (int i = choosing ? page * 9 : 0; i < (choosing ? page * 9 + 9 : 3); i++) {
+                if (uploading && i != 2) continue;
                 if (choosing) avatarRect(i, scratch); else scratch.set(buttonRects[i]);
                 if (!scratch.contains(x, y)) continue;
                 if (choosing) avatarIndex = i; else focus = i;

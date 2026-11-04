@@ -47,7 +47,7 @@ public class Context {
 harness = '''package io.tvos;
 import android.content.Context;
 class Ui {static boolean ru;}
-class ProfileAvatarRender {void prepare(int p){}void prepareTransition(int p){}}
+class ProfileAvatarRender {void prepare(int p){}void prepareTransition(int p){}void clear(){}}
 class BaseView {
  final Context context=new Context();static final int MODE_PRIVATE=0;
  Context getContext(){return context;}
@@ -71,7 +71,7 @@ class Bundle {
  void putBoolean(String k,boolean v){data.put(k,v);}void putInt(String k,int v){data.put(k,v);}
 }
 public class ProfileHarness extends BaseView implements Choreographer.FrameCallback {
- final Spring[] buttons={new Spring(.26f,.85f,1),new Spring(.26f,.85f,0)};
+ final Spring[] buttons={new Spring(.26f,.85f,1),new Spring(.26f,.85f,0),new Spring(.26f,.85f,0)};
  final Spring[] avatarFocus=new Spring[ProfileAvatar.COUNT];
  final Spring chooser=new Spring(.38f,1,0),entrance=new Spring(.55f,1,0);
  final Spoken spoken=new Spoken();final Shadows shadows=new Shadows();
@@ -81,8 +81,9 @@ public class ProfileHarness extends BaseView implements Choreographer.FrameCallb
  final Spring pageTransition=new Spring(.24f,1,1);
  int page,previousPage;
  int selected,focus,avatarIndex,finished,draws;long lastFrame;
- boolean choosing,running,scheduled,okDown,backDown;Click click;
+ boolean choosing,uploading,running,scheduled,okDown,backDown;Click click;
  ProfileHarness(){for(int i=0;i<avatarFocus.length;i++)avatarFocus[i]=new Spring(.26f,.85f,0);}
+ void startUpload(){uploading=true;focus=2;}void stopUpload(){}
  void finish(){finished++;}void updateText(){}void invalidate(){draws++;}
  void requestFocus(){}
 ''' + ''.join(method(signature) for signature in [
@@ -130,7 +131,7 @@ public class ProfileHarness extends BaseView implements Choreographer.FrameCallb
   check(h.chooser.value==1 && h.entrance.value==1,"reduced motion snaps transitions");
   Bundle state=new Bundle();h.save(state);
   check(Boolean.TRUE.equals(state.data.get("choosing")) && state.data.get("avatar").equals(h.avatarIndex),"selection survives saved state");
-  h.back();h.focus=1;h.activate();check(h.finished==1,"return action exits page");
+  h.back();h.focus=1;h.activate();check(h.uploading,"upload action opens QR screen");h.back();check(!h.uploading&&h.finished==0,"Back closes upload without leaving profile");h.focus=2;h.activate();check(h.finished==1,"return action exits page");
   h.pause();
   System.out.println("PASS: profile arrows, cancel/save, avatar validation, held keys, pause, bounded frames, idle, reduced motion, saved state");
  }
@@ -156,10 +157,11 @@ with tempfile.TemporaryDirectory(prefix='tvos-profile-') as directory:
             depth += (avatar_source[end] == '{') - (avatar_source[end] == '}')
             end += 1
         return avatar_source[start:end]
-    persistence = 'package io.tvos; import android.content.Context; class ProfileAvatar {static final int COUNT=18;private static final String KEY="profile_avatar_v2";private static final int[] LEGACY={1,3,11,4,8,0,6};'
+    persistence = 'package io.tvos; import android.content.Context; class ProfileAvatar {static final int COUNT=18,CUSTOM=18;private static final String KEY="profile_avatar_v2";private static final int[] LEGACY={1,3,11,4,8,0,6};'
     persistence += avatar_method('    static int selected(').replace('android.content.SharedPreferences', 'Context.Prefs')
     persistence += avatar_method('    static void select(') + '}'
     (root / 'ProfileAvatar.java').write_text(persistence)
+    (root / 'AvatarPhotoStore.java').write_text('package io.tvos;class AvatarPhotoStore {static java.io.File file(android.content.Context c){return new java.io.File("/nonexistent-avatar-fixture");}}')
     java = str(Path(os.environ['JAVA_HOME']) / 'bin/java') if os.environ.get('JAVA_HOME') else 'java'
     subprocess.run([java, 'com.sun.tools.javac.Main', '-d', directory, *map(str, root.rglob('*.java'))], check=True)
     subprocess.run([java, '-cp', directory, 'io.tvos.ProfileHarness'], check=True)

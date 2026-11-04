@@ -12,7 +12,7 @@ import java.io.InputStream;
 
 /** Small offline avatar images; gradients are drawn separately at any size. */
 final class ProfileAvatar {
-    static final int COUNT = 18, PAGE_SIZE = 9;
+    static final int COUNT = 18, PAGE_SIZE = 9, CUSTOM = 18;
     private static final String KEY = "profile_avatar_v2";
     private static final int[] LEGACY = {1, 3, 11, 4, 8, 0, 6};
     private static final String[] FILES = {"robot", "fox", "woman", "frog", "popcorn", "pig_face",
@@ -29,6 +29,9 @@ final class ProfileAvatar {
     private final Context context;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final RectF imageRect = new RectF(-0.76f, -0.76f, 0.76f, 0.76f);
+    private Bitmap custom;
+    private android.graphics.BitmapShader customShader;
+    private boolean customLoaded;
     private final Bitmap[] images = new Bitmap[COUNT];
     private final Shader[] gradients = new Shader[COUNT];
 
@@ -41,12 +44,17 @@ final class ProfileAvatar {
             int old = prefs.getInt("profile_avatar", -1);
             if (old >= 0 && old < LEGACY.length) id = LEGACY[old];
         }
+        if (id == CUSTOM && AvatarPhotoStore.file(context).isFile()) return CUSTOM;
         return id >= 0 && id < COUNT ? id : -1;
     }
 
     static void select(Context context, int id) {
         if (id < 0 || id >= COUNT) throw new IllegalArgumentException("Invalid avatar");
         context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt(KEY, id).apply();
+    }
+
+    static void selectCustom(Context context) {
+        context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt(KEY, CUSTOM).apply();
     }
 
     static String name(int id) { return AppStrings.get(NAMES[id]); }
@@ -71,13 +79,34 @@ final class ProfileAvatar {
                 TOP[id], BOTTOM[id], Shader.TileMode.CLAMP);
     }
 
-    void clear() { for (int i = 0; i < COUNT; i++) images[i] = null; }
+    void clear() { for (int i = 0; i < COUNT; i++) images[i] = null; customChanged(); }
+
+    void customChanged() { custom = null; customShader = null; customLoaded = false; }
 
     void draw(Canvas c, int id, float x, float y, float radius) {
         draw(c, id, x, y, radius, 0.8f);
     }
 
     void draw(Canvas c, int id, float x, float y, float radius, float emojiScale) {
+        if (id == CUSTOM) {
+            if (!customLoaded) {
+                customLoaded = true;
+                java.io.File file = AvatarPhotoStore.file(context);
+                try { custom = BitmapFactory.decodeFile(file.getPath()); }
+                catch (RuntimeException | OutOfMemoryError failure) { custom = null; }
+                if (custom != null) {
+                    customShader = new android.graphics.BitmapShader(custom, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                    android.graphics.Matrix matrix = new android.graphics.Matrix();
+                    matrix.setScale(2f/custom.getWidth(), 2f/custom.getHeight()); matrix.postTranslate(-1,-1);
+                    customShader.setLocalMatrix(matrix);
+                }
+            }
+            if (custom != null) {
+                int saved = c.save(); c.translate(x,y); c.scale(radius,radius);
+                paint.setShader(customShader); c.drawCircle(0,0,1,paint); paint.setShader(null); c.restoreToCount(saved); return;
+            }
+            id = 0;
+        }
         load(id);
         int saved = c.save();
         c.translate(x, y);

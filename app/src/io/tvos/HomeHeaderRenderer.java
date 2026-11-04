@@ -46,7 +46,7 @@ final class HomeHeaderRenderer {
     }
     void resume() {
         int next = ProfileAvatar.selected(context);
-        if (next != profileAvatarIndex) profileAvatar.clear();
+        if (next != profileAvatarIndex || next == ProfileAvatar.CUSTOM) profileAvatar.clear();
         profileAvatarIndex = next;
     }
     void resize(float k) { shadow.setMaskFilter(new BlurMaskFilter(SHADOW_BLUR * k, BlurMaskFilter.Blur.NORMAL)); }

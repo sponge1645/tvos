@@ -218,7 +218,7 @@ final class DockContinue {
     void draw(Canvas c, float k, float bottom, float night) {
         if (!visible || opacity <= .001f) return;
         drawFrame.scale = k; drawFrame.bottom = bottom; drawFrame.night = night; drawFrame.opacity = opacity;
-        drawFrame.ink = ActionSurface.ink(night, 0);
+        drawFrame.ink = 0xFFF5F5F7;
         drawFrame.titleFont = Ui.semibold; drawFrame.metaFont = Ui.medium; drawFrame.headingFont = Ui.displayBold;
         drawFrame.heading = AppStrings.get(R.string.home_continue_watching);
         drawFrame.emptyMessage = AppStrings.get(R.string.home_watching_empty); drawFrame.empty = items.isEmpty();

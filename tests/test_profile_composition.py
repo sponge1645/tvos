@@ -13,7 +13,7 @@ public class ProfileCompositionHarness {
  final Scene scene=new Scene();final ActionSurface surface=new ActionSurface(scene,new Shadows());
  final Spring[] buttons={new Spring(.26f,.85f,1),new Spring(.26f,.85f,0)},avatarFocus=new Spring[18];final Spring chooser=new Spring(.38f,1,0);
  final RectF[] buttonRects={new RectF(303.6f,650,796.4f,722),new RectF(303.6f,723,796.4f,795)};
- final Paint buttonText=Ui.text(Ui.displayMedium,28,0xFFFFFFFF);int selected;boolean night;
+ final Paint buttonText=Ui.text(Ui.displayMedium,28,0xFFFFFFFF);int selected;boolean night,uploading;
 '''+positions+methods+'''
  ProfileCompositionHarness(){for(int i=0;i<18;i++)avatarFocus[i]=new Spring(.26f,.85f,0);}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b,String why){check(Math.abs(a-b)<.03,why+" "+a+" != "+b);}

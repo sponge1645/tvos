@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_upload_avatar">Upload avatar</string>
+    <string name="profile_upload_title">Upload your avatar</string>
+    <string name="profile_upload_help">Scan the QR code with your phone.\nYour phone and TV must be on the same network.</string>
+    <string name="profile_upload_back">Back</string>
+    <string name="profile_upload_connecting">Connecting…</string>
+    <string name="profile_upload_no_network">Connect your TV to Wi-Fi or Ethernet and open upload again.</string>
+    <string name="profile_upload_expired">Session ended. Open upload again.</string>
+</resources>

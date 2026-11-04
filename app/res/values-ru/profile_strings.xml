@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_upload_avatar">Загрузить аватар</string>
+    <string name="profile_upload_title">Загрузите свой аватар</string>
+    <string name="profile_upload_help">Откройте QR-код камерой телефона.\nТелефон и телевизор должны быть в одной сети.</string>
+    <string name="profile_upload_back">Назад</string>
+    <string name="profile_upload_connecting">Подключение…</string>
+    <string name="profile_upload_no_network">Подключите телевизор к Wi-Fi или Ethernet и откройте загрузку снова.</string>
+    <string name="profile_upload_expired">Сеанс завершён. Откройте загрузку снова.</string>
+</resources>
