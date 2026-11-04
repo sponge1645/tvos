@@ -63,6 +63,9 @@ final class DockArtwork {
             JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
                     + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", observer).optJSONArray("results");
             JSONObject matched = match(items, title, poster, year, expectedKind);
+            // Provider type is a hint: an unambiguous title/year remains usable
+            // when a publisher has mislabeled a series as a movie.
+            if (matched == null && !expectedKind.isEmpty()) matched = match(items, title, poster, year, "");
             if (matched != null) return matched;
         }
         return null;
@@ -96,8 +99,8 @@ final class DockArtwork {
             if (item == null) continue;
             String kind = item.optString("media_type", "");
             if (!"movie".equals(kind) && !"tv".equals(kind)) continue;
-            if (!expectedKind.isEmpty() && !expectedKind.equals(kind)) continue;
             if (!filename.isEmpty() && filename.equals(filename(item.optString("poster_path", "")))) return item;
+            if (!expectedKind.isEmpty() && !expectedKind.equals(kind)) continue;
             String date = item.optString("movie".equals(kind) ? "release_date" : "first_air_date", "");
             if (!year.isEmpty() && !date.startsWith(year)) continue;
             String name = item.optString("movie".equals(kind) ? "title" : "name", "");

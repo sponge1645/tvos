@@ -32,7 +32,7 @@ final class WatchingCardReader {
         pick.title = title;
         pick.resumeUri = link;
         String episode = text(cursor, 7);
-        pick.kind = cursor.getInt(11) == 3 || (!episode.isEmpty() && !"0".equals(episode)) ? "tv" : "movie";
+        pick.kind = (cursor.getInt(11) == 2 || cursor.getInt(11) == 3) || (!episode.isEmpty() && !"0".equals(episode)) ? "tv" : "movie";
         pick.watchingSeason = text(cursor, 6);
         pick.watchingEpisode = episode;
         pick.watchingRemaining = WatchingItems.remaining(cursor.getLong(8), cursor.getLong(9));
