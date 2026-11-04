@@ -311,7 +311,7 @@ public final class SearchActivity extends Activity {
         for (int i = 1; i < MovieService.count(); i++) {
             String pkg = MovieService.resolve(MovieService.id(i), p -> HomeApps.launchIntent(getPackageManager(), p) != null); if (pkg.isEmpty()) continue;
             String name = MovieService.label(i, AppLanguage.current());
-            target(80, y, 800, 72, String.format(Ui.locale(), text(R.string.search_watch_in), name), -1, () -> launcher.openIn(detail, pkg, name)); y += 96;
+            target(80, y, 520, 72, String.format(Ui.locale(), text(R.string.search_watch_in), name), -1, () -> launcher.openIn(detail, pkg, name)); y += 96;
         }
         if (selected >= targets.size()) selected = targets.isEmpty() ? -1 : 0;
         if (selected >= 0) focus.get(selected).snap(1);
