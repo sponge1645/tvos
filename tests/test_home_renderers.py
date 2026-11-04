@@ -17,7 +17,7 @@ public class HomeRenderHarness {
  static Paint paint(float size){return Ui.text(Ui.medium,size,0xFF1D1D1F);}
  static void background(){
   Scene scene=new Scene();int[] changes={0};HomeBackground b=new HomeBackground(scene,()->changes[0]++);b.resize(1920,1080);SystemClock.now=100;
-  Canvas c=new Canvas();b.draw(c,0);check(entries(c,"rect").size()==1,"day gradient without photo");int gradients=LinearGradient.allocations;b.draw(new Canvas(),0);check(LinearGradient.allocations==gradients,"gradient reused");
+  Canvas c=new Canvas();b.draw(c,0);check(entries(c,"rect").size()==1,"uniform graphite without photo");int gradients=LinearGradient.allocations;b.draw(new Canvas(),0);check(LinearGradient.allocations==gradients,"plain background creates no gradients");
   Backdrop a=new Backdrop(10),next=new Backdrop(20);b.show(a);check(scene.glass==a.lightGlass&&scene.frost==a.frost,"first photo populates glass immediately");check(b.tickFade(900,true),"first transition completes");
   SystemClock.now=1000;b.show(next);check(scene.from==a.lightGlass&&scene.to==next.lightGlass,"photo crossfade pair");b.tickFade(1200,true);near(scene.mix,.5f,"halfway glass mix");check(scene.frost[0]==0xFFCCCCCC,"frost pixels blended");
   c=new Canvas();SystemClock.now=1200;b.draw(c,1);check(entries(c,"bitmap").size()==2,"both photos in transition");check(entries(c,"bitmap").get(0).filter instanceof ColorMatrixColorFilter,"drawer veil applied in bitmap drawing");
@@ -29,7 +29,7 @@ public class HomeRenderHarness {
   b.tickNight(3000);near(b.night(),.5f,"half transition");check(scene.frost[0]==0xFF777777,"midpoint glass frost uses mixed pixels");
   b.tickNight(3500);near(b.night(),.15625f,"three-quarter transition");check(scene.pairs==pairs,"glass pair reused through transition");
   check(b.tickNight(4000)&&b.night()==0&&!b.tickNight(4001),"day transition settles and stops ticking");
-  SystemClock.now=4100;b.show(null);b.tickFade(4900,true);check(scene.glass!=null&&b.profilePixels()==null,"gradient restores neutral glass");
+  SystemClock.now=4100;b.show(null);b.tickFade(4900,true);check(scene.glass!=null&&b.profilePixels()==null,"plain graphite restores neutral glass");
   Backdrop hero=new Backdrop(30);hero.image=new Bitmap(99);hero.image.width=1920;hero.image.height=1080;hero.lightImage=null;hero.nightImage=null;
   b.show(hero,false);c=new Canvas();b.draw(c,0);check(entries(c,"bitmap").size()==1&&entries(c,"bitmap").get(0).text.equals("99"),"Dock hero uses full photo instead of blurred backdrop");check(!b.tickFade(5000,true),"reduced motion skips photo crossfade");
   Backdrop moving=new Backdrop(40);moving.image=new Bitmap(100);moving.image.width=1920;moving.image.height=1080;moving.lightImage=moving.nightImage=null;
