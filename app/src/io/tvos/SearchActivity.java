@@ -61,6 +61,13 @@ public final class SearchActivity extends Activity {
     private boolean running, closed, focusAfterSearch, initialInput = true;
     private int detailGeneration;
     private float scale;
+    private boolean night;
+    private Bitmap pageBackdrop;
+    private final Scene buttonScene = new Scene();
+    private final Shadows shadows = new Shadows();
+    private final io.tvos.artwork.RoundedImages roundedImages = new io.tvos.artwork.RoundedImages(Ui.LEGACY);
+    private int ink() { return detail != null || night ? 0xFFF4F4F6 : 0xFF1D1D1F; }
+    private int muted() { return detail != null || night ? 0xFFB4B8BF : 0xFF626873; }
     private String problem = "";
     private List<Recs.Pick> matches = new ArrayList<>();
 
@@ -73,7 +80,7 @@ public final class SearchActivity extends Activity {
     private void toast(int id) { Toast.makeText(this, text(id), Toast.LENGTH_SHORT).show(); }
     private LinearLayout column() { LinearLayout out = new LinearLayout(this); out.setOrientation(LinearLayout.VERTICAL); out.setClipChildren(false); return out; }
     private TextView label(String value, float size) {
-        TextView out = new TextView(this); out.setText(value); out.setTextColor(0xFFF4F4F6);
+        TextView out = new TextView(this); out.setText(value); out.setTextColor(ink());
         out.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size)); out.setTypeface(Ui.medium);
         out.setIncludeFontPadding(false); return out;
     }
@@ -84,9 +91,9 @@ public final class SearchActivity extends Activity {
         view.setFocusable(true); view.setClickable(true); view.setDefaultFocusHighlightEnabled(false);
         view.setOnFocusChangeListener((v, focused) -> {
             v.animate().cancel(); v.animate().scaleX(focused && grow ? 1.07f : 1).scaleY(focused && grow ? 1.07f : 1).setDuration(180).start();
-            if (v instanceof TextView) {
-                v.setBackground(rounded(focused ? 0xFFF5F5F7 : 0x283D434B, 40));
-                ((TextView) v).setTextColor(focused ? 0xFF17191E : 0xFFF4F4F6);
+            if (v instanceof ProfileButton) {
+                ((ProfileButton) v).setTextColor(focused ? 0xFF17191E : ink());
+                v.invalidate();
             } else if (v instanceof Art) {
                 ((Art) v).focused = focused;
                 v.setElevation(focused ? px(14) : 0); v.invalidate();
@@ -95,17 +102,49 @@ public final class SearchActivity extends Activity {
         });
     }
     private TextView button(String value, Runnable action) {
-        TextView out = label(value, 30); out.setGravity(Gravity.CENTER_VERTICAL);
-        out.setPadding(px(26), 0, px(26), 0); out.setBackground(rounded(0x283D434B, 40));
+        TextView out = new ProfileButton(value); out.setGravity(Gravity.CENTER);
+        out.setPadding(px(26), 0, px(26), 0);
         out.setMaxLines(1); out.setEllipsize(TextUtils.TruncateAt.END);
         focusable(out, true); out.setOnClickListener(v -> action.run()); return out;
+    }
+    /** The same ActionSurface used by the avatar chooser, at a smaller native-view size. */
+    private final class ProfileButton extends TextView {
+        private final ActionSurface surface = new ActionSurface(buttonScene, shadows);
+        private final RectF rect = new RectF();
+        ProfileButton(String value) {
+            super(SearchActivity.this); setText(value); setTextColor(ink()); setTypeface(Ui.displayMedium);
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, px(28)); setIncludeFontPadding(false);
+        }
+        @Override protected void onDraw(Canvas c) {
+            if (hasFocus()) {
+                int saved = c.save(); c.scale(scale, scale);
+                float width = getWidth()/scale, height = getHeight()/scale;
+                float insetX = width * (1 - 1/1.1f)/2, insetY = height * (1 - 1/1.1f)/2;
+                rect.set(insetX, insetY, width - insetX, height - insetY);
+                surface.draw(c, rect, 1, night ? 1 : 0, 1); c.restoreToCount(saved);
+            }
+            super.onDraw(c);
+        }
     }
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved); Ui.init(this);
         scale = getResources().getDisplayMetrics().widthPixels / 1920f;
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-        root = new FrameLayout(this); root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF383236, 0xFF24262E, 0xFF22272C})); setContentView(root);
+        night = HomeData.get(this).isNight(System.currentTimeMillis());
+        int[] frost = getIntent().getIntArrayExtra("profile_frost"); getIntent().removeExtra("profile_frost");
+        pageBackdrop = ProfileActivity.backdrop(frost, night);
+        int[] pixels = new int[Backdrop.FW * Backdrop.FH]; pageBackdrop.getPixels(pixels, 0, Backdrop.FW, 0, 0, Backdrop.FW, Backdrop.FH);
+        buttonScene.setFrost(pixels);
+        Bitmap glass = Bitmap.createScaledBitmap(pageBackdrop, Backdrop.GW, Backdrop.GH, true);
+        int[] glassPixels = new int[Backdrop.GW * Backdrop.GH]; glass.getPixels(glassPixels, 0, Backdrop.GW, 0, 0, Backdrop.GW, Backdrop.GH);
+        buttonScene.setGlassImage(glassPixels); glass.recycle();
+        root = new FrameLayout(this); setContentView(root);
+        View background = new View(this) {
+            private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+            private final Rect target = new Rect();
+            @Override protected void onDraw(Canvas c) { target.set(0, 0, getWidth(), getHeight()); c.drawBitmap(pageBackdrop, null, target, paint); }
+        };
+        root.addView(background, new FrameLayout.LayoutParams(-1, -1));
         images = new PosterCache(this, () -> main.post(() -> {
             if (!closed) for (Art art : artwork) art.invalidate();
         }), artworkIo, AppLog::w);
@@ -120,31 +159,27 @@ public final class SearchActivity extends Activity {
         });
         shortcuts = new RemoteShortcuts(this, true, null);
         screen = column(); screen.setPadding(px(60), px(50), px(60), px(24));
-        root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
+        ScrollView page = new ScrollView(this); page.setFillViewport(true); page.setClipChildren(false); page.setClipToPadding(false); page.setVerticalScrollBarEnabled(false);
+        page.addView(screen, new ScrollView.LayoutParams(-1, -2));
+        root.addView(page, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
-        android.widget.ImageButton voice = new android.widget.ImageButton(this);
-        voice.setDefaultFocusHighlightEnabled(false);
-        voice.setImageResource(android.R.drawable.ic_btn_speak_now); voice.setImageTintList(android.content.res.ColorStateList.valueOf(0xFFFFFFFF));
-        voice.setContentDescription(text(R.string.search_voice)); voice.setBackground(rounded(0x283D434B, 40)); voice.setFocusable(true);
-        voice.setOnClickListener(v -> voice()); voice.setOnFocusChangeListener((v, focused) -> {
-            voice.setBackground(rounded(focused ? 0xFFF5F5F7 : 0x283D434B, 40));
-            voice.setImageTintList(android.content.res.ColorStateList.valueOf(focused ? 0xFF17191E : 0xFFFFFFFF));
-            voice.animate().scaleX(focused ? 1.07f : 1).scaleY(focused ? 1.07f : 1).setDuration(180).start();
-        });
-        header.addView(voice, new LinearLayout.LayoutParams(px(76), px(76)));
-        query = new EditText(this); query.setDefaultFocusHighlightEnabled(false); query.setSingleLine(true); query.setTypeface(Ui.displaySemibold);
-        query.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(52)); query.setTextColor(0xFFFFFFFF); query.setHintTextColor(0xFF8D939B);
+        View magnifier = new View(this) {
+            @Override protected void onDraw(Canvas c) { Symbols.draw(SearchActivity.this, c, "search", getWidth()/2f, getHeight()/2f, 42*scale, muted()); }
+        };
+        magnifier.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        header.addView(magnifier, new LinearLayout.LayoutParams(px(64), px(64)));
+        query = new EditText(this, null, 0, R.style.SearchPageInput); query.setDefaultFocusHighlightEnabled(false); query.setSingleLine(true); query.setTypeface(Ui.displaySemibold);
+        query.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(44)); query.setTextColor(ink()); query.setHintTextColor(muted());
         query.setHint(text(R.string.search_hint)); query.setBackgroundColor(0x00000000);
         query.setPadding(px(32), 0, px(20), 0); query.setSelectAllOnFocus(false);
         query.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
         query.setInputType(android.text.InputType.TYPE_CLASS_TEXT); query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         header.addView(query, new LinearLayout.LayoutParams(0, px(84), 1)); screen.addView(header);
-        View divider = new View(this); divider.setBackgroundColor(0x26FFFFFF);
+        View divider = new View(this); divider.setBackgroundColor(night ? 0x26FFFFFF : 0x261D1D1F);
         LinearLayout.LayoutParams line = new LinearLayout.LayoutParams(-1, px(1)); line.topMargin = px(26);
         screen.addView(divider, line);
-        ScrollView scroll = new ScrollView(this); scroll.setClipChildren(false); scroll.setFillViewport(true); scroll.setVerticalScrollBarEnabled(false);
-        results = column(); results.setPadding(0, px(12), 0, px(20)); scroll.addView(results);
-        screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        results = column(); results.setPadding(0, px(12), 0, px(40));
+        screen.addView(results, new LinearLayout.LayoutParams(-1, -2));
         query.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             public void afterTextChanged(Editable value) { }
@@ -175,7 +210,7 @@ public final class SearchActivity extends Activity {
         if (!value.isEmpty()) history.edit().putString("recent", new JSONArray(SearchHistory.remember(recent(), value)).toString()).apply();
     }
     private void heading(int id) {
-        TextView title = label(text(id), 30); title.setTextColor(0xFFB4B8BF);
+        TextView title = label(text(id), 30); title.setTextColor(muted());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.topMargin = px(26); params.bottomMargin = px(20); results.addView(title, params);
     }
     private LinearLayout row(int height) {
@@ -196,7 +231,7 @@ public final class SearchActivity extends Activity {
             List<String> recent = recent();
             if (!recent.isEmpty()) {
                 LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
-                TextView title = label(text(R.string.search_recent), 30); title.setTextColor(0xFFB4B8BF);
+                TextView title = label(text(R.string.search_recent), 30); title.setTextColor(muted());
                 header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
                 TextView clear = button(text(R.string.search_clear), () -> {
                     history.edit().remove("recent").apply(); render(); query.requestFocus();
@@ -215,7 +250,7 @@ public final class SearchActivity extends Activity {
             heading(R.string.search_titles);
             if (matches.isEmpty()) {
                 TextView hint = label(!problem.isEmpty() ? problem : text(value.codePointCount(0, value.length()) < 3 ? R.string.search_minimum : R.string.search_loading), 28);
-                hint.setTextColor(0xFF959BA5); results.addView(hint);
+                hint.setTextColor(muted()); results.addView(hint);
             } else posters(matches);
         }
         results.post(this::windowImages);
@@ -225,13 +260,15 @@ public final class SearchActivity extends Activity {
         android.widget.GridLayout grid = new android.widget.GridLayout(this);
         grid.setColumnCount(6); grid.setClipChildren(false); grid.setClipToPadding(false); grid.setPadding(px(14), px(16), px(14), px(16));
         for (Recs.Pick pick : picks) {
-            LinearLayout card = column();
-            Art art = new Art(pick.poster, 20); card.addView(art, new LinearLayout.LayoutParams(-1, px(402)));
-            TextView title = label(pick.title, 27); title.setGravity(Gravity.CENTER); title.setMaxLines(1); title.setEllipsize(TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams caption = new LinearLayout.LayoutParams(-1, px(44)); caption.topMargin = px(10); card.addView(title, caption);
+            Art art = new Art(pick.poster, 0); art.pick = pick;
+            art.poster = new PosterRenderer(Recs.get(this), shadows, roundedImages, 1);
             android.widget.GridLayout.LayoutParams box = new android.widget.GridLayout.LayoutParams();
-            box.width = px(268); box.height = -2; box.rightMargin = grid.getChildCount() % 6 == 5 ? 0 : px(32); box.bottomMargin = px(28);
-            grid.addView(card, box); art.setContentDescription(pick.title); focusable(art, true);
+            box.width = px(268); box.height = px(502); box.rightMargin = grid.getChildCount() % 6 == 5 ? 0 : px(32); box.bottomMargin = px(32);
+            grid.addView(art, box); art.setContentDescription(pick.title); art.setBackgroundColor(0x00000000); art.setClipToOutline(false);
+            art.setFocusable(true); art.setClickable(true); art.setDefaultFocusHighlightEnabled(false);
+            art.setOnFocusChangeListener((v, focused) -> {
+                art.focused = focused; art.poster.focus(focused ? 0 : -1, 0, 0, android.os.SystemClock.uptimeMillis()); art.invalidate();
+            });
             art.setOnClickListener(v -> showDetail(pick, art));
         }
         results.addView(grid, new LinearLayout.LayoutParams(-1, -2));
@@ -324,6 +361,10 @@ public final class SearchActivity extends Activity {
     private final class Art extends View {
         String path;
         boolean focused;
+        Recs.Pick pick;
+        PosterRenderer poster;
+        private final Paint title = Ui.text(Ui.semibold, 31 * scale, ink());
+        private final Paint meta = Ui.text(Ui.medium, 25 * scale, muted());
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final RectF bounds = new RectF();
@@ -333,6 +374,13 @@ public final class SearchActivity extends Activity {
         }
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas); Bitmap bitmap = images.poster(path);
+            if (pick != null) {
+                bounds.set(0, 0, getWidth(), px(402));
+                poster.begin(scale, night ? 1 : 0, 0, 0, true, focused, title, meta);
+                poster.draw(canvas, pick, bounds, focused ? 1 : 0, 0, bitmap);
+                if (focused) postInvalidateDelayed(poster.nextDelay(android.os.SystemClock.uptimeMillis()));
+                return;
+            }
             if (bitmap != null) {
             float zoom = Math.max((float) getWidth() / bitmap.getWidth(), (float) getHeight() / bitmap.getHeight());
             float w = bitmap.getWidth() * zoom, h = bitmap.getHeight() * zoom;
@@ -353,25 +401,10 @@ public final class SearchActivity extends Activity {
             query.post(() -> { if (running && detail == null && query.hasFocus()) keyboard(); });
         }
     }
-    @SuppressWarnings("deprecation")
-    private void voice() {
-        Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, AppLanguage.current().apiTag);
-        try { startActivityForResult(intent, 42); } catch (android.content.ActivityNotFoundException | SecurityException e) { toast(R.string.search_voice_unavailable); }
-    }
-    @SuppressWarnings("deprecation")
-    @Override protected void onActivityResult(int request, int result, Intent data) {
-        super.onActivityResult(request, result, data);
-        if (request == 42 && result == RESULT_OK && data != null) {
-            ArrayList<String> values = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
-            if (values != null && !values.isEmpty()) setQuery(values.get(0));
-        }
-    }
     @Override protected void onResume() { super.onResume(); running = true; shortcuts.reload(); search.resume(query.getText().toString().trim()); search.restore(query.getText().toString().trim(), !matches.isEmpty()); }
     @Override protected void onPause() { running = false; search.pause(detail == null); shortcuts.cancel(); super.onPause(); }
     @Override protected void onSaveInstanceState(Bundle state) { state.putString("query", query.getText().toString()); super.onSaveInstanceState(state); }
-    @Override protected void onDestroy() { closed = true; search.cancel(); shortcuts.close(); images.setWindow(new HashSet<>()); metadataIo.shutdownNow(); artworkIo.shutdownNow(); main.removeCallbacksAndMessages(null); super.onDestroy(); }
+    @Override protected void onDestroy() { closed = true; search.cancel(); shortcuts.close(); images.setWindow(new HashSet<>()); metadataIo.shutdownNow(); artworkIo.shutdownNow(); main.removeCallbacksAndMessages(null); roundedImages.clear(); shadows.clear(); pageBackdrop = null; super.onDestroy(); }
     @Override public boolean dispatchKeyEvent(KeyEvent event) { return shortcuts != null && shortcuts.onKey(event) || super.dispatchKeyEvent(event); }
     @SuppressWarnings("deprecation")
     @Override public void onBackPressed() { if (detail != null) closeDetail(); else { hideKeyboard(); super.onBackPressed(); } }

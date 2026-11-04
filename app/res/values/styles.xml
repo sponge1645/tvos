@@ -30,4 +30,7 @@
     <style name="SearchInput" parent="@android:style/Widget.DeviceDefault.EditText">
         <item name="android:textCursorDrawable">@drawable/search_cursor</item>
     </style>
+    <style name="SearchPageInput" parent="@style/SearchInput">
+        <item name="android:textCursorDrawable">@drawable/search_cursor_compact</item>
+    </style>
 </resources>

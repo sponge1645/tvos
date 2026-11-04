@@ -90,6 +90,10 @@ final class PosterRenderer {
     private static int blend(int a, int b, float f) { return ActionSurface.blend(a,b,f); }
 
     void draw(Canvas c, Recs.Pick p, RectF base, float v, int i) {
+        draw(c, p, base, v, i, recs.poster(p));
+    }
+    /** Search shares the complete home-card renderer with its own bounded image window. */
+    void draw(Canvas c, Recs.Pick p, RectF base, float v, int i, Bitmap img) {
         float f = Ui.clamp(v), s = 1 + 0.05f * v;
         float bw = base.width(), bh = base.height(), r0 = 18 * k;
         float cx = base.centerX(), cy = base.centerY() - 6 * k * v;
@@ -104,7 +108,6 @@ final class PosterRenderer {
         shadows.draw(c, tmp, r0, DEEP_BLUR * k, shadowDeep);
         c.restore();
         // Every card, including New Releases, displays its original portrait poster.
-        Bitmap img = recs.poster(p);
         if (img != null) {
             images.draw(c, img, cell, r);
         } else {

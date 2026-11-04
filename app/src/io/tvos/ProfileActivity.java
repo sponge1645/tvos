@@ -63,6 +63,25 @@ public final class ProfileActivity extends Activity {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 
+    /** The small frosted home snapshot and tint used by profile and search pages. */
+    static Bitmap backdrop(int[] frost, boolean night) {
+            Bitmap background = Bitmap.createBitmap(Backdrop.FW, Backdrop.FH, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(background);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            if (frost != null && frost.length == Backdrop.FW * Backdrop.FH) {
+                background.setPixels(frost, 0, Backdrop.FW, 0, 0, Backdrop.FW, Backdrop.FH);
+                c.drawColor(night ? 0x3512252D : 0x24FFFFFF);
+            } else {
+                p.setShader(new LinearGradient(0, 0, 192, 108, night ? 0xFF193940 : 0xFFC8E5EB,
+                        night ? 0xFF17252C : 0xFFE8E4E9, Shader.TileMode.CLAMP));
+                c.drawPaint(p);
+            }
+            p.setShader(new RadialGradient(100, 115, 90,
+                    night ? 0x604D272D : 0x60DCA9B0, 0, Shader.TileMode.CLAMP));
+            c.drawPaint(p);
+        return background;
+    }
+
     private final class ProfileView extends View implements Choreographer.FrameCallback {
         private final Scene scene = new Scene();
         private final Shadows shadows = new Shadows();
@@ -157,20 +176,7 @@ public final class ProfileActivity extends Activity {
         }
 
         private void makeBackground(int[] frost) {
-            background = Bitmap.createBitmap(Backdrop.FW, Backdrop.FH, Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(background);
-            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            if (frost != null && frost.length == Backdrop.FW * Backdrop.FH) {
-                background.setPixels(frost, 0, Backdrop.FW, 0, 0, Backdrop.FW, Backdrop.FH);
-                c.drawColor(night ? 0x3512252D : 0x24FFFFFF);
-            } else {
-                p.setShader(new LinearGradient(0, 0, 192, 108, night ? 0xFF193940 : 0xFFC8E5EB,
-                        night ? 0xFF17252C : 0xFFE8E4E9, Shader.TileMode.CLAMP));
-                c.drawPaint(p);
-            }
-            p.setShader(new RadialGradient(100, 115, 90,
-                    night ? 0x604D272D : 0x60DCA9B0, 0, Shader.TileMode.CLAMP));
-            c.drawPaint(p);
+            background = ProfileActivity.backdrop(frost, night);
             scene.setFrost(pixels(background));
             Bitmap glass = Bitmap.createScaledBitmap(background, Backdrop.GW, Backdrop.GH, true);
             scene.setGlassImage(pixels(glass));

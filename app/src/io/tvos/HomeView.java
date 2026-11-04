@@ -1326,7 +1326,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void openSearch() {
-        AppLaunch.start(activity, new android.content.Intent(activity, SearchActivity.class), "Search screen");
+        AppLaunch.start(activity, new android.content.Intent(activity, SearchActivity.class)
+                .putExtra("profile_frost", background.profilePixels()), "Search screen");
     }
 
     private void searchQueryChanged(String query) {
