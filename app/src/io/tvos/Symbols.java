@@ -124,6 +124,17 @@ final class Symbols {
         }
     }
 
+    private static final java.util.concurrent.atomic.AtomicBoolean WEATHER_WARMED = new java.util.concurrent.atomic.AtomicBoolean();
+    /** Parse each forecast glyph off the drawing thread, once per process. */
+    static void warmWeather(Context context, java.util.concurrent.Executor worker) {
+        if (!WEATHER_WARMED.compareAndSet(false, true)) return;
+        Context app = context.getApplicationContext();
+        worker.execute(() -> {
+            for (String name : new String[]{"sunny", "clear_night", "partly_cloudy_day", "partly_cloudy_night",
+                    "cloud", "foggy", "rainy", "snowflake", "thunderstorm"}) get(app, name);
+        });
+    }
+
     /** Weather symbol for an Open-Meteo WMO weather code. */
     static String weather(int code, boolean day) {
         if (code <= 1) return day ? "sunny" : "clear_night";

@@ -41,6 +41,7 @@ files={
 }'''}
 files['io/tvos/ProviderImages.java']='package io.tvos;class ProviderImages {static boolean allowed(Object c,String v,String o){return v!=null&&(v.startsWith("https://")||v.startsWith("content://")||v.startsWith("android.resource://"));}}'
 files['io/tvos/network/ConnectionObserver.java']=Path('app/src/io/tvos/network/ConnectionObserver.java').read_text()
+files['io/tvos/artwork/ArtworkDiskCache.java']=Path('app/src/io/tvos/artwork/ArtworkDiskCache.java').read_text()
 with tempfile.TemporaryDirectory() as d:
  root=Path(d)
  for name,text in files.items():

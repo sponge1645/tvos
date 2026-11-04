@@ -6,7 +6,7 @@ sources={
 'android/net/Uri.java':'package android.net;public class Uri {public static Uri parse(String s){return new Uri();}}',
 'android/content/Context.java':'''package android.content;public class Context {final java.io.File dir;public Context(java.io.File d){dir=d;}public Context getApplicationContext(){return this;}public java.io.File getCacheDir(){return dir;}public ContentResolver getContentResolver(){return new ContentResolver();}}''',
 'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {public int getAllocationByteCount(){return 1024*1024;}}',
-'android/graphics/BitmapFactory.java':'''package android.graphics;public class BitmapFactory {public static Runnable afterDecode;public static class Options {public int inSampleSize;}public static Bitmap decodeFile(String p,Options o){if(o.inSampleSize!=2)throw new AssertionError("sampling changed");if(new java.io.File(p).getName().startsWith("oom"))throw new OutOfMemoryError("test decode");if(afterDecode!=null)afterDecode.run();return new java.io.File(p).getName().startsWith("bad")?null:new Bitmap();}}''',
+'android/graphics/BitmapFactory.java':'''package android.graphics;public class BitmapFactory {public static Runnable afterDecode;public static int width=500,height=750,sample;public static class Options {public int inSampleSize,outWidth,outHeight;public boolean inJustDecodeBounds;}public static Bitmap decodeFile(String p,Options o){if(o.inJustDecodeBounds){o.outWidth=width;o.outHeight=height;return null;}sample=o.inSampleSize;if(new java.io.File(p).getName().startsWith("oom"))throw new OutOfMemoryError("test decode");if(afterDecode!=null)afterDecode.run();return new java.io.File(p).getName().startsWith("bad")?null:new Bitmap();}}''',
 'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long now;public static long elapsedRealtime(){return now;}}',
 }
 harness='''package io.tvos;import io.tvos.artwork.PosterCache;
@@ -15,9 +15,9 @@ public class PosterHarness {
  static class Pick {String poster;Pick(String p){poster=p;}}
  static class Worker implements Executor {ArrayDeque<Runnable> queue=new ArrayDeque<>();public void execute(Runnable r){queue.add(r);}void drain(){while(!queue.isEmpty())queue.remove().run();}}
  static class Fake extends HttpURLConnection {static byte[] body={1};static long declared=1;static int disconnects;Fake(URL u){super(u);}public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){disconnects++;}public long getContentLengthLong(){return declared;}public InputStream getInputStream(){return new ByteArrayInputStream(body);}}
- final Context context;final Worker posterIo=new Worker();final PosterCache cache;int notices;final List<String> warnings=new ArrayList<>();
+ final List<Runnable> retries=new ArrayList<>();final Context context;final Worker posterIo=new Worker();final PosterCache cache;int notices;final List<String> warnings=new ArrayList<>();
  final Map<String,Bitmap> posters;final Set<String> posterPending;final Map<String,Long> posterFailures;
- PosterHarness(File dir)throws Exception {context=new Context(dir);cache=new PosterCache(context,()->notices++,posterIo,warnings::add);posters=field("posters");posterPending=field("posterPending");posterFailures=field("posterFailures");}
+ PosterHarness(File dir)throws Exception {context=new Context(dir);cache=new PosterCache(context,()->notices++,posterIo,warnings::add,(task,delay)->{check(delay==30000,"retry delay");retries.add(task);});posters=field("posters");posterPending=field("posterPending");posterFailures=field("posterFailures");}
  @SuppressWarnings("unchecked") <T>T field(String name)throws Exception {java.lang.reflect.Field f=PosterCache.class.getDeclaredField(name);f.setAccessible(true);return (T)f.get(cache);}
  long ram()throws Exception{return this.<Long>field("posterRamBytes");}
  Bitmap poster(Pick p){return cache.poster(p==null?null:p.poster);}
@@ -99,6 +99,23 @@ tests='''
   Fake.body=new byte[]{1};Fake.declared=1;
   File old=new File(cacheDir,"old-large");try(RandomAccessFile f=new RandomAccessFile(old,"rw")){f.setLength(201L*1024*1024);}old.setLastModified(1);
   h.setPosterWindow(Collections.singletonList(new Pick("/new-download")));h.poster(new Pick("/new-download"));h.posterIo.drain();check(!old.exists(),"new download prunes least recently used disk cache beyond 200 MiB");
+  PosterHarness recovery=new PosterHarness(new File(args[0],"recovery"));
+  recovery.setPosterWindow(Collections.singletonList(new Pick("/retry")));Fake.body=new byte[]{1};Fake.declared=5;
+  recovery.poster(new Pick("/retry"));recovery.posterIo.drain();check(recovery.retries.size()==1,"one retry timer after visible failure");
+  SystemClock.now+=30000;Fake.declared=1;recovery.retries.remove(0).run();recovery.posterIo.drain();
+  check(recovery.posters.containsKey("/retry"),"visible poster recovers without another draw request");
+  recovery.setPosterWindow(Collections.emptyList());for(Runnable retry:new ArrayList<>(recovery.retries))retry.run();
+  check(recovery.posterIo.queue.isEmpty(),"hidden screens do not load on retry timer");
+  File shared=new File(args[0],"shared");PosterHarness one=new PosterHarness(shared),two=new PosterHarness(shared);
+  String same="content://provider/shared";android.content.ContentResolver.afterRead=()->{
+   android.content.ContentResolver.afterRead=null;two.poster(new Pick(same));two.posterIo.drain();
+  };
+  one.poster(new Pick(same));one.posterIo.drain();check(one.posters.containsKey(same)&&two.posters.containsKey(same),"overlapping screens cannot corrupt each other's partial download");
+  BitmapFactory.width=8000;BitmapFactory.height=12000;one.poster(new Pick("/large-dimensions"));one.posterIo.drain();
+  check(BitmapFactory.sample>=16&&one.posters.containsKey("/large-dimensions"),"large external dimensions decode within per-image memory budget");
+  BitmapFactory.width=500;BitmapFactory.height=750;
+  PosterCache stopped=new PosterCache(one.context,()->{},r->{throw new java.util.concurrent.RejectedExecutionException();},s->{},(r,delay)->{});
+  check(stopped.poster("/after-close")==null,"stopped image executor cannot crash drawing");
   System.out.println("PASS: pending bound, deduplication, RAM LRU, disk reload, retry deadline, bounded failure history, shared provider limits/null/cancellation");
  }
 }
@@ -106,6 +123,7 @@ tests='''
 
 sources['io/tvos/PosterHarness.java']=harness+tests
 sources['io/tvos/artwork/PosterCache.java']=Path('app/src/io/tvos/artwork/PosterCache.java').read_text()
+sources['io/tvos/artwork/ArtworkDiskCache.java']=Path('app/src/io/tvos/artwork/ArtworkDiskCache.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-poster-cache-') as tmp:
  root=Path(tmp)
  for name,content in sources.items():

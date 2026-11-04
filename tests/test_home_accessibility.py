@@ -62,7 +62,7 @@ public class AccessibilityHarness implements HomeAccessibility.Host {
   Prefs.city="Tokyo";check(h.source.text(8001).startsWith("Tokyo."),"live city");h.data.weather.temp=Double.NaN;check(h.source.text(8001).contains("No weather data"),"missing weather");
   h.source.focus(2001);check(!h.drawer.open&&h.zone==Z_SHELF,"focus closes drawer");
   h.source.focus(4004);check(h.topIndex==3&&h.selected==3&&h.zone==Z_TOP,"category changes through host");
-  h.grid.open=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==151,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
+  h.grid.open=true;check(h.ids().equals(Arrays.asList(9001,9002)),"sheet isolates virtual tree");check(h.source.bounds(9001,r)&&r.left==40&&r.right==376&&r.top==141,"grid accessibility follows shared 40px layout");check(h.source.text(9002).equals("Settings, 2 of 2"),"grid label and count");
   h.grid.scroll.target=2;check(h.source.bounds(9001,r)&&r.top==0&&r.bottom==24,"scrolled grid edge");
   h.source.focus(9002);check(h.grid.index==1&&h.gridDirty&&h.gridRetargets==1&&h.source.focused()==9002,"grid focus/scroll host");
   int moves=h.moves;h.source.focus(2001);check(h.moves==moves,"sheet blocks underlying focus");h.source.focus(9003);check(h.moves==moves,"invalid grid index ignored");

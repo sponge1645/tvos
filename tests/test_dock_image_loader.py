@@ -34,12 +34,13 @@ public class ImageTest {
   net.body=new Body(2);String https="https://example.test/wide";loader.read(https,7,true,2500);check(net.last.getConnectTimeout()==2500&&net.last.getReadTimeout()==2500&&request.opened==1&&request.closed==1&&request.token==7&&request.current==null&&net.last.disconnected==1&&net.body.closed,"HTTPS timeout/token/connection and stream lifecycle");
   net.fail=true;failure(loader,"https://example.test/fail","offline");check(net.last.disconnected==1&&request.closed==2&&request.current==null,"failed HTTPS connection released");net.fail=false;noPart(c);
   request.reject=true;boolean cancelled=false;try{loader.read("https://example.test/rejected",7,true,2500);}catch(CancellationException expected){cancelled=true;}check(cancelled&&net.last.streams==0&&net.last.disconnected==1&&request.current==null,"open-time stale cancellation closes connection before body");request.reject=false;noPart(c);
-  Context bounded=new Context();bounded.directory=new File(args[0],"bounded");DockImageLoader cache=new DockImageLoader(bounded,request);for(int i=0;i<9;i++){String key="content://owner/cache"+i;bounded.body=new Body(1);cache.read(key,7,true,8000);file(bounded,key).setLastModified(1000+i);}check(new File(bounded.directory,"dock-backdrops").listFiles().length==6&&!file(bounded,"content://owner/cache0").exists()&&file(bounded,"content://owner/cache8").exists(),"six-file cache evicts oldest downloads");
+  Context bounded=new Context();bounded.directory=new File(args[0],"bounded");DockImageLoader cache=new DockImageLoader(bounded,request);for(int i=0;i<99;i++){String key="content://owner/cache"+i;bounded.body=new Body(1);cache.read(key,7,true,8000);file(bounded,key).setLastModified(1000+i);}check(new File(bounded.directory,"dock-backdrops").listFiles().length==96&&!file(bounded,"content://owner/cache0").exists()&&file(bounded,"content://owner/cache98").exists(),"96-file bounded cache retains older covers and evicts LRU");
   check(DockImageLoader.publishedImage("https://image.tmdb.org/t/p/original/a").equals("https://image.tmdb.org/t/p/w1280/a")&&DockImageLoader.publishedImage("https://other.test/t/p/original/a").contains("original"),"published URL rewrite is host-specific");
   System.out.println("PASS: real Dock image loader, provider/resource/HTTPS streams, cache hits/eviction, sampling/aspect, corrupt recovery, size limit, partial cleanup and request/connection cancellation");
  }
 }'''}
 sources['io/tvos/artwork/DockImageLoader.java']=Path('app/src/io/tvos/artwork/DockImageLoader.java').read_text()
+sources['io/tvos/artwork/ArtworkDiskCache.java']=Path('app/src/io/tvos/artwork/ArtworkDiskCache.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-dock-images-') as tmp:
  root=Path(tmp)
  for name,source in sources.items():

@@ -53,7 +53,7 @@ public class HomeLayoutHarness {
      if(i>0)near(r.left-t.drawer.rects[i-1].right,(i==inputs?56:18)*t.k,"button and group gaps preserved");}
     near(t.drawer.extraHeight,t.drawer.rects[0].height()-126*t.k,"Dock lift matches row height increase");
    }
-   for(boolean compact:new boolean[]{false,true}){t.compact=compact;t.layoutLight();near(t.topRects[10].top,50*t.k,"Network top");
+   for(boolean compact:new boolean[]{false,true}){t.compact=compact;t.layoutLight();near(t.topRects[10].top,40*t.k,"Network top");
     float right=0;for(int i=5;i<11;i++)right=Math.max(right,t.topRects[i].right);near(t.w-right,40*t.k,"rightmost action edge");near(t.topRects[0].left,40*t.k,"category capsule left");near(t.cardRects[0].left,40*t.k,"first poster left");near(t.w-t.cardRects[4].right,40*t.k,"last poster right");
     float metadataBottom=t.cardRects[0].bottom+HomeLayout.POSTER_META_BASELINE*t.k+t.lCardMeta.descent()+1.5f*t.k;
     near(t.cardRects[0].top-t.contentTop,t.platterRect.top-metadataBottom,"poster + caption group has equal upper/lower gaps");
@@ -61,16 +61,16 @@ public class HomeLayoutHarness {
     for(int i=5;i<11;i++)near(t.topRects[i].height(),61.2f*t.k,"all action surfaces shrink 10 percent");
     for(int i=1;i<Prefs.order.length;i++){RectF prev=t.topRects[5+Prefs.order[i-1]],next=t.topRects[5+Prefs.order[i]];near(next.left-prev.right,20*t.k,"inter-button gaps unchanged");}
    }
-   for(int mask=0;mask<64;mask++){Prefs.mask=mask;t.layoutLight();for(int i=5;i<11;i++)if(t.topButtonEnabled(i-5))near(t.topRects[i].top,50*t.k,"all action combinations keep top edge");}
+   for(int mask=0;mask<64;mask++){Prefs.mask=mask;t.layoutLight();for(int i=5;i<11;i++)if(t.topButtonEnabled(i-5))near(t.topRects[i].top,40*t.k,"all action combinations keep top edge");}
    Prefs.mask=63;
-   t.header.weather.set(40*t.k,50*t.k,350*t.k,(50+HomeLayout.BUTTON)*t.k);t.layoutLight();
+   t.header.weather.set(40*t.k,40*t.k,350*t.k,(40+HomeLayout.BUTTON)*t.k);t.layoutLight();
    near(t.topRects[0].left,366*t.k,"categories follow date/weather with a gap");
    float actionLeft=Float.MAX_VALUE;for(int i=5;i<11;i++)actionLeft=Math.min(actionLeft,t.topRects[i].left);
-   for(int id:Prefs.categoryOrder()){near(t.topRects[id].top,50*t.k,"categories and widgets share top");near(t.topRects[id].height(),HomeLayout.BUTTON*t.k,"categories and actions share height");check(t.topRects[id].right<=actionLeft-28*t.k+.03,"category cannot overlap corner actions");}
+   for(int id:Prefs.categoryOrder()){near(t.topRects[id].top,40*t.k,"categories and widgets share top");near(t.topRects[id].height(),HomeLayout.BUTTON*t.k,"categories and actions share height");check(t.topRects[id].right<=actionLeft-28*t.k+.03,"category cannot overlap corner actions");}
    t.header.weather.setEmpty();
   }
   float grid=HomeLayout.APP_COLUMNS*HomeLayout.APP_WIDTH+(HomeLayout.APP_COLUMNS-1)*HomeLayout.APP_GAP;near((1920-grid)/2,40,"All Apps shares horizontal edge");
-  System.out.println("PASS: actual Dock/drawer/poster/action layout, counts 0–8, 5:3, full width at six, 40px sides / 50px top / 60px Dock bottom, equal poster group gaps, 10% smaller buttons, unchanged button gaps, compact header, 64 masks and 720p/1080p/4K");
+  System.out.println("PASS: actual Dock/drawer/poster/action layout, counts 0–8, 5:3, full width at six, 40px sides / 40px top / 60px Dock bottom, equal poster group gaps, 10% smaller buttons, unchanged button gaps, compact header, 64 masks and 720p/1080p/4K");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-home-layout-') as tmp:

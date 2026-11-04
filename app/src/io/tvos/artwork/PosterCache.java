@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -19,16 +18,29 @@ import java.util.concurrent.Executors;
 
 /** Poster download/decode and bounded RAM/disk caches; no catalog, Pick or UI state. */
 public final class PosterCache {
+    public interface RetryScheduler { void after(Runnable task, long delayMs); }
+    private static final java.util.concurrent.ExecutorService DEFAULT_WORKER = Executors.newFixedThreadPool(3,
+            task -> { Thread thread = new Thread(task, "poster-artwork"); thread.setDaemon(true); return thread; });
+    private static final java.util.concurrent.ScheduledExecutorService RETRIES = Executors.newSingleThreadScheduledExecutor(
+            task -> { Thread thread = new Thread(task, "poster-retry"); thread.setDaemon(true); return thread; });
+    private static final Object DISK_LOCK = new Object();
+    private final RetryScheduler retries;
+    private boolean retryScheduled;
     private final Context context;
     private final Runnable changed;
     private final Executor posterIo;
     private final Consumer<String> warning;
 
     public PosterCache(Context context, Runnable changed, Consumer<String> warning) {
-        this(context, changed, Executors.newSingleThreadExecutor(), warning);
+        this(context, changed, DEFAULT_WORKER, warning);
     }
 
     public PosterCache(Context context, Runnable changed, Executor worker, Consumer<String> warning) {
+        this(context, changed, worker, warning, (task, delay) -> RETRIES.schedule(task, delay, java.util.concurrent.TimeUnit.MILLISECONDS));
+    }
+
+    public PosterCache(Context context, Runnable changed, Executor worker, Consumer<String> warning, RetryScheduler retries) {
+        this.retries = retries;
         this.context = context.getApplicationContext();
         this.changed = changed;
         this.posterIo = worker;
@@ -48,8 +60,8 @@ public final class PosterCache {
     private long posterRamBytes;
     // Null until a screen supplies a window. An empty window stops loading while Home is hidden.
     private java.util.Set<String> posterWindow;
-    // Used only by the single poster worker.
-    private boolean posterCacheChecked;
+    // Shared workers may decode independent paths concurrently.
+    private volatile boolean posterCacheChecked;
 
     public static String imageUrl(String path) {
         if (path.startsWith("https://")) return path;
@@ -83,6 +95,35 @@ public final class PosterCache {
                 entries.remove(); // No recycle: the last submitted frame may still reference this bitmap.
             }
         }
+        scheduleRetry();
+    }
+
+    private void scheduleRetry() {
+        synchronized (posters) {
+            if (retryScheduled || !visibleFailure()) return;
+            retryScheduled = true;
+        }
+        java.lang.ref.WeakReference<PosterCache> weak = new java.lang.ref.WeakReference<>(this);
+        retries.after(() -> {
+            PosterCache cache = weak.get();
+            if (cache != null) cache.retryVisible();
+        }, POSTER_RETRY_MS);
+    }
+
+    private void retryVisible() {
+        java.util.List<String> failed;
+        synchronized (posters) {
+            retryScheduled = false;
+            failed = new java.util.ArrayList<>(posterFailures.keySet());
+        }
+        for (String path : failed) if (posterWanted(path)) poster(path);
+        scheduleRetry();
+    }
+
+    // Caller holds posters. Hidden windows do not poll or retry.
+    private boolean visibleFailure() {
+        for (String path : posterFailures.keySet()) if (posterWindow == null || posterWindow.contains(path)) return true;
+        return false;
     }
 
     private boolean posterWanted(String path) {
@@ -100,7 +141,7 @@ public final class PosterCache {
             if (failed != null && SystemClock.elapsedRealtime() - failed < POSTER_RETRY_MS) return null;
             if (posterPending.size() >= POSTER_PENDING_MAX || !posterPending.add(path)) return null;
         }
-        posterIo.execute(() -> {
+        try { posterIo.execute(() -> {
             File tmp = null;
             boolean loaded = false;
             boolean abandoned = false;
@@ -111,7 +152,7 @@ public final class PosterCache {
                 File f = new File(dir, cacheName(path));
                 boolean downloaded = false;
                 if (!f.isFile() || f.length() == 0) {
-                    tmp = new File(f.getPath() + ".part");
+                    tmp = File.createTempFile("poster-", ".part", dir);
                     if (path.startsWith("content://") || path.startsWith("android.resource://")) {
                         try (InputStream in = context.getContentResolver().openInputStream(android.net.Uri.parse(path))) {
                             if (!copyPoster(in, tmp, path, -1)) { abandoned = true; return; }
@@ -128,20 +169,32 @@ public final class PosterCache {
                             }
                         } finally { c.disconnect(); }
                     }
-                    if (!tmp.renameTo(f)) throw new IOException("Poster cache write failed");
+                    synchronized (DISK_LOCK) {
+                        // Another screen can finish the same URL first; never share its partial file.
+                        if (f.isFile() && f.length() > 0) tmp.delete();
+                        else if (!tmp.renameTo(f)) throw new IOException("Poster cache write failed");
+                    }
                     downloaded = true;
                 }
                 if (!posterWanted(path)) { abandoned = true; return; }
+                BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(f.getPath(), bounds);
                 BitmapFactory.Options opts = new BitmapFactory.Options();
                 opts.inSampleSize = 2;
+                int count;
+                synchronized (posters) { count = posterWindow == null ? 6 : Math.max(1, posterWindow.size()); }
+                long budget = Math.min(2L*1024*1024, POSTER_RAM_MAX_BYTES/count);
+                while (bounds.outWidth > 0 && bounds.outHeight > 0
+                        && (long)(bounds.outWidth/opts.inSampleSize)*(bounds.outHeight/opts.inSampleSize)*4 > budget
+                        && opts.inSampleSize < 32768) opts.inSampleSize *= 2;
                 Bitmap bmp = BitmapFactory.decodeFile(f.getPath(), opts);
                 if (bmp == null) {
-                    f.delete(); // Re-download a damaged image next time.
+                    f.delete(); // Retry from the network without retaining corrupt bytes.
                 } else {
                     f.setLastModified(System.currentTimeMillis()); // LRU: recently used images survive.
                     // Disk hits cannot grow the directory; do not scan 200 MiB of cache after every decode.
                     if (downloaded || !posterCacheChecked) {
-                        prunePosterCache(dir);
+                        synchronized (DISK_LOCK) { prunePosterCache(dir); }
                         posterCacheChecked = true;
                     }
                     synchronized (posters) {
@@ -174,8 +227,11 @@ public final class PosterCache {
                     }
                     posterPending.remove(path);
                 }
+                if (!loaded && !abandoned) scheduleRetry();
             }
-        });
+        }); } catch (java.util.concurrent.RejectedExecutionException stopped) {
+            synchronized (posters) { posterPending.remove(path); }
+        }
         return null;
     }
 
@@ -193,23 +249,14 @@ public final class PosterCache {
                 out.write(buffer, 0, count);
             }
         }
+        if (received == 0) throw new IOException("Empty poster download");
         if (expected >= 0 && received != expected) throw new IOException("Incomplete poster download");
         return true;
     }
 
     /** Evict least recently used poster files only after the disk cache exceeds 200 MiB. */
     private static void prunePosterCache(File dir) {
-        File[] files = dir.listFiles((d, name) -> !name.endsWith(".part"));
-        if (files == null) return;
-        long total = 0;
-        for (File f : files) if (f.isFile()) total += f.length();
-        if (total <= POSTER_CACHE_MAX_BYTES) return;
-        Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
-        for (File f : files) {
-            if (total <= POSTER_CACHE_MAX_BYTES) break;
-            long size = f.length();
-            if (f.isFile() && f.delete()) total -= size;
-        }
+        ArtworkDiskCache.trim(dir, POSTER_CACHE_MAX_BYTES, Integer.MAX_VALUE);
     }
 
 }

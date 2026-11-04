@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Comparator;
 
 /** Bounded Dock image cache/decode; request lifetime and active-connection ownership belong to the caller. */
 public final class DockImageLoader {
@@ -19,6 +18,7 @@ public final class DockImageLoader {
         void opened(int token, HttpURLConnection connection);
         void closed(HttpURLConnection connection);
     }
+    private volatile boolean checkedDisk;
     private final Context context;
     private final Requests requests;
 
@@ -40,7 +40,7 @@ public final class DockImageLoader {
         File file = new File(dir, PosterCache.cacheName(url));
         boolean downloaded = !file.isFile();
         if (downloaded) {
-            File part = new File(file.getPath() + ".part");
+            File part = File.createTempFile("dock-", ".part", dir);
             HttpURLConnection connection = null;
             try {
                 InputStream stream;
@@ -63,11 +63,7 @@ public final class DockImageLoader {
             } finally { if (connection != null) { connection.disconnect(); requests.closed(connection); } part.delete(); }
         }
         file.setLastModified(System.currentTimeMillis());
-        File[] files = downloaded ? dir.listFiles() : null;
-        if (files != null) {
-            java.util.Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
-            for (int i = 6; i < files.length; i++) files[i].delete();
-        }
+        if (downloaded || !checkedDisk) { ArtworkDiskCache.trim(dir, 96L*1024*1024, 96); checkedDisk = true; }
         BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(file.getPath(), bounds);
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) { file.delete(); return null; }

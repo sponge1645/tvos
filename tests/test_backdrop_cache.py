@@ -28,12 +28,13 @@ public class BackdropHarness {
   BitmapFactory.bad=true;cache.backdrop(pick(6));worker.drain();check(!cache.hasImage(pick(6)),"unreadable original is deleted");BitmapFactory.bad=false;cache.backdrop(pick(6));worker.drain();check(images.containsKey("/image6"),"failed pending path can be retried");
   Pick downloaded=pick(99);cache.download(downloaded);check(cache.hasImage(downloaded)&&cache.imageFile(downloaded).length()==2&&Connection.closed>0,"original network download completes and disconnects");
   Connection.fail=true;try{cache.download(pick(100));throw new AssertionError("failure expected");}catch(IOException expected){}check(!new File(new File(root,"recs"),"image100.part").exists(),"failed download removes partial file");Connection.fail=false;
-  File dir=new File(root,"recs");File stale=new File(dir,"stale.part");Files.write(stale.toPath(),new byte[]{1});stale.setLastModified(1);for(int i=200;i<230;i++)fixture(root,pick(i));cache.download(pick(300));check(!stale.exists()&&dir.listFiles((d,n)->!n.endsWith(".part")).length==24,"disk pruning removes stale partials and keeps 24 originals");
+  File dir=new File(root,"recs");File stale=new File(dir,"stale.part");Files.write(stale.toPath(),new byte[]{1});stale.setLastModified(1);for(int i=200;i<260;i++)fixture(root,pick(i));cache.download(pick(300));check(!stale.exists()&&dir.listFiles((d,n)->!n.endsWith(".part")).length==48,"disk pruning removes stale partials and keeps 48 originals within byte budget");
   check(cache.backdrop(null)==null,"null pick is safe");System.out.println("PASS: backdrop deduplication, sampling, protected LRU, theme races, trim, decode retry, downloads and disk pruning");
  }
 }'''
 })
 sources['io/tvos/BackdropCache.java']=Path('app/src/io/tvos/BackdropCache.java').read_text()
+sources['io/tvos/artwork/ArtworkDiskCache.java']=Path('app/src/io/tvos/artwork/ArtworkDiskCache.java').read_text()
 with tempfile.TemporaryDirectory(prefix='tvos-backdrop-cache-') as tmp:
  root=Path(tmp)
  for name,content in sources.items():

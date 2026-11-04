@@ -1,8 +1,8 @@
 package io.tvos;
 
 import io.tvos.Recs.Pick;
+import io.tvos.artwork.ArtworkDiskCache;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,7 @@ final class BackdropCache {
     private final Executor io;
     private final Runnable changed;
     private final Supplier<List<Pick>> initialPicks;
-    private volatile boolean light;
+    private volatile boolean light, checkedDisk;
     BackdropCache(Context context, Executor io, Runnable changed, Supplier<List<Pick>> initialPicks) {
         this.context = context.getApplicationContext(); this.io = io;
         this.changed = changed; this.initialPicks = initialPicks;
@@ -50,7 +50,7 @@ final class BackdropCache {
         return null;
     }
     boolean hasImage(Pick p) {
-        return p.backdrop != null && imageFile(p).exists();
+        return p.backdrop != null && imageFile(p).isFile() && imageFile(p).length() > 0;
     }
     File imageFile(Pick p) {
         return new File(new File(context.getCacheDir(), "recs"), p.backdrop.replace("/", ""));
@@ -65,17 +65,27 @@ final class BackdropCache {
     void download(Pick p) throws IOException {
         if (p.backdrop == null || p.backdrop.isEmpty()) return;
         File f = imageFile(p);
-        if (f.exists()) return;
+        if (f.isFile() && f.length() > 0) {
+            f.setLastModified(System.currentTimeMillis());
+            if (!checkedDisk) { prune(f.getParentFile()); checkedDisk = true; }
+            return;
+        }
         //noinspection ResultOfMethodCallIgnored
         f.getParentFile().mkdirs();
-        File part = new File(f.getPath() + ".part");
+        File part = File.createTempFile("backdrop-", ".part", f.getParentFile());
         HttpURLConnection c = (HttpURLConnection) new URL(IMAGES + p.backdrop).openConnection();
         c.setConnectTimeout(8000);
         c.setReadTimeout(20000);
         try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(part)) {
             byte[] buffer = new byte[16384];
-            int n;
-            while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
+            int n; long received = 0, expected = c.getContentLengthLong();
+            if (expected > 16L*1024*1024) throw new IOException("Backdrop exceeds size limit");
+            while ((n = in.read(buffer)) != -1) {
+                received += n;
+                if (received > 16L*1024*1024) throw new IOException("Backdrop exceeds size limit");
+                out.write(buffer, 0, n);
+            }
+            if (received == 0 || expected >= 0 && received != expected) throw new IOException("Incomplete backdrop");
         } catch (IOException e) {
             //noinspection ResultOfMethodCallIgnored
             part.delete();
@@ -83,8 +93,8 @@ final class BackdropCache {
         } finally {
             c.disconnect();
         }
-        if (!part.renameTo(f)) throw new IOException("couldn't save the image");
-        prune(f.getParentFile());
+        if (!part.renameTo(f)) { part.delete(); throw new IOException("couldn't save the image"); }
+        prune(f.getParentFile()); checkedDisk = true;
     }
     private void loadImage(Pick p) {
         synchronized (images) {
@@ -96,9 +106,11 @@ final class BackdropCache {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(f.getPath(), bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IOException("unreadable image bounds");
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = 1;
             while (bounds.outWidth / (opts.inSampleSize * 2) >= Backdrop.W) opts.inSampleSize *= 2;
+            while (bounds.outWidth/opts.inSampleSize > Backdrop.W || bounds.outHeight/opts.inSampleSize > 1080) opts.inSampleSize *= 2;
             Bitmap b = BitmapFactory.decodeFile(f.getPath(), opts);
             if (b == null) throw new IOException("unreadable image");
             AppLog.w("backdrop \u201c" + p.title + "\u201d: " + bounds.outWidth + "×" + bounds.outHeight);
@@ -125,7 +137,7 @@ final class BackdropCache {
             changed.run();
         } catch (IOException | RuntimeException | OutOfMemoryError e) {
             //noinspection ResultOfMethodCallIgnored
-            f.delete();
+            if (e instanceof IOException) f.delete();
             // TV bitmap/shader implementations can fail at runtime; keep the visual fallback,
             // but make unexpected code/platform faults visible without logging private payloads.
             if (e instanceof RuntimeException && !(e instanceof IllegalArgumentException)
@@ -143,20 +155,7 @@ final class BackdropCache {
         return false;
     }
     private static void prune(File dir) {
-        // A download cut off when the system stopped the app leaves its .part behind.
-        long stale = System.currentTimeMillis() - 10 * 60_000L;
-        File[] parts = dir.listFiles((d, name) -> name.endsWith(".part"));
-        for (int i = 0; parts != null && i < parts.length; i++) {
-            //noinspection ResultOfMethodCallIgnored
-            if (parts[i].lastModified() < stale) parts[i].delete();
-        }
-        File[] files = dir.listFiles((d, name) -> !name.endsWith(".part"));
-        if (files == null || files.length <= 24) return;
-        Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
-        for (int i = 0; i < files.length - 24; i++) {
-            //noinspection ResultOfMethodCallIgnored
-            files[i].delete();
-        }
+        ArtworkDiskCache.trim(dir, 96L*1024*1024, 48);
     }
     void retain(Set<String> keep) { synchronized (images) { images.keySet().retainAll(keep); } }
 }

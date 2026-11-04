@@ -103,7 +103,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final HomeDockEditor<HomeApps.Item> dockEditor;
 
     private static final int Z_WEATHER = 6;
-    private HomeWeatherPanel weatherPanel;
+    private HomeWeatherPanel weatherPanel, preparedWeatherPanel;
+    private final Runnable prepareWeather = this::prepareWeatherPanel;
+    private void prepareWeatherPanel() {
+        if (running && preparedWeatherPanel == null && weatherPanel == null)
+            preparedWeatherPanel = new HomeWeatherPanel(activity, data);
+    }
     private float weatherTriggerAlpha = 1;
     private boolean weatherTouch, weatherWasFocused;
     private int widgetIndex;    // with TalkBack on, the drawer's weather card can take the focus
@@ -385,6 +390,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         header.resume();
         if (running) return;
         running = true;
+        Symbols.warmWeather(getContext(), java.util.concurrent.ForkJoinPool.commonPool());
+        handler.removeCallbacks(prepareWeather); handler.postDelayed(prepareWeather, 600);
         genres.resume(); tvGenres.resume(); watchingMenu.resume();
         if (topButtonEnabled(5) || topButtonEnabled(2)) networkStatus.start();
         vpnColor.snap(networkStatus.vpn() ? 1 : 0);
@@ -486,6 +493,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void pause() {
+        handler.removeCallbacks(prepareWeather); preparedWeatherPanel = null;
         if (weatherPanel != null) weatherPanel.dismiss();
         if (!running) return;
         running = false;
@@ -1054,7 +1062,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void openWeather() {
         if (!canOpenWeather() || weatherPanel != null) return;
         zone = Z_WEATHER; okDown = false; click.open(); retarget(false); status.invalidate();
-        weatherPanel = new HomeWeatherPanel(activity, scene, data);
+        handler.removeCallbacks(prepareWeather);
+        weatherPanel = preparedWeatherPanel != null ? preparedWeatherPanel : new HomeWeatherPanel(activity, data);
+        preparedWeatherPanel = null;
         weatherPanel.setTriggerOpacityListener(value -> {
             weatherTriggerAlpha = (float) Math.max(0, Math.min(1, value));
             status.invalidate();

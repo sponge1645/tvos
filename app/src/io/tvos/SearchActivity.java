@@ -42,7 +42,7 @@ import org.json.JSONArray;
 /** A single drawing surface owns search geometry, focus and scrolling. Only text input is native. */
 public final class SearchActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final ExecutorService metadataIo = Executors.newFixedThreadPool(2), artworkIo = Executors.newSingleThreadExecutor();
+    private final ExecutorService metadataIo = Executors.newFixedThreadPool(2), artworkIo = Executors.newFixedThreadPool(2);
     private final List<Recs.Pick> trending = new ArrayList<>(), matches = new ArrayList<>();
     private final List<LocalApp> apps = new ArrayList<>();
     private final List<Target> targets = new ArrayList<>();

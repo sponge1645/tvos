@@ -2,10 +2,8 @@ package io.tvos;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.os.SystemClock;
 
 /** Background images, glass pixels, crossfade and day/night transitions. No view or focus ownership. */
@@ -22,9 +20,7 @@ final class HomeBackground {
     private final int[] glassNight = new int[Backdrop.GW * Backdrop.GH], frostNight = new int[Backdrop.FW * Backdrop.FH];
     private final int[] neutralGlassPx = new int[Backdrop.GW * Backdrop.GH], neutralFrostPx = new int[Backdrop.FW * Backdrop.FH];
     private final int[] frostMix = new int[Backdrop.FW * Backdrop.FH];
-    private Shader nightGradient, lightGradient;
     private final RectF screen = new RectF(), imageBounds = new RectF();
-    private int h;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint imagePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private android.graphics.ColorFilter veilFilter;
@@ -33,7 +29,7 @@ final class HomeBackground {
 
     HomeBackground(Scene scene, Runnable changed) { this.scene = scene; this.changed = changed; }
     float night() { return night; }
-    void resize(int width, int height) { h = height; screen.set(0, 0, width, height); lightGradient = nightGradient = null; }
+    void resize(int width, int height) { screen.set(0, 0, width, height); }
     private static int blend(int a, int b, float f) { return ActionSurface.blend(a, b, f); }
     private float tone(float a, float b) { return a + (b - a) * night; }
     private static float fadeEase(long start, long up) {
@@ -209,21 +205,8 @@ final class HomeBackground {
         // Drawer open: the background lightens (by day) or darkens (at night), as a filter on the drawing itself.
         android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer), blend(0xFFFFFFFF, 0xFF000000, night));
         if (bgTo == null || (fading && bgFrom == null)) {
-            if (lightGradient == null) lightGradient = new LinearGradient(0, 0, 0, h, 0xFF2A2A2C, 0xFF2A2A2C, Shader.TileMode.CLAMP);
-            if (nightGradient == null) nightGradient = new LinearGradient(0, 0, 0, h, 0xFF2A2A2C, 0xFF2A2A2C, Shader.TileMode.CLAMP);
-            fill.setColorFilter(v);
-            fill.setColor(0xFF000000);
-            if (night < 0.999f) {
-                fill.setShader(lightGradient);
-                c.drawRect(screen, fill);
-            }
-            if (night > 0.001f) {
-                fill.setShader(nightGradient);
-                fill.setAlpha(Math.round(255 * night));
-                c.drawRect(screen, fill);
-                fill.setAlpha(255);
-            }
-            fill.setShader(null);
+            fill.setColorFilter(v); fill.setColor(0xFF2A2A2C);
+            c.drawRect(screen, fill);
             fill.setColorFilter(null);
 
         }

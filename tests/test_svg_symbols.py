@@ -23,7 +23,7 @@ sources = {
             opens.put(name,opens.getOrDefault(name,0)+1);return new FileInputStream(new File(root,name));}
         public int count(){return opens.values().stream().mapToInt(i->i).sum();}}''',
     'android/content/Context.java': '''package android.content;import java.io.*;import android.content.res.*;
-        public class Context {final AssetManager assets;public Context(File f){assets=new AssetManager(f);}public AssetManager getAssets(){return assets;}}''',
+        public class Context {final AssetManager assets;public Context(File f){assets=new AssetManager(f);}public AssetManager getAssets(){return assets;}public Context getApplicationContext(){return this;}}''',
     'android/graphics/Path.java': '''package android.graphics;import java.awt.geom.*;
         public class Path {public enum FillType {EVEN_ODD,WINDING};public final Path2D.Float shape=new Path2D.Float();
         public void setFillType(FillType t){shape.setWindingRule(t==FillType.EVEN_ODD?Path2D.WIND_EVEN_ODD:Path2D.WIND_NON_ZERO);}
@@ -77,7 +77,7 @@ sources = {
             static void close(float a,float b){check(Math.abs(a-b)<.01f,a+" != "+b);}
             public static void main(String[] args)throws Exception{
                 File assets=new File(args[0]);Context c=new Context(assets);File symbols=new File(assets,"symbols");
-                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg")&&!name.startsWith("wifi")&&!name.startsWith("airport_")&&!name.equals("tvos_wordmark.svg"));
+                File[] files=symbols.listFiles((d,name)->name.endsWith(".svg")&&!name.startsWith("bad")&&!name.equals("apple_tv_device.svg")&&!name.startsWith("wifi")&&!name.startsWith("airport_"));
                 check(files.length==32,"32 reference-matched SVG symbols");double worst=0;
                 for(File file:files){String name=file.getName().replace(".svg","");SvgSymbol icon;
                     try(InputStream in=new FileInputStream(file)){icon=SvgSymbol.read(in);}
@@ -118,9 +118,10 @@ sources = {
                     }
                 }
 
-                Canvas wordmark=new Canvas(400,160);Symbols.draw(c,wordmark,"tvos_wordmark",200,80,300,0xff505052);
-                check(wordmark.paths>0&&wordmark.depth()==0,"tvOS fallback logo uses native SVG paths");
-                check(!new File(symbols,"tvos_wordmark.png").exists(),"no bitmap fallback bundled for wordmark");
+                java.util.List<Runnable> warm=new java.util.ArrayList<>();Symbols.warmWeather(c,warm::add);
+                check(warm.size()==1,"forecast symbols are queued off the drawing thread");warm.get(0).run();
+                int warmOpens=c.getAssets().count();Symbols.draw(c,new Canvas(100,100),"thunderstorm",50,50,36,0xffffffff);
+                check(c.getAssets().count()==warmOpens,"first forecast draw reuses prepared symbol");Symbols.warmWeather(c,warm::add);check(warm.size()==1,"warmup happens once");
                 check(Bitmap.allocations==0,"ordinary vector drawing does not allocate bitmap masks");
                 close(Symbols.width(c,"home",40),37.5f);close(Symbols.width(c,"wifi",36),38);
                 int opens=c.getAssets().count();for(int i=0;i<100;i++)Symbols.draw(c,new Canvas(100,100),"wifi",50,50,36,0xaaffffff);

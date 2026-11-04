@@ -34,10 +34,11 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
         }
     };
 
-    HomeWeatherPanel(Context context, Scene scene, HomeData data) {
+    HomeWeatherPanel(Context context, HomeData data) {
         super(context); this.data = data;
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         forecast = new ForecastView(context);
+        forecast.prepareLabels(data.weather);
     }
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved); setContentView(forecast);
@@ -98,10 +99,24 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
         private WeatherForecast solarForecast;
         private long solarMinute = -1;
         private boolean weatherDay;
+        private String timeFormatKey = "";
+        private SimpleDateFormat hoursFormat, weekdaysFormat;
+        private TimeZone forecastZone;
         private final WeatherCardBackground background = new WeatherCardBackground();
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF panel = new RectF(), bar = new RectF();
         ForecastView(Context context) { super(context); }
+        void prepareLabels(WeatherForecast w) {
+            String key = w.timezone + Ui.locale().toLanguageTag() + android.text.format.DateFormat.is24HourFormat(getContext());
+            if (!key.equals(timeFormatKey)) {
+                timeFormatKey = key;
+                hoursFormat = new SimpleDateFormat(android.text.format.DateFormat.is24HourFormat(getContext()) ? "HH" : "h a", Ui.locale());
+                weekdaysFormat = new SimpleDateFormat("EEE", Ui.locale());
+                forecastZone = TimeZone.getTimeZone(w.timezone);
+                hoursFormat.setTimeZone(forecastZone); weekdaysFormat.setTimeZone(forecastZone);
+            }
+        }
+
         @Override public boolean onTouchEvent(MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_UP && !panel.contains(event.getX(), event.getY())) close();
             return true;
@@ -136,9 +151,9 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
             label(c, "↑" + HomeData.degrees(w.max) + " ↓" + HomeData.degrees(w.min),
                     704, 194, 27, ink, Paint.Align.RIGHT, 300);
             fill.setColor(0x658E939E); c.drawRect(76, 238, 704, 239, fill);
-            TimeZone zone = TimeZone.getTimeZone(w.timezone);
-            SimpleDateFormat hours = new SimpleDateFormat(android.text.format.DateFormat.is24HourFormat(getContext()) ? "HH" : "h a", Ui.locale());
-            hours.setTimeZone(zone);
+            prepareLabels(w);
+            TimeZone zone = forecastZone;
+            SimpleDateFormat hours = hoursFormat;
             int next = 0;
             while (next < w.hours.size() && w.hours.get(next) <= now) next++;
             int count = Math.min(6, w.hours.size() - next);
@@ -160,7 +175,7 @@ final class HomeWeatherPanel extends Dialog implements HomeData.Listener {
                 low = Math.min(low, d.min); high = Math.max(high, d.max);
             }
             double span = Math.max(1, high - low);
-            SimpleDateFormat weekdays = new SimpleDateFormat("EEE", Ui.locale()); weekdays.setTimeZone(zone);
+            SimpleDateFormat weekdays = weekdaysFormat;
             for (int i = first; i < end; i++) {
                 WeatherForecast.Day d = w.days.get(i); float y = 470 + (i - first) * 55;
                 label(c, weekdays.format(new Date(d.time)), 76, y+12, 28, ink, Paint.Align.LEFT, 100);
