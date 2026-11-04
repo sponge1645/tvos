@@ -205,7 +205,7 @@ final class HomeBackground {
         float e = bgFadeAt == 0 ? 1 : fadeEase(bgFadeAt, up);
         boolean fading = bgFadeAt != 0;
         // Wide artwork dims in both themes; poster categories keep their day/night treatment.
-        android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer), wideArtworkMode ? 0xFF000000 : blend(0xFFFFFFFF, 0xFF000000, night));
+        android.graphics.ColorFilter v = veil((wideArtworkMode ? tone(0.58f, 0.42f) : tone(0.32f, 0.42f)) * Ui.clamp(drawer), wideArtworkMode ? 0xFF000000 : blend(0xFFFFFFFF, 0xFF000000, night));
         if (bgTo == null || (fading && bgFrom == null)) {
             fill.setColorFilter(v); fill.setColor(0xFF1C1C1E);
             c.drawRect(screen, fill);
