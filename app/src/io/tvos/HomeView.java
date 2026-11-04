@@ -1240,6 +1240,21 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         focusSound();
     }
 
+    /** Vertical navigation follows visible horizontal positions, including the left widget. */
+    private void focusHeaderAbove(float x) {
+        int target = -1; float distance = Float.MAX_VALUE;
+        for (int i = 0; i < topRects.length; i++) if (topControlVisible(i)) {
+            float d = Math.abs(topRects[i].centerX() - x);
+            if (d < distance) { distance = d; target = i; }
+        }
+        if (!search.active && canOpenWeather() && Math.abs(header.weatherBounds().centerX() - x) < distance) {
+            zone = Z_WEATHER;
+        } else {
+            zone = Z_TOP; topIndex = target >= 0 ? target : availableTopButton(5);
+        }
+        status.invalidate();
+    }
+
     private static int nearest(RectF[] rects, float x) {
         return nearest(rects, rects.length, x);
     }
@@ -1639,7 +1654,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             case Z_WEATHER:
                 if (dy > 0 && canOpenWeather()) {
                     if (picksOn() && !cards.isEmpty()) { zone = Z_CARDS; cardIndex = 0; }
-                    else zone = Z_SHELF;
+                    else { zone = Z_SHELF; if (!dock.items.isEmpty()) dock.index = 0; }
                 } else if (dx > 0 || !canOpenWeather()) {
                     zone = Z_TOP; topIndex = firstTopControl();
                     status.invalidate();
@@ -1651,8 +1666,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     zone = Z_TOP;
                     topIndex = search.active || !picksOn() ? availableTopButton(5) : tab;
                 } else if (!picksOn() || (cards.isEmpty() && true)) {
-                    zone = Z_TOP;
-                    topIndex = search.active || !picksOn() ? availableTopButton(5) : tab;
+                    focusHeaderAbove(dock.rects[dock.index].centerX());
                 } else {
                     zone = Z_CARDS;
                     cardIndex = nearest(cardRects, cards.size(), dock.rects[dock.index].centerX());
@@ -1707,6 +1721,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 } else if (dy > 0) {
                     if (!picksOn() || (cards.isEmpty() && true)) {
                         zone = Z_SHELF;
+                        if (!dock.items.isEmpty()) dock.index = nearest(dock.rects, dock.rects.length, topRects[topIndex].centerX());
                     } else {
                         zone = Z_CARDS;
                         cardIndex = nearest(cardRects, cards.size(), topRects[topIndex].centerX());
