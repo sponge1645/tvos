@@ -66,11 +66,11 @@ public final class SearchActivity extends Activity {
     private Recs.Pick detail;
     private StaticLayout detailTitle, detailOverview, detailMeta;
     private String detailArt = "", problem = "";
-    private float scale, scroll, scrollDestination, contentHeight, detailActionsTop, searchScroll;
+    private float scale, scroll, scrollDestination, contentHeight, resultsTop, detailActionsTop, searchScroll;
     private int selected = -1, savedSelected = -1, column, generation;
     private long lastFrame;
     private boolean running, closed, initialInput = true, focusAfterSearch;
-    private boolean night, hasRecent;
+    private boolean night;
     private android.animation.ValueAnimator scrolling;
     private final List<Spring> focus = new ArrayList<>();
 
@@ -160,9 +160,8 @@ public final class SearchActivity extends Activity {
         String focusedLabel = selected >= 0 && selected < targets.size() ? targets.get(selected).label : "";
         boolean restoreFocus = page.hasFocus() && !query.hasFocus();
         targets.clear(); posterTargets.clear(); focus.clear(); selected = -1;
-        target(32, 50, 205, 58, "‹  " + text(R.string.home_search), -1, this::finish);
         String value = query.getText().toString().trim();
-        hasRecent = value.isEmpty() && !recent().isEmpty();
+        boolean hasRecent = value.isEmpty() && !recent().isEmpty();
         if (value.isEmpty()) {
             float x = 80; textPaint.setTextSize(28); textPaint.setTypeface(Ui.medium);
             for (String entry : recent()) {
@@ -178,12 +177,13 @@ public final class SearchActivity extends Activity {
                 target(x, 275, width, 64, app.label, -1, () -> { remember(); Intent intent = HomeApps.launchIntent(getPackageManager(), app.pkg); if (intent != null) AppLaunch.start(this, intent, "Search app"); }); x += width+24;
             }
         }
+        resultsTop = targets.isEmpty() ? 370 : 480;
         List<Recs.Pick> picks = value.isEmpty() ? trending : matches;
         for (int i = 0; i < Math.min(64, picks.size()); i++) {
             final Recs.Pick pick = picks.get(i);
-            posterTargets.add(target(80+(i%6)*300, 480+(i/6)*510, 260, 475, pick.title, i, () -> openDetail(pick)));
+            posterTargets.add(target(80+(i%6)*300, resultsTop+(i/6)*510, 260, 475, pick.title, i, () -> openDetail(pick)));
         }
-        contentHeight = picks.isEmpty() ? 1080 : Math.max(1080, 480 + ((Math.min(64, picks.size())-1)/6)*510 + 475 + 32);
+        contentHeight = picks.isEmpty() ? 1080 : Math.max(1080, resultsTop + ((Math.min(64, picks.size())-1)/6)*510 + 475 + 32);
         if (restoreFocus && !focusedLabel.isEmpty()) for (int i = 0; i < targets.size(); i++) {
             if (focusedLabel.equals(targets.get(i).label)) { selected = i; focus.get(i).snap(1); break; }
         }
@@ -240,7 +240,7 @@ public final class SearchActivity extends Activity {
         boolean ok = key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER || key == KeyEvent.KEYCODE_NUMPAD_ENTER;
         if (query.hasFocus() && detail == null) {
             if (key != KeyEvent.KEYCODE_DPAD_DOWN) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) { if (targets.size() > 1 && targets.get(1).poster < 0) select(1, false); else selectFirstPoster(); }
+            if (event.getAction() == KeyEvent.ACTION_DOWN) { if (!targets.isEmpty() && targets.get(0).poster < 0) select(0, false); else selectFirstPoster(); }
             return true;
         }
         if (!arrow && !ok) return false;
@@ -359,11 +359,10 @@ public final class SearchActivity extends Activity {
             for (Spring spring : focus) moving |= spring.step(dt);
             if (detail == null) {
                 Symbols.draw(SearchActivity.this, c, "search", 125, 194, 48, muted());
-                paint.setColor(night ? 0x35FFFFFF : 0x351D1D1F); c.drawRect(80,370,1840,371,paint);
+                paint.setColor(night ? 0x35FFFFFF : 0x351D1D1F); c.drawRect(80,resultsTop-110,1840,resultsTop-109,paint);
                 boolean empty = query.getText().toString().trim().isEmpty();
-                if (empty && hasRecent) label(c, text(R.string.search_recent), 80, 255, 27, muted());
-                label(c, text(empty ? R.string.search_trending : R.string.search_titles), 80, 447, 30, muted());
-                if (!empty && matches.isEmpty()) label(c, !problem.isEmpty() ? problem : text(query.length() < 3 ? R.string.search_minimum : R.string.search_loading), 80, 520, 28, muted());
+                label(c, text(empty ? R.string.search_trending : R.string.search_titles), 80, resultsTop-33, 30, muted());
+                if (!empty && matches.isEmpty()) label(c, !problem.isEmpty() ? problem : text(query.length() < 3 ? R.string.search_minimum : R.string.search_loading), 80, resultsTop+40, 28, muted());
                 titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(31); titlePaint.setColor(ink()); metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(25); metaPaint.setColor(muted());
                 posters.begin(1, night ? 1 : 0, 0, 0, true, selected >= 0 && targets.get(selected).poster >= 0, titlePaint, metaPaint);
                 for (int i = 0; i < targets.size(); i++) {
