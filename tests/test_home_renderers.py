@@ -17,10 +17,11 @@ public class HomeRenderHarness {
  static Paint paint(float size){return Ui.text(Ui.medium,size,0xFF1D1D1F);}
  static void background(){
   Scene scene=new Scene();int[] changes={0};HomeBackground b=new HomeBackground(scene,()->changes[0]++);b.resize(1920,1080);SystemClock.now=100;
-  Canvas c=new Canvas();b.draw(c,0);check(entries(c,"rect").size()==1,"day gradient without photo");int gradients=LinearGradient.allocations;b.draw(new Canvas(),0);check(LinearGradient.allocations==gradients,"gradient reused");
+  int[] marks={0};b.setFallbackWordmark((canvas,x,y,width,color)->{marks[0]++;check(x==960||x==640,"wordmark center follows viewport");near(y,x*.410625f,"reference height");near(width,x*.3125f,"reference width");});
+  Canvas c=new Canvas();b.draw(c,0);check(entries(c,"rect").size()==1,"day gradient without photo");int gradients=LinearGradient.allocations;b.draw(new Canvas(),0);check(marks[0]==2,"fallback SVG drawn while no image exists");check(LinearGradient.allocations==gradients,"gradient reused");
   Backdrop a=new Backdrop(10),next=new Backdrop(20);b.show(a);check(scene.glass==a.lightGlass&&scene.frost==a.frost,"first photo populates glass immediately");check(b.tickFade(900,true),"first transition completes");
   SystemClock.now=1000;b.show(next);check(scene.from==a.lightGlass&&scene.to==next.lightGlass,"photo crossfade pair");b.tickFade(1200,true);near(scene.mix,.5f,"halfway glass mix");check(scene.frost[0]==0xFFCCCCCC,"frost pixels blended");
-  c=new Canvas();SystemClock.now=1200;b.draw(c,1);check(entries(c,"bitmap").size()==2,"both photos in transition");check(entries(c,"bitmap").get(0).filter instanceof ColorMatrixColorFilter,"drawer veil applied in bitmap drawing");
+  c=new Canvas();SystemClock.now=1200;b.draw(c,1);check(entries(c,"bitmap").size()==2,"both photos in transition");check(marks[0]==2,"loaded art suppresses fallback wordmark");check(entries(c,"bitmap").get(0).filter instanceof ColorMatrixColorFilter,"drawer veil applied in bitmap drawing");
   b.tickFade(1800,true);check(scene.glass==next.lightGlass&&!b.tickFade(1801,true),"settled target no longer retains active transition");
   b.checkNight(true,false);check(b.night()==1&&scene.glass==next.nightGlass&&changes[0]==1,"immediate night updates glass");
   c=new Canvas();b.draw(c,0);check(entries(c,"bitmap").size()==1&&entries(c,"bitmap").get(0).text.equals("21"),"night image");check(b.profilePixels()==next.nightFrost,"profile uses existing tiny night pixels");

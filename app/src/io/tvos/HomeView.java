@@ -254,6 +254,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     HomeView(Activity a) {
         super(a);
         activity = a;
+        background.setFallbackWordmark((canvas, x, y, width, color) ->
+                Symbols.draw(a, canvas, "tvos_wordmark", x, y, width * (144f/152), color));
         appWork = new HomeAppWork(a.getApplicationContext(), LOADER, handler, () -> running,
                 (loadedShelf, drawer, loadedOthers) -> {
                     setShelf(loadedShelf);
