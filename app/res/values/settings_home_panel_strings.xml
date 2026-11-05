@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_weather_view">View</string>
+    <string name="settings_weather_view">Show</string>
+    <string name="settings_weather_none">None</string>
     <string name="settings_weather_home">On Home Screen</string>
     <string name="settings_weather_bottom">On Bottom Panel</string>
     <string name="settings_weather_both">Both</string>
