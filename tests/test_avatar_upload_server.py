@@ -33,6 +33,15 @@ with tempfile.TemporaryDirectory() as d:
   CountDownLatch preparing=new CountDownLatch(1),release=new CountDownLatch(1),discarded=new CountDownLatch(1);AtomicInteger late=new AtomicInteger();
   AvatarUploadServer cancelled=new AvatarUploadServer(InetAddress.getLoopbackAddress(),new byte[0],bytes->{preparing.countDown();try{release.await(2,TimeUnit.SECONDS);}catch(InterruptedException e){throw new IOException(e);}return new AvatarUploadServer.Prepared(){public void commit(){late.incrementAndGet();}public void close(){discarded.countDown();}};},()->{});cancelled.start();String cancelledUpload=uploadPath(cancelled);
   Thread client=new Thread(()->{try{request(cancelled,"POST",cancelledUpload,"Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{42});}catch(Exception expected){}});client.start();check(preparing.await(2,TimeUnit.SECONDS),"prepare in progress");cancelled.close();release.countDown();client.join(2000);check(discarded.await(2,TimeUnit.SECONDS)&&late.get()==0,"leaving QR cancels publication and discards prepared image");
+  AtomicInteger committed=new AtomicInteger(),notified=new AtomicInteger();
+  try(AvatarUploadServer broken=new AvatarUploadServer(InetAddress.getLoopbackAddress(),new byte[0],bytes->new AvatarUploadServer.Prepared(){public void commit(){committed.incrementAndGet();}public void close(){}},notified::incrementAndGet)){
+   broken.start();String host=new URI(broken.url()).getAuthority();
+   byte[] wire=("POST "+uploadPath(broken)+" HTTP/1.1\\r\\nHost: "+host+"\\r\\nContent-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n\\r\\nx").getBytes(StandardCharsets.US_ASCII);
+   Socket disconnected=new Socket(){public InputStream getInputStream(){return new ByteArrayInputStream(wire);}public OutputStream getOutputStream(){return new OutputStream(){public void write(int b)throws IOException{throw new IOException("peer closed");}};}};
+   java.lang.reflect.Method handle=AvatarUploadServer.class.getDeclaredMethod("handle",Socket.class);handle.setAccessible(true);
+   try{handle.invoke(broken,disconnected);throw new AssertionError("response should fail");}catch(java.lang.reflect.InvocationTargetException expected){check(expected.getCause() instanceof IOException,"response write failed");}
+   check(committed.get()==1&&notified.get()==1,"successful commit notifies TV exactly once even when response fails");
+  }
   System.out.println("PASS: real HTTP, session token, nonce/length, type/body bounds, Origin, single commit and cancellation race");
  }}''')
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',d,*map(str,root.glob('*.java'))],check=True)

@@ -75,7 +75,8 @@ public final class AvatarUploadServer implements AutoCloseable {
             try(Prepared prepared=sink.prepare(data)) {
                 synchronized(commitLock){if(!running||System.nanoTime()>=expires)throw new IOException("Session closed");prepared.commit();running=false;}
             } catch(IOException|RuntimeException|OutOfMemoryError invalid){reply(out,422,"application/json","{}");return;}
-            reply(out,200,"application/json","{\"ok\":true}");uploaded.run();
+            try { reply(out,200,"application/json","{\"ok\":true}"); }
+            finally { uploaded.run(); }
         } catch(EOFException incomplete){ /* ignore a cancelled body */ }
     }
     private static String line(InputStream in,int[] remaining,long deadline) throws IOException {

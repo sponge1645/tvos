@@ -69,7 +69,7 @@ public final class SearchActivity extends Activity {
     private float scale, scroll, scrollDestination, contentHeight, resultsTop, detailActionsTop, searchScroll;
     private int selected = -1, savedSelected = -1, column, generation;
     private long lastFrame;
-    private boolean running, closed, initialInput = true, focusAfterSearch;
+    private boolean running, closed, initialInput = true, focusAfterSearch, detailNeedsLoad;
     private boolean night;
     private android.animation.ValueAnimator scrolling;
     private boolean transitioning;
@@ -105,7 +105,7 @@ public final class SearchActivity extends Activity {
         backgroundCanvas.drawPaint(backgroundPaint);
         history = getSharedPreferences("search-history", MODE_PRIVATE);
         page = new SearchPage();
-        images = new PosterCache(this, () -> main.post(() -> { if (!closed) page.invalidate(); }), artworkIo, AppLog::w);
+        images = new PosterCache(this, () -> main.post(() -> { if (running && !closed) page.invalidate(); }), artworkIo, AppLog::w);
         images.setWindow(new HashSet<>());
         posters = new PosterRenderer(Recs.get(this), shadows, rounded, 64);
         search = new SearchController(main, Recs.get(this), () -> running && detail == null, found -> {
@@ -192,6 +192,7 @@ public final class SearchActivity extends Activity {
     }
     private List<Recs.Pick> picks() { return query.getText().toString().trim().isEmpty() ? trending : matches; }
     private void refreshImages() {
+        if (!running || closed) { images.setWindow(java.util.Collections.emptySet()); return; }
         Set<String> wanted = new HashSet<>();
         if (detail != null) { if (!detailArt.isEmpty()) wanted.add(detailArt); }
         else for (int index : posterTargets) {
@@ -331,14 +332,27 @@ public final class SearchActivity extends Activity {
     }
     private void showDetail(Recs.Pick pick) {
         remember(); hideKeyboard(); search.cancel(); savedSelected = selected; searchScroll = scroll; detail = pick; generation++;
-        int expected = generation; detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
+        detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
         buildDetail(null); scrollTo(0, false); select(0, false);
+        detailNeedsLoad = true;
+        loadDetail();
+    }
+    private void loadDetail() {
+        if (!running || closed || detail == null || !detailNeedsLoad) return;
         if (detailWork != null) detailWork.cancel(false);
+        final Recs.Pick pick = detail;
+        final int expected = generation;
         detailWork = metadataIo.submit(() -> {
             try { SearchData.Detail data = SearchData.detail(pick); main.post(() -> {
-                if (closed || generation != expected || detail != pick) return;
+                if (!running || closed || generation != expected || detail != pick) return;
+                detailNeedsLoad = false;
                 if (!data.backdrop.isEmpty()) detailArt = wide(data.backdrop); buildDetail(data); if (selected >= 0) select(selected, false); refreshImages(); page.invalidate();
-            }); } catch (java.io.IOException | org.json.JSONException e) { main.post(() -> { if (!closed && generation == expected && detail != null) { detailOverview = paragraph(text(R.string.search_detail_unavailable), 30, 0xFFDDDFE4, 820, 5); page.invalidate(); } }); }
+            }); } catch (java.io.IOException | org.json.JSONException e) { main.post(() -> {
+                if (running && !closed && generation == expected && detail == pick) {
+                    detailNeedsLoad = false;
+                    detailOverview = paragraph(text(R.string.search_detail_unavailable), 30, 0xFFDDDFE4, 820, 5); page.invalidate();
+                }
+            }); }
         });
     }
     private void buildDetail(SearchData.Detail data) {
@@ -444,8 +458,20 @@ public final class SearchActivity extends Activity {
         }
     }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); if (focused && initialInput) { initialInput = false; query.post(() -> { if (running && detail == null && query.hasFocus()) keyboard(); }); } }
-    @Override protected void onResume() { super.onResume(); running = true; shortcuts.reload(); search.resume(query.getText().toString().trim()); search.restore(query.getText().toString().trim(), !matches.isEmpty()); page.invalidate(); }
-    @Override protected void onPause() { running = false; resetPageTransition(); search.pause(detail == null); shortcuts.cancel(); if (scrolling != null) scrolling.cancel(); super.onPause(); }
+    @Override protected void onResume() {
+        super.onResume(); running = true; shortcuts.reload();
+        search.resume(query.getText().toString().trim());
+        search.restore(query.getText().toString().trim(), !matches.isEmpty());
+        refreshImages(); loadDetail(); page.invalidate();
+    }
+    @Override protected void onPause() {
+        running = false; generation++;
+        if (detailWork != null) detailWork.cancel(false);
+        images.setWindow(java.util.Collections.emptySet()); rounded.clear(); posters.clear();
+        resetPageTransition(); search.pause(detail == null); shortcuts.cancel();
+        if (scrolling != null) scrolling.cancel();
+        super.onPause();
+    }
     @Override protected void onSaveInstanceState(Bundle state) { state.putString("query", query.getText().toString()); super.onSaveInstanceState(state); }
     @Override protected void onDestroy() { closed = true; search.cancel(); shortcuts.close(); images.setWindow(new HashSet<>()); metadataIo.shutdownNow(); artworkIo.shutdownNow(); main.removeCallbacksAndMessages(null); rounded.clear(); shadows.clear(); posters.clear(); super.onDestroy(); }
     @Override public boolean dispatchKeyEvent(KeyEvent e) { if (shortcuts != null && shortcuts.onKey(e)) return true; if (page != null && key(e)) return true; return super.dispatchKeyEvent(e); }

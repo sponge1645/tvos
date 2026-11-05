@@ -16,7 +16,12 @@ import java.util.concurrent.Executor;
 final class DockContinueArtwork {
     private final Context context;
     private final Handler main;
-    private final Executor worker;
+    private static final Executor CANCEL = java.util.concurrent.Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "resume-artwork-cancel"); thread.setDaemon(true); return thread;
+    });
+    private final Executor worker, cancel;
+    private final Object connectionLock = new Object();
+    private java.net.HttpURLConnection activeConnection;
     private final Runnable changed;
     private final PosterCache images;
     private final Map<String, String> paths = new HashMap<>(), logoPaths = new HashMap<>();
@@ -26,15 +31,40 @@ final class DockContinueArtwork {
     private int first;
 
     DockContinueArtwork(Context context, Handler main, Executor worker, Runnable changed) {
-        this.context = context; this.main = main; this.worker = worker; this.changed = changed;
+        this(context, main, worker, changed, CANCEL);
+    }
+    DockContinueArtwork(Context context, Handler main, Executor worker, Runnable changed, Executor cancel) {
+        this.context = context; this.main = main; this.worker = worker; this.changed = changed; this.cancel = cancel;
         images = new PosterCache(context, () -> main.post(() -> {
             if (!items.isEmpty()) changed.run();
         }), AppLog::w);
     }
 
     void reset() {
-        generation++; paths.clear(); logoPaths.clear(); pending.clear();
+        java.net.HttpURLConnection connection;
+        synchronized (connectionLock) {
+            generation++; connection = activeConnection; activeConnection = null;
+        }
+        if (connection != null) cancel.execute(connection::disconnect);
+        paths.clear(); logoPaths.clear(); pending.clear();
         items = Collections.emptyList(); first = 0;
+    }
+
+    private io.tvos.network.ConnectionObserver observer(int token) {
+        return new io.tvos.network.ConnectionObserver() {
+            public void opened(java.net.HttpURLConnection connection) {
+                synchronized (connectionLock) {
+                    if (token == generation) { activeConnection = connection; return; }
+                }
+                connection.disconnect();
+                throw new java.util.concurrent.CancellationException("Resume artwork cancelled");
+            }
+            public void closed(java.net.HttpURLConnection connection) {
+                synchronized (connectionLock) {
+                    if (activeConnection == connection) activeConnection = null;
+                }
+            }
+        };
     }
 
     void clear() { reset(); images.setWindow(Collections.emptySet()); }
@@ -51,6 +81,7 @@ final class DockContinueArtwork {
             int token = generation;
             worker.execute(() -> {
                 if (token != generation) return;
+                io.tvos.network.ConnectionObserver observer = observer(token);
                 String url = "";
                 DockArtwork resolved = null;
                 String year = p.watchingYear == null ? "" : p.watchingYear;
@@ -69,12 +100,12 @@ final class DockContinueArtwork {
                 year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
                 try {
                     if (url.isEmpty()) {
-                        resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
+                        resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, observer);
                         url = resolved.backdrop;
                     }
                 }
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
-                    AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
+                    if (token == generation) AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
                 if (token != generation) return;
                 final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
@@ -92,16 +123,16 @@ final class DockContinueArtwork {
                     if (token != generation) return;
                     try {
                         DockArtwork artwork = resolvedArtwork != null ? resolvedArtwork : DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster,
-                                logoYear, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
+                                logoYear, p.kind == null ? "" : p.kind, observer);
                         if (token != generation) return;
-                        DockArtwork.loadLogo(artwork, io.tvos.network.ConnectionObserver.NONE);
+                        DockArtwork.loadLogo(artwork, observer);
                         if (artwork.logo.isEmpty() || token != generation) return;
                         main.post(() -> {
                             if (token != generation) return;
                             logoPaths.put(key, artwork.logo); window(); changed.run();
                         });
                     } catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
-                        AppLog.w("Dock resume logo unavailable: " + e.getClass().getSimpleName());
+                        if (token == generation) AppLog.w("Dock resume logo unavailable: " + e.getClass().getSimpleName());
                     }
                 });
             });
