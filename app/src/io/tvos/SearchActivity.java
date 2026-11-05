@@ -304,7 +304,10 @@ public final class SearchActivity extends Activity {
         });
     }
     private StaticLayout paragraph(String value, float size, int color, int width, int lines) {
-        TextPaint p = new TextPaint(Paint.ANTI_ALIAS_FLAG); p.setTypeface(Ui.medium); p.setTextSize(size); p.setColor(color);
+        return paragraph(value, size, color, width, lines, Ui.medium);
+    }
+    private StaticLayout paragraph(String value, float size, int color, int width, int lines, android.graphics.Typeface font) {
+        TextPaint p = new TextPaint(Paint.ANTI_ALIAS_FLAG); p.setTypeface(font); p.setTextSize(size); p.setColor(color);
         return StaticLayout.Builder.obtain(value, 0, value.length(), p, width).setMaxLines(lines).setEllipsize(TextUtils.TruncateAt.END).setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(4, 1).setIncludePad(false).build();
     }
     private void openDetail(Recs.Pick pick) {
@@ -356,7 +359,7 @@ public final class SearchActivity extends Activity {
         });
     }
     private void buildDetail(SearchData.Detail data) {
-        detailTitle = paragraph(detail.title, 64, 0xFFFFFFFF, 820, 2);
+        detailTitle = paragraph(detail.title, 64, 0xFFFFFFFF, 820, 2, Ui.displayBold);
         List<String> values = new ArrayList<>(); String year = "tv".equals(detail.kind) ? detail.tvOrigin : detail.movieOrigin;
         if (year != null && !year.isEmpty()) values.add(year);
         values.add(text("tv".equals(detail.kind) ? R.string.search_series : R.string.search_movie));
