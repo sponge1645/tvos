@@ -548,20 +548,22 @@ public class SettingsActivity extends Activity {
 
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
+            boolean selection = screen == LANGUAGE || screen == HOME_SCREEN || screen == MOVIE_SERVICE;
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
-                row.kind = screen == LANGUAGE ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
+                row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = screen == CITY && i == 1 && Prefs.automaticRegion();
                 boolean chevron = menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
                         : chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
                 row.fitValue = screen == MEDIA || screen == CITY;
-                row.showValue = screen != MOVIE_SERVICE && screen != LANGUAGE;
-                if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.SERVICE_CHECK;
+                row.showValue = !selection;
+                if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.PICKER_CHECK;
                 if (screen == LANGUAGE && i == ("ru".equals(Prefs.language()) ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
+                if (screen == HOME_SCREEN && i == (Prefs.homeContinue() ? 1 : 0)) row.marker = Marker.PICKER_CHECK;
                 boolean signal = screen == ABOUT && i == 8 && values[i] != null && values[i].matches("[0-5]/5");
                 if (signal) row.showValue = false;
                 drawRow(c);
