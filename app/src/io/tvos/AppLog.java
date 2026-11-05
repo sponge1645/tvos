@@ -9,6 +9,18 @@ final class AppLog {
     static void w(String message) {
         Log.i("tvOS", message);
     }
+    static boolean artworkEnabled() { return Log.isLoggable("tvOS-Artwork", Log.DEBUG); }
+    static void artwork(String message) {
+        if (artworkEnabled()) Log.d("tvOS-Artwork", message.replace('\n', ' ').replace('\r', ' '));
+    }
+    static void artworkError(String operation, Exception failure) {
+        if (!artworkEnabled()) return;
+        String message = failure.getMessage();
+        String reason = message != null && (message.matches("TMDB returned HTTP [0-9]{3}")
+                || message.equals("TMDB rejected the key") || message.equals("no TMDB key"))
+                ? message : failure.getClass().getSimpleName();
+        artwork(operation + ": " + reason);
+    }
     /** Diagnose unexpected code/platform faults without logging response bodies, URLs or keys. */
     static void unexpected(String operation, RuntimeException failure) {
         StringBuilder message = new StringBuilder(operation);

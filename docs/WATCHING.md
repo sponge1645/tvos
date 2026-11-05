@@ -102,3 +102,13 @@ Published content images must resolve through PackageManager to the publishing
 package. Resource URIs must name that package; HTTPS CDN images remain supported.
 Missing, foreign or unavailable content providers are rejected. No new URI grants
 are requested. APK download trust is documented in APK-SOURCES.md.
+
+## Диагностика изображений продолжения просмотра
+
+Включить перед воспроизведением: `adb shell setprop log.tag.tvOS-Artwork DEBUG`.
+После перезапуска tvOS лог показывает исходные название/год/тип, год из провайдера,
+кандидатов TMDB и выбранный ID, источник постера, статус логотипа и размер декодирования.
+Сбор: `adb logcat -d -t 4000 -s tvOS-Artwork:D tvOS:I`.
+Выключить: `adb shell setprop log.tag.tvOS-Artwork INFO`.
+По умолчанию подробный лог выключен. Полные URL и ключи не выводятся;
+при включении в лог попадают названия фильмов из истории просмотра.

@@ -61,7 +61,7 @@ def files():
 }''',
  'android/widget/Toast.java':'''package android.widget;public class Toast {public static final int LENGTH_SHORT=0;public static int shown;
  public static Toast makeText(android.content.Context c,String s,int length){return new Toast();}public void show(){shown++;}}''',
- 'android/util/Log.java':'''package android.util;import java.util.*;public class Log {
+ 'android/util/Log.java':'''package android.util;import java.util.*;public class Log {public static final int DEBUG=3;public static boolean isLoggable(String tag,int level){return false;}public static void d(String tag,String value){}
  public static int errors,infos;public static final List<String> messages=new ArrayList<>();
  public static void i(String tag,String value){infos++;messages.add(value);}public static void e(String tag,String value){errors++;messages.add(value);}
  public static void reset(){errors=infos=0;messages.clear();}

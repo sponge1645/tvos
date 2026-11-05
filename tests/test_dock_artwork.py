@@ -7,7 +7,7 @@ f=files()
 f['io/tvos/home/dock/CaptionTransition.java']=Path('app/src/io/tvos/home/dock/CaptionTransition.java').read_text()
 f['android/text/TextPaint.java']=f['android/text/TextPaint.java'].replace('public TextPaint(){}','public TextPaint(){}public TextPaint(int flags){super(flags);}')
 f['io/tvos/DockBackdrop.java']='''package io.tvos;import android.graphics.Bitmap;class DockBackdrop {static class Artwork {final Backdrop background;final Bitmap logo;final String title;Artwork(Backdrop b,String t,Bitmap l){background=b;title=t;logo=l;}}}'''
-f['io/tvos/AppLog.java']='package io.tvos;class AppLog {static void w(String s){}}'
+f['io/tvos/AppLog.java']='package io.tvos;class AppLog {static boolean artworkEnabled(){return false;}static void artwork(String s){}static void artworkError(String op,Exception e){}static void w(String s){}}'
 f['io/tvos/TmdbClient.java']='''package io.tvos;import org.json.*;class TmdbClient {static boolean key=true,failLogo;static JSONObject search,images,englishSearch;static int requests;static String lastSearch,lastImages;static boolean hasKey(){return key;}static JSONObject get(String path,io.tvos.network.ConnectionObserver observer)throws java.io.IOException,org.json.JSONException {requests++;if(path.startsWith("/search/")){lastSearch=path;return englishSearch!=null&&path.contains("language=en")?englishSearch:search;}lastImages=path;if(failLogo)throw new java.io.IOException();return images;}}'''
 for name in ['DockArtwork','DockBanner']:f['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 f['io/tvos/DockArtworkHarness.java']='''package io.tvos;import org.json.*;import android.graphics.*;import android.os.SystemClock;

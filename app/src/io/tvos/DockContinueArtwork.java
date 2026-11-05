@@ -78,11 +78,15 @@ final class DockContinueArtwork {
             Recs.Pick p = items.get(i);
             String key = p.watchingKey;
             if (paths.containsKey(key) || !pending.add(key)) continue;
-            int token = generation;
+            int token = generation, itemIndex = i;
             worker.execute(() -> {
                 if (token != generation) return;
                 io.tvos.network.ConnectionObserver observer = observer(token);
-                String url = "";
+                String url = "", source = "history-fallback";
+                if (AppLog.artworkEnabled()) AppLog.artwork("resume input: item=" + itemIndex + ", package=" + p.pkg
+                        + ", title=" + p.title + ", year=" + p.watchingYear + ", kind=" + p.kind
+                        + ", posterPresent=" + (p.poster != null && !p.poster.isEmpty())
+                        + ", backdropPresent=" + (p.backdrop != null && !p.backdrop.isEmpty()));
                 DockArtwork resolved = null;
                 String year = p.watchingYear == null ? "" : p.watchingYear;
                 try {
@@ -90,8 +94,9 @@ final class DockContinueArtwork {
                             (image, owner) -> ProviderImages.allowed(context, image, owner));
                     io.tvos.watching.DockPrograms.Candidate published = programs.forResume(p.pkg, p.title, p.poster);
                     if (published != null) {
+                        if (AppLog.artworkEnabled()) AppLog.artwork("published: item=" + itemIndex + ", year=" + published.year + ", wideCount=" + published.urls.size());
                         if (!published.year.isEmpty()) year = published.year;
-                        if (!published.urls.isEmpty()) url = published.urls.get(0);
+                        if (!published.urls.isEmpty()) { url = published.urls.get(0); source = "published-landscape"; }
                     }
                 } catch (RuntimeException e) {
                     AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
@@ -102,12 +107,16 @@ final class DockContinueArtwork {
                     if (url.isEmpty()) {
                         resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, observer);
                         url = resolved.backdrop;
+                        if (!url.isEmpty()) source = "tmdb-landscape";
                     }
                 }
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
+                    if (token == generation) AppLog.artworkError("resume metadata item=" + itemIndex, e);
                     if (token == generation) AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
                 if (token != generation) return;
+                if (AppLog.artworkEnabled()) AppLog.artwork("resume resolved: item=" + itemIndex + ", title=" + p.title
+                        + ", year=" + year + ", source=" + source);
                 final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
                 main.post(() -> {
                     if (token != generation) return;
@@ -126,6 +135,8 @@ final class DockContinueArtwork {
                                 logoYear, p.kind == null ? "" : p.kind, observer);
                         if (token != generation) return;
                         DockArtwork.loadLogo(artwork, observer);
+                        if (AppLog.artworkEnabled()) AppLog.artwork("resume logo: item=" + itemIndex + ", title=" + p.title
+                                + ", year=" + logoYear + ", status=" + artwork.logoStatus);
                         if (artwork.logo.isEmpty() || token != generation) return;
                         main.post(() -> {
                             if (token != generation) return;

@@ -197,6 +197,7 @@ final class DockContinue {
                 Long appeared = imageAppeared.get(url);
                 if (appeared == null) {
                     appeared = now; imageAppeared.put(url, appeared);
+                    if (AppLog.artworkEnabled()) AppLog.artwork("decoded poster: title=" + pick.title + ", size=" + image.getWidth() + "x" + image.getHeight());
                 }
                 float progress = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 240f);
@@ -211,6 +212,7 @@ final class DockContinue {
                 Long appeared = imageAppeared.get(logoPath);
                 if (appeared == null) {
                     appeared = now; imageAppeared.put(logoPath, appeared);
+                    if (AppLog.artworkEnabled()) AppLog.artwork("decoded logo: title=" + pick.title + ", size=" + logo.getWidth() + "x" + logo.getHeight());
                 }
                 float t = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 300f);

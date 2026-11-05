@@ -15,7 +15,7 @@ f['io/tvos/artwork/PosterCache.java']='''package io.tvos.artwork;import java.uti
 f['io/tvos/DockArtwork.java']='''package io.tvos;class DockArtwork {static void loadLogo(DockArtwork a,io.tvos.network.ConnectionObserver c){}static int calls;String logoStatus="selected";String logo="";String backdrop="https://example.com/wide.jpg";static DockArtwork lookup(String t,String p,String y,String kind,io.tvos.network.ConnectionObserver c)throws java.io.IOException,org.json.JSONException{calls++;DockArtwork a=new DockArtwork();a.backdrop="https://example.com/"+t+".jpg";return a;}}'''
 f['io/tvos/watching/DockPrograms.java']='package io.tvos.watching;public class DockPrograms {public DockPrograms(android.content.Context c,java.util.function.BiPredicate<String,String> a){}public static class Candidate {public java.util.List<String> urls=new java.util.ArrayList<>();public String year="";}public Candidate forResume(String p,String t,String a){return null;}}'
 f['io/tvos/ProviderImages.java']='package io.tvos;class ProviderImages {static boolean allowed(android.content.Context c,String u,String p){return true;}}'
-f['io/tvos/AppLog.java']='package io.tvos;class AppLog {static void w(String s){}}'
+f['io/tvos/AppLog.java']='package io.tvos;class AppLog {static boolean artworkEnabled(){return false;}static void artwork(String s){}static void artworkError(String op,Exception e){}static void w(String s){}}'
 
 f['io/tvos/WatchingText.java']=Path('app/src/io/tvos/WatchingText.java').read_text()
 f['io/tvos/home/dock/ResumeRowRenderer.java']=Path('app/src/io/tvos/home/dock/ResumeRowRenderer.java').read_text()

@@ -8,7 +8,7 @@ files={
  'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {public final List<Runnable> queue=new ArrayList<>();public void post(Runnable r){queue.add(r);}public void drain(){while(!queue.isEmpty())queue.remove(0).run();}}''',
  'io/tvos/artwork/PosterCache.java':'''package io.tvos.artwork;import java.util.*;public class PosterCache {public static Set<String> window=new HashSet<>();public static int max;public static Runnable decoded;public PosterCache(android.content.Context c,Runnable changed,java.util.function.Consumer<String> warn){decoded=changed;}public void setWindow(Set<String> s){window=new HashSet<>(s);max=Math.max(max,s.size());}public android.graphics.Bitmap poster(String p){return new android.graphics.Bitmap();}}''',
  'io/tvos/Recs.java':'package io.tvos;class Recs {static class Pick {String watchingKey,pkg,title,poster,backdrop,watchingYear,kind;}}',
- 'io/tvos/AppLog.java':'package io.tvos;class AppLog {static void w(String message){}}',
+ 'io/tvos/AppLog.java':'package io.tvos;class AppLog {static boolean artworkEnabled(){return false;}static void artwork(String s){}static void artworkError(String op,Exception e){}static void w(String message){}}',
  'io/tvos/ProviderImages.java':'package io.tvos;class ProviderImages {static boolean allowed(android.content.Context c,String u,String p){return true;}}',
  'io/tvos/network/ConnectionObserver.java':Path('app/src/io/tvos/network/ConnectionObserver.java').read_text(),
  'org/json/JSONException.java':'package org.json;public class JSONException extends Exception {}',

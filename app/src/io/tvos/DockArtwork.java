@@ -25,11 +25,17 @@ final class DockArtwork {
     static DockArtwork lookup(String title, String poster, String year, String expectedKind,
             ConnectionObserver observer) throws IOException, org.json.JSONException {
         DockArtwork result = new DockArtwork();
-        if (!TmdbClient.hasKey() || title.isEmpty()) return result;
+        if (!TmdbClient.hasKey() || title.isEmpty()) {
+            if (AppLog.artworkEnabled()) AppLog.artwork("lookup skipped: keyPresent=" + TmdbClient.hasKey() + ", emptyTitle=" + title.isEmpty());
+            return result;
+        }
         AppLanguage requestedLanguage = AppLanguage.current();
         String language = requestedLanguage.apiTag;
         String key = expectedKind + "\n" + language + "\n" + year + "\n" + poster + "\n" + title;
-        synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) return cached; }
+        synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) {
+            if (AppLog.artworkEnabled()) AppLog.artwork("metadata cache: title=" + title + ", year=" + year + ", id=" + cached.id + ", kind=" + cached.kind + ", wide=" + !cached.backdrop.isEmpty());
+            return cached;
+        } }
         JSONObject match = search(title, poster, year, expectedKind, language, observer);
         // Providers may keep Russian titles/posters even when the launcher requests English metadata.
         if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
@@ -67,6 +73,19 @@ final class DockArtwork {
             // Provider type is a hint: an unambiguous title/year remains usable
             // when a publisher has mislabeled a series as a movie.
             if (matched == null && !expectedKind.isEmpty()) matched = match(items, title, poster, year, "");
+            if (AppLog.artworkEnabled()) {
+                StringBuilder trace = new StringBuilder("search: title=").append(title).append(", query=").append(variants[i])
+                        .append(", year=").append(year).append(", kind=").append(expectedKind)
+                        .append(", language=").append(language).append(", selected=").append(matched == null ? 0 : matched.optInt("id"));
+                if (items != null) for (int n = 0; n < Math.min(6, items.length()); n++) {
+                    JSONObject candidate = items.optJSONObject(n); if (candidate == null) continue;
+                    trace.append(" [").append(candidate.optInt("id")).append('|').append(candidate.optString("media_type", ""))
+                            .append('|').append(candidate.optString("title", candidate.optString("name", "")))
+                            .append('|').append(candidate.optString("original_title", candidate.optString("original_name", "")))
+                            .append('|').append(candidate.optString("release_date", candidate.optString("first_air_date", ""))).append(']');
+                }
+                AppLog.artwork(trace.toString());
+            }
             if (matched != null) return matched;
         }
         return null;
@@ -85,6 +104,7 @@ final class DockArtwork {
                     : logos == null || logos.length() == 0 ? "no-logos" : "no-supported-language-or-format";
             result.logoLoaded = true;
         } catch (IOException | org.json.JSONException e) {
+            AppLog.artworkError("logo request", e);
             result.logoStatus = "request-failed";
             AppLog.w("Dock logo unavailable: " + e.getClass().getSimpleName());
         }
