@@ -445,7 +445,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
                 rowData.kind = row.picker ? SettingsListRenderer.Kind.PICKER : SettingsListRenderer.Kind.NORMAL;
                 rowData.marker = row.checked ? SettingsListRenderer.Marker.PICKER_CHECK
                         : row.picker ? SettingsListRenderer.Marker.NONE : SettingsListRenderer.Marker.CHEVRON;
-                rowData.fitValue = true; rowData.valueInset = 41; rowData.markerAfterValue = true;
+                rowData.fitValue = true; rowData.valueInset = 51; rowData.markerAfterValue = true;
                 rowData.showValue = !row.value.isEmpty();
                 renderer.draw(c, rect, k, rect.centerY() + Ui.halfCap(labelPaint), drawLight, labelPaint, valuePaint, rowData);
             }

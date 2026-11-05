@@ -104,7 +104,7 @@ public final class SettingsTextRenderer {
 
     public String fitRowValue(String label, String value, RectF row, float scale, Paint labelPaint, Paint valuePaint) {
         float labelX = row.left + row.width() * .10f + 10 * scale;
-        float available = Math.max(0, row.right - 41 * scale - labelX
+        float available = Math.max(0, row.right - 51 * scale - labelX
                 - trackedWidth(label, labelPaint, .02f) - 32 * scale);
         return fitValue(value, valuePaint, available, .02f);
     }

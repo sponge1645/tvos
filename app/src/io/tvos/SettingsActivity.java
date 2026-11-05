@@ -561,7 +561,7 @@ public class SettingsActivity extends Activity {
                 boolean chevron = !row.disabled && menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
                         : chevron ? Marker.CHEVRON : Marker.NONE;
-                row.valueInset = chevron ? 41 : 13;
+                row.valueInset = chevron ? 51 : 13;
                 row.fitValue = screen == MEDIA || screen == CITY;
                 row.showValue = !selection;
                 if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.PICKER_CHECK;
@@ -955,7 +955,7 @@ public class SettingsActivity extends Activity {
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
                 boolean chevron = keys ? true : (settingsGroup != SYSTEM && i == CITY_ROW);
                 row.marker = chevron ? Marker.CHEVRON : Marker.NONE;
-                row.valueInset = chevron ? 41 : 13;
+                row.valueInset = chevron ? 51 : 13;
                 row.markerAfterValue = true;
                 drawRow(c);
             }
