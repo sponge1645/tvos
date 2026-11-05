@@ -23,7 +23,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,CITY,SCREENSAVER,ABOUT,LANGUAGE};
-  int[] rows={10,3,5,2,5,2,3,1,2,4,2,5,7,3,2,5,9,2};
+  int[] rows={10,3,5,3,5,2,3,1,2,4,2,4,7,3,2,5,9,2};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -34,7 +34,7 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
-   for(int page:new int[]{HOME_SCREEN,SCREENSAVER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
+   for(int page:new int[]{HOME_VIEW,HOME_CARD_STYLE,SCREENSAVER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
    h.screen=GENERAL;for(int row=0;row<5;row++)check(h.menuChevronVisible(row)==(row==0||row==2||row==3),"only General destinations have chevrons");
    h.screen=CITY;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    Prefs.automatic=true;check(!h.menuChevronVisible(1),"automatic region hides manual picker arrow");Prefs.automatic=false;
@@ -64,7 +64,7 @@ public class ContentHarness {
     if(count>0)check(!SettingsContent.description(MENU_BUTTONS,0,0,0,count,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("VPN"),"ordinary button retains reorder guidance");
    }
    h.screen=HOME_SETTINGS;h.settingsGroup=WIDGETS;check(h.screenTitle().equals(russian?"Основные":"General"),"widget subgroup title");
-   h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Разделы рекомендаций":"Recommendation Sections"),"category subgroup title");
+   h.settingsGroup=SYSTEM;check(h.screenTitle().equals(russian?"Разделы для подборки":"Collection Sections"),"category subgroup title");
    check(!SettingsContent.description(HOME_SETTINGS,0,0,SYSTEM,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).equals(SettingsContent.description(HOME_SETTINGS,0,0,GENERAL,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))),"subgroup-specific guidance");
    check(SettingsContent.description(MAIN,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("AirPlay"),"AirPlay dependency description");
    check(SettingsContent.description(MAIN,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains("Dock"),"Dock description");

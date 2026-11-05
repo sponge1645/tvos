@@ -22,7 +22,7 @@ public class ModulesTest {
   List<List<String>> saved=new ArrayList<>();SettingsDockEditor dock=new SettingsDockEditor(2,values->saved.add(new ArrayList<>(values)));
   dock.open(Arrays.asList("a"),Arrays.asList(new String[]{"a","A"},new String[]{"b","B"},new String[]{"c","C"}));
   check(dock.toggle(2)==1&&saved.get(0).equals(Arrays.asList("a","c")),"Dock saves through injected consumer");check(dock.toggle(2)==-1&&saved.size()==1,"injected capacity preserves rejected selection");check(dock.move(1,-1)==0&&saved.get(1).equals(Arrays.asList("c","a")),"Dock reorder persists and follows selected package");
-  check(SettingsActions.activation(TOP_PANEL,4,0,false,6,false).targetScreen==HOME_SCREEN,"navigation policy has no UI dependency");SettingsActions.Target back=SettingsActions.back(HOME_SCREEN,0,GENERAL,6);check(back.screen==TOP_PANEL&&back.row==4,"stable back destination remains public across package boundary");
+  check(SettingsActions.activation(TOP_PANEL,0,0,false,6,false).targetScreen==HOME_SCREEN,"navigation policy has no UI dependency");SettingsActions.Target back=SettingsActions.back(HOME_SCREEN,0,GENERAL,6);check(back.screen==TOP_PANEL&&back.row==0,"stable back destination remains public across package boundary");
   check(HOME_SCREEN==24&&PICK_VPN==-1&&GENERAL==6,"screen identities remain stable");
   System.out.println("PASS: cross-package models with independent stores, persistence/capacity, pure navigation and stable screen identities");
  }

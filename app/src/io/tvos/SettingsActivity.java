@@ -265,7 +265,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case LANGUAGE: case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
+                case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -502,7 +502,7 @@ public class SettingsActivity extends Activity {
 
         private void drawScreenContent(Canvas c) {
             switch (screen) {
-                case MAIN: case LANGUAGE: case MEDIA: case HOME_SCREEN: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
+                case MAIN: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
                 case ACCESSIBILITY: case APPS_DOWNLOADS: case CITY: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
@@ -548,14 +548,15 @@ public class SettingsActivity extends Activity {
 
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
-            boolean selection = screen == LANGUAGE || screen == HOME_SCREEN || screen == MOVIE_SERVICE;
+            boolean selection = screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
                 row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
-                row.disabled = screen == CITY && i == 1 && Prefs.automaticRegion();
-                boolean chevron = menuChevronVisible(i);
+                row.disabled = (screen == CITY && i == 1 && Prefs.automaticRegion())
+                        || (screen == HOME_SCREEN && (i == 1 ? Prefs.homeCollection() : i == 2 && !Prefs.homeCollection()));
+                boolean chevron = !row.disabled && menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
                         : chevron ? Marker.CHEVRON : Marker.NONE;
                 row.valueInset = chevron ? 61 : 13;
@@ -563,7 +564,8 @@ public class SettingsActivity extends Activity {
                 row.showValue = !selection;
                 if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.PICKER_CHECK;
                 if (screen == LANGUAGE && i == ("ru".equals(Prefs.language()) ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
-                if (screen == HOME_SCREEN && i == (Prefs.homeContinue() ? 1 : 0)) row.marker = Marker.PICKER_CHECK;
+                if (screen == HOME_CARD_STYLE && i == (Prefs.homeContinue() ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
+                if (screen == HOME_VIEW && i == (Prefs.homeCollection() ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
                 boolean signal = screen == ABOUT && i == 8 && values[i] != null && values[i].matches("[0-5]/5");
                 if (signal) row.showValue = false;
                 drawRow(c);
@@ -959,6 +961,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
+            if (screen == HOME_SCREEN && (focus == 1 ? Prefs.homeCollection() : focus == 2 && !Prefs.homeCollection())) return;
             final int screenBeforeAction = screen;
             SettingsActions.Action action = SettingsActions.activation(screen, focus, picker.kind,
                     (screen == HOME_SETTINGS && settingIndex() == CITY_ROW) || (screen == CITY && Prefs.automaticRegion()), buttonEditor.size(),
@@ -970,7 +973,7 @@ public class SettingsActivity extends Activity {
             Context c = getContext();
             if (action.targetScreen >= 0) {
                 screen = action.targetScreen;
-                focus = screen == HOME_SCREEN ? (Prefs.homeContinue() ? 1 : 0) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
+                focus = screen == HOME_VIEW ? (Prefs.homeCollection() ? 0 : 1) : screen == HOME_CARD_STYLE ? (Prefs.homeContinue() ? 0 : 1) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
                 case HOME_MODE:
                     if (!busy()) {
@@ -979,9 +982,13 @@ public class SettingsActivity extends Activity {
                     }
                     invalidate();
                     return;
+                case SELECT_HOME_VIEW:
+                    Prefs.setHomeCollection(focus == 0);
+                    screen = HOME_SCREEN; focus = 0;
+                    break;
                 case SELECT_HOME_SCREEN:
-                    Prefs.setHomeContinue(focus == 1);
-                    screen = TOP_PANEL; focus = 4;
+                    Prefs.setHomeContinue(focus == 0);
+                    screen = HOME_SCREEN; focus = 1;
                     break;
                 case SELECT_MOVIE_SERVICE:
                     localPrefs().edit().putString(MovieService.KEY, MovieService.id(focus)).apply();

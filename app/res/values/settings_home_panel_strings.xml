@@ -9,4 +9,9 @@
     <string name="settings_weather_bottom_help">Show weather only on the bottom panel.</string>
     <string name="settings_weather_both_help">Show weather on the Home Screen and on the bottom panel.</string>
     <string name="settings_date_home_help">Show the date on the Home Screen.</string>
+    <string name="settings_home_view">View</string>
+    <string name="settings_home_collection">Collection</string>
+    <string name="settings_home_tvos">tvOS View</string>
+    <string name="settings_home_card_style">Card Style</string>
+    <string name="settings_home_view_help">Collection shows posters by section. In tvOS View, choose recommendations or Continue Watching for Dock apps.</string>
 </resources>

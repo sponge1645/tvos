@@ -41,7 +41,7 @@ tests=r'''
   for(int row:new int[]{0,2,3}){h.focus=row;check(!h.canAdjustMenu(),"General action/submenu must require OK: "+row);}
   for(int row:new int[]{1,4}){h.focus=row;check(h.canAdjustMenu(),"General value accepts arrows: "+row);}
   h.focus=1;h.arrow(1);check(Prefs.theme.equals("light"),"theme advances");h.arrow(-1);check(Prefs.theme.equals("auto"),"theme reverses");
-  h.store.putInt("weather_placement",3);h.screen=WEATHER;h.focus=0;h.arrow(1);check(h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles both to home");
+  h.store.putInt("weather_placement",3);h.screen=WEATHER;h.focus=0;h.arrow(1);check(!h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles both to None");h.arrow(1);check(h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles None to home");
   h.focus=0;h.arrow(1);check(!h.weatherVisible(true)&&h.weatherVisible(false),"weather mode cycles home to bottom");h.arrow(1);check(h.weatherVisible(true)&&h.weatherVisible(false),"weather mode cycles bottom to both");
   h.screen=DATE_TIME;h.focus=0;h.arrow(1);check(h.store.getBoolean("show_date",false),"date widget accepts arrow");h.arrow(-1);check(!h.store.getBoolean("show_date",true),"date widget reverses");
   h.screen=APPS_DOWNLOADS;Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Download "),"English download action: "+label);
@@ -54,7 +54,7 @@ tests=r'''
   h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatic Updates"}),"update actions naming contract");
   h.screen=SYSTEM;check(Arrays.equals(h.menuLabels(),new String[]{"Software Updates","Reset","Default Launcher","Restart tvOS"}),"System launcher appears directly below Reset");
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","TV Settings"}),"accessibility naming contract");
-  h.screen=WEATHER;check(h.menuLabels()[0].equals("View")&&h.menuLabels()[1].equals("City"),"weather exposes presentation and city");
+  h.screen=WEATHER;check(h.menuLabels()[0].equals("Show")&&h.menuLabels()[1].equals("City"),"weather exposes presentation and city");
   h.screen=CITY;check(h.menuLabels()[0].equals("Automatic")&&h.menuLabels()[1].equals("Manually"),"region has auto and manual controls");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
   h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");

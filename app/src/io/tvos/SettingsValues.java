@@ -86,7 +86,12 @@ final class SettingsValues {
             String target = localPrefs().getString("live_tv_app", "");
             v[2] = target.isEmpty() || "automatic".equals(target) ? automaticTvLabel() : tvProviderLabel(target);
         } else if (screen == HOME_SCREEN) {
-            v[Prefs.homeContinue() ? 1 : 0] = AppStrings.get(R.string.settings_service_selected);
+            v[0] = AppStrings.get(Prefs.homeCollection() ? R.string.settings_home_collection : R.string.settings_home_tvos);
+            v[1] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
+        } else if (screen == HOME_VIEW) {
+            v[Prefs.homeCollection() ? 0 : 1] = AppStrings.get(R.string.settings_service_selected);
+        } else if (screen == HOME_CARD_STYLE) {
+            v[Prefs.homeContinue() ? 0 : 1] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == MOVIE_SERVICE) {
             v[MovieService.index(localPrefs().getString(MovieService.KEY, ""))] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == GENERAL) {
@@ -121,7 +126,7 @@ final class SettingsValues {
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
         } else if (screen == TOP_PANEL) {
             v[2] = onOff(localPrefs().getBoolean("show_date", false));
-            v[4] = AppStrings.get(Prefs.homeContinue() ? R.string.home_continue_watching : R.string.settings_home_recommendations);
+            v[0] = AppStrings.get(Prefs.homeCollection() ? R.string.settings_home_collection : R.string.settings_home_tvos);
         } else if (screen == WIDGETS) {
             // Date is a submenu; its switch is shown inside DATE_TIME.
         } else if (screen == DATE_TIME) {

@@ -15,7 +15,7 @@ settings=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 home=Path('app/src/io/tvos/HomeView.java').read_text()
 prefs_body=''.join(method(prefs,s) for s in [
  '    private static void put(String key, String value)', '    private static void put(String key, boolean value)',
- '    private static void readCategories(', '    static int[] categoryOrder(', '    static boolean categoryEnabled(',
+ '    static boolean homeCollection(', '    static void setHomeCollection(', '    private static void readCategories(', '    static int[] categoryOrder(', '    static boolean categoryEnabled(',
  '    static int firstCategory(', '    static int lastCategory(', '    static int categoryCount(', '    static int categoryPosition(',
  '    static void setCategoryEnabled(', '    static void setCategoryOrder('])
 editor_body=''.join(method(settings,s) for s in [
@@ -96,6 +96,12 @@ public class CategoriesHarness {
   Prefs.store.putString("category_order","4,2,4,99,x,1,-2");Prefs.version++;
   check(Arrays.equals(Prefs.categoryOrder(),new int[]{2,1,0,3}),"malformed order repaired without duplicates or losing categories");
   invalid(Arrays.asList(0,1,3,3));invalid(Arrays.asList(0,1));invalid(Arrays.asList(0,1,2,3,3));invalid(Arrays.asList(0,1,2,3,9));
+  check(Prefs.homeCollection(),"legacy enabled sections migrate to collection");int[] savedOrder=Prefs.categoryOrder().clone();
+  Prefs.setHomeCollection(false);check(!Prefs.homeCollection()&&Prefs.categoryCount()==0&&Prefs.categoryEnabled(0),"tvOS view hides collection without deleting choices");
+  check(Arrays.equals(Prefs.categoryOrder(),savedOrder),"switch preserves section order");
+  Prefs.setHomeCollection(true);check(Prefs.homeCollection()&&Prefs.categoryCount()==3,"collection restores saved choices");
+  Prefs.fresh();for(int id=0;id<4;id++)Prefs.setCategoryEnabled(id,false);check(!Prefs.homeCollection(),"legacy all-off migrates to tvOS");
+  Prefs.setHomeCollection(true);check(Prefs.homeCollection()&&Prefs.categoryCount()==1&&Prefs.categoryEnabled(0),"explicit collection from all-off starts with New");
   Prefs.fresh();CategoryEditor e=new CategoryEditor();e.open();
   check(snapshot(e.categoryEditor).equals(Arrays.asList(0,1,3,2)),"enabled categories first, disabled below like Dock");
   e.focus=1;e.move(-1);check(e.categoryEditor.get(0)==1&&e.focus==0,"reorder follows selected category");

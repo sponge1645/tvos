@@ -78,6 +78,16 @@ final class Prefs {
     }
     static void setLiveTvApp(String pkg) { put("live_tv_app", pkg); }
 
+    static boolean homeCollection() {
+        readCategories();
+        return sp().getBoolean("home_collection", categoryMask != 0);
+    }
+    static void setHomeCollection(boolean enabled) {
+        readCategories();
+        if (enabled && categoryMask == 0) put("category_0", true);
+        put("home_collection", enabled);
+    }
+
     static boolean homeContinue() {
         if (app == null) return false;
         return "continue".equals(sp().getString("home_screen_mode",
@@ -248,7 +258,7 @@ final class Prefs {
         for (int id : categoryOrder()) if (categoryEnabled(id)) result = id;
         return result;
     }
-    static int categoryCount() { readCategories(); return Integer.bitCount(categoryMask); }
+    static int categoryCount() { readCategories(); return homeCollection() ? Integer.bitCount(categoryMask) : 0; }
     static int categoryPosition(int id) {
         int position = 0;
         for (int candidate : categoryOrder()) if (categoryEnabled(candidate)) {

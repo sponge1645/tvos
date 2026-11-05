@@ -9,4 +9,9 @@
     <string name="settings_weather_bottom_help">Показывать погоду только на нижней панели.</string>
     <string name="settings_weather_both_help">Показывать погоду на экране «Домой» и на нижней панели.</string>
     <string name="settings_date_home_help">Отображение даты на экране «Домой».</string>
+    <string name="settings_home_view">Вид</string>
+    <string name="settings_home_collection">Подборка</string>
+    <string name="settings_home_tvos">tvOS-вид</string>
+    <string name="settings_home_card_style">Вид карточек</string>
+    <string name="settings_home_view_help">Подборка — постеры по разделам. В tvOS-виде выберите рекомендации или продолжение просмотра для приложений Dock.</string>
 </resources>

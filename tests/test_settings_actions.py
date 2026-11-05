@@ -20,7 +20,7 @@ public class ActionsTest {
    if(row==3)check(ActionView.events.equals(Arrays.asList("airplay")),"AirPlay returns without focus reset");
    if(row==4)check(ActionView.events.contains("remote-source-frame")&&!ActionView.events.contains("remote-service")&&!ActionView.events.contains("load-apps")&&ActionView.events.stream().anyMatch(e->e.startsWith("start:")),"remote screen does not enable accessibility");
   }
-  int[][] back={{HOME_SCREEN,TOP_PANEL,4},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
+  int[][] back={{HOME_SCREEN,TOP_PANEL,0},{HOME_VIEW,HOME_SCREEN,0},{HOME_CARD_STYLE,HOME_SCREEN,1},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,HOME_SCREEN,2}};
   for(int[] route:back){check(io.tvos.settings.SettingsScreen.parent(route[0],GENERAL,0)==route[1],"animation parent agrees with Back destination");ActionView v=create(route[0],0);v.backFromScreen();check(v.appLoader.cancelled&&v.tvProviderLoader.cancelled,"Back cancels both pending app lookups");check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
    ActionView v=create(PICKER,0);v.picker.kind=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
@@ -55,7 +55,7 @@ public class ActionsTest {
   v=create(SCREENSAVER,4);v.activate();check(ActionView.events.equals(Arrays.asList("pause","preview")),"preview pauses view before opening");
   v=create(GENERAL,1);v.activate();check(!ActionView.events.contains("snap")&&ActionView.events.contains("theme:light"),"value change preserves current focus animation");
   v=create(GENERAL,0);v.activate();check(v.screen==ABOUT&&ActionView.events.contains("snap"),"page change resets focus springs");
-  for(int[] route:new int[][]{{TOP_PANEL,1,MENU_BUTTONS},{TOP_PANEL,0,CATEGORY_EDIT},{MAIN,7,SHELF_EDIT}}){
+  for(int[] route:new int[][]{{TOP_PANEL,1,MENU_BUTTONS},{HOME_SCREEN,2,CATEGORY_EDIT},{MAIN,7,SHELF_EDIT}}){
    v=create(route[0],route[1]);v.activate();check(v.screen==route[2],"editor opens expected page");
    check(ActionView.events.contains("snap")&&ActionView.events.contains("invalidate")&&ActionView.events.contains("spoken"),"editor starts transition immediately without waiting for another input or background event");
   }
@@ -77,7 +77,15 @@ public class ActionsTest {
   v=create(GENERAL,4);v.activate();check(ActionView.events.contains("hour24:true"),"time format follows removed date row");
   v=create(MEDIA,1);v.activate();check(ActionView.events.contains("flag:navigation_clicks:false"),"click toggle follows removed date row");
   v=create(ACCESSIBILITY,2);v.activate();check(ActionView.events.contains("tv-settings"),"system settings uses safe launcher helper");
-  v=create(TOP_PANEL,4);v.activate();check(v.screen==HOME_SCREEN,"Home Screen choices live in General");v.focus=1;v.activate();check(ActionView.Prefs.home&&v.screen==TOP_PANEL&&v.focus==4,"continue mode saves and returns");v.activate();check(v.screen==HOME_SCREEN&&v.focus==1,"saved mode receives focus");v.focus=0;v.activate();check(!ActionView.Prefs.home,"recommendations restore");
+  ActionView.Prefs.collection=true;v=create(TOP_PANEL,0);v.activate();check(v.screen==HOME_SCREEN,"Home container belongs to Control Center");
+  v.focus=1;v.activate();check(v.screen==HOME_SCREEN,"card choices disabled in collection");
+  v.focus=2;v.activate();check(v.screen==CATEGORY_EDIT,"collection editor available");
+  v=create(HOME_SCREEN,0);v.activate();check(v.screen==HOME_VIEW&&v.focus==0,"view picker focuses collection");
+  v.focus=1;v.activate();check(!ActionView.Prefs.collection&&v.screen==HOME_SCREEN&&v.focus==0,"tvOS view saves and returns");
+  v.focus=2;v.activate();check(v.screen==HOME_SCREEN,"collection editor disabled for tvOS");
+  v.focus=1;v.activate();check(v.screen==HOME_CARD_STYLE,"tvOS opens card style");v.focus=0;v.activate();check(ActionView.Prefs.home&&v.screen==HOME_SCREEN&&v.focus==1,"continue cards save and return");v.activate();check(v.screen==HOME_CARD_STYLE&&v.focus==0,"saved card style receives focus");v.focus=1;v.activate();check(!ActionView.Prefs.home,"recommendations restore");
+  v.focus=0;v.activate();v.focus=0;v.activate();check(ActionView.Prefs.collection,"collection can be restored");
+
   check(SettingsActions.back(MAIN,0,GENERAL,6)==null,"Back from root remains activity-owned");
   System.out.println("PASS: settings action policy, activation effects/order, Back targets, live VPN footer, focus reset, launcher/preview/update/reset behavior");
  }

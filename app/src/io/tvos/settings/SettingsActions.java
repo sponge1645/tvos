@@ -7,7 +7,7 @@ public final class SettingsActions {
     private SettingsActions() { }
 
     public enum Action {
-        NONE, NAME, HOME_MODE, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_COUNTRY, SELECT_TV, SELECT_LANGUAGE, TV_PICKER, OPEN_REGION, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
+        NONE, NAME, HOME_MODE, SELECT_HOME_VIEW, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_COUNTRY, SELECT_TV, SELECT_LANGUAGE, TV_PICKER, OPEN_REGION, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, ADVANCED_KEYS, INPUT_METHOD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
@@ -15,7 +15,7 @@ public final class SettingsActions {
         MEDIA_SCREEN(MEDIA), MOVIE_SERVICE_SCREEN(MOVIE_SERVICE), GENERAL_SCREEN(GENERAL), SCREENSAVER_SCREEN(SCREENSAVER),
         ACCESSIBILITY_SCREEN(ACCESSIBILITY), DOWNLOADS_SCREEN(APPS_DOWNLOADS),
         TOP_PANEL_SCREEN(TOP_PANEL), WIDGETS_SCREEN(WIDGETS), SYSTEM_SCREEN(SYSTEM),
-        HOME_SCREEN_MODE_SCREEN(HOME_SCREEN), ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
+        HOME_SCREEN_MODE_SCREEN(HOME_SCREEN), HOME_VIEW_SCREEN(HOME_VIEW), HOME_CARD_STYLE_SCREEN(HOME_CARD_STYLE), ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
         CITY_SCREEN(CITY), LANGUAGE_SCREEN(LANGUAGE), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
 
         public final int targetScreen;
@@ -97,7 +97,9 @@ public final class SettingsActions {
                 }
             case MEDIA: return row == 0 ? Action.MOVIE_SERVICE_SCREEN : row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_PICKER : Action.NONE;
             case LANGUAGE: return Action.SELECT_LANGUAGE;
-            case HOME_SCREEN: return Action.SELECT_HOME_SCREEN;
+            case HOME_SCREEN: return row == 0 ? Action.HOME_VIEW_SCREEN : row == 1 ? Action.HOME_CARD_STYLE_SCREEN : row == 2 ? Action.CATEGORY_EDITOR : Action.NONE;
+            case HOME_VIEW: return Action.SELECT_HOME_VIEW;
+            case HOME_CARD_STYLE: return Action.SELECT_HOME_SCREEN;
             case MOVIE_SERVICE: return Action.SELECT_MOVIE_SERVICE;
             case APPS_DOWNLOADS: return Action.DOWNLOAD;
             case GENERAL: return row == 3 ? Action.OPEN_REGION : row == 2 ? Action.LANGUAGE_SCREEN : row == 0 ? Action.ABOUT_SCREEN : Action.MENU_ADJUST;
@@ -108,7 +110,7 @@ public final class SettingsActions {
             case DATE_TIME: return Action.DATE_TOGGLE;
             case WEATHER: return row == 1 ? Action.CITY_SCREEN : row == 0 ? Action.WEATHER_TOGGLE : Action.MENU_ADJUST;
             case SCREENSAVER: return row == 4 ? Action.PREVIEW : row >= 0 && row < 4 ? Action.MENU_ADJUST : Action.NONE;
-            case TOP_PANEL: return row == 0 ? Action.CATEGORY_EDITOR : row == 1 ? Action.BUTTON_EDITOR : row == 2 ? Action.DATE_TOGGLE : row == 3 ? Action.WEATHER_SCREEN : row == 4 ? Action.HOME_SCREEN_MODE_SCREEN : Action.NONE;
+            case TOP_PANEL: return row == 0 ? Action.HOME_SCREEN_MODE_SCREEN : row == 1 ? Action.BUTTON_EDITOR : row == 2 ? Action.DATE_TOGGLE : row == 3 ? Action.WEATHER_SCREEN : Action.NONE;
             case ACCESSIBILITY: return row == 0 || row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_SETTINGS : Action.NONE;
             case RESET: return Action.RESET_CONFIRM;
             case SYSTEM: return row == 0 ? Action.UPDATES_SCREEN : row == 1 ? Action.RESET_SCREEN : row == 2 ? Action.HOME_CHOICE : row == 3 ? Action.RESTART : Action.NONE;
@@ -127,13 +129,15 @@ public final class SettingsActions {
             case MAIN: return null;
             case PICKER: return new Target(parent, pickFor == PICK_REGION ? 3 : pickFor == PICK_TV ? 2 : pickFor == PICK_CITY ? 1
                     : pickFor == PICK_VPN ? buttonCount : pickFor - 1);
-            case MOVIE_SERVICE: case ABOUT: case CATEGORY_EDIT: case UPDATES:
+            case MOVIE_SERVICE: case ABOUT: case UPDATES:
             case HOME_SETTINGS: return new Target(parent, 0);
             case WEATHER: return new Target(parent, 3);
             case MEDIA: case MENU_BUTTONS: case RESET: return new Target(parent, 1);
             case DATE_TIME: return new Target(parent, 2);
             case HOME_CHOICE: case SCREENSAVER: case WIDGETS: return new Target(parent, 2);
-            case HOME_SCREEN: return new Target(parent, 4);
+            case HOME_SCREEN: case HOME_VIEW: return new Target(parent, 0);
+            case HOME_CARD_STYLE: return new Target(parent, 1);
+            case CATEGORY_EDIT: return new Target(parent, 2);
             case SHELF_EDIT: return new Target(parent, 7);
             case REMOTE_KEYS: return new Target(parent, 4);
             case CITY: return new Target(parent, 1);

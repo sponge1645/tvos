@@ -11,7 +11,7 @@
     <string name="settings_screen_saver" formatted="false">Заставка</string>
     <string name="settings_default_launcher" formatted="false">Домашний экран</string>
     <string name="settings_remotes_and_devices" formatted="false">Пульты и устройства</string>
-    <string name="settings_categories" formatted="false">Разделы рекомендаций</string>
+    <string name="settings_categories" formatted="false">Разделы для подборки</string>
     <string name="settings_about" formatted="false">Об этом устройстве</string>
     <string name="settings_appearance" formatted="false">Оформление</string>
     <string name="settings_language" formatted="false">Язык</string>

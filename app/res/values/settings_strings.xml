@@ -11,7 +11,7 @@
     <string name="settings_screen_saver" formatted="false">Screen Saver</string>
     <string name="settings_default_launcher" formatted="false">Default Launcher</string>
     <string name="settings_remotes_and_devices" formatted="false">Remotes and Devices</string>
-    <string name="settings_categories" formatted="false">Recommendation Sections</string>
+    <string name="settings_categories" formatted="false">Collection Sections</string>
     <string name="settings_about" formatted="false">About</string>
     <string name="settings_appearance" formatted="false">Appearance</string>
     <string name="settings_language" formatted="false">Language</string>
