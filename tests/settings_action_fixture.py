@@ -13,13 +13,13 @@ public class CLASSNAME {
  static final int CITY_ROW=4;
  static final String[] THEMES={"auto","light","dark"},UNITS={"auto","C","F"};
  String screenTitle(){return "Settings";}
- int screen=MAIN,focus,pickFor,settingsGroup=GENERAL,selectedSetting,buttonCount=6;
+ int screen=MAIN,focus,settingsGroup=GENERAL,selectedSetting,buttonCount=6;
  final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;final ModeMonitor modeMonitor=new ModeMonitor();class ModeMonitor {long pendingAt;void markPending(){pendingAt=SystemClock.uptimeMillis();}}
  final AppLoader appLoader=new AppLoader();class AppLoader {void cancel(){}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
  static class Values {void clearAppCache(){}}final Values valueSource=new Values();
- final List<String> choiceKeys=new ArrayList<>(Arrays.asList("FR",""));
+ final SettingsPicker picker=new SettingsPicker();{picker.keys.addAll(Arrays.asList("FR",""));}
  void openCountryPicker(){openPicker(PICK_REGION);}void openTvProviderPicker(){openPicker(PICK_TV);}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
  static class Ui {static boolean ru;}
@@ -61,7 +61,7 @@ public class CLASSNAME {
  static class RemoteInputMethod {static void choose(Activity a){note("input-method");}}void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
  void toggleCategory(){note("category");}void toggleShelfApp(){note("shelf-toggle");}void adjust(int d){note("adjust:"+d);}
  void launchAirPlay(){note("airplay");}void loadApps(Runnable ready){note("load-apps");ready.run();}void openTvSettings(){note("tv-settings");}
- void openPicker(int p){pickFor=p;screen=PICKER;focus=0;note("picker:"+p);}
+ void openPicker(int p){picker.kind=p;screen=PICKER;focus=0;note("picker:"+p);}
  void openShelfEditor(){screen=SHELF_EDIT;focus=0;note("shelf-editor");}
  void setLocalFlag(String key,boolean value){store.flags.put(key,value);note("flag:"+key+":"+value);invalidate();}
  boolean localFlag(String key){return store.getBoolean(key,false);}void cycleDreamSource(int d){note("dream-source:"+d);}void moveMenuButton(int d){note("move-button:"+d);}void onSelfUpdate(){note("on-update");}

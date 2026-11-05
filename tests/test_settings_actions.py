@@ -23,7 +23,7 @@ public class ActionsTest {
   int[][] back={{HOME_SCREEN,TOP_PANEL,4},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,TOP_PANEL,0}};
   for(int[] route:back){check(io.tvos.settings.SettingsScreen.parent(route[0],GENERAL,0)==route[1],"animation parent agrees with Back destination");ActionView v=create(route[0],0);v.backFromScreen();check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
-   ActionView v=create(PICKER,0);v.pickFor=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
+   ActionView v=create(PICKER,0);v.picker.kind=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
    check(v.screen==MENU_BUTTONS&&v.focus==count,"VPN picker returns directly to Buttons footer");
    check(!SettingsActions.canAdjust(MENU_BUTTONS,count,count),"VPN footer is not arrow-adjustable");
   }
@@ -41,15 +41,15 @@ public class ActionsTest {
   check(io.tvos.settings.SettingsScreen.parent(MAIN,GENERAL,0)==-1&&io.tvos.settings.SettingsScreen.parent(999,GENERAL,0)==-1,"root and unknown have no animation parent");
   check(SettingsActions.back(999,0,GENERAL,6).screen==MAIN&&SettingsActions.back(999,0,GENERAL,6).row==0,"unknown Back fallback retained");
   ActionView language=create(GENERAL,2);language.activate();check(language.screen==LANGUAGE,"language opens list");language.focus=0;language.activate();check(language.screen==GENERAL&&language.focus==2&&ActionView.Prefs.language.equals("ru"),"language selection saves and returns");
-  ActionView country=create(GENERAL,3);country.activate();check(country.screen==PICKER&&country.pickFor==PICK_REGION,"region opens country list");country.focus=0;country.activate();check(country.screen==GENERAL&&country.focus==3&&ActionView.events.contains("country:FR"),"country saves ISO code");
-  ActionView provider=create(MEDIA,2);provider.activate();check(provider.screen==PICKER&&provider.pickFor==PICK_TV,"TV provider opens target list");provider.focus=1;provider.activate();check(provider.screen==MEDIA&&provider.focus==2&&ActionView.events.contains("tv:"),"empty target unselects provider");
+  ActionView country=create(GENERAL,3);country.activate();check(country.screen==PICKER&&country.picker.kind==PICK_REGION,"region opens country list");country.focus=0;country.activate();check(country.screen==GENERAL&&country.focus==3&&ActionView.events.contains("country:FR"),"country saves ISO code");
+  ActionView provider=create(MEDIA,2);provider.activate();check(provider.screen==PICKER&&provider.picker.kind==PICK_TV,"TV provider opens target list");provider.focus=1;provider.activate();check(provider.screen==MEDIA&&provider.focus==2&&ActionView.events.contains("tv:"),"empty target unselects provider");
   ActionView service=create(MEDIA,0);service.activate();check(service.screen==MOVIE_SERVICE,"service row opens choices");
   service=create(MOVIE_SERVICE,3);service.activate();check(service.screen==MEDIA&&service.focus==0&&ActionView.events.contains("movie_service:seena"),"service selection saves stable identity and returns to parent");service.activate();check(service.screen==MOVIE_SERVICE&&service.focus==3,"reopening focuses the saved service");
-  ActionView v=create(PICKER,2);v.pickFor=PICK_CITY;v.activate();
+  ActionView v=create(PICKER,2);v.picker.kind=PICK_CITY;v.activate();
   check(v.screen==CITY&&v.focus==1&&ActionView.events.get(0).startsWith("city:"),"city selected before returning to General");
-  v=create(PICKER,1);v.pickFor=PICK_VPN;v.activate();
+  v=create(PICKER,1);v.picker.kind=PICK_VPN;v.activate();
   check(v.screen==MENU_BUTTONS&&v.focus==v.buttonEditor.size()&&ActionView.Prefs.shelf.equals(Arrays.asList("watch.kino")),"VPN selection preserves removal of duplicate INCY Dock entry");
-  v=create(PICKER,1);v.pickFor=2;v.activate();check(v.screen==REMOTE_KEYS&&v.focus==1&&ActionView.events.contains("key:youtube:app1"),"remote picker updates correct key");
+  v=create(PICKER,1);v.picker.kind=2;v.activate();check(v.screen==REMOTE_KEYS&&v.focus==1&&ActionView.events.contains("key:youtube:app1"),"remote picker updates correct key");
   v=create(HOME_CHOICE,0);v.busyFlag=true;v.activate();check(ActionView.events.equals(Arrays.asList("invalidate"))&&v.modeMonitor.pendingAt==0,"busy home choice cannot restart request");
   v=create(HOME_CHOICE,1);v.activate();check(v.screen==HOME_CHOICE&&v.modeMonitor.pendingAt==123&&ActionView.events.contains("home:2"),"launcher selection stays on same screen");
   v=create(SCREENSAVER,4);v.activate();check(ActionView.events.equals(Arrays.asList("pause","preview")),"preview pauses view before opening");
@@ -70,7 +70,7 @@ public class ActionsTest {
   v=create(UPDATES,0);v.activate();check(v.updateRequested&&ActionView.events.indexOf("update:false")<ActionView.events.indexOf("on-update"),"update check order preserved");
   v=create(SYSTEM,3);v.activate();check(ActionView.events.contains("start:HomeActivity:3")&&ActionView.events.get(ActionView.events.size()-1).equals("finish"),"restart targets HomeActivity then closes Settings");
   v=create(MENU_BUTTONS,6);v.vpnFlag=false;v.activate();check(!ActionView.events.contains("load-apps"),"hidden VPN app cannot open picker");
-  v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.pickFor==PICK_VPN,"enabled VPN opens package picker");
+  v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.picker.kind==PICK_VPN,"enabled VPN opens package picker");
   v=create(CITY,0);v.activate();check(ActionView.Prefs.auto,"auto region toggles on");v.focus=1;v.activate();check(!ActionView.events.contains("ask-city"),"manual city disabled in auto mode");v.focus=0;v.activate();v.focus=1;v.activate();check(ActionView.events.contains("ask-city"),"manual city enabled when auto is off");
   v=create(WEATHER,1);v.activate();check(v.screen==CITY,"Weather opens City submenu");v=create(TOP_PANEL,2);v.activate();check(ActionView.events.contains("date-toggle"),"date toggles directly in Home settings");
   v=create(WEATHER,2);v.activate();check(ActionView.events.contains("unit:C"),"temperature follows removed date row");
@@ -90,5 +90,5 @@ with tempfile.TemporaryDirectory(prefix='tvos-settings-actions-') as tmp:
  for name in ('SettingsContent','SettingsActions','SettingsListWindow'):(root/(name+'.java')).write_text(Path('app/src/io/tvos/'+('settings/' if name in ('SettingsActions','SettingsListWindow') else '')+name+'.java').read_text())
  write_strings(root)
  write_preferences(root,"ActionView.Prefs")
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','app/src/io/tvos/SettingsPicker.java','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.ActionsTest'],check=True)

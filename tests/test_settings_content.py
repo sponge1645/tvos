@@ -9,13 +9,13 @@ def method(sig):
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 assert 'screen == UPDATES && focus == 0 ? updateDetailsText()' in method('        private void drawTileDescription(')
-assert 'SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size())' in source
+assert 'SettingsContent.description(screen, focus, picker.kind, settingsGroup, buttonEditor.size())' in source
 harness='''package io.tvos;
 import java.util.*;import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsScreen;
 public class ContentHarness {
  static class Ui {static boolean ru;}
- int screen=MAIN,focus,pickFor,settingsGroup;int dynamicRows=6;final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
- final List<Integer> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),dockEditor=new ArrayList<>();final List<String> pickLabels=new ArrayList<>();
+ int screen=MAIN,focus,settingsGroup;final SettingsPicker picker=new SettingsPicker();int dynamicRows=6;final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
+ final List<Integer> categoryEditor=new ArrayList<>(),buttonEditor=new ArrayList<>(),dockEditor=new ArrayList<>();
  static class Prefs {static final String[] KEYS=new String[4];static boolean automatic;static boolean automaticRegion(){return automatic;}}String[] settingLabels(){return new String[7];}boolean vpnTopEnabled(){return true;}
  String[] menuButtonLabels(){String[] rows=new String[dynamicRows+1];Arrays.fill(rows,"dynamic");rows[dynamicRows]="VPN";return rows;}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
@@ -51,9 +51,9 @@ public class ContentHarness {
     check(description!=null&&(i==0||description.contains("\\n")),"each download keeps its two-line description");
    }
    check(SettingsContent.description(APPS_DOWNLOADS,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"no stale description beyond downloads");
-   h.screen=PICKER;h.pickFor=PICK_CITY;check(h.screenTitle().equals(russian?"Город":"City"),"city picker title");
-   h.pickFor=PICK_VPN;check(h.screenTitle().equals(russian?"VPN-служба":"VPN"),"VPN picker title");
-   h.pickFor=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
+   h.screen=PICKER;h.picker.kind=PICK_CITY;check(h.screenTitle().equals(russian?"Город":"City"),"city picker title");
+   h.picker.kind=PICK_VPN;check(h.screenTitle().equals(russian?"VPN-служба":"VPN"),"VPN picker title");
+   h.picker.kind=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
    check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"рекомендац":"recommend"),"country help describes recommendations");
    check(SettingsContent.description(GENERAL,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");
    check(SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"Регион":"Region"),"screensaver weather guidance");
@@ -71,7 +71,7 @@ public class ContentHarness {
   }
   for(int page:new int[]{MOVIE_SERVICE,CATEGORY_EDIT,MENU_BUTTONS,HOME_SETTINGS,PICKER,SHELF_EDIT,REMOTE_KEYS,999})check(io.tvos.settings.SettingsScreen.fixedRows(page)==-1,"dynamic rows remain adapter-owned");
   h.screen=999;check(h.rowCount()==4,"unknown row-count fallback retained");
-  h.screen=PICKER;for(int i=0;i<15;i++)h.pickLabels.add("app");check(h.rowCount()==10,"live picker count retains capacity");h.pickLabels.clear();check(h.rowCount()==0,"empty picker has no rows");
+  h.screen=PICKER;for(int i=0;i<15;i++)h.picker.labels.add("app");check(h.rowCount()==10,"live picker count retains capacity");h.picker.labels.clear();check(h.rowCount()==0,"empty picker has no rows");
   h.screen=CATEGORY_EDIT;h.categoryEditor.add(1);check(h.rowCount()==1,"live category count remains dynamic");
   h.screen=MENU_BUTTONS;h.buttonEditor.add(1);check(h.rowCount()==2,"live buttons retain VPN footer");
   System.out.println("PASS: settings titles, row order/count, RU/EN descriptions, dynamic menu/VPN rows, live language and stable IDs");
@@ -83,5 +83,5 @@ with tempfile.TemporaryDirectory(prefix='tvos-settings-content-') as tmp:
  (root/'SettingsContent.java').write_text(Path('app/src/io/tvos/SettingsContent.java').read_text())
  (root/'SettingsListWindow.java').write_text(Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text())
  write_strings(root)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','app/src/io/tvos/SettingsPicker.java','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.ContentHarness'],check=True)

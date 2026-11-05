@@ -101,3 +101,10 @@ router to `HomeView`; content refreshes copy back clamped selection and updated
 geometry before routing continues. Key press/release, long holds, app launches,
 accessibility, drawer and grid controls retain their existing owners and behavior.
 The remote navigation tests compile both the production router and HomeView bridge.
+
+Build 1B180 extracts picker data and saved selection from `SettingsActivity` into
+`SettingsPicker`: country codes/labels, TV providers, city results, and application
+choices for remote buttons/VPN. All entry points share `showPicker()` so selected
+rows and initial scroll offsets follow the same policy. Loading, lifecycle guards,
+row rendering, navigation and transitions keep their existing owners. Regression
+coverage includes the actual view entry points and sequential picker reuse.

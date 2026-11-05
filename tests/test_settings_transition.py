@@ -22,7 +22,7 @@ public class SettingsTransitionHarness {
  static final int PICK_CITY=0,PICK_VPN=-1;static final long MENU_TRANSITION_MS=280;
  static class Ui {static boolean ru;static java.util.Locale locale(){return ru?new java.util.Locale("ru","RU"):java.util.Locale.US;}}
  String tr(String r,String e){return Ui.ru?r:e;}
- int screen=MAIN,focus,settingsGroup=GENERAL,pickFor;
+ int screen=MAIN,focus,settingsGroup=GENERAL;final SettingsPicker picker=new SettingsPicker();
  final io.tvos.settings.SettingsTransitions transitions=new io.tvos.settings.SettingsTransitions();
  final java.util.function.IntUnaryOperator transitionParent=this::parentScreen;
  static class Dialog {boolean active;boolean visible(){return active;}}final Dialog updateDialog=new Dialog();
@@ -68,5 +68,5 @@ with tempfile.TemporaryDirectory() as tmp:
  spring=root/'Spring.java';spring.write_text(Path('app/src/io/tvos/Spring.java').read_text())
  write_strings(root)
  write_transitions(root)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','app/src/io/tvos/SettingsPicker.java','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.SettingsTransitionHarness'],check=True)

@@ -10,18 +10,18 @@ public class BindingHarness {
  static class Symbols {static float width(Object c,String name,float size){return size;}static void draw(Object context,Canvas c,String name,float x,float y,float size,int color){}}
 
  boolean running=true,reduced;int frames;boolean localFlag(String key){return reduced;}void postInvalidateDelayed(long d){check(d==80,"spinner frame delay");frames++;}
- int screen,focus,settingsGroup,pickCurrent;float k=1;static final int CITY_ROW=4;
+ int screen,focus,settingsGroup;final SettingsPicker picker=new SettingsPicker();float k=1;static final int CITY_ROW=4;
  static class Position {float value;}final Position mainScroll=new Position(),listScroll=new Position();final Position[] pop=new Position[12];{for(int i=0;i<12;i++)pop[i]=new Position();}
  final RectF rowRect=new RectF();final SettingsListWindow listWindow=new SettingsListWindow(10);final SettingsListRenderer.Row rowData=new SettingsListRenderer.Row();
  final List<Integer> buttonEditor=new ArrayList<>(Arrays.asList(0,1,2,3,4,5)),categoryEditor=new ArrayList<>(Arrays.asList(0,1,2,3,4));
  static class Dock {final List<String[]> apps=new ArrayList<>();int size(){return apps.size();}String[] get(int i){return apps.get(i);}int position(String p){return p.equals("app20")?1:-1;}}final Dock dockEditor=new Dock();
- final List<String> pickLabels=new ArrayList<>(),appPkgs=new ArrayList<>(),appLabels=new ArrayList<>();String[] labels,values;boolean free=true,vpn;int selectedService=2;
+ final List<String> appPkgs=new ArrayList<>(),appLabels=new ArrayList<>();String[] labels,values;boolean free=true,vpn;int selectedService=2;
  static class Prefs {static String language(){return "en";}static boolean automatic;static boolean automaticRegion(){return automatic;}static boolean topButtonEnabled(int id){return id%2==0;}static int topButtonPosition(int id){return id+1;}static boolean categoryEnabled(int id){return id%2==0;}static int categoryPosition(int id){return id+1;}}
  static class R {static class string {static final int settings_off=1,settings_vpn=2,settings_built_in=3;}}static class AppStrings {static String get(int id){return id==1?"Off":id==2?"VPN":"Built-in";}}
  class Store {String getString(String key,String d){return "2";}}Store localPrefs(){return new Store();}static class MovieService {static final String KEY="service";static int index(String s){return Integer.parseInt(s);}}
  String[] menuLabels(){return labels;}int rowCount(){return labels.length;}String menuButtonLabel(int id){return "Button"+id;}String categoryLabel(int id){return "Category"+id;}boolean freeActive(){return free;}boolean vpnTopEnabled(){return vpn;}
  class Values {String[] menu(int page,int count){return values;}String vpnApp(){return "VPN app";}String[] settings(){return new String[]{"V0","V1","V2","V3","V4"};}}final Values valueSource=new Values();
- String[] keyLabels(){return new String[]{"Key0","Key1"};}String[] keyValues(List<String> p,List<String> l){return new String[]{"App0","App1"};}String[] settingLabels(){return new String[]{"L0","L1","L2","L3","L4"};}int randomRow(){return 5;}int listSize(){return screen==SHELF_EDIT?dockEditor.size():pickLabels.size();}
+ String[] keyLabels(){return new String[]{"Key0","Key1"};}String[] keyValues(List<String> p,List<String> l){return new String[]{"App0","App1"};}String[] settingLabels(){return new String[]{"L0","L1","L2","L3","L4"};}int randomRow(){return 5;}int listSize(){return screen==SHELF_EDIT?dockEditor.size():picker.labels.size();}
  static class Ui {static float halfCap(Paint p){return 12;}}Paint rowLabel=new Paint();class ListRenderer {void beginShelf(Paint p){}}final ListRenderer listRenderer=new ListRenderer();
  static class Snap {final String label,value;final Kind kind;final Marker marker;final boolean disabled,fit,show,after;final float inset,top,right;
  Snap(SettingsListRenderer.Row r,RectF b){label=r.label;value=r.value;kind=r.kind;marker=r.marker;disabled=r.disabled;fit=r.fitValue;show=r.showValue;after=r.markerAfterValue;inset=r.valueInset;top=b.top;right=b.right;}}
@@ -43,9 +43,9 @@ public class BindingHarness {
   v.rows.clear();v.free=true;v.drawChoice(c);check(v.row("tvOS").marker==Marker.CHOICE_CHECK&&!v.row("tvOS").show,"launcher choice binding");v.rows.clear();v.free=false;v.drawChoice(c);check(v.row("Built-in").marker==Marker.CHOICE_CHECK,"original launcher selected");
  }
  int before=v.frames;v.drawUpdateSpinner(c,1,2,1,123);check(v.frames==before+1&&!v.updateProgress.reduced,"active spinner requests frame");v.running=false;v.drawUpdateSpinner(c,1,2,1,123);check(v.frames==before+1,"paused spinner does not request frames");v.running=true;v.reduced=true;v.drawUpdateSpinner(c,1,2,1,123);check(v.frames==before+1&&v.updateProgress.reduced,"Reduce Motion spinner remains static");
- for(int i=0;i<35;i++){v.dockEditor.apps.add(new String[]{"app"+i,"App"+i});v.pickLabels.add("Pick"+i);}
+ for(int i=0;i<35;i++){v.dockEditor.apps.add(new String[]{"app"+i,"App"+i});v.picker.labels.add("Pick"+i);}
  v.screen=SHELF_EDIT;v.focus=v.listWindow.openPicker(20,35);v.listScroll.value=v.listWindow.offset()+.5f;v.rows.clear();v.drawShelfEditor(c);check(v.rows.size()>10&&v.rows.get(v.rows.size()-1).label.equals("App20")&&v.row("App20").value.equals("#2"),"Dock overscan and focus binding");for(Snap s:v.rows)check(s.kind==Kind.SHELF,"Dock text policy");
- v.screen=PICKER;v.pickCurrent=20;v.rows.clear();v.drawPicker(c);for(Snap s:v.rows)check(s.kind==Kind.PICKER&&!s.show&&s.marker==(s.label.equals("Pick20")?Marker.PICKER_CHECK:Marker.NONE),"picker overscan marks only selected item");
+ v.screen=PICKER;v.picker.current=20;v.rows.clear();v.drawPicker(c);for(Snap s:v.rows)check(s.kind==Kind.PICKER&&!s.show&&s.marker==(s.label.equals("Pick20")?Marker.PICKER_CHECK:Marker.NONE),"picker overscan marks only selected item");
  v.screen=REMOTE_KEYS;v.focus=1;v.rows.clear();v.drawList(c);check(v.rows.get(1).label.equals("Key1"),"legacy keys focus last");for(Snap s:v.rows)check(s.marker==Marker.CHEVRON&&s.after&&s.inset==61,"legacy arrow drawn after value");
  v.screen=HOME_SETTINGS;v.settingsGroup=SYSTEM;v.focus=0;v.rows.clear();v.drawList(c);check(v.rows.size()==5&&v.row("L0").value.equals("V0")&&v.row("L0").marker==Marker.NONE,"legacy system row binding");
  System.out.println("PASS: all actual Activity row bindings, menu/About/region/service/launcher/VPN/editors/picker/legacy, active-last, overscan and scaled bounds");
@@ -57,5 +57,5 @@ with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp);sources=geometry_sources();sources['io/tvos/BindingHarness.java']=harness;sources['io/tvos/settings/SettingsScreen.java']=Path('app/src/io/tvos/settings/SettingsScreen.java').read_text();sources['io/tvos/settings/SettingsListWindow.java']=Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text()
  for name,body in sources.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','com.sun.tools.javac.Main','app/src/io/tvos/SettingsPicker.java','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.BindingHarness'],check=True)

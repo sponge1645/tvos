@@ -154,10 +154,9 @@ public class SettingsActivity extends Activity {
         private final Spring[] pop = new Spring[12];
         private final List<String> appPkgs = new ArrayList<>(), appLabels = new ArrayList<>();
         // The list picker (the app of a remote button): what it shows, which one is in use, where we are.
-        private final List<String> pickLabels = new ArrayList<>();
+        private final SettingsPicker picker = new SettingsPicker();
         // The shelf editor: the apps it can hold (selected ones first, in order) and the selection.
         private final SettingsDockEditor dockEditor = SettingsEditors.dock();
-        private int pickFor, pickCurrent;   // pickFor: the remote button (index + 1)
         private final Spring listScroll = new Spring(0.30f, 1f, 0);
         private final Spring mainScroll = new Spring(0.30f, 1f, 0);
         private final List<String[]> cities = new ArrayList<>();
@@ -181,7 +180,6 @@ public class SettingsActivity extends Activity {
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private final SettingsModeMonitor modeMonitor;
         private boolean tvProviderLoading;
-        private final List<String> choiceKeys = new ArrayList<>();
         private int screen = MAIN, focus, settingsGroup = GENERAL;
         private final SettingsTransitions transitions = new SettingsTransitions();
         private final java.util.function.IntUnaryOperator transitionParent = this::parentScreen;
@@ -284,9 +282,9 @@ public class SettingsActivity extends Activity {
                 }
                 case PICKER: {
                     int at = listWindow.absoluteRow(row);
-                    if (at >= pickLabels.size()) return "";
-                    return pickLabels.get(at) + (at == pickCurrent ? AppStrings.get(R.string.settings_selected) : "")
-                            + ", " + (at + 1) + AppStrings.get(R.string.settings_of) + pickLabels.size();
+                    if (at >= picker.labels.size()) return "";
+                    return picker.labels.get(at) + (at == picker.current ? AppStrings.get(R.string.settings_selected) : "")
+                            + ", " + (at + 1) + AppStrings.get(R.string.settings_of) + picker.labels.size();
                 }
                 case MENU_BUTTONS: {
                     if (row == buttonEditor.size()) return AppStrings.get(R.string.settings_vpn) + ", " + valueSource.vpnApp();
@@ -394,7 +392,7 @@ public class SettingsActivity extends Activity {
                 case CATEGORY_EDIT: return categoryEditor.size();
                 case MENU_BUTTONS: return buttonEditor.size() + 1;
                 case HOME_SETTINGS: return settingLabels().length;
-                case PICKER: return listWindow.visibleRows(pickLabels.size());
+                case PICKER: return listWindow.visibleRows(picker.labels.size());
                 case SHELF_EDIT: return listWindow.visibleRows(dockEditor.size());
                 case REMOTE_KEYS: return Prefs.KEYS.length + 2;
                 default: return Prefs.KEYS.length;
@@ -477,7 +475,7 @@ public class SettingsActivity extends Activity {
         SettingsBackground remoteBackground() { return background; }
 
         private String screenTitle() {
-            return SettingsContent.screenTitle(screen, settingsGroup, pickFor);
+            return SettingsContent.screenTitle(screen, settingsGroup, picker.kind);
         }
 
         private String[] menuLabels() {
@@ -496,7 +494,7 @@ public class SettingsActivity extends Activity {
 
         /** Parent hierarchy also determines animation direction. No per-screen animation code. */
         private int parentScreen(int child) {
-            return SettingsScreen.parent(child, settingsGroup, pickFor);
+            return SettingsScreen.parent(child, settingsGroup, picker.kind);
         }
 
         private void drawScreenContent(Canvas c) {
@@ -593,7 +591,7 @@ public class SettingsActivity extends Activity {
                     preferenceEditor.weatherVisible(true) && preferenceEditor.weatherVisible(false) ? R.string.settings_weather_both_help
                     : preferenceEditor.weatherVisible(false) ? R.string.settings_weather_bottom_help : R.string.settings_weather_home_help)
                     : screen == UPDATES && focus == 0 ? updateDetailsText()
-                    : SettingsContent.description(screen, focus, pickFor, settingsGroup, buttonEditor.size());
+                    : SettingsContent.description(screen, focus, picker.kind, settingsGroup, buttonEditor.size());
             if (screen == UPDATES && focus == 0 && updateProgress.active()) {
                 updateProgress.draw(c, k, lightSettings());
                 return;
@@ -648,7 +646,7 @@ public class SettingsActivity extends Activity {
 
         private void backFromScreen() {
             appLoader.cancel();
-            SettingsActions.Target target = SettingsActions.back(screen, pickFor, settingsGroup, buttonEditor.size());
+            SettingsActions.Target target = SettingsActions.back(screen, picker.kind, settingsGroup, buttonEditor.size());
             if (target != null) {
                 focus = target.row;
                 screen = target.screen;
@@ -814,7 +812,7 @@ public class SettingsActivity extends Activity {
         }
 
         private int listSize() {
-            return screen == SHELF_EDIT ? dockEditor.size() : pickLabels.size();
+            return screen == SHELF_EDIT ? dockEditor.size() : picker.labels.size();
         }
 
         private String categoryLabel(int id) {
@@ -894,14 +892,10 @@ public class SettingsActivity extends Activity {
         }
 
         private void openCountryPicker() {
-            pickFor = PICK_REGION; pickLabels.clear(); choiceKeys.clear(); pickCurrent = -1;
-            String selected = Prefs.recommendationRegion();
-            for (String code : io.tvos.setup.SetupCountries.codes(AppLanguage.current().locale)) {
-                if (code.equals(selected)) pickCurrent = choiceKeys.size();
-                choiceKeys.add(code); pickLabels.add(io.tvos.setup.SetupCountries.name(code, AppLanguage.current().locale));
-            }
-            focus = listWindow.openPicker(pickCurrent, pickLabels.size());
-            listScroll.snap(listWindow.offset()); screen = PICKER;
+            java.util.Locale locale = AppLanguage.current().locale;
+            picker.countries(PICK_REGION, io.tvos.setup.SetupCountries.codes(locale),
+                    Prefs.recommendationRegion(), code -> io.tvos.setup.SetupCountries.name(code, locale));
+            showPicker();
         }
 
         private void openTvProviderPicker() {
@@ -915,30 +909,25 @@ public class SettingsActivity extends Activity {
                 handler.post(() -> {
                     tvProviderLoading = false;
                     if (!running || screen != MEDIA) return;
-                    pickFor = PICK_TV; pickLabels.clear(); choiceKeys.clear();
-                    choiceKeys.add("automatic"); pickLabels.add(AppStrings.get(R.string.settings_automatic));
-                    for (String[] target : found) { choiceKeys.add(target[0]); pickLabels.add(target[1]); }
-                    String selected = localPrefs().getString("live_tv_app", "");
-                    pickCurrent = choiceKeys.indexOf(selected.isEmpty() ? "automatic" : selected);
-                    focus = listWindow.openPicker(pickCurrent, pickLabels.size());
-                    listScroll.snap(listWindow.offset()); screen = PICKER;
+                    picker.tvProviders(PICK_TV, found, localPrefs().getString("live_tv_app", ""),
+                            AppStrings.get(R.string.settings_automatic));
+                    showPicker();
                     invalidate(); spoken.focusMoved();
                 });
             }, "tv-provider-picker").start();
         }
 
         private void openPicker(int which) {
-            pickFor = which;
-            pickLabels.clear();
-            if (which == PICK_CITY) {
-                for (String[] city : cities) pickLabels.add(city[0]);
-                pickCurrent = -1;
-            } else {
-                pickLabels.addAll(appLabels);
-                if (!pickLabels.isEmpty()) pickLabels.set(0, AppStrings.get(R.string.settings_not_configured));
-                pickCurrent = appPkgs.indexOf(which == PICK_VPN ? localPrefs().getString("vpn_app", "") : Prefs.keyApp(Prefs.KEYS[which - 1]));
-            }
-            focus = listWindow.openPicker(pickCurrent, pickLabels.size());
+            if (which == PICK_CITY) picker.cities(which, cities);
+            else picker.applications(which, appPkgs, appLabels,
+                    which == PICK_VPN ? localPrefs().getString("vpn_app", "") : Prefs.keyApp(Prefs.KEYS[which - 1]),
+                    AppStrings.get(R.string.settings_not_configured));
+            showPicker();
+        }
+
+        /** Keep all picker entry points on the same saved-selection and scroll policy. */
+        private void showPicker() {
+            focus = listWindow.openPicker(picker.current, picker.labels.size());
             listScroll.snap(listWindow.offset());
             screen = PICKER;
         }
@@ -953,10 +942,10 @@ public class SettingsActivity extends Activity {
             for (int pass = 0; pass < last - first; pass++) {
                 int at = SettingsListRenderer.paintRow(pass, first, last, listWindow.absoluteRow(focus));
                 setScrollingRowRect(at);
-                SettingsListRenderer.Row row = prepareRow(at - listWindow.offset(), pickLabels.get(at), "");
+                SettingsListRenderer.Row row = prepareRow(at - listWindow.offset(), picker.labels.get(at), "");
                 row.kind = Kind.PICKER;
                 row.showValue = false;
-                if (at == pickCurrent) row.marker = Marker.PICKER_CHECK;
+                if (at == picker.current) row.marker = Marker.PICKER_CHECK;
                 drawRow(c);
             }
         }
@@ -979,7 +968,7 @@ public class SettingsActivity extends Activity {
 
         private void activate() {
             final int screenBeforeAction = screen;
-            SettingsActions.Action action = SettingsActions.activation(screen, focus, pickFor,
+            SettingsActions.Action action = SettingsActions.activation(screen, focus, picker.kind,
                     (screen == HOME_SETTINGS && settingIndex() == CITY_ROW) || (screen == CITY && Prefs.automaticRegion()), buttonEditor.size(),
                     vpnTopEnabled());
             if (action == SettingsActions.Action.NAME) {
@@ -1009,10 +998,10 @@ public class SettingsActivity extends Activity {
                 case OPEN_REGION: openCountryPicker(); break;
                 case TV_PICKER: openTvProviderPicker(); return;
                 case SELECT_COUNTRY:
-                    Prefs.setRecommendationRegion(choiceKeys.get(listWindow.absoluteRow(focus)));
+                    Prefs.setRecommendationRegion(picker.keys.get(listWindow.absoluteRow(focus)));
                     screen = GENERAL; focus = 3; break;
                 case SELECT_TV:
-                    Prefs.setLiveTvApp(choiceKeys.get(listWindow.absoluteRow(focus)));
+                    Prefs.setLiveTvApp(picker.keys.get(listWindow.absoluteRow(focus)));
                     valueSource.clearAppCache(); screen = MEDIA; focus = 2; break;
                 case SELECT_LANGUAGE:
                     Prefs.setLanguage(focus == 0 ? "ru" : "en");
@@ -1036,8 +1025,8 @@ public class SettingsActivity extends Activity {
                     break;
                 }
                 case SELECT_KEY:
-                    Prefs.setKeyApp(Prefs.KEYS[pickFor - 1], appPkgs.get(listWindow.absoluteRow(focus)));
-                    focus = pickFor - 1; screen = REMOTE_KEYS;
+                    Prefs.setKeyApp(Prefs.KEYS[picker.kind - 1], appPkgs.get(listWindow.absoluteRow(focus)));
+                    focus = picker.kind - 1; screen = REMOTE_KEYS;
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
