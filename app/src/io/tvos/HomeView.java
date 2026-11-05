@@ -200,7 +200,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float alpha = Ui.clamp(recommendationHintAlpha.value);
         if (alpha <= .001f) return;
         recommendationHint.setTypeface(Ui.displayMedium);
-        recommendationHint.setTextSize(22 * 1.05f * k);
+        recommendationHint.setTextSize(22 * 1.05f * 1.05f * k);
         recommendationHint.setTextAlign(Paint.Align.CENTER);
         recommendationHint.setColor(0xCCFFFFFF);
         recommendationHint.setAlpha(Math.round(204 * alpha));
