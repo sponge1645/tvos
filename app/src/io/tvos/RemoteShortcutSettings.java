@@ -317,6 +317,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
         final SettingsTransitions.ScreenPainter painter = this::drawTransitionPage;
         List<Row> previousRows = new ArrayList<>();
         int depth, screen, previousScreen, previousOffset, previousFocus;
+        final java.util.Map<Integer, int[]> returnPositions = new java.util.HashMap<>();
         boolean forward, hasDrawn, exiting;
         final Runnable finishExit = RemoteShortcutSettings.this::finishToSettings;
         void removeCallbacksAndMessagesCompat() { removeCallbacks(finishExit); }
@@ -375,7 +376,17 @@ final class RemoteShortcutSettings extends ContextWrapper {
         }
         @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() { return spoken; }
         void show(String nextTitle, String nextHint, List<Row> nextRows, int selected, int nextDepth) {
-            title = nextTitle; hint = nextHint; rows = nextRows; focus = Math.max(0, Math.min(selected, rows.size() - 1)); offset = 0;
+            int restoredOffset = 0;
+            if (nextDepth > depth) {
+                returnPositions.put(depth, new int[]{focus, offset});
+                returnPositions.keySet().removeIf(savedDepth -> savedDepth >= nextDepth);
+            } else if (nextDepth < depth) {
+                int[] position = returnPositions.get(nextDepth);
+                if (position != null) { selected = position[0]; restoredOffset = position[1]; }
+            }
+            title = nextTitle; hint = nextHint; rows = nextRows;
+            focus = Math.max(0, Math.min(selected, rows.size() - 1));
+            offset = Math.max(0, Math.min(restoredOffset, focus));
             reveal(); fit(); entered = SystemClock.uptimeMillis(); last = entered;
             if (depth != nextDepth) {
                 previousScreen = screen++; forward = nextDepth > depth; depth = nextDepth;
