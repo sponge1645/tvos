@@ -61,9 +61,22 @@ final class WatchingCardReader {
         if (identity.matches()) pick.watchingKey = "kinopub:" + identity.group(2);
         else if (NUMERIC.matcher(internalId).matches()) pick.watchingKey = "kinopub:" + internalId;
         String resume = intent.getStringExtra("kino_resume");
+        if (Log.isLoggable("tvOS-Artwork", Log.DEBUG)) {
+            String date;
+            try { date = diagnosticDate(text(cursor, 14)); }
+            catch (IndexOutOfBoundsException ignored) { date = "column-absent"; }
+            Log.d("tvOS-Artwork", "provider metadata: package=" + owner
+                    + ", title=" + title.replace('\n', ' ').replace('\r', ' ')
+                    + ", item=" + (internalId.matches("[ms]?[0-9]+(?:[:_][0-9]+)*") ? internalId : "other")
+                    + ", release_date=" + date
+                    + ", kino_resume=" + (resume == null ? "absent" : "present")
+                    + ", resumeLength=" + (resume == null ? 0 : resume.length()));
+        }
         if (resume != null && resume.length() <= 131072) {
             try {
                 JSONObject data = new JSONObject(resume);
+                if (Log.isLoggable("tvOS-Artwork", Log.DEBUG))
+                    logMetadataShape(data, "resume", 0);
                 // KinoPub can omit the TV Provider release_date while retaining
                 // the release year in its resume payload.
                 String year = data.optString("year", "").trim();
@@ -92,6 +105,30 @@ final class WatchingCardReader {
     static String labelYear(String title) {
         Matcher year = Pattern.compile("\\s*[\\(\\[]([12][0-9]{3})[\\)\\]]\\s*$").matcher(title);
         return year.find() ? year.group(1) : "";
+    }
+
+    // Log field names/types, and only date-shaped values. Never dump a payload or URI.
+    private static String diagnosticDate(String value) {
+        if (value.isEmpty()) return "empty";
+        return value.length() <= 32 && value.matches("[0-9TtZz: .+/-]+")
+                ? value : "other(length=" + value.length() + ")";
+    }
+
+    private static void logMetadataShape(JSONObject data, String path, int depth) {
+        java.util.Iterator<String> keys = data.keys();
+        int count = 0;
+        while (keys.hasNext() && count++ < 40) {
+            String key = keys.next();
+            if (!key.matches("[A-Za-z_][A-Za-z0-9_]{0,47}")) continue;
+            String field = path + "." + key;
+            JSONObject child = data.optJSONObject(key);
+            boolean array = data.optJSONArray(key) != null;
+            boolean date = key.toLowerCase(java.util.Locale.ROOT).matches(".*(year|date).*");
+            String value = data.isNull(key) ? "null" : child != null ? "object" : array ? "array"
+                    : date ? diagnosticDate(data.optString(key, "")) : "scalar";
+            Log.d("tvOS-Artwork", "provider field: " + field + "=" + value);
+            if (child != null && depth < 2) logMetadataShape(child, field, depth + 1);
+        }
     }
 
     private String poster(String value, String owner) {
