@@ -42,14 +42,21 @@ final class DockArtwork {
             if (AppLog.artworkEnabled()) AppLog.artwork("metadata cache: title=" + title + ", year=" + year + ", id=" + cached.id + ", kind=" + cached.kind + ", wide=" + !cached.backdrop.isEmpty());
             return cached;
         } }
-        JSONObject match = search(title, poster, year, expectedKind, originalTitle, language, observer);
+        JSONArray candidates = new JSONArray();
+        JSONObject match = search(title, poster, year, expectedKind, originalTitle, language, candidates, observer);
         // Providers may keep Russian titles/posters even when the launcher requests English metadata.
         if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
-            match = search(title, poster, year, expectedKind, originalTitle, "ru-RU", observer);
+            match = search(title, poster, year, expectedKind, originalTitle, "ru-RU", candidates, observer);
         // An English provider title can differ from both the localized Russian
         // name and the original Korean/Japanese title. Resolve in English too.
         if (match == null && !"en".equals(requestedLanguage.code) && !hasCyrillic(title))
-            match = search(title, poster, year, expectedKind, originalTitle, "en-US", observer);
+            match = search(title, poster, year, expectedKind, originalTitle, "en-US", candidates, observer);
+        if (match == null) {
+            match = adjacentYearMatch(candidates, title, originalTitle, year, expectedKind);
+            if (match != null && AppLog.artworkEnabled())
+                AppLog.artwork("adjacent release year: title=" + title + ", sourceYear=" + year
+                        + ", selected=" + match.optInt("id"));
+        }
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
@@ -70,11 +77,15 @@ final class DockArtwork {
     }
 
     private static JSONObject search(String title, String poster, String year, String expectedKind, String originalTitle, String language,
-            ConnectionObserver observer) throws IOException, org.json.JSONException {
+            JSONArray candidates, ConnectionObserver observer) throws IOException, org.json.JSONException {
         String[] variants = originalTitle.isEmpty() ? titles(title) : new String[]{title, originalTitle};
         for (int i = variants.length - 1; i >= 0; i--) {
             JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
                     + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", observer).optJSONArray("results");
+            if (items != null) for (int n = 0; n < items.length(); n++) {
+                JSONObject candidate = items.optJSONObject(n);
+                if (candidate != null) candidates.put(candidate);
+            }
             JSONObject matched = match(items, title, poster, year, expectedKind, originalTitle);
             // Provider type is a hint: an unambiguous title/year remains usable
             // when a publisher has mislabeled a series as a movie.
@@ -162,6 +173,30 @@ final class DockArtwork {
         }
         if (bilingualNames == 1) return bilingual;
         return names == 1 ? named : null;
+    }
+
+    /** Production and premiere years can differ; only a unique dual-title identity may bridge one year. */
+    static JSONObject adjacentYearMatch(JSONArray items, String title, String originalTitle, String year, String expectedKind) {
+        if (items == null || originalTitle == null || normalize(originalTitle).isEmpty()
+                || !year.matches("[12][0-9]{3}") || !("movie".equals(expectedKind) || "tv".equals(expectedKind))) return null;
+        String original = normalize(originalTitle);
+        String[] localized = titles(title);
+        java.util.Map<Integer, JSONObject> matches = new java.util.HashMap<>();
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null || item.optInt("id") <= 0 || !expectedKind.equals(item.optString("media_type", ""))) continue;
+            String date = item.optString("movie".equals(expectedKind) ? "release_date" : "first_air_date", "");
+            if (!date.matches("[12][0-9]{3}.*")
+                    || Math.abs(Integer.parseInt(date.substring(0, 4)) - Integer.parseInt(year)) != 1) continue;
+            if (!original.equals(normalize(item.optString("movie".equals(expectedKind) ? "original_title" : "original_name", "")))) continue;
+            String name = normalize(item.optString("movie".equals(expectedKind) ? "title" : "name", ""));
+            for (String variant : localized) {
+                if (!normalize(variant).isEmpty() && normalize(variant).equals(name)) {
+                    matches.put(item.optInt("id"), item); break;
+                }
+            }
+        }
+        return matches.size() == 1 ? matches.values().iterator().next() : null;
     }
 
     static String logo(JSONArray items, String language) {
