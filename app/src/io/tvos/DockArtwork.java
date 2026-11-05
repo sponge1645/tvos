@@ -67,20 +67,6 @@ final class DockArtwork {
             // Provider type is a hint: an unambiguous title/year remains usable
             // when a publisher has mislabeled a series as a movie.
             if (matched == null && !expectedKind.isEmpty()) matched = match(items, title, poster, year, "");
-            StringBuilder trace = new StringBuilder("Artwork search: title=").append(title.replace('\n', ' '))
-                    .append(", year=").append(year).append(", kind=").append(expectedKind)
-                    .append(", language=").append(language).append(", selected=")
-                    .append(matched == null ? 0 : matched.optInt("id")).append(", candidates=");
-            if (items != null) for (int n = 0; n < Math.min(10, items.length()); n++) {
-                JSONObject candidate = items.optJSONObject(n);
-                if (candidate == null) continue;
-                trace.append('[').append(candidate.optInt("id")).append('|')
-                        .append(candidate.optString("media_type", "")).append('|')
-                        .append(candidate.optString("title", candidate.optString("name", "")).replace('\n', ' ')).append('|')
-                        .append(candidate.optString("original_title", candidate.optString("original_name", "")).replace('\n', ' ')).append('|')
-                        .append(candidate.optString("release_date", candidate.optString("first_air_date", ""))).append(']');
-            }
-            AppLog.w(trace.toString());
             if (matched != null) return matched;
         }
         return null;

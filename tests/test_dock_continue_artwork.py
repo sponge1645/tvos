@@ -6,7 +6,7 @@ files={
  'android/content/Context.java':'package android.content;public class Context {}',
  'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {}',
  'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {public final List<Runnable> queue=new ArrayList<>();public void post(Runnable r){queue.add(r);}public void drain(){while(!queue.isEmpty())queue.remove(0).run();}}''',
- 'io/tvos/artwork/PosterCache.java':'''package io.tvos.artwork;import java.util.*;public class PosterCache {public static Set<String> window=new HashSet<>();public static int max;public PosterCache(android.content.Context c,Runnable changed,java.util.function.Consumer<String> warn){}public void setWindow(Set<String> s){window=new HashSet<>(s);max=Math.max(max,s.size());}public android.graphics.Bitmap poster(String p){return new android.graphics.Bitmap();}}''',
+ 'io/tvos/artwork/PosterCache.java':'''package io.tvos.artwork;import java.util.*;public class PosterCache {public static Set<String> window=new HashSet<>();public static int max;public static Runnable decoded;public PosterCache(android.content.Context c,Runnable changed,java.util.function.Consumer<String> warn){decoded=changed;}public void setWindow(Set<String> s){window=new HashSet<>(s);max=Math.max(max,s.size());}public android.graphics.Bitmap poster(String p){return new android.graphics.Bitmap();}}''',
  'io/tvos/Recs.java':'package io.tvos;class Recs {static class Pick {String watchingKey,pkg,title,poster,backdrop,watchingYear,kind;}}',
  'io/tvos/AppLog.java':'package io.tvos;class AppLog {static void w(String message){}}',
  'io/tvos/ProviderImages.java':'package io.tvos;class ProviderImages {static boolean allowed(android.content.Context c,String u,String p){return true;}}',
@@ -18,9 +18,9 @@ files={
  public static class Candidate {public List<String> urls=new ArrayList<>();public String year="";}
  public Candidate forResume(String pkg,String title,String poster){return published;}}''',
  'io/tvos/DockArtwork.java':'''package io.tvos;class DockArtwork {
- static int calls,logos;static boolean fail;static String year,kind;String backdrop,logo="",logoStatus="selected";
+ static int calls,logos;static Runnable afterLookup;static boolean fail;static String year,kind;String backdrop,logo="",logoStatus="selected";
  static DockArtwork lookup(String t,String p,String y,String k,io.tvos.network.ConnectionObserver c)throws java.io.IOException,org.json.JSONException {
-  calls++;year=y;kind=k;if(fail)throw new java.io.IOException();DockArtwork a=new DockArtwork();a.backdrop="https://image.tmdb.org/t/p/w1280/"+t+".jpg";return a;}
+  calls++;year=y;kind=k;if(afterLookup!=null){Runnable r=afterLookup;afterLookup=null;r.run();}if(fail)throw new java.io.IOException();DockArtwork a=new DockArtwork();a.backdrop="https://image.tmdb.org/t/p/w1280/"+t+".jpg";return a;}
  static void loadLogo(DockArtwork a,io.tvos.network.ConnectionObserver c)throws java.io.IOException,org.json.JSONException {logos++;a.logo="https://logo/"+a.backdrop.hashCode()+".png";}}''',
  'io/tvos/ArtworkHarness.java':'''package io.tvos;import java.util.*;import android.os.Handler;import io.tvos.artwork.PosterCache;
 public class ArtworkHarness {
@@ -32,6 +32,9 @@ public class ArtworkHarness {
   List<Recs.Pick> old=picks("old");a.prepare(old,0);a.prepare(old,0);check(worker.queue.size()==4,"bounded four-card metadata requests and no duplicate pending requests");
   worker.one();check(main.queue.size()==1,"poster delivery precedes logo work");a.clear();int before=changes[0];main.drain();worker.drain();main.drain();
   check(changes[0]==before&&a.posterPath("old0")==null&&PosterCache.window.isEmpty(),"hide rejects queued UI result and stale metadata/logo tasks");
+  PosterCache.decoded.run();main.drain();check(changes[0]==before,"late cache completion cannot redraw hidden row");
+  a.prepare(old,0);DockArtwork.afterLookup=a::clear;int logosBefore=DockArtwork.logos;worker.drain();main.drain();
+  check(changes[0]==before&&DockArtwork.logos==logosBefore&&PosterCache.window.isEmpty(),"cancellation during metadata stops poster delivery and optional logo stage");
   List<Recs.Pick> fresh=picks("new");a.prepare(fresh,0);worker.one();a.prepare(fresh,3);main.drain();
   check(a.posterPath("new0").contains("/w780/"),"TMDB landscape remains normalized to w780");
   check(!PosterCache.window.contains(a.posterPath("new0")),"late offscreen image cannot replace current cache window");
@@ -41,6 +44,9 @@ public class ArtworkHarness {
   check(a.posterPath("replace0")==null&&a.logoPath("replace0")==null,"snapshot replacement rejects both queued poster and logo results");
   io.tvos.watching.DockPrograms.Candidate published=new io.tvos.watching.DockPrograms.Candidate();published.year="2026";published.urls.add("https://provider/wide");io.tvos.watching.DockPrograms.published=published;
   a.prepare(fresh,0);worker.drain();main.drain();check(a.posterPath("new0").equals("https://provider/wide")&&DockArtwork.year.equals("2026"),"provider-wide image and enriched year preserved for logo lookup");
+  a.clear();a.prepare(fresh,0);worker.one();worker.one();worker.one();worker.one();
+  DockArtwork.afterLookup=a::clear;logosBefore=DockArtwork.logos;worker.drain();main.drain();
+  check(DockArtwork.logos==logosBefore&&PosterCache.window.isEmpty(),"cancellation during published-artwork logo metadata skips logo download");
   a.clear();io.tvos.watching.DockPrograms.published=null;DockArtwork.fail=true;fresh.get(0).backdrop="https://fallback/wide";
   a.prepare(fresh,0);worker.drain();main.drain();check(a.posterPath("new0").equals("https://fallback/wide")&&a.posterPath("new1").equals(fresh.get(1).poster),"failed lookup retains wide history image then original poster fallback");
   a.clear();check(PosterCache.window.isEmpty(),"clear releases cache window");

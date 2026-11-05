@@ -27,7 +27,9 @@ final class DockContinueArtwork {
 
     DockContinueArtwork(Context context, Handler main, Executor worker, Runnable changed) {
         this.context = context; this.main = main; this.worker = worker; this.changed = changed;
-        images = new PosterCache(context, () -> main.post(changed), AppLog::w);
+        images = new PosterCache(context, () -> main.post(() -> {
+            if (!items.isEmpty()) changed.run();
+        }), AppLog::w);
     }
 
     void reset() {
@@ -46,35 +48,35 @@ final class DockContinueArtwork {
             Recs.Pick p = items.get(i);
             String key = p.watchingKey;
             if (paths.containsKey(key) || !pending.add(key)) continue;
-            int token = generation, itemIndex = i;
+            int token = generation;
             worker.execute(() -> {
                 if (token != generation) return;
                 String url = "";
                 DockArtwork resolved = null;
-                String year = p.watchingYear == null ? "" : p.watchingYear, source = "history-fallback";
+                String year = p.watchingYear == null ? "" : p.watchingYear;
                 try {
                     io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
                             (image, owner) -> ProviderImages.allowed(context, image, owner));
                     io.tvos.watching.DockPrograms.Candidate published = programs.forResume(p.pkg, p.title, p.poster);
                     if (published != null) {
                         if (!published.year.isEmpty()) year = published.year;
-                        if (!published.urls.isEmpty()) { url = published.urls.get(0); source = "published-landscape"; }
+                        if (!published.urls.isEmpty()) url = published.urls.get(0);
                     }
                 } catch (RuntimeException e) {
                     AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
                 }
+                if (token != generation) return;
                 year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
                 try {
                     if (url.isEmpty()) {
                         resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
                         url = resolved.backdrop;
-                        if (!url.isEmpty()) source = "tmdb-landscape";
                     }
                 }
                 catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
                     AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
                 }
-                AppLog.w("Resume artwork: package=" + p.pkg + ", item=" + itemIndex + ", source=" + source + ", kind=" + p.kind + ", year=" + year);
+                if (token != generation) return;
                 final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
                 main.post(() -> {
                     if (token != generation) return;
@@ -85,14 +87,14 @@ final class DockContinueArtwork {
                 final DockArtwork resolvedArtwork = resolved;
                 // Queue optional metadata after the current poster lookup so images
                 // can appear before logos; never create bitmaps in the draw loop.
+                if (token != generation) return;
                 worker.execute(() -> {
                     if (token != generation) return;
                     try {
                         DockArtwork artwork = resolvedArtwork != null ? resolvedArtwork : DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster,
                                 logoYear, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
+                        if (token != generation) return;
                         DockArtwork.loadLogo(artwork, io.tvos.network.ConnectionObserver.NONE);
-                        AppLog.w("Resume logo: package=" + p.pkg + ", item=" + itemIndex
-                                + ", status=" + artwork.logoStatus + ", kind=" + p.kind + ", year=" + logoYear);
                         if (artwork.logo.isEmpty() || token != generation) return;
                         main.post(() -> {
                             if (token != generation) return;

@@ -190,15 +190,13 @@ final class DockContinue {
             if (!renderer.visible(i - scroll)) continue;
             Recs.Pick pick = items.get(i);
             String url = artwork.posterPath(pick.watchingKey);
-            Bitmap image = url == null || url.isEmpty() ? null : artwork.image(url);
+            Bitmap image = artwork.image(url);
             int alpha = 255;
             if (image != null) {
                 long now = SystemClock.uptimeMillis();
                 Long appeared = imageAppeared.get(url);
                 if (appeared == null) {
                     appeared = now; imageAppeared.put(url, appeared);
-                    AppLog.w("Resume decoded: package=" + pick.pkg + ", item=" + i
-                            + ", size=" + image.getWidth() + "x" + image.getHeight());
                 }
                 float progress = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 240f);
@@ -206,15 +204,13 @@ final class DockContinue {
                 alpha = Math.round(255 * progress * progress * (3 - 2 * progress));
             }
             String logoPath = artwork.logoPath(pick.watchingKey);
-            Bitmap logo = logoPath == null ? null : artwork.image(logoPath);
+            Bitmap logo = artwork.image(logoPath);
             int logoAlpha = 0;
             if (logo != null) {
                 long now = SystemClock.uptimeMillis();
                 Long appeared = imageAppeared.get(logoPath);
                 if (appeared == null) {
                     appeared = now; imageAppeared.put(logoPath, appeared);
-                    AppLog.w("Resume logo decoded: package=" + pick.pkg + ", item=" + i
-                            + ", size=" + logo.getWidth() + "x" + logo.getHeight());
                 }
                 float t = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false)
                         ? 1 : Ui.clamp((now - appeared) / 300f);

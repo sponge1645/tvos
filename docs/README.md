@@ -131,3 +131,12 @@ and the four-card poster/logo cache window into `DockContinueArtwork`.
 year/type matching, TMDB w780 URLs, fallback priority and shared `PosterCache`
 budgets are unchanged. Tests cover old UI/worker callbacks after hide/replacement,
 viewport changes during loading, optional logos and published/history fallbacks.
+
+Build 1B184 removes temporary artwork search/result/decoded-image tracing while
+retaining lookup failure messages. Resume artwork now checks cancellation between
+provider metadata, TMDB metadata and optional logo download; late cache completion
+cannot invalidate a cleared row. Tests cover cancellation during metadata and logo
+lookup as well as queued delivery. Cache budgets, persisted files, matching policy
+and UI animations remain unchanged. Two obsolete orphaned Javadocs are removed.
+A targeted scan of the refactored Home/settings/resume classes found no additional
+unreferenced private methods to remove safely.

@@ -510,7 +510,6 @@ final class AppArtwork {
         return b;
     }
 
-    /** Official logo (tools/logos.py): trims the transparent margins and scales it down to at most 512 px. */
     /** The bundled logo, read once per process: reading it again on every load made a new image and filled caches. */
     static Bitmap ownLogoCached(Context c, String key) {
         synchronized (LOGOS) {

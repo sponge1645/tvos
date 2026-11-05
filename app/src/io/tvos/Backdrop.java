@@ -147,7 +147,6 @@ final class Backdrop {
         return new Bitmap[] {out, frost};
     }
 
-    /** The center of the photo at the card's aspect ratio, filtered down (halving while possible) to the exact size. */
     /** Copies it to GPU memory (cheap to draw; the process doesn't keep the pixels). */
     static Bitmap gpu(Bitmap b) {
         Bitmap g = b.copy(Bitmap.Config.HARDWARE, false);
