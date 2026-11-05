@@ -128,7 +128,7 @@ final class SettingsValues {
             v[0] = onOff(localPrefs().getBoolean("show_date", false));
         } else if (screen == WEATHER) {
             boolean top = weatherVisible.test(true), bottom = weatherVisible.test(false);
-            v[0] = AppStrings.get(top && bottom ? R.string.settings_weather_both : bottom ? R.string.settings_weather_bottom : R.string.settings_weather_home);
+            v[0] = AppStrings.get(top && bottom ? R.string.settings_weather_both : bottom ? R.string.settings_weather_bottom : top ? R.string.settings_weather_home : R.string.settings_weather_none);
             v[1] = Prefs.city(); v[2] = settings()[1];
         } else if (screen == ABOUT) {
             String[] fallback = new String[rowCount]; java.util.Arrays.fill(fallback, "—");
