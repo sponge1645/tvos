@@ -1474,10 +1474,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return all;
     }
 
-    /** The three cards of the current tab (Explore, Movies, Shows) and the background taken from the first one. */
+    /** Collection cards own their background only in Collection view; Dock artwork owns tvOS View. */
     private void updateCards() {
         if (lTab == null) return;
-        if (Prefs.firstCategory() < 0) {
+        if (!Prefs.homeCollection() || Prefs.firstCategory() < 0) {
             cards.clear();
             recs.setPosterWindow(java.util.Collections.emptyList());
             heroDirty = true;
