@@ -24,6 +24,12 @@ public class PreferenceHarness {
  }
  Prefs.weather=false;p.putBoolean("weather_show_top",true);p.putBoolean("weather_show_bottom",true);check(!e.weatherVisible(true)&&!e.weatherVisible(false),"master switch overrides saved positions");e.toggleWeather(false);check(Prefs.weather&&!e.weatherVisible(true)&&e.weatherVisible(false),"enable bottom from master-off");
  p.putInt("weather_placement",1);p.putBoolean("weather_show_top",false);check(!e.weatherVisible(true),"new key overrides legacy placement");
+ for(int current=0;current<4;current++)for(int direction:new int[]{-1,1}){
+  Prefs.weather=current!=0;p.putBoolean("weather_show_top",(current&1)!=0);p.putBoolean("weather_show_bottom",(current&2)!=0);events.clear();
+  e.cycleWeather(direction);int next=Math.floorMod(current+direction,4);
+  check(Prefs.weather==(next!=0)&&e.weatherVisible(true)==((next&1)!=0)&&e.weatherVisible(false)==((next&2)!=0)&&p.getInt("weather_placement",-1)==next,"all four weather states cycle in both directions, including None");
+  check(events.equals(Arrays.asList("changed","refresh")),"weather cycle notifies after saving");
+ }
  events.clear();e.toggleDateTime();check(p.getBoolean("show_date",false)&&events.equals(Arrays.asList("refresh")),"date defaults on and only redraws");e.toggleDateTime();check(!p.getBoolean("show_date",true),"date restored");
  Prefs.theme="auto";e.general(1,-1);check(Prefs.theme.equals("dark"),"theme reverse wrap");e.general(1,1);check(Prefs.theme.equals("auto"),"theme forward wrap");
  Prefs.unit="auto";e.temperature(-1);check(Prefs.unit.equals("F"),"unit reverse wrap");e.legacy(1,1);check(Prefs.unit.equals("auto"),"legacy shares unit cycle");
