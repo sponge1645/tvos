@@ -105,7 +105,7 @@ final class DockContinueArtwork {
                 year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
                 try {
                     if (url.isEmpty()) {
-                        resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, observer);
+                        resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, p.originalTitle, observer);
                         url = resolved.backdrop;
                         if (!url.isEmpty()) source = "tmdb-landscape";
                     }
@@ -132,7 +132,7 @@ final class DockContinueArtwork {
                     if (token != generation) return;
                     try {
                         DockArtwork artwork = resolvedArtwork != null ? resolvedArtwork : DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster,
-                                logoYear, p.kind == null ? "" : p.kind, observer);
+                                logoYear, p.kind == null ? "" : p.kind, p.originalTitle, observer);
                         if (token != generation) return;
                         DockArtwork.loadLogo(artwork, observer);
                         if (AppLog.artworkEnabled()) AppLog.artwork("resume logo: item=" + itemIndex + ", title=" + p.title
