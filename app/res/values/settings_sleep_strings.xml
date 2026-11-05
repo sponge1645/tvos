@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_sleep_after">Sleep After</string>
+    <string name="settings_sleep_now">Sleep</string>
+    <string name="settings_sleep_5">5 minutes</string>
+    <string name="settings_sleep_10">10 minutes</string>
+    <string name="settings_sleep_15">15 minutes</string>
+    <string name="settings_sleep_30">30 minutes</string>
+    <string name="settings_sleep_60">1 hour</string>
+    <string name="settings_sleep_120">2 hours</string>
+    <string name="settings_sleep_240">4 hours</string>
+    <string name="settings_sleep_unset">Not set</string>
+    <string name="settings_sleep_help">Sleep after inactivity.\nVideo playback may postpone sleep.</string>
+    <string name="settings_sleep_busy">Please wait…</string>
+    <string name="settings_sleep_saved">Sleep timeout saved</string>
+    <string name="settings_sleep_failed">Could not change sleep settings. Check the debugging connection to the TV.</string>
+</resources>

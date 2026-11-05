@@ -23,6 +23,8 @@ public class CLASSNAME {
  void openCountryPicker(){openPicker(PICK_REGION);}void openTvProviderPicker(){openPicker(PICK_TV);}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
  static class Ui {static boolean ru;}
+ boolean running=true;
+ static class SleepMode {static void request(Activity a,int choice,Runnable done){note("sleep:"+choice);done.run();}}
  static class Context {}final Context context=new Context();Context getContext(){return context;}
  static class Intent {
   static final int FLAG_ACTIVITY_NEW_TASK=1,FLAG_ACTIVITY_CLEAR_TOP=2;String action;int flags;

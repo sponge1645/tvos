@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_sleep_after">Переход в режим сна спустя</string>
+    <string name="settings_sleep_now">Режим сна</string>
+    <string name="settings_sleep_5">5 минут</string>
+    <string name="settings_sleep_10">10 минут</string>
+    <string name="settings_sleep_15">15 минут</string>
+    <string name="settings_sleep_30">30 минут</string>
+    <string name="settings_sleep_60">1 час</string>
+    <string name="settings_sleep_120">2 часа</string>
+    <string name="settings_sleep_240">4 часа</string>
+    <string name="settings_sleep_unset">Не задано</string>
+    <string name="settings_sleep_help">Переход в режим сна после бездействия.\nВоспроизведение видео может откладывать сон.</string>
+    <string name="settings_sleep_busy">Подождите…</string>
+    <string name="settings_sleep_saved">Время перехода в режим сна сохранено</string>
+    <string name="settings_sleep_failed">Не удалось изменить режим сна. Проверьте подключение к ТВ через отладку.</string>
+</resources>

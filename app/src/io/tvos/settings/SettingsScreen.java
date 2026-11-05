@@ -4,13 +4,14 @@ package io.tvos.settings;
 public final class SettingsScreen {
     private SettingsScreen() { }
     public static final int REMOTE_INPUT_ROW = 5, REMOTE_ADVANCED_ROW = 6;
-    public static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, GENERAL = 6, WIDGETS = 7, SYSTEM = 8, ABOUT = 9, SCREENSAVER = 10, WEATHER = 11, DATE_TIME = 12, MENU_BUTTONS = 13, UPDATES = 14, TOP_PANEL = 15, ACCESSIBILITY = 16, RESET = 17, APPS_DOWNLOADS = 19, CATEGORY_EDIT = 20, MEDIA = 21, MOVIE_SERVICE = 22, CITY = 23, HOME_SCREEN = 24, LANGUAGE = 25, HOME_CARD_STYLE = 26, HOME_VIEW = 27;
+    public static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, GENERAL = 6, WIDGETS = 7, SYSTEM = 8, ABOUT = 9, SCREENSAVER = 10, WEATHER = 11, DATE_TIME = 12, MENU_BUTTONS = 13, UPDATES = 14, TOP_PANEL = 15, ACCESSIBILITY = 16, RESET = 17, APPS_DOWNLOADS = 19, CATEGORY_EDIT = 20, MEDIA = 21, MOVIE_SERVICE = 22, CITY = 23, HOME_SCREEN = 24, LANGUAGE = 25, HOME_CARD_STYLE = 26, HOME_VIEW = 27, SLEEP_TIMER = 28;
     public static final int PICK_CITY = 0, PICK_VPN = -1, PICK_REGION = -2, PICK_TV = -3;
 
     /** Returns -1 for data-dependent or unknown screens; the adapter supplies their row count. */
     public static int fixedRows(int screen) {
         switch (screen) {
-            case MAIN: return 10;
+            case MAIN: return 11;
+            case SLEEP_TIMER: return 7;
             case DATE_TIME: return 1;
             case MEDIA: return 3;
             case HOME_VIEW: case HOME_CARD_STYLE: case WIDGETS: case RESET: case CITY:
@@ -20,7 +21,7 @@ public final class SettingsScreen {
             case SYSTEM: return 4;
             case SCREENSAVER: return 5;
             case APPS_DOWNLOADS: return 7;
-            case GENERAL: return 5;
+            case GENERAL: return 6;
             case LANGUAGE: return 2;
             case ABOUT: return 9;
             default: return -1;
@@ -39,7 +40,7 @@ public final class SettingsScreen {
             case HOME_CHOICE: return SYSTEM;
             case MENU_BUTTONS: return TOP_PANEL;
             case CITY: return WEATHER;
-            case LANGUAGE: return GENERAL;
+            case LANGUAGE: case SLEEP_TIMER: return GENERAL;
             case WIDGETS: return TOP_PANEL;
             case WEATHER: case DATE_TIME: return TOP_PANEL;
             case UPDATES: case RESET: return SYSTEM;
@@ -53,7 +54,9 @@ public final class SettingsScreen {
     public static boolean hasChevron(int screen, int row, boolean automaticRegion) {
         switch (screen) {
             case MEDIA: return row != 1;
-            case GENERAL: return row == 0 || row == 2 || row == 3;
+            case MAIN: return row != 10;
+            case GENERAL: return row == 0 || row == 2 || row == 3 || row == 4;
+            case SLEEP_TIMER: return false;
             case TOP_PANEL: return row != 2;
             case WEATHER: return row == 1;
             case LANGUAGE: case SCREENSAVER: case ACCESSIBILITY: case DATE_TIME:

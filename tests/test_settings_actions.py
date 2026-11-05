@@ -20,7 +20,10 @@ public class ActionsTest {
    if(row==3)check(ActionView.events.equals(Arrays.asList("airplay")),"AirPlay returns without focus reset");
    if(row==4)check(ActionView.events.contains("remote-source-frame")&&!ActionView.events.contains("remote-service")&&!ActionView.events.contains("load-apps")&&ActionView.events.stream().anyMatch(e->e.startsWith("start:")),"remote screen does not enable accessibility");
   }
-  int[][] back={{HOME_SCREEN,TOP_PANEL,0},{HOME_VIEW,HOME_SCREEN,0},{HOME_CARD_STYLE,HOME_SCREEN,1},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,HOME_SCREEN,2}};
+  ActionView sleep=create(MAIN,10);sleep.activate();check(ActionView.events.contains("sleep:-1"),"Sleep action sends immediate sleep");
+  sleep=create(GENERAL,2);sleep.activate();check(sleep.screen==SLEEP_TIMER,"sleep timeout opens list below appearance");
+  sleep.focus=4;sleep.activate();check(sleep.screen==GENERAL&&sleep.focus==2&&ActionView.events.contains("sleep:4"),"sleep choice applies and returns focus to timeout row");
+  int[][] back={{HOME_SCREEN,TOP_PANEL,0},{HOME_VIEW,HOME_SCREEN,0},{HOME_CARD_STYLE,HOME_SCREEN,1},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,3},{SLEEP_TIMER,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,HOME_SCREEN,2}};
   for(int[] route:back){check(io.tvos.settings.SettingsScreen.parent(route[0],GENERAL,0)==route[1],"animation parent agrees with Back destination");ActionView v=create(route[0],0);v.backFromScreen();check(v.appLoader.cancelled&&v.tvProviderLoader.cancelled,"Back cancels both pending app lookups");check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
    ActionView v=create(PICKER,0);v.picker.kind=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
@@ -40,8 +43,8 @@ public class ActionsTest {
   }
   check(io.tvos.settings.SettingsScreen.parent(MAIN,GENERAL,0)==-1&&io.tvos.settings.SettingsScreen.parent(999,GENERAL,0)==-1,"root and unknown have no animation parent");
   check(SettingsActions.back(999,0,GENERAL,6).screen==MAIN&&SettingsActions.back(999,0,GENERAL,6).row==0,"unknown Back fallback retained");
-  ActionView language=create(GENERAL,2);language.activate();check(language.screen==LANGUAGE,"language opens list");language.focus=0;language.activate();check(language.screen==GENERAL&&language.focus==2&&ActionView.Prefs.language.equals("ru"),"language selection saves and returns");
-  ActionView country=create(GENERAL,3);country.activate();check(country.screen==PICKER&&country.picker.kind==PICK_REGION,"region opens country list");country.focus=0;country.activate();check(country.screen==GENERAL&&country.focus==3&&ActionView.events.contains("country:FR"),"country saves ISO code");
+  ActionView language=create(GENERAL,3);language.activate();check(language.screen==LANGUAGE,"language opens list");language.focus=0;language.activate();check(language.screen==GENERAL&&language.focus==3&&ActionView.Prefs.language.equals("ru"),"language selection saves and returns");
+  ActionView country=create(GENERAL,4);country.activate();check(country.screen==PICKER&&country.picker.kind==PICK_REGION,"region opens country list");country.focus=0;country.activate();check(country.screen==GENERAL&&country.focus==4&&ActionView.events.contains("country:FR"),"country saves ISO code");
   ActionView provider=create(MEDIA,2);provider.activate();check(provider.screen==PICKER&&provider.picker.kind==PICK_TV,"TV provider opens target list");provider.focus=1;provider.activate();check(provider.screen==MEDIA&&provider.focus==2&&ActionView.events.contains("tv:"),"empty target unselects provider");
   ActionView service=create(MEDIA,0);service.activate();check(service.screen==MOVIE_SERVICE,"service row opens choices");
   service=create(MOVIE_SERVICE,3);service.activate();check(service.screen==MEDIA&&service.focus==0&&ActionView.events.contains("movie_service:seena"),"service selection saves stable identity and returns to parent");service.activate();check(service.screen==MOVIE_SERVICE&&service.focus==3,"reopening focuses the saved service");
@@ -74,7 +77,7 @@ public class ActionsTest {
   v=create(CITY,0);v.activate();check(ActionView.Prefs.auto,"auto region toggles on");v.focus=1;v.activate();check(!ActionView.events.contains("ask-city"),"manual city disabled in auto mode");v.focus=0;v.activate();v.focus=1;v.activate();check(ActionView.events.contains("ask-city"),"manual city enabled when auto is off");
   v=create(WEATHER,1);v.activate();check(v.screen==CITY,"Weather opens City submenu");v=create(TOP_PANEL,2);v.activate();check(ActionView.events.contains("date-toggle"),"date toggles directly in Home settings");
   v=create(WEATHER,2);v.activate();check(ActionView.events.contains("unit:C"),"temperature follows removed date row");
-  v=create(GENERAL,4);v.activate();check(ActionView.events.contains("hour24:true"),"time format follows removed date row");
+  v=create(GENERAL,5);v.activate();check(ActionView.events.contains("hour24:true"),"time format follows removed date row");
   v=create(MEDIA,1);v.activate();check(ActionView.events.contains("flag:navigation_clicks:false"),"click toggle follows removed date row");
   v=create(ACCESSIBILITY,2);v.activate();check(ActionView.events.contains("tv-settings"),"system settings uses safe launcher helper");
   ActionView.Prefs.collection=true;v=create(TOP_PANEL,0);v.activate();check(v.screen==HOME_SCREEN,"Home container belongs to Control Center");

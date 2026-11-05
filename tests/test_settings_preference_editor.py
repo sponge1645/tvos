@@ -34,7 +34,7 @@ public class PreferenceHarness {
  Prefs.theme="auto";e.general(1,-1);check(Prefs.theme.equals("dark"),"theme reverse wrap");e.general(1,1);check(Prefs.theme.equals("auto"),"theme forward wrap");
  Prefs.unit="auto";e.temperature(-1);check(Prefs.unit.equals("F"),"unit reverse wrap");e.legacy(1,1);check(Prefs.unit.equals("auto"),"legacy shares unit cycle");
  for(int d:new int[]{-1,1}){Prefs.theme="invalid";e.general(1,d);check(Prefs.theme.equals(d<0?"light":"auto"),"unknown value fallback preserved");Prefs.theme="invalid";e.legacy(2,d);check(Prefs.theme.equals(d<0?"light":"auto"),"legacy fallback matches General");}
- Prefs.language="en";e.general(2,1);check(Prefs.language.equals("en"),"language submenu is not cycled by arrows");e.general(4,1);check(Prefs.h24,"time format toggle");
+ Prefs.language="en";e.general(2,1);check(Prefs.language.equals("en"),"language submenu is not cycled by arrows");e.general(5,1);check(Prefs.h24,"time format toggle");
  events.clear();e.general(2,1);check(p.getBoolean("navigation_clicks",true),"General no longer changes navigation clicks");
  events.clear();e.legacy(4,1);e.legacy(99,1);check(events.isEmpty(),"city and unknown legacy rows do not mutate or notify");
  p.data.remove("video_dream_source");events.clear();e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("google")&&events.equals(Arrays.asList("refresh")),"dream source default and redraw");e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("na"),"dream source cycles");p.putString("video_dream_source","unknown");e.cycleDreamSource(-1);check(p.getString("video_dream_source","").equals("na"),"unknown dream source fallback preserved");

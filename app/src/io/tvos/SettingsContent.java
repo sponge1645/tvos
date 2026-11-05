@@ -22,6 +22,7 @@ final class SettingsContent {
             case MOVIE_SERVICE: return AppStrings.get(R.string.settings_default_service, language);
             case HOME_SCREEN: return AppStrings.get(R.string.settings_home_screen, language);
             case GENERAL: return AppStrings.get(R.string.settings_general, language);
+            case SLEEP_TIMER: return AppStrings.get(R.string.settings_sleep_after, language);
             case WIDGETS: return AppStrings.get(R.string.settings_widgets, language);
             case WEATHER: return AppStrings.get(R.string.settings_weather, language);
             case DATE_TIME: return AppStrings.get(R.string.settings_date, language);
@@ -56,7 +57,8 @@ final class SettingsContent {
             case HOME_CARD_STYLE: return new String[] {AppStrings.get(R.string.home_continue_watching, language), AppStrings.get(R.string.settings_home_recommendations, language)};
             case HOME_VIEW: return new String[] {AppStrings.get(R.string.settings_home_collection, language), AppStrings.get(R.string.settings_home_tvos, language)};
             case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_view, language), AppStrings.get(R.string.settings_home_card_style, language), AppStrings.get(R.string.settings_categories, language)};
-            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_time_format, language)};
+            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_sleep_after, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_time_format, language)};
+            case SLEEP_TIMER: return new String[] {AppStrings.get(R.string.settings_sleep_5, language), AppStrings.get(R.string.settings_sleep_10, language), AppStrings.get(R.string.settings_sleep_15, language), AppStrings.get(R.string.settings_sleep_30, language), AppStrings.get(R.string.settings_sleep_60, language), AppStrings.get(R.string.settings_sleep_120, language), AppStrings.get(R.string.settings_sleep_240, language)};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_weather_view, language), AppStrings.get(R.string.settings_city, language), AppStrings.get(R.string.settings_temperature, language)};
@@ -69,7 +71,7 @@ final class SettingsContent {
             case CITY: return new String[] {AppStrings.get(R.string.settings_automatic_value, language), AppStrings.get(R.string.settings_manual, language)};
             case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, language), AppStrings.get(R.string.settings_show_clock, language), AppStrings.get(R.string.settings_show_location, language), AppStrings.get(R.string.settings_show_weather, language), AppStrings.get(R.string.settings_preview, language)};
             case ABOUT: return new String[] {AppStrings.get(R.string.settings_name, language), AppStrings.get(R.string.settings_model, language), AppStrings.get(R.string.settings_serial_number, language), "tvOS", AppStrings.get(R.string.settings_os, language), AppStrings.get(R.string.settings_resolution, language), AppStrings.get(R.string.settings_wi_fi_network_name, language), AppStrings.get(R.string.settings_ip_address, language), AppStrings.get(R.string.settings_signal_strength, language)};
-            default: return new String[] {AppStrings.get(R.string.settings_general, language), AppStrings.get(R.string.settings_video_audio, language), AppStrings.get(R.string.settings_screen_saver, language), "AirPlay", AppStrings.get(R.string.settings_remotes_and_devices, language), AppStrings.get(R.string.settings_accessibility, language), AppStrings.get(R.string.settings_apps, language), "Dock", AppStrings.get(R.string.settings_menu_bar, language), AppStrings.get(R.string.settings_system, language)};
+            default: return new String[] {AppStrings.get(R.string.settings_general, language), AppStrings.get(R.string.settings_video_audio, language), AppStrings.get(R.string.settings_screen_saver, language), "AirPlay", AppStrings.get(R.string.settings_remotes_and_devices, language), AppStrings.get(R.string.settings_accessibility, language), AppStrings.get(R.string.settings_apps, language), "Dock", AppStrings.get(R.string.settings_menu_bar, language), AppStrings.get(R.string.settings_system, language), AppStrings.get(R.string.settings_sleep_now, language)};
         }
     }
 
@@ -90,9 +92,11 @@ final class SettingsContent {
             case UPDATES: return focus == 1 ? AppStrings.get(R.string.settings_auto_update_help, language) : null;
             case MEDIA: return focus == 0 ? AppStrings.get(R.string.settings_help_default_service, language) : null;
             case GENERAL:
-                if (focus == 3) info = AppStrings.get(R.string.settings_help_country, language);
+                if (focus == 4) info = AppStrings.get(R.string.settings_help_country, language);
+                else if (focus == 2) info = AppStrings.get(R.string.settings_sleep_help, language);
 
                 break;
+            case SLEEP_TIMER: return AppStrings.get(R.string.settings_sleep_help, language);
             case SCREENSAVER:
                 if (focus == 3) info = AppStrings.get(R.string.settings_help_weather_city, language);
                 break;

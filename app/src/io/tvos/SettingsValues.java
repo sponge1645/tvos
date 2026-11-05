@@ -97,10 +97,15 @@ final class SettingsValues {
         } else if (screen == GENERAL) {
             String theme = Prefs.theme();
             v[1] = "light".equals(theme) ? AppStrings.get(R.string.settings_light) : "dark".equals(theme) ? AppStrings.get(R.string.settings_dark) : AppStrings.get(R.string.settings_automatic);
-            v[2] = settings()[0];
-            v[3] = io.tvos.setup.SetupCountries.name(Prefs.recommendationRegion(), AppLanguage.current().locale);
-            v[4] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
+            int sleep = localPrefs().getInt("sleep_choice", -1);
+            v[2] = sleep >= 0 && sleep < 7 ? SettingsContent.menuLabels(SLEEP_TIMER)[sleep] : AppStrings.get(R.string.settings_sleep_unset);
+            v[3] = settings()[0];
+            v[4] = io.tvos.setup.SetupCountries.name(Prefs.recommendationRegion(), AppLanguage.current().locale);
+            v[5] = Prefs.hour24() ? AppStrings.get(R.string.settings_24_h) : AppStrings.get(R.string.settings_12_h);
 
+        } else if (screen == SLEEP_TIMER) {
+            int selected = localPrefs().getInt("sleep_choice", -1);
+            if (selected >= 0 && selected < v.length) v[selected] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == LANGUAGE) {
             v["ru".equals(Prefs.language()) ? 0 : 1] = AppStrings.get(R.string.settings_service_selected);
         } else if (screen == UPDATES) {

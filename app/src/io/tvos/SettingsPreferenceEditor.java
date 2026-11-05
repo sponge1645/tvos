@@ -67,7 +67,7 @@ final class SettingsPreferenceEditor {
     }
     void general(int row, int dir) {
         if (row == 1) Prefs.setTheme(step(THEMES, Prefs.theme(), dir));
-        else if (row == 4) Prefs.setHour24(!Prefs.hour24());
+        else if (row == 5) Prefs.setHour24(!Prefs.hour24());
         changed.run();
     }
 

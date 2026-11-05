@@ -4,12 +4,12 @@ import tempfile,subprocess
 from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/DockBackdrop.java').read_text()
 host=block(Path('app/src/io/tvos/HomeView.java').read_text(),'    private void updateDockBackdrop(')
-methods='\n'.join(block(source, key) for key in ['    void focus(', '    void pause(', '    private void cancelConnection(', '    private void cancelLoading(', '    static String loadingBanner(', '    static String bundled('])
+methods='\n'.join(block(source, key) for key in ['    void focus(', '    void pause(', '    private void armRotation(', '    private static final class Rotation', '    private void cancelConnection(', '    private void cancelLoading(', '    static String loadingBanner(', '    static String bundled('])
 programs=Path('app/src/io/tvos/watching/DockPrograms.java').read_text()
 methods+='\n'+block(programs,'    public static int priority(')+'\n'+block(programs,'    public static void add(')
 harness='''import java.util.*;import java.net.HttpURLConnection;public class DockHarness {
  static class Handler {Runnable queued;long delay;void removeCallbacks(Runnable r){queued=null;}void postDelayed(Runnable r,long d){queued=r;delay=d;}}
- static class Artwork {String title="Ready";Object logo;} java.net.HttpURLConnection activeConnection;static final java.util.concurrent.Executor CANCEL=Runnable::run; final Handler main=new Handler();final Runnable load=()->{};int generation;Runnable pendingLoading;String focused,cachedPackage;Artwork cached;List<Artwork> results=new ArrayList<>();java.util.function.Consumer<Artwork> changed=results::add;
+ static class Artwork {String title="Ready";Object logo;} java.net.HttpURLConnection activeConnection;static final java.util.concurrent.Executor CANCEL=Runnable::run; final Handler main=new Handler();final Runnable load=()->{},rotate=()->{};final Map<String,Rotation> rotations=new HashMap<>();int generation;Runnable pendingLoading;String focused,cachedPackage;Artwork cached;List<Artwork> results=new ArrayList<>();java.util.function.Consumer<Artwork> changed=results::add;
  METHODS
  static class HomeFocus {
  static final int Z_SHELF=1;boolean running=true;static class DrawerState {boolean open;}final DrawerState drawer=new DrawerState();int zone=Z_SHELF,backdropDockIndex=-1,backdropDirection;String backdropFocus;
@@ -32,5 +32,6 @@ harness='''import java.util.*;import java.net.HttpURLConnection;public class Doc
 }'''.replace('METHODS',methods).replace('HOST',host)
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'DockHarness.java';p.write_text(harness)
- subprocess.run(['java','com.sun.tools.javac.Main','-d',d,str(p)],check=True)
+ clock=Path(d)/'android/os/SystemClock.java';clock.parent.mkdir(parents=True);clock.write_text('package android.os;public class SystemClock {public static long elapsedRealtime(){return 0;}}')
+ subprocess.run(['java','com.sun.tools.javac.Main','-d',d,str(p),str(clock)],check=True)
  subprocess.run(['java','-cp',d,'DockHarness'],check=True)
