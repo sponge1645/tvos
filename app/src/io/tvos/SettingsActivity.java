@@ -570,7 +570,7 @@ public class SettingsActivity extends Activity {
                 if (signal) {
                     String icon = "airport_" + values[i].charAt(0);
                     float size = 150 * k, width = Symbols.width(getContext(), icon, size);
-                    Symbols.draw(getContext(), c, icon, rowRect.right - 30 * k - width / 2,
+                    Symbols.draw(getContext(), c, icon, rowRect.right - 10 * k - width / 2,
                             rowRect.centerY(), size, SettingsListRenderer.valueInk(lightSettings(), 0));
                 }
             }
