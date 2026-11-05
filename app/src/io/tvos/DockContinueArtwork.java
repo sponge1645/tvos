@@ -111,7 +111,6 @@ final class DockContinueArtwork {
                     }
                 }
                 if (token != generation) return;
-                year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
                 try {
                     if (url.isEmpty()) {
                         resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, p.originalTitle, observer);

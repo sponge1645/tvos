@@ -57,7 +57,7 @@ public class ValuesHarness {
    for(int i=0;i<5;i++)check(mappings[i].equals(ru?"Не настроено":"Not configured"),"empty catalog uses same status for all five app buttons");
    check(mappings[5].isEmpty(),"input setup has no obsolete volume status");
    a.prefs.data.put("device_name","Living room");LocalNetwork.info=new LocalNetwork.Info();LocalNetwork.info.ethernet=true;
-   String[] about=v.menu(ABOUT,9);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B188)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");check(about[8].equals("—"),"Ethernet has no Wi-Fi signal");
+   String[] about=v.menu(ABOUT,9);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B__BUILD__)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");check(about[8].equals("—"),"Ethernet has no Wi-Fi signal");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,9)[6].equals("Home"),"SSID quotes removed");check(v.menu(ABOUT,9)[8].equals("4/5"),"fifth-dot signal value remains accessible");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,9);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");
@@ -75,6 +75,9 @@ sources['io/tvos/setup/SetupCountries.java']=Path('app/src/io/tvos/setup/SetupCo
 for name in ['SettingsValues','SettingsContent']:sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
 sources['io/tvos/SettingsUpdateDialog.java']='package io.tvos;class SettingsUpdateDialog {static int reads;static String versionName(android.content.Context c){reads++;return "tvOS installed";}}'
 sources['io/tvos/version/SoftwareBuild.java']=Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()
+import re
+sequence = int(re.search(r'SEQUENCE = ([0-9]+);', Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()).group(1))
+sources['io/tvos/ValuesHarness.java'] = sources['io/tvos/ValuesHarness.java'].replace('__BUILD__', f'{sequence:03d}')
 with tempfile.TemporaryDirectory(prefix='tvos-settings-values-') as tmp:
  root=Path(tmp);write(root)
  for name,content in sources.items():

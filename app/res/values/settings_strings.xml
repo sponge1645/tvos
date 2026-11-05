@@ -193,7 +193,6 @@
     <string name="settings_could_not_open_tv_settings" formatted="false">Could not open TV settings</string>
     <string name="settings_home_screen" formatted="false">Home Screen</string>
     <string name="settings_home_recommendations" formatted="false">Recommendations</string>
-    <string name="settings_help_home_screen" formatted="false">Used when all Home categories are turned off. Choose service recommendations or selectable Continue Watching cards.</string>
     <string name="settings_remote_shortcuts" formatted="false">Button shortcuts</string>
     <string name="settings_remote_taps" formatted="false">1×, 2×, 3×</string>
     <string name="settings_remote_add" formatted="false">Add a button</string>

@@ -198,7 +198,6 @@
     <string name="settings_could_not_open_tv_settings" formatted="false">Не удалось открыть настройки телевизора</string>
     <string name="settings_home_screen" formatted="false">Экран «Домой»</string>
     <string name="settings_home_recommendations" formatted="false">Рекомендации</string>
-    <string name="settings_help_home_screen" formatted="false">Используется, когда отключены все разделы на экране «Домой». Выберите рекомендации сервиса или карточки для продолжения просмотра.</string>
     <string name="settings_remote_shortcuts" formatted="false">Сочетания кнопок</string>
     <string name="settings_remote_taps" formatted="false">1×, 2×, 3×</string>
     <string name="settings_remote_add" formatted="false">Добавить кнопку</string>

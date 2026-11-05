@@ -1,101 +1,38 @@
-# Test build 1.1.2 (1B162): setup and automatic update offers
+# Первый запуск и автоматические обновления
 
-## Update behavior
+## Первый запуск
 
-Keep the existing auto_update key and opt-out behavior. Automatic checks now
-produce an actual foreground offer with Download and install / Later; they no
-longer start an unsolicited download followed by a toast. Home and Settings
-subscribe only while resumed. An hourly timer revisits the check policy while
-the foreground UI is active; successful checks remain throttled to 24 hours,
-failed/initial states retry after an hour. No recurring timer is kept for opt-out
-or paused Activities, and no global overlay interrupts another app.
+Текущий порядок: приветствие → язык → регион → разрешения → ТВ-приложение → домашний экран.
+Отдельный шаг согласия на автообновления удалён; сохранённый выбор auto_update не сбрасывается.
+Язык интерфейса и страна рекомендаций выбираются независимо. После изменения страны
+результаты запросов старого региона не применяются к новому каталогу.
 
-Later/Back snoozes the same version for 24 hours; a different version can appear
-immediately. Positive approval downloads with progress, then opens Android's
-installer only while that UI remains in front. Leaving the Activity clears its
-automatic-install intent; returning offers an explicit Install action again.
-Downloads can continue in the background. Source-install permission remains an
-Android-controlled step. APK limits, SHA-256, package/version, signer/lineage and
-installer verification remain intact. No silent-install privilege is introduced.
+Шаги сохраняются. Отказ в разрешении, недоступный источник и пропуск не блокируют мастер.
+Выбор tvOS домашним экраном использует системный Role/Home-диалог и проверяется после возврата.
+Мастер не отключает VPN или штатные приложения. Город можно задать вручную.
+ТВ-приложение определяется автоматически либо выбирается пользователем; поддерживаются
+пакеты, экспортированные Activity, службы с зарегистрированным ТВ-входом и vendor TV actions.
+Закрытые службы без интерфейса произвольно не запускаются.
 
-A validated manifest is cached privately so a known offer survives process death.
-It is parsed again and compared with the installed version on restore; corrupt,
-oversize or already-installed offers are discarded. Restored metadata does not
-mark an APK READY or bypass download/signature verification.
+Приветствия и иллюстрации рисуются векторными путями. Переходы отменяются на паузе
+и учитывают «Уменьшение движения». Диалог страны и списки используют общие правила фокуса.
 
-## Setup
+## Обновления
 
-Fresh/cleared-data installs enter a resumable wizard. Configured upgrades migrate
-without reopening it. An unfinished wizard resumes after update/process restart.
-General → Run setup again is available for existing installs. Back from Hello
-defers the gate for this process session instead of reopening it in a loop.
-Completion is written only on Finish/skip of the last step.
+При включённом auto_update Home и Settings предлагают обновление только в активном окне.
+Позднее/Назад откладывает ту же сборку на сутки; новая сборка может предлагаться раньше.
+Успешная проверка ограничена сутками, неуспешная/начальная повторяется через час.
+Запросы предложения и таймеры прекращаются при паузе.
 
-Steps: hello → привет; language (system suggestion, Russian/English catalog with
-English fallback); weather city via IP/manual search with displayed result; optional
-Wi-Fi location permission; automatic-update consent; Live TV application; Android
-default-Home selection with actual status. Denial, unavailable network/app/role and
-Set up later do not trap the user. The wizard never disables VPN or stock apps.
-IP lookup is refused if VPN is active; the existing ordinary auto-region/Incy
-pause policy is unchanged and its localized explanation is shown on that step.
+Скачивание запускается после согласия. Уход с экрана отменяет автоматическое открытие
+установщика; при возврате требуется явное «Установить». Разрешение установки остаётся
+под контролем Android. Проверяются размер, SHA-256, пакет, версия и подпись/линия смены ключей.
+Тихая установка не используется. Восстановленный манифест повторно валидируется и
+сам по себе не делает APK готовым к установке.
 
-TV default uses the existing tuner/vendor detection. A manual choice is stored
-separately and opening TV falls back to auto detection if that app disappears.
-Changing it invalidates Home preferences so the shortcut list refreshes. Home
-selection uses ROLE_HOME where available or system Home settings; it does not
-implicitly activate the existing full ADB-based tvOS mode or debloat packages.
+## Границы проверки
 
-The welcome uses the supplied vector stroke paths, not a script font. Greeting
-animation stops on pause/page changes and honors Reduced Motion.
-
-The reviewed techgenius1/tvOS-Launcher setup suggested optional permission steps,
-repeat setup and verified Home selection. No source files were imported.
-
-## Verification limits
-
-Regressions execute actual first-run policy/gate, wizard request cancellation and
-update-offer UI through platform adapters. Existing suites retain OTA trust/cache,
-settings/navigation/localization and lifecycle coverage. CI compiles the actual
-Android activities/resources/DEX and verifies signing and packaged helper. Real
-TV welcome layout, DPAD focus, permission/role dialogs, city detection, OEM Live
-TV intents and a real newer signed OTA still need device testing. No release or
-production OTA change is part of this branch.
-
-## Welcome redesign (1B163)
-
-The first screen uses native vector stroke drawing from the supplied `docs/design/hello.svg` and `hello-ru.svg`, with the same day/night policy and background as Settings. The greeting fits a 570 × 210 area on a 1920 × 1080 reference screen, centered at 47% of height; the Semibold prompt is centered at 65%. Ink matches the Settings tvOS tile: light #8897AC, dark #51595B–#55646B gradient.
-
-English and Russian handwriting alternate with overlapping fades; the bilingual center-button instruction crossfades near completion of each incoming word. Only a complete, uncanceled center/Enter press advances; arrows do not advance. Back keeps the existing session-defer behavior. Reduced Motion shows a static localized greeting. Drawing stops on pause/detach and does not schedule frames without window focus. Geometry, PathMeasure and paints are cached; no video decoder or frame bitmaps are used. The obsolete Marck Script font/license bundle and font-based greeting timer were removed.
-
-Native drawing/input/timeline boundaries are covered by `test_setup_welcome.py`. Physical TV layout, contrast and smoothness still require device review.
-
-## Language screen and greeting sizes (1B165)
-The greeting prompt is 40px at 1920×1080 (scaled proportionally); both vector words share visible height and stroke width, with natural individual widths and a joint viewport limit. The language screen uses the Settings background/tile palette, a native remote compound path with transparent holes, and only one focused capsule. Up/Down changes focus; OK persists and advances, Back returns to greeting. Welcome content fades completely to the common background before language content fades in; Reduced Motion skips both.
-
-## Country picker (1B166)
-Language uses the Settings capsule/shadow renderer, 80px row pitch and the title Language/Язык. Region reuses the native remote/choice surface: detected country first, then a 40px Semibold uppercase heading and a localized alphabetic ISO country catalog with bounded visible rows. Late lookup preserves manual navigation. Network failure/VPN leaves the manual list available and never disables VPN. The selected ISO code is stored as `setup_country`; country selection does not change weather coordinates or the existing automatic-city/VPN policy. Both automatic and manual country choices retain the existing weather location. The previous city search remains available in regular settings.
-
-## Optional permissions and list styling (1B167)
-The stable WIFI step (index 3) now hosts Permissions: location for Wi-Fi SSID (weather still uses the configured city), accessibility for remote mappings, and TV listings for Continue Watching. Allow requests only missing runtime permissions and then opens system accessibility settings if tvOS is not already enabled; returning advances even if access was declined. Deny skips without revoking existing grants. The once-only Wi-Fi/backdrop prompt markers prevent immediate duplicate requests. On Android 12+, location is requested as the coarse/fine pair; precise location is still needed for SSID. READ_TV_LISTINGS is requested only if the device actually declares it dangerous. No settings writes enable accessibility, and no microphone/analytics/install privilege is added to this screen.
-
-Language, Region and Permissions titles use Bold 80px at 1080p. Choice focus uses the Settings spring constants (.28/.85); scrolling uses .30/1 and the shared SettingsListViewport edge mask. Shader resize is cached. Reduced Motion snaps state. The permission cards use native cached paths. Native input/consent and SDK/grant policy tests cover the new screen; actual OEM permission/settings flows need device review.
-
-## Final setup flow (1B168)
-Current flow: Welcome → Language → Region → Permissions → TV app → Home. The retired updates index 4 is mapped to TV, and forward/back navigation skips it; auto_update preferences are neither changed nor reset. TV shows the system-detected app (or a saved manual selection) on an editable first button; Continue saves the choice. The app dialog includes Automatic and installed Leanback apps except tvOS itself. Missing/blocked detection leaves a recoverable label and optional selection. Home has Set tvOS as Home and Not now; only the native Role/Home settings flow changes the default. A persisted pending Home handoff is consumed on return and completes only when actual default selection is verified. Canceling stays optional.
-
-Setup ink is #6E7E94 light / #95B3BE dark; focused capsules retain Settings contrast and animation. Supplied PNG alpha silhouettes are traced to SVGs under docs/design/setup and cached native Path geometry in setup/SetupArtwork; no bitmap decoding or SVG parsing occurs per frame. The full remote includes button symbols from the supplied reference.
-
-## Setup refinements (1B169)
-Only the incoming focused choice animates: the outgoing capsule is cleared immediately, with no opaque inactive base. The Language title previews the focused language using the same 280ms eased title crossfade as Settings; selection is still saved only on OK. Language/Region masks extend to the physical bottom edge. Permissions fades in over 260ms, skipped by Reduced Motion. Russian greeting glyph height is 20% larger than English, with unchanged visible ink weight and hint timing; the soft horizontal replacement zone is 10% wider. Final TV/Home artwork now uses the supplied Provider/Sync Apps silhouettes. Set tvOS as Home opens Android default-launcher settings directly (general Settings fallback on OEMs without that destination), and returning still verifies the actual default.
-
-## Weather and intro transitions (1B170)
-Flow: Welcome → Language → Region → Permissions → Weather → TV → Home. Weather uses new persisted index7; existing indices (including retired4→TV migration) remain compatible. Show the city detected by the guarded IP lookup and a Manually action. Detection is a preview: it never changes coordinates, disables VPN or silently uses the VPN route. Unavailable detection can be retried, and manual lookup remains available. Manual input shares SettingsCityDialog and SettingsCitySearch with Settings; native results show the same localized city labels. Explicit detected/manual selection saves city identity/coordinates, disables automatic-region mode so the chosen city is retained, refreshes weather and advances. Canceling or stale/paused results do not select a city.
-
-TV starts focused on Continue. Home restores the native Android10+ RoleManager chooser with Home/system-settings fallbacks. Permissions labels are Allow/Разрешить and Accessibility/Спец. возможности. Welcome uses a 210px center-to-hint baseline distance at 1080p, Russian glyphs 30px lower, proportionally scaled. Only Welcome↔Language↔Region transitions gain a 220ms fade-out plus 60ms background pause before the destination's 260ms fade-in; other screen transitions retain their prior behavior. Reduced Motion skips these fades. The full remote now uses smooth native paths and button symbols; the weather icon is an editable SVG and cached native cubic path.
-
-## Country-aware catalogs and complete transitions (1B171)
-All wizard neighbors now use 220ms outgoing fade, 60ms common background and 260ms incoming fade, forward and backward; completion fades out too. Reduced Motion skips fades. The country-list subtitle uses Medium; the first focused capsule starts 1px below measured subtitle glyph bounds at 1080p (scaled with the layout), with the existing scrolled-edge mask.
-
-TV selection lists installed packages, including system/service-only packages, exported activities, services and registered TV inputs rather than only Leanback launchers. Saved activity/service/input keys are resolved by LiveTvTargets; old package preferences remain compatible. Yandex action-only TV packages resolve through their TV action. TV services tune their registered input; private UI-less services are never started arbitrarily and display an unavailable explanation instead. An unsupported choice does not replace the saved selection.
-
-The selected country in setup_country now overrides config tmdb_region for recommendations. Movie discovery uses the TMDB release-country region filter, TV discovery uses watch_region with availability types; provider details, genres and random suggestions use the same country. This filters TMDB global popularity by regional context, not actual local viewing figures. Cache/source identities include country and query-policy revision; changed-country responses cannot publish lists/errors or restore previous-region cards. Countries without release/provider records get a bounded global fallback so Home is usable. UI language remains independent. Official API semantics: https://developer.themoviedb.org/docs/region-support and https://developer.themoviedb.org/reference/discover-tv .
+JVM-тесты проверяют политику, отмену, фокус, сохранённые шаги и переходы через адаптеры.
+CI компилирует реальные Activity, ресурсы и DEX с тестовой подписью.
+На ТВ отдельно проверяются пульт, системные диалоги, OEM TV intents, сон/возврат
+и обновление с предыдущего APK, подписанного совместимым ключом.

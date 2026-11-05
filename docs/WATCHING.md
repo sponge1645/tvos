@@ -67,7 +67,18 @@ Installed app icons are not drawn in the banner area. Missing artwork restores t
 
 ## Optional Dock resume row
 
-General → Home Screen offers Recommendations or Continue Watching. Both apply only when every Home poster category is disabled. Recommendations keeps the service-selection landscape banner for the focused KinoPub, Seena or Lampa Dock app. Continue Watching replaces it with up to ten selectable service-specific resume cards. Enabled poster categories retain their existing Home layout regardless of this choice. Changing modes never changes category visibility/order. Up enters the wide row, Left/Right browse, Down/Back returns to Dock, Up from the row reaches top controls, and OK uses the original Watching resume intent. The row reads a service-specific snapshot without changing the Watching source. Legacy dock_continue choices remain readable until an explicit Home Screen choice is saved. Other Dock apps retain banners. Artwork lookup and bounded image prefetch run off the UI thread, retaining four active paths. Empty/unpublished service history displays the existing empty-state instruction. Seena publication refresh remains coalesced to 90 seconds. TV validation remains required for layout, navigation and third-party resume behavior.
+Control Center and Home Screen → Home Screen now offers View: Collection / tvOS View.
+Collection uses the saved poster sections; its editor is disabled in tvOS View.
+Card Style is enabled only in tvOS View and offers Continue Watching / Recommendations.
+The choice is independent of section visibility/order and preserves existing configurations.
+Continue Watching provides service-specific resume cards for the focused KinoPub, Seena or Lampa Dock app;
+Recommendations uses the landscape banner. Other Dock apps retain banners.
+Up enters the resume row, Left/Right browse, Down/Back returns to Dock, and OK uses the original resume intent.
+The row reads a service snapshot without changing the Watching source.
+Both KinoPub packages provide localized/original names. Missing years are resolved by exact KinoPub ID;
+unavailable or ambiguous identities retain publisher artwork rather than choosing a random remake.
+Legacy dock_continue and all-sections-off layouts are migrated without resetting selections.
+TV validation remains necessary for layout, navigation and third-party resume behavior.
 
 The Dock resume heading sits above the card row at its original lower position, using 54 px bold text. The smaller 16:9 cards remain centered above Dock. Horizontal browsing uses a 360 ms decelerating translation, retaining the current offset when navigation interrupts an animation. Focus grows the selected card by five percent and lifts it six pixels over 260 ms; blur and image downloads are not repeated by this animation. Captions keep their stable baseline. Reduced Motion snaps directly to the target.
 

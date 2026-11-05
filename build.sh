@@ -41,6 +41,7 @@ ASSIST=false; [ "$(prop disable_assistant false)" = "true" ] && ASSIST=true
 
 rm -rf out && mkdir -p out/gen/io/tvos out/classes
 python3 tools/prepare-assets.py
+python3 tools/prepare-release.py --write-build-info
 cat > out/gen/io/tvos/Config.java <<EOF
 package io.tvos;
 
@@ -79,4 +80,4 @@ python3 tools/prepare-assets.py --verify-apk tvOS.apk
 echo "Built tvOS.apk ($(du -h tvOS.apk | cut -f1)). Install: adb install -r tvOS.apk"
 
 # Matching metadata is generated immediately after signing this exact APK.
-python3 tools/prepare-release.py
+python3 tools/prepare-release.py --aapt2 "$BT/aapt2"

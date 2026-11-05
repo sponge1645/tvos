@@ -12,7 +12,6 @@ files={
  'io/tvos/ProviderImages.java':'package io.tvos;class ProviderImages {static boolean allowed(android.content.Context c,String u,String p){return true;}}',
  'io/tvos/network/ConnectionObserver.java':Path('app/src/io/tvos/network/ConnectionObserver.java').read_text(),
  'org/json/JSONException.java':'package org.json;public class JSONException extends Exception {}',
- 'io/tvos/watching/ResumeArtworkIdentity.java':'package io.tvos.watching;public class ResumeArtworkIdentity {public static String year(String p,String t,String y){return y;}}',
  'io/tvos/watching/DockPrograms.java':'''package io.tvos.watching;import java.util.*;public class DockPrograms {
  public static Candidate published;public DockPrograms(android.content.Context c,java.util.function.BiPredicate<String,String> allow){}
  public static class Candidate {public List<String> urls=new ArrayList<>();public String year="";}

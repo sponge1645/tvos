@@ -5,13 +5,16 @@ harness='''import io.tvos.version.SoftwareBuild;
 public class BuildHarness {
  static void check(String v,String expected){if(!expected.equals(SoftwareBuild.display(v)))throw new AssertionError(v);}
  public static void main(String[] args){
- check("1.0","1.0 (1A188)");check("1.1.1","1.1.1 (1B188)");
- check("1.1.2","1.1.2 (1B188)");check("2.0","2.0 (2A188)");
- check("2.25.0","2.25.0 (2Z188)");check("2.26.0","2.26.0 (2AA188)");
+ check("1.0","1.0 (1A__BUILD__)");check("1.1.1","1.1.1 (1B__BUILD__)");
+ check("1.1.2","1.1.2 (1B__BUILD__)");check("2.0","2.0 (2A__BUILD__)");
+ check("2.25.0","2.25.0 (2Z__BUILD__)");check("2.26.0","2.26.0 (2AA__BUILD__)");
  check("bad","bad");if(SoftwareBuild.display(null)!=null)throw new AssertionError("null");
- java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar"));check("1.1.1","1.1.1 (1B188)");
+ java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar"));check("1.1.1","1.1.1 (1B__BUILD__)");
  }
 }'''
+import re
+sequence = int(re.search(r'SEQUENCE = ([0-9]+);', Path('app/src/io/tvos/version/SoftwareBuild.java').read_text()).group(1))
+harness = harness.replace('__BUILD__', f'{sequence:03d}')
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'BuildHarness.java';p.write_text(harness)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,'app/src/io/tvos/version/SoftwareBuild.java',str(p)],check=True)

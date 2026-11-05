@@ -18,6 +18,8 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  app/src/io/tvos/watching/ResumeArtworkIdentity.java \
+  tests/test_resume_artwork_identity.py \
   docs/AUDIT-1.1.2.md \
   docs/FINAL-AUDIT.md \
   docs/REFACTORING-AUDIT.md \
