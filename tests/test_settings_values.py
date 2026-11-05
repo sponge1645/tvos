@@ -44,6 +44,8 @@ public class ValuesHarness {
    a.prefs.data.put("self_update_attempt",1700000000000L);check(v.updateDetailsText().equals("tvOS installed\\n"+SettingsValues.formatLastUpdateCheck(1700000000000L,AppLanguage.current())),"new check timestamp refreshes details");
    a.prefs.data.put("auto_update",true);check(v.menu(UPDATES,2)[1].equals(SettingsValues.onOff(true)),"auto update value");
    a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,5);check(saver[0].equals("National Geographic")&&saver[4].isEmpty(),"saver source and action row");
+   SettingsValues hidden=new SettingsValues(a,new SettingsOrderEditor(),()->false,top->false,()->"",new SettingsValueLoader<>(),new SettingsValueLoader<>());
+   check(hidden.menu(WEATHER,3)[0].equals(ru?"Нет":"None"),"weather absent on both surfaces displays None");
    check(v.menu(WEATHER,3)[0].equals(AppStrings.get(R.string.settings_weather_home))&&v.menu(WEATHER,3)[1].equals("City"),"independent weather callback");
    check(v.menu(MENU_BUTTONS,3)[0].equals("#4")&&v.menu(MENU_BUTTONS,3)[1].equals(SettingsValues.onOff(false))&&v.menu(MENU_BUTTONS,3)[2].isEmpty(),"button order and VPN footer");
    status[0]="Searching";check(v.menu(CITY,2)[1].equals("Searching"),"Region exposes pending/error lookup status");check(v.settings()[4].equals("Searching"),"live city status");status[0]="";Prefs.city="";check(v.settings()[4].equals("—"),"empty city fallback");Prefs.city="City";
