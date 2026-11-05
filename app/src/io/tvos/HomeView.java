@@ -162,6 +162,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private DockBackdrop.Artwork recommendationArtwork;
     private android.content.Intent recommendationIntent;
     private final Paint recommendationHint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Spring recommendationHintAlpha = new Spring(.32f, 1f, 0);
 
     void cancelRecommendationHold() { recommendationHold.cancel(); }
 
@@ -196,12 +197,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void drawRecommendationHint(Canvas canvas) {
-        if (!recommendationAvailable()) return;
+        float alpha = Ui.clamp(recommendationHintAlpha.value);
+        if (alpha <= .001f) return;
         recommendationHint.setTypeface(Ui.displayMedium);
-        recommendationHint.setTextSize(22 * k);
+        recommendationHint.setTextSize(22 * 1.05f * k);
         recommendationHint.setTextAlign(Paint.Align.CENTER);
         recommendationHint.setColor(0xCCFFFFFF);
-        recommendationHint.setShadowLayer(4 * k, 0, 1 * k, 0x99000000);
+        recommendationHint.setAlpha(Math.round(204 * alpha));
+        recommendationHint.setShadowLayer(4 * k, 0, 1 * k, Math.round(153 * alpha) << 24);
         canvas.drawText(AppStrings.get(R.string.home_hold_up_recommendation), w / 2f,
                 platterRect.top - 24 * k, recommendationHint);
     }
@@ -525,6 +528,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     void pause() {
         cancelRecommendationHold(); recommendationArtwork = null; recommendationIntent = null;
+        recommendationHintAlpha.snap(0);
         handler.removeCallbacks(prepareWeather); preparedWeatherPanel = null;
         if (weatherPanel != null) weatherPanel.dismiss();
         if (!running) return;
@@ -812,7 +816,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (marqueeActive) heroDirty = true;
         boolean dockMoving = dock.step(dt, dockEditor.editing());
         if (dockMoving) tilesDirty = true;
-        boolean tilesMoving = step(dock.focus, dt) | dockMoving;
+        recommendationHintAlpha.target = recommendationAvailable() ? 1 : 0;
+        if (reducedDreamMotion()) recommendationHintAlpha.snap(recommendationHintAlpha.target);
+        boolean hintMoving = recommendationHintAlpha.step(dt);
+        boolean tilesMoving = step(dock.focus, dt) | dockMoving | hintMoving;
         vpnColor.target = networkStatus.vpn() ? 1 : 0;
         if (reducedDreamMotion()) vpnColor.snap(vpnColor.target);
         boolean vpnMoving = vpnColor.step(dt);
