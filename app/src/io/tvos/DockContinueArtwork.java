@@ -102,6 +102,15 @@ final class DockContinueArtwork {
                     AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
                 }
                 if (token != generation) return;
+                if (year.isEmpty()) {
+                    try {
+                        year = KinoPubArtworkMetadata.year(p.watchingKey, p.title, p.originalTitle, observer);
+                        if (AppLog.artworkEnabled()) AppLog.artwork("publisher year: item=" + itemIndex + ", year=" + year);
+                    } catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
+                        if (token == generation) AppLog.w("KinoPub year unavailable: " + e.getClass().getSimpleName());
+                    }
+                }
+                if (token != generation) return;
                 year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
                 try {
                     if (url.isEmpty()) {
