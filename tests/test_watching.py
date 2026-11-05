@@ -44,7 +44,7 @@ public class WatchingHarness {
  static String link(String key,String owner,String json){Intent intent=new Intent();intent.component=new ComponentName(owner);intent.flags=0x7fffffff;intent.selector=new Object();intent.clip=new Object();intent.extra=json;intent.uri=Uri.parse("kinowatch://resume/42");Intent.data.put(key,intent);return key;}
  static Object[] row(String owner,String key,String title,long updated,String link){return new Object[]{1L,owner,key,title,"https://cdn.example/wide.jpg",link,"1","2",1800000L,840000L,updated,3,"https://cdn.example/landscape-thumbnail.jpg",0,null};}
  static Recs.Pick pick(String key,long time){Recs.Pick p=new Recs.Pick();p.watchingKey=key;p.watchingUpdated=time;return p;}
- public static void main(String[] args){check(WatchingCardReader.labelYear("Сумерки / Twilight (2008)").equals("2008"),"explicit label year preserved");check(WatchingCardReader.labelYear("2001: A Space Odyssey").isEmpty(),"title numbers are not release years");
+ public static void main(String[] args)throws Exception{check(WatchingCardReader.labelYear("Сумерки / Twilight (2008)").equals("2008"),"explicit label year preserved");check(WatchingCardReader.labelYear("2001: A Space Odyssey").isEmpty(),"title numbers are not release years");
   String safe=link("safe-policy","com.seena.app","payload");Intent original=Intent.data.get(safe);Intent cleaned=io.tvos.watching.ResumeIntentPolicy.parse(safe,"com.seena.app");
   check(cleaned!=original&&cleaned.owner.equals("com.seena.app")&&cleaned.flags==Intent.FLAG_ACTIVITY_NEW_TASK&&cleaned.selector==null&&cleaned.clip==null&&cleaned.extra.equals("payload")&&cleaned.uri.toString().equals(original.uri.toString()),"resume policy strips grants/selector/clip while preserving URI/extras and owner");
   check(original.flags==0x7fffffff&&original.selector!=null&&original.clip!=null,"resume parsing never edits original provider data");
@@ -89,7 +89,7 @@ public class WatchingHarness {
   catalog.start();check(worker.tasks.isEmpty()&&catalog.picks().isEmpty(),"no permission no query");
   catalog.requestPermission(context);check(context.requested==WatchingCatalog.PERMISSION_REQUEST,"runtime permission requested");
   context.permitted=true;
-  JSONObject.encoded.put("resume",new JSONObject().put("id",42).put("year",2008).put("posterBig","https://cdn.example/portrait.jpg"));
+  JSONObject.encoded.put("resume",new JSONObject().put("id",42).put("imdb","tt1099212").put("kp",341).put("original","Twilight").put("year",2008).put("posterBig","https://cdn.example/portrait.jpg"));
   android.util.Log.enabled=true;
   String target=link("target","watch.kino.mod","resume");
   context.resolver.rows.add(row("watch.kino.mod","s42:1:2","Serial",300,target));
@@ -103,7 +103,14 @@ public class WatchingHarness {
   check(catalog.picks().size()==2,"foreign rows, broken intents and duplicate episodes excluded");
   Recs.Pick serial=catalog.picks().get(0),film=catalog.picks().get(1);
   check(serial.id==0&&serial.watchingKey.equals("kinopub:42"),"source identity never becomes TMDB id");
-  check(android.util.Log.output.contains("provider metadata: package=watch.kino.mod")&&android.util.Log.output.contains("resume.year=2008")&&!android.util.Log.output.contains("https://"),"diagnostic reports source and year without image URLs");
+  check(android.util.Log.output.contains("provider metadata: package=watch.kino.mod")&&android.util.Log.output.contains("year=2008")&&!android.util.Log.output.contains("https://"),"diagnostic reports source and year without image URLs");
+  check(android.util.Log.output.contains("provider identity: id=42, imdb=tt1099212, kp=341, year=2008, original=Twilight"),"validated source identities and original title logged");
+  java.lang.reflect.Method diagnostic=WatchingCardReader.class.getDeclaredMethod("logMetadataIdentity",JSONObject.class);diagnostic.setAccessible(true);
+  android.util.Log.output="";android.util.Log.enabled=false;
+  diagnostic.invoke(null,new JSONObject().put("id",42));check(android.util.Log.output.isEmpty(),"identity log disabled by default");
+  android.util.Log.enabled=true;
+  diagnostic.invoke(null,new JSONObject().put("id",0).put("imdb","https://secret.example/token").put("kp","bad").put("original","https://secret.example/").put("year",0));
+  check(android.util.Log.output.contains("id=0, imdb=other, kp=other, year=0, original=omitted")&&!android.util.Log.output.contains("secret"),"empty/zero/invalid identities distinguished without dumping URL values");
   check(serial.watchingYear.equals("2008"),"KinoPub resume year is preserved when provider date is missing");check(serial.backdrop.equals("https://cdn.example/landscape-thumbnail.jpg"),"separate landscape thumbnail is read instead of portrait poster");
   check(serial.watchingProgress>0&&serial.watchingProgress<1,"provider progress retained");
   check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
