@@ -14,4 +14,6 @@
     <string name="settings_home_tvos">tvOS View</string>
     <string name="settings_home_card_style">Card Style</string>
     <string name="settings_home_view_help">Collection shows posters by section. In tvOS View, choose recommendations or Continue Watching for Dock apps.</string>
+    <string name="settings_home_screen_help">Customize the Home Screen view, cards and collection sections.</string>
+    <string name="settings_weather_none_help">Do not show weather.</string>
 </resources>

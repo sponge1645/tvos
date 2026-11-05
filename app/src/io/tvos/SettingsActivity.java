@@ -594,9 +594,8 @@ public class SettingsActivity extends Activity {
 
         /** Supporting information belongs below the large tvOS tile, never over the options. */
         private void drawTileDescription(Canvas c) {
-            String info = screen == WEATHER && focus == 0 ? AppStrings.get(
-                    preferenceEditor.weatherVisible(true) && preferenceEditor.weatherVisible(false) ? R.string.settings_weather_both_help
-                    : preferenceEditor.weatherVisible(false) ? R.string.settings_weather_bottom_help : R.string.settings_weather_home_help)
+            String info = screen == WEATHER && focus == 0 ? SettingsContent.weatherDescription(
+                    preferenceEditor.weatherVisible(true), preferenceEditor.weatherVisible(false), AppLanguage.current())
                     : screen == UPDATES && focus == 0 ? updateDetailsText()
                     : SettingsContent.description(screen, focus, picker.kind, settingsGroup, buttonEditor.size());
             if (screen == UPDATES && focus == 0 && updateProgress.active()) {

@@ -84,7 +84,8 @@ final class SettingsContent {
             case MOVIE_SERVICE:
                 info = AppStrings.get(R.string.settings_help_default_service, language);
                 break;
-            case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: return AppStrings.get(R.string.settings_home_view_help, language);
+            case HOME_SCREEN: return AppStrings.get(R.string.settings_home_screen_help, language);
+            case HOME_VIEW: case HOME_CARD_STYLE: return AppStrings.get(R.string.settings_home_view_help, language);
             case CITY: return AppStrings.get(R.string.settings_help_auto_region, language);
             case UPDATES: return focus == 1 ? AppStrings.get(R.string.settings_auto_update_help, language) : null;
             case MEDIA: return focus == 0 ? AppStrings.get(R.string.settings_help_default_service, language) : null;
@@ -119,7 +120,7 @@ final class SettingsContent {
                 break;
             case TOP_PANEL:
                 if (focus == 2) return AppStrings.get(R.string.settings_date_home_help, language);
-                if (focus == 0) return AppStrings.get(R.string.settings_home_view_help, language);
+                if (focus == 0) return AppStrings.get(R.string.settings_home_screen_help, language);
                 if (focus == 1) info = AppStrings.get(R.string.settings_help_menu_buttons, language);
                 break;
             case MENU_BUTTONS:
@@ -136,6 +137,12 @@ final class SettingsContent {
                 break;
         }
         return info;
+    }
+
+    static String weatherDescription(boolean top, boolean bottom, AppLanguage language) {
+        return AppStrings.get(top && bottom ? R.string.settings_weather_both_help
+                : bottom ? R.string.settings_weather_bottom_help
+                : top ? R.string.settings_weather_home_help : R.string.settings_weather_none_help, language);
     }
 
     private static String appDownloadDescription(int index, AppLanguage language) {

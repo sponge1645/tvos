@@ -14,4 +14,6 @@
     <string name="settings_home_tvos">tvOS-вид</string>
     <string name="settings_home_card_style">Вид карточек</string>
     <string name="settings_home_view_help">Подборка — постеры по разделам. В tvOS-виде выберите рекомендации или продолжение просмотра для приложений Dock.</string>
+    <string name="settings_home_screen_help">Настройка вида экрана «Домой», карточек и разделов подборки.</string>
+    <string name="settings_weather_none_help">Не показывать погоду.</string>
 </resources>

@@ -126,7 +126,6 @@ final class SettingsValues {
             v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
         } else if (screen == TOP_PANEL) {
             v[2] = onOff(localPrefs().getBoolean("show_date", false));
-            v[0] = AppStrings.get(Prefs.homeCollection() ? R.string.settings_home_collection : R.string.settings_home_tvos);
         } else if (screen == WIDGETS) {
             // Date is a submenu; its switch is shown inside DATE_TIME.
         } else if (screen == DATE_TIME) {
