@@ -126,7 +126,7 @@ final class DockArtwork {
 
     static JSONObject match(JSONArray items, String title, String poster, String year, String expectedKind, String originalTitle) {
         if (items == null) return null;
-        JSONObject named = null; int names = 0;
+        JSONObject named = null, bilingual = null; int names = 0, bilingualNames = 0;
         String[] normalized = titles(title);
         for (int i = 0; i < normalized.length; i++) normalized[i] = normalize(normalized[i]);
         String filename = filename(poster);
@@ -144,7 +144,14 @@ final class DockArtwork {
             String original = item.optString("movie".equals(kind) ? "original_title" : "original_name", "");
             if (!sourceOriginal.isEmpty()) {
                 // An explicit original title is an identity constraint, not another loose alias.
-                if (sourceOriginal.equals(normalize(original))) { named = item; names++; }
+                if (sourceOriginal.equals(normalize(original))) {
+                    named = item; names++;
+                    for (String variant : normalized) {
+                        if (!variant.isEmpty() && variant.equals(normalize(name))) {
+                            bilingual = item; bilingualNames++; break;
+                        }
+                    }
+                }
                 continue;
             }
             for (String variant : normalized) {
@@ -153,6 +160,7 @@ final class DockArtwork {
                 }
             }
         }
+        if (bilingualNames == 1) return bilingual;
         return names == 1 ? named : null;
     }
 
