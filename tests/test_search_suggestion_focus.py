@@ -10,11 +10,11 @@ public class SuggestionHarness {
  static class Bounds {float x;Bounds(float x){this.x=x;}float centerX(){return x;}}
  static class Target {int poster;Bounds bounds;Runnable action=()->{};Target(float x,int poster){bounds=new Bounds(x);this.poster=poster;}}
  void input(){selected=-1;query.focused=true;}void select(int i,boolean preserve){selected=i;query.focused=false;}void selectFirstPoster(){if(!posterTargets.isEmpty())select(posterTargets.get(0),false);}
-'''+block(s,'    private void focusSuggestionAbove(')+block(s,'    private boolean key(')+'''
+'''+block(s,'    private void focusPosterBelow(')+block(s,'    private void focusSuggestionAbove(')+block(s,'    private boolean key(')+'''
  static void check(boolean b){if(!b)throw new AssertionError();}
  void press(int code){key(new KeyEvent(code));}
  public static void main(String[] args){SuggestionHarness h=new SuggestionHarness();h.targets.add(new Target(150,-1));h.targets.add(new Target(500,-1));h.targets.add(new Target(1755,-1));for(int i=0;i<12;i++){h.posterTargets.add(h.targets.size());h.targets.add(new Target(210+(i%6)*300,i));}
- h.select(3,false);h.press(19);check(h.selected==0);h.press(19);check(h.query.focused);h.press(20);check(h.selected==0);h.select(8,false);h.press(19);check(h.selected==2);h.press(21);check(h.selected==1);h.press(21);check(h.selected==0);h.select(9,false);h.press(19);check(h.selected==3);h.select(0,false);h.press(20);check(h.selected==3);
+ h.select(3,false);h.press(19);check(h.selected==0);h.press(19);check(h.query.focused);h.press(20);check(h.selected==0);h.select(8,false);h.press(19);check(h.selected==2);h.press(21);check(h.selected==1);h.press(21);check(h.selected==0);h.select(9,false);h.press(19);check(h.selected==3);h.select(0,false);h.press(20);check(h.selected==3);h.select(2,false);h.press(20);check(h.selected==8);h.press(19);check(h.selected==2);h.select(1,false);h.press(20);check(h.selected==4);
  SuggestionHarness empty=new SuggestionHarness();empty.targets.add(new Target(200,0));empty.posterTargets.add(0);empty.select(0,false);empty.press(19);check(empty.query.focused);System.out.println("PASS: poster Up reaches nearby recent/Clear button, row Up reaches input, lower rows stay in grid and absent suggestions reach input");}}
 '''
 with tempfile.TemporaryDirectory() as d:

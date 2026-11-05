@@ -235,6 +235,16 @@ public final class SearchActivity extends Activity {
         selected = -1; for (Spring spring : focus) spring.target = 0;
         query.requestFocus(); scrollTo(0, true); page.invalidate();
     }
+    private void focusPosterBelow(float x) {
+        int nearest = -1; float distance = Float.MAX_VALUE;
+        for (int i = 0; i < Math.min(6, posterTargets.size()); i++) {
+            int index = posterTargets.get(i);
+            float d = Math.abs(targets.get(index).bounds.centerX() - x);
+            if (d < distance) { distance = d; nearest = index; }
+        }
+        if (nearest >= 0) select(nearest, false);
+    }
+
     private void focusSuggestionAbove(float x) {
         int nearest = -1; float distance = Float.MAX_VALUE;
         for (int i = 0; i < targets.size(); i++) {
@@ -276,7 +286,7 @@ public final class SearchActivity extends Activity {
             if (key == KeyEvent.KEYCODE_DPAD_DOWN) select(Math.min(targets.size()-1, selected+1), false);
         } else {
             if (key == KeyEvent.KEYCODE_DPAD_UP) input();
-            else if (key == KeyEvent.KEYCODE_DPAD_DOWN) selectFirstPoster();
+            else if (key == KeyEvent.KEYCODE_DPAD_DOWN) focusPosterBelow(current.bounds.centerX());
             else select(Math.max(0, Math.min(posterTargets.isEmpty() ? targets.size()-1 : posterTargets.get(0)-1, selected+(key == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1))), false);
         }
         return true;
