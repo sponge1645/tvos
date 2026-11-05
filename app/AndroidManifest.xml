@@ -18,37 +18,9 @@
     <!-- After the TV boots (and after a TV update), checks that tvOS mode is still as you left it. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Android 11+: without this list the app can't "see" the other apps (getLeanbackLaunchIntentForPackage
-         returns null). The shelf and streaming apps, the live TV apps and, through the <intent>, every TV app
-         (for "All Apps"). -->
-    <queries>
-        <intent><action android:name="android.view.InputMethod" /></intent>
-        <package android:name="watch.kino" />
-        <package android:name="watch.kino.mod" />
-        <package android:name="com.netflix.ninja" />
-        <package android:name="com.google.android.youtube.tv" />
-        <package android:name="com.amazon.amazonvideo.livingroom" />
-        <package android:name="com.disney.disneyplus" />
-        <package android:name="com.wbd.stream" />
-        <package android:name="com.hulu.livingroomplus" />
-        <package android:name="com.cbs.ott" />
-        <package android:name="com.peacocktv.peacockandroid" />
-        <package android:name="com.globo.globotv" />
-        <package android:name="com.spotify.tv.android" />
-        <package android:name="com.yandex.tv.live" />
-        <package android:name="com.tcl.tv" />
-        <package android:name="com.google.android.tv" />
-        <package android:name="com.mediatek.wwtv.tvcenter" />
-        <package android:name="com.sony.dtv.tvx" />
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="content" android:host="android.media.tv" />
-        </intent>
-    </queries>
+    <!-- Broad visibility is required by launcher/package and TV-provider discovery.
+         QUERY_ALL_PACKAGES covers individual packages and intent signatures;
+         do not duplicate those declarations in a queries allowlist. -->
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
