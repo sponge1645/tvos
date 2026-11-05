@@ -17,6 +17,7 @@ files={
  public static Candidate published;public DockPrograms(android.content.Context c,java.util.function.BiPredicate<String,String> allow){}
  public static class Candidate {public List<String> urls=new ArrayList<>();public String year="";}
  public Candidate forResume(String pkg,String title,String poster){return published;}}''',
+ 'io/tvos/KinoPubArtworkMetadata.java':'package io.tvos;class KinoPubArtworkMetadata {static String resolved="";static Runnable after;static String year(String key,String t,String o,io.tvos.network.ConnectionObserver c)throws java.io.IOException,org.json.JSONException{if(after!=null){Runnable r=after;after=null;r.run();}return resolved;}}',
  'io/tvos/DockArtwork.java':'''package io.tvos;class DockArtwork {
  static int calls,logos;static Runnable afterLookup;static java.net.HttpURLConnection connection;static boolean fail;static String year,kind,original;String backdrop,logo="",logoStatus="selected";
  static DockArtwork lookup(String t,String p,String y,String k,String o,io.tvos.network.ConnectionObserver c)throws java.io.IOException,org.json.JSONException {
@@ -40,6 +41,9 @@ public class ArtworkHarness {
   check(!PosterCache.window.contains(a.posterPath("new0")),"late offscreen image cannot replace current cache window");
   worker.drain();main.drain();check(PosterCache.window.size()==8&&PosterCache.max<=8,"four current posters plus four optional logos share bounded cache window");
   check(DockArtwork.year.equals("2008")&&DockArtwork.kind.equals("movie")&&DockArtwork.original.equals("Original"),"year and media kind reach artwork lookup");
+  a.clear();List<Recs.Pick> missing=picks("missing");for(Recs.Pick p:missing)p.watchingYear="";
+  KinoPubArtworkMetadata.resolved="2008";a.prepare(missing,0);worker.drain();main.drain();check(DockArtwork.year.equals("2008"),"publisher year reaches poster and logo metadata");
+  a.clear();KinoPubArtworkMetadata.after=a::clear;int lookups=DockArtwork.calls;a.prepare(missing,0);worker.drain();main.drain();check(DockArtwork.calls==lookups,"cancelled publisher lookup cannot start TMDB request");KinoPubArtworkMetadata.resolved="";
   a.reset();List<Recs.Pick> replaced=picks("replace");a.prepare(replaced,0);worker.drain();a.reset();main.drain();
   check(a.posterPath("replace0")==null&&a.logoPath("replace0")==null,"snapshot replacement rejects both queued poster and logo results");
   io.tvos.watching.DockPrograms.Candidate published=new io.tvos.watching.DockPrograms.Candidate();published.year="2026";published.urls.add("https://provider/wide");io.tvos.watching.DockPrograms.published=published;
