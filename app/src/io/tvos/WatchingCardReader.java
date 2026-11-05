@@ -75,8 +75,7 @@ final class WatchingCardReader {
         if (resume != null && resume.length() <= 131072) {
             try {
                 JSONObject data = new JSONObject(resume);
-                if (Log.isLoggable("tvOS-Artwork", Log.DEBUG))
-                    logMetadataShape(data, "resume", 0);
+                logMetadataIdentity(data);
                 // KinoPub can omit the TV Provider release_date while retaining
                 // the release year in its resume payload.
                 String year = data.optString("year", "").trim();
@@ -114,21 +113,27 @@ final class WatchingCardReader {
                 ? value : "other(length=" + value.length() + ")";
     }
 
-    private static void logMetadataShape(JSONObject data, String path, int depth) {
-        java.util.Iterator<String> keys = data.keys();
-        int count = 0;
-        while (keys.hasNext() && count++ < 40) {
-            String key = keys.next();
-            if (!key.matches("[A-Za-z_][A-Za-z0-9_]{0,47}")) continue;
-            String field = path + "." + key;
-            JSONObject child = data.optJSONObject(key);
-            boolean array = data.optJSONArray(key) != null;
-            boolean date = key.toLowerCase(java.util.Locale.ROOT).matches(".*(year|date).*");
-            String value = data.isNull(key) ? "null" : child != null ? "object" : array ? "array"
-                    : date ? diagnosticDate(data.optString(key, "")) : "scalar";
-            Log.d("tvOS-Artwork", "provider field: " + field + "=" + value);
-            if (child != null && depth < 2) logMetadataShape(child, field, depth + 1);
-        }
+    private static void logMetadataIdentity(JSONObject data) {
+        if (!Log.isLoggable("tvOS-Artwork", Log.DEBUG)) return;
+        String original = data.optString("original", "").trim();
+        if (original.isEmpty()) original = "empty";
+        else if (original.length() > 200 || original.contains("://")
+                || original.toLowerCase(java.util.Locale.ROOT).startsWith("www."))
+            original = "omitted";
+        else original = original.replaceAll("[\\p{Cntrl}]", " ");
+        Log.d("tvOS-Artwork", "provider identity: id=" + diagnosticId(data.optString("id", ""), false)
+                + ", imdb=" + diagnosticId(data.optString("imdb", ""), true)
+                + ", kp=" + diagnosticId(data.optString("kp", ""), false)
+                + ", year=" + diagnosticDate(data.optString("year", ""))
+                + ", original=" + original);
+    }
+
+    private static String diagnosticId(String value, boolean imdb) {
+        value = value.trim();
+        if (value.isEmpty()) return "empty";
+        if (value.equals("0")) return "0";
+        return value.matches(imdb ? "(?:tt)?[0-9]{1,12}" : "[0-9]{1,12}")
+                ? value : "other";
     }
 
     private String poster(String value, String owner) {
