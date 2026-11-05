@@ -28,7 +28,17 @@ public class DockArtworkHarness {
  check(DockArtwork.match(twilightItems,"Сумерки","","2025","movie","Twilight")==null,"original title cannot override known year");
  check(DockArtwork.match(twilightItems,"Сумерки","","","tv","Twilight")==null,"original title cannot override source kind");
  check(DockArtwork.match(twilightItems,"Сумерки","/other-twilight.jpg","","movie","Twilight")==twilight,"poster filename cannot override explicit original identity");
- check(DockArtwork.match(new JSONArray().put(twilight).put(movie(3,"/remake.jpg","2026").put("original_title","Twilight")),"Сумерки","","","movie","Twilight")==null,"same original title remakes remain ambiguous");
+ check(DockArtwork.match(new JSONArray().put(twilight).put(movie(3,"/remake.jpg","2026").put("title","Сумерки").put("original_title","Twilight")),"Сумерки","","","movie","Twilight")==null,"same original title remakes remain ambiguous");
+ JSONObject noir=movie(1998,"/noir.jpg","1998").put("title","Сумерки").put("original_title","Twilight");
+ JSONArray fullTwilight=new JSONArray().put(noir).put(twilight);
+ check(DockArtwork.match(fullTwilight,"Сумерки","","","movie","Twilight")==null,"both titles can still match two separate Twilight films");
+ check(DockArtwork.match(fullTwilight,"Сумерки","","2008","movie","Twilight")==twilight,"publisher year resolves full Twilight ambiguity");
+ JSONObject buddy=movie(1514026,"/buddy.jpg","2026").put("title","Бадди").put("original_title","Buddy");
+ JSONObject oldBuddy=movie(246894,"/old-buddy.jpg","2013").put("title","Приятель").put("original_title","Buddy");
+ check(DockArtwork.match(new JSONArray().put(oldBuddy).put(buddy),"Приятель","","2026","movie","Buddy")==buddy,"publisher year resolves Buddy despite localized translation mismatch");
+ JSONObject blue=movie(1,"/blue.jpg","2026").put("title","Голубые небеса").put("original_title","Blue Skies");
+ JSONObject blueOld=movie(2,"/blue-old.jpg","1988").put("title","Blue Skies").put("original_title","Blue Skies");
+ check(DockArtwork.match(new JSONArray().put(blueOld).put(blue),"Голубые небеса","","","movie","Blue Skies")==blue,"two matching names distinguish originals when localized names differ");
  JSONObject abre=movie(1902,"/abre.jpg","1997").put("title","Открой глаза").put("original_title","Abre los ojos");
  check(DockArtwork.match(new JSONArray().put(abre).put(movie(4,"/eyes.jpg","2025").put("title","Открой глаза").put("original_title","Открой глаза")),"Открой глаза","","","movie","Abre los ojos")==abre,"original identity resolves Open Your Eyes");
  TmdbClient.search=new JSONObject().put("results",twilightItems);
