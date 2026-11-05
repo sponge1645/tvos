@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 
 /** Focus-debounced static recommendations artwork. No per-frame queries or per-app bitmap collection. */
 final class DockBackdrop {
+    private static final long ROTATION_MS = 10 * 60 * 1000L;
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private static final ExecutorService CANCEL = Executors.newSingleThreadExecutor();
     private final Context context;
@@ -39,6 +40,20 @@ final class DockBackdrop {
     private String cachedPackage;
     private Artwork cached;
     private Runnable pendingLoading;
+    private long rotationDue;
+    private boolean rotationRequested;
+    private final Runnable rotate = () -> {
+        if (focused == null || bundled(focused) != null) return;
+        generation++; cancelConnection(); cancelLoading(); main.removeCallbacks(load);
+        rotationRequested = true;
+        loadFocused();
+    };
+
+    private void armRotation() {
+        main.removeCallbacks(rotate);
+        if (focused != null && bundled(focused) == null && rotationDue > 0)
+            main.postDelayed(rotate, Math.max(0, rotationDue - android.os.SystemClock.uptimeMillis()));
+    }
 
     DockBackdrop(Context context, Consumer<Artwork> changed) {
         this.context = context.getApplicationContext(); this.changed = changed;
@@ -73,17 +88,20 @@ final class DockBackdrop {
 
     void focus(String pkg) {
         if (java.util.Objects.equals(focused, pkg)) return;
+        main.removeCallbacks(rotate); rotationRequested = false;
         focused = pkg; generation++; cancelConnection(); cancelLoading(); main.removeCallbacks(load);
         if (pkg == null) { changed.accept(null); return; }
         if (pkg.equals(cachedPackage) && cached != null) {
             boolean temporary = loadingBanner(pkg) != null && cached.title.isEmpty() && cached.logo == null;
             if (!temporary) changed.accept(cached);
-            if (bundled(pkg) != null || !cached.title.isEmpty() || cached.logo != null) return;
+            if (bundled(pkg) != null || !cached.title.isEmpty() || cached.logo != null) { armRotation(); return; }
         }
+        rotationDue = 0;
         main.postDelayed(load, 450);
     }
 
     void pause() {
+        main.removeCallbacks(rotate); rotationDue = 0; rotationRequested = false;
         generation++; cancelConnection(); cancelLoading(); focused = null; main.removeCallbacks(load);
         cached = null; cachedPackage = null;
     }
@@ -164,6 +182,9 @@ final class DockBackdrop {
         final String pkg = focused;
         final int token = generation;
         if (pkg == null) return;
+        final String previousTitle = rotationRequested && pkg.equals(cachedPackage) && cached != null
+                ? cached.title : "";
+        rotationRequested = false;
         final long requested = System.nanoTime();
         final java.util.concurrent.atomic.AtomicBoolean imageReady = new java.util.concurrent.atomic.AtomicBoolean();
         IO.execute(() -> {
@@ -183,7 +204,7 @@ final class DockBackdrop {
                     }
                     return;
                 }
-                if (loading != null) {
+                if (loading != null && previousTitle.isEmpty()) {
                     try (InputStream input = context.getAssets().open("banners/" + loading)) {
                         Bitmap image = BitmapFactory.decodeStream(input);
                         if (image == null) throw new IOException("Unreadable loading backdrop");
@@ -197,6 +218,15 @@ final class DockBackdrop {
                 }
                 long stage = System.nanoTime();
                 List<Candidate> choices = programs.candidates(pkg);
+                // Start after the displayed film, retaining provider order and fallback candidates.
+                if (!previousTitle.isEmpty()) {
+                    for (int i = 0; i < choices.size(); i++) {
+                        if (previousTitle.equals(choices.get(i).title)) {
+                            java.util.Collections.rotate(choices, -(i + 1));
+                            break;
+                        }
+                    }
+                }
                 int landscapes = 0;
                 for (Candidate candidate : choices) if (!candidate.urls.isEmpty()) landscapes++;
                 trace(pkg, "channels", stage, "candidates=" + choices.size() + ", landscapes=" + landscapes);
@@ -259,6 +289,11 @@ final class DockBackdrop {
                 main.post(() -> { if (token == generation) cancelLoading(); });
                 publish(pkg, token, result);
             } else if (!hasLoading) main.post(() -> { if (token == generation && !pkg.equals(cachedPackage)) changed.accept(null); });
+            main.post(() -> {
+                if (token != generation) return;
+                rotationDue = android.os.SystemClock.uptimeMillis() + ROTATION_MS;
+                armRotation();
+            });
         });
     }
 
