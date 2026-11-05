@@ -10,6 +10,7 @@ class SystemClock {static long now;static long uptimeMillis(){return now;}}
 public class RemoteMenuHarness {
  static class Row {String name;Row(String n){name=n;}}
  List<Row> rows=new ArrayList<>(),previousRows=new ArrayList<>();
+ final java.util.Map<Integer,int[]> returnPositions=new java.util.HashMap<>();
  String title="",hint="";int focus,offset,depth,screen,previousScreen,previousOffset,previousFocus;
  boolean forward,capturing,previousCapturing,drawLight,reduced,hasDrawn=true,exiting;
  static class Source {void draw(Canvas c){}} Source sourceView; final RectF rect=new RectF();
@@ -39,6 +40,24 @@ public class RemoteMenuHarness {
  SystemClock.now=1000;m.navigate("edit",2);m.render();check(m.viewport.drawn.equals(Arrays.asList("loaded apps","edit")));check(!m.forward);
  check(m.rows.get(0).name.equals("edit")&&m.focus==0&&m.offset==0);
  SystemClock.now=1300;m.reduced=true;m.navigate("root",1);m.render();check(m.viewport.drawn.equals(Arrays.asList("root"))&&m.transitions.focusReady(1300));
+ // Rebuilt parent pages restore their actual invoking row, including scroll.
+ java.util.List<Row> rootRows=new ArrayList<>();for(int i=0;i<22;i++)rootRows.add(new Row("Button"+i));
+ m.captureOutgoing(false,1);m.show("root","",rootRows,0,1);m.focus=21;m.offset=12;
+ java.util.List<Row> connectionRows=Arrays.asList(new Row("Enable"),new Row("Select"),new Row("Text keyboard"));
+ m.captureOutgoing(false,2);m.show("input","",connectionRows,0,2);m.focus=2;
+ m.captureOutgoing(false,3);m.show("keyboards","",Arrays.asList(new Row("Keyboard")),0,3);
+ m.captureOutgoing(false,2);m.show("input","",connectionRows,0,2);check(m.focus==2);
+ m.captureOutgoing(false,1);m.show("root","",rootRows,0,1);check(m.focus==21&&m.offset==12);
+ // A different branch cannot inherit the old input page's saved focus.
+ m.focus=4;m.offset=0;m.captureOutgoing(false,2);m.show("edit","",rootRows,1,2);check(m.focus==1);
+ m.focus=3;m.captureOutgoing(false,3);m.show("triple action","",rootRows,0,3);
+ m.focus=8;m.captureOutgoing(false,4);m.show("apps","",rootRows,0,4);
+ m.captureOutgoing(false,3);m.show("triple action","",rootRows,0,3);check(m.focus==8);
+ m.captureOutgoing(false,2);m.show("edit","",rootRows,1,2);check(m.focus==3);
+ m.captureOutgoing(false,1);m.show("root","",rootRows,0,1);check(m.focus==4);
+ // Deletion may shorten a list; the restored index is clamped to surviving rows.
+ m.focus=21;m.captureOutgoing(false,2);m.show("edit","",rootRows,1,2);
+ m.captureOutgoing(false,1);m.show("root","",rootRows.subList(0,3),0,1);check(m.focus==2);
  System.out.println("PASS: remote entry, nested navigation, asynchronous same-page update, multi-level return and reduced motion");
  }
 }'''
