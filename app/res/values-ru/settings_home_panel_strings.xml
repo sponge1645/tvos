@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_weather_view">Вид</string>
+    <string name="settings_weather_view">Показывать</string>
+    <string name="settings_weather_none">Нет</string>
     <string name="settings_weather_home">На экране «Домой»</string>
     <string name="settings_weather_bottom">На нижней панели</string>
     <string name="settings_weather_both">Оба</string>
