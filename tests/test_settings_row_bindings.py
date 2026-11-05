@@ -29,7 +29,7 @@ public class BindingHarness {
  void menu(int page,int count){screen=page;labels=new String[count];values=new String[count];for(int i=0;i<count;i++){labels[i]="Row"+i;values[i]="Value"+i;}rows.clear();}
  Snap row(String label){for(Snap s:rows)if(s.label.equals(label))return s;throw new AssertionError(label);}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}static void near(float a,float b){check(Math.abs(a-b)<.02,a+" != "+b);}
-''' + ''.join(block(source,s) for s in ['        private SettingsListRenderer.Row prepareRow(', '        private void setApprovedRowRect(', '        private void setScrollingRowRect(', '        private SettingsListRenderer.Layout rowLayout(', '        private boolean menuChevronVisible(', '        private void drawUpdateSpinner(', '        private void drawMenu(', '        private void drawChoice(', '        private void drawMenuButtonEditor(', '        private void drawCategoryEditor(', '        private void drawShelfEditor(', '        private void drawPicker(', '        private void drawList('])+'''
+''' + ''.join(block(source,s) for s in ['        private SettingsListRenderer.Row prepareRow(', '        private void setApprovedRowRect(', '        private void setScrollingRowRect(', '        private SettingsListRenderer.Layout rowLayout(', '        private boolean menuChevronVisible(', '        private void drawUpdateSpinner(', '        private void drawMenu(', '        private void drawChoice(', '        private void drawMenuButtonEditor(', '        private void drawOrderEditor(', '        private void drawCategoryEditor(', '        private void drawShelfEditor(', '        private void drawPicker(', '        private void drawList('])+'''
  public static void main(String[] args){BindingHarness v=new BindingHarness();Canvas c=new Canvas();
  for(float k:new float[]{2f/3,1,2}){
   v.k=k;v.menu(MAIN,10);v.focus=3;v.mainScroll.value=.5f;v.drawMenu(c);check(v.rows.size()==10&&v.rows.get(9).label.equals("Row3"),"menu binds focused row last");near(v.row("Row3").top,(189+3*84-42)*k);check(v.row("Row3").marker==Marker.CHEVRON&&v.row("Row3").inset==61,"menu arrow and inset");
@@ -40,6 +40,14 @@ public class BindingHarness {
   v.menu(MOVIE_SERVICE,5);v.drawMenu(c);for(Snap s:v.rows)check(!s.show&&s.marker==(s.label.equals("Row2")?Marker.SERVICE_CHECK:Marker.NONE),"service check only for selected provider");
   v.screen=MENU_BUTTONS;v.vpn=false;v.rows.clear();v.drawMenuButtonEditor(c);Snap footer=v.row("VPN");check(footer.disabled&&footer.fit&&footer.inset==61&&footer.marker==Marker.NONE&&footer.after,"disabled VPN footer retains layout");v.vpn=true;v.rows.clear();v.drawMenuButtonEditor(c);check(v.row("VPN").marker==Marker.CHEVRON&&!v.row("VPN").disabled,"enabled VPN footer");
   v.screen=CATEGORY_EDIT;v.rows.clear();v.drawCategoryEditor(c);check(v.rows.size()==5&&v.row("Category0").value.equals("#1")&&v.row("Category1").value.equals("Off"),"category bindings retain order state");
+  for(int selected=0;selected<=v.buttonEditor.size();selected++){
+   v.screen=MENU_BUTTONS;v.focus=selected;v.rows.clear();v.drawMenuButtonEditor(c);
+   check(v.rows.size()==7&&v.rows.get(6).label.equals(selected==6?"VPN":"Button"+selected),"shared button renderer paints focused row last, including VPN footer");
+   for(Snap row:v.rows)if(!row.label.equals("VPN"))check(!row.disabled&&!row.fit&&row.inset==13&&row.marker==Marker.NONE,"VPN styling never leaks into a button");
+   v.screen=CATEGORY_EDIT;v.focus=selected%5;v.rows.clear();v.drawCategoryEditor(c);
+   check(v.rows.size()==5&&v.rows.get(4).label.equals("Category"+(selected%5)),"shared category renderer paints focused row last without footer");
+   for(Snap row:v.rows)check(!row.disabled&&!row.fit&&row.inset==13&&row.marker==Marker.NONE&&!row.after,"switching from VPN clears footer-specific fields");
+  }
   v.rows.clear();v.free=true;v.drawChoice(c);check(v.row("tvOS").marker==Marker.CHOICE_CHECK&&!v.row("tvOS").show,"launcher choice binding");v.rows.clear();v.free=false;v.drawChoice(c);check(v.row("Built-in").marker==Marker.CHOICE_CHECK,"original launcher selected");
  }
  int before=v.frames;v.drawUpdateSpinner(c,1,2,1,123);check(v.frames==before+1&&!v.updateProgress.reduced,"active spinner requests frame");v.running=false;v.drawUpdateSpinner(c,1,2,1,123);check(v.frames==before+1,"paused spinner does not request frames");v.running=true;v.reduced=true;v.drawUpdateSpinner(c,1,2,1,123);check(v.frames==before+1&&v.updateProgress.reduced,"Reduce Motion spinner remains static");

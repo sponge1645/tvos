@@ -725,12 +725,8 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        private void rebuildMenuButtonRows(int selectedId) {
-            focus = buttonEditor.rebuild(selectedId);
-        }
         private void openMenuButtonEditor() {
-            rebuildMenuButtonRows(-1);
-            focus = 0;
+            focus = buttonEditor.rebuild(-1);
             screen = MENU_BUTTONS;
         }
         private void toggleMenuButton() {
@@ -739,20 +735,33 @@ public class SettingsActivity extends Activity {
         private void moveMenuButton(int direction) {
             focus = buttonEditor.move(focus, direction);
         }
-        private void drawMenuButtonEditor(Canvas c) {
-            int count = buttonEditor.size() + 1;
+        private void drawMenuButtonEditor(Canvas c) { drawOrderEditor(c, true); }
+
+        /** Categories and header buttons share row order, focus layering and layout; VPN is a footer. */
+        private void drawOrderEditor(Canvas c, boolean buttons) {
+            int size = buttons ? buttonEditor.size() : categoryEditor.size();
+            int count = size + (buttons ? 1 : 0);
             for (int pass = 0; pass < count; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, count, focus);
-                boolean vpn = i == buttonEditor.size();
-                int id = vpn ? -1 : buttonEditor.get(i);
+                boolean vpn = buttons && i == size;
+                int id = vpn ? -1 : buttons ? buttonEditor.get(i) : categoryEditor.get(i);
+                String label = vpn ? AppStrings.get(R.string.settings_vpn) : buttons ? menuButtonLabel(id) : categoryLabel(id);
+                String value;
+                if (vpn) value = valueSource.vpnApp();
+                else {
+                    boolean enabled = buttons ? Prefs.topButtonEnabled(id) : Prefs.categoryEnabled(id);
+                    value = enabled ? "#" + (buttons ? Prefs.topButtonPosition(id) : Prefs.categoryPosition(id))
+                            : AppStrings.get(R.string.settings_off);
+                }
                 setApprovedRowRect(i);
-                SettingsListRenderer.Row row = prepareRow(i, vpn ? AppStrings.get(R.string.settings_vpn) : menuButtonLabel(id),
-                        vpn ? valueSource.vpnApp() : Prefs.topButtonEnabled(id) ? "#" + Prefs.topButtonPosition(id) : AppStrings.get(R.string.settings_off));
-                row.disabled = vpn && !vpnTopEnabled();
-                row.fitValue = vpn;
-                row.valueInset = vpn ? 61 : 13;
-                if (vpn && !row.disabled) row.marker = Marker.CHEVRON;
-                row.markerAfterValue = true;
+                SettingsListRenderer.Row row = prepareRow(i, label, value);
+                if (buttons) {
+                    row.disabled = vpn && !vpnTopEnabled();
+                    row.fitValue = vpn;
+                    row.valueInset = vpn ? 61 : 13;
+                    if (vpn && !row.disabled) row.marker = Marker.CHEVRON;
+                    row.markerAfterValue = true;
+                }
                 drawRow(c);
             }
         }
@@ -829,13 +838,9 @@ public class SettingsActivity extends Activity {
             }
         }
 
-        private void rebuildCategoryRows(int selectedId) {
-            focus = categoryEditor.rebuild(selectedId);
-        }
 
         private void openCategoryEditor() {
-            rebuildCategoryRows(-1);
-            focus = 0;
+            focus = categoryEditor.rebuild(-1);
             screen = CATEGORY_EDIT;
         }
 
@@ -847,16 +852,7 @@ public class SettingsActivity extends Activity {
             focus = categoryEditor.move(focus, direction);
         }
 
-        private void drawCategoryEditor(Canvas c) {
-            int count = categoryEditor.size();
-            for (int pass = 0; pass < count; pass++) {
-                int i = SettingsListRenderer.paintRow(pass, 0, count, focus);
-                int id = categoryEditor.get(i);
-                setApprovedRowRect(i);
-                prepareRow(i, categoryLabel(id), Prefs.categoryEnabled(id) ? "#" + Prefs.categoryPosition(id) : AppStrings.get(R.string.settings_off));
-                drawRow(c);
-            }
-        }
+        private void drawCategoryEditor(Canvas c) { drawOrderEditor(c, false); }
 
         // MARK: - Shelf editor
 

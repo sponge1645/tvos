@@ -19,7 +19,7 @@ prefs_body=''.join(method(prefs,s) for s in [
  '    static int firstCategory(', '    static int lastCategory(', '    static int categoryCount(', '    static int categoryPosition(',
  '    static void setCategoryEnabled(', '    static void setCategoryOrder('])
 editor_body=''.join(method(settings,s) for s in [
- '        private String categoryLabel(', '        private void rebuildCategoryRows(', '        private void openCategoryEditor(',
+ '        private String categoryLabel(', '        private void openCategoryEditor(',
  '        private void toggleCategory(', '        private void moveCategory('])
 nav_body=''.join(method(home,s) for s in [
  '    private boolean topControlVisible(', '    private int nextTopControl(', '    private static boolean tabEnabled(',

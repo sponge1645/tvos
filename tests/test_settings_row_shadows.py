@@ -8,8 +8,10 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 renderer=Path('app/src/io/tvos/settings/SettingsRowRenderer.java').read_text()
 assert 'import io.tvos.' not in renderer
-for signature in ['        private void drawMenu(', '        private void drawChoice(', '        private void drawMenuButtonEditor(', '        private void drawCategoryEditor(', '        private void drawShelfEditor(', '        private void drawPicker(', '        private void drawList(']:
+for signature in ['        private void drawMenu(', '        private void drawChoice(', '        private void drawOrderEditor(', '        private void drawShelfEditor(', '        private void drawPicker(', '        private void drawList(']:
  assert 'paintRow(' in block(source,signature),signature
+assert 'drawOrderEditor(c, true)' in block(source, '        private void drawMenuButtonEditor(')
+assert 'drawOrderEditor(c, false)' in block(source, '        private void drawCategoryEditor(')
 harness='''package io.tvos;import android.graphics.*;import java.util.*;
 public class SettingsShadowHarness {
  float k=1;boolean light;final Spring[] pop=new Spring[12];{for(int i=0;i<pop.length;i++)pop[i]=new Spring(.28f,.85f,0);}final RectF rowRect=new RectF(),tmp=new RectF();

@@ -116,3 +116,11 @@ the visit, including results already queued for UI delivery. Delivery also check
 that the Media page is active. Platform lookup failures retain the automatic-only
 picker fallback. Tests exercise delayed callbacks across reentry, queue removal,
 inactive pages, duplicate input, failures and executor rejection.
+
+Build 1B182 consolidates category/header-button editor drawing in `drawOrderEditor`.
+Ordering, toggles and persistence already share `SettingsOrderEditor`; no additional
+controller is introduced. Redundant rebuild wrappers are removed. The header-button
+VPN footer retains its disabled/chevron/value layout, categories retain their plain
+rows, and focused rows still paint last. Row-binding tests cover switching editors
+and footer styles at all supported test scales; exhaustive persistence/order tests
+remain unchanged in scope.
