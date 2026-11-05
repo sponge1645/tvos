@@ -76,6 +76,8 @@ final class WatchingCardReader {
             try {
                 JSONObject data = new JSONObject(resume);
                 logMetadataIdentity(data);
+                String original = data.optString("original", "").trim();
+                if (!original.equalsIgnoreCase("null") && original.length() <= 512) pick.originalTitle = original;
                 // KinoPub can omit the TV Provider release_date while retaining
                 // the release year in its resume payload.
                 String year = data.optString("year", "").trim();
