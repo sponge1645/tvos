@@ -2,6 +2,8 @@
 # Builds tvOS.apk without Gradle: aapt2 -> javac -> d8 -> zipalign -> apksigner.
 # Needs a JDK (17+) and the Android SDK command-line tools (build-tools 34+, platform android-34). See README.md.
 set -euo pipefail
+# The launcher repeats this informational notice for each Java tool; keep all other diagnostics.
+exec 2> >(sed '/^NOTE: Picked up JDK_JAVA_OPTIONS: --enable-native-access=ALL-UNNAMED$/d' >&2)
 cd "$(dirname "$0")"
 
 # --- Tools

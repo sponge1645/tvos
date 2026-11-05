@@ -191,7 +191,7 @@ public final class QrCode {
 		// Pack bits into bytes in big endian
 		byte[] dataCodewords = new byte[bb.bitLength() / 8];
 		for (int i = 0; i < bb.bitLength(); i++)
-			dataCodewords[i >>> 3] |= bb.getBit(i) << (7 - (i & 7));
+			dataCodewords[i >>> 3] = (byte)(dataCodewords[i >>> 3] | bb.getBit(i) << (7 - (i & 7)));
 		
 		// Create the QR Code object
 		return new QrCode(version, ecl, dataCodewords, mask);
@@ -685,7 +685,7 @@ public final class QrCode {
 			System.arraycopy(result, 1, result, 0, result.length - 1);
 			result[result.length - 1] = 0;
 			for (int i = 0; i < result.length; i++)
-				result[i] ^= reedSolomonMultiply(divisor[i] & 0xFF, factor);
+				result[i] = (byte)(result[i] ^ reedSolomonMultiply(divisor[i] & 0xFF, factor));
 		}
 		return result;
 	}

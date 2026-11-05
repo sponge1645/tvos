@@ -52,6 +52,8 @@ public class RemoteInputMethod extends InputMethodService {
     }
     @Override public View onCreateInputView() { return null; }
     @Override public View onCreateCandidatesView() { return null; }
+    // Required for transparent IME windows on older supported Android versions.
+    @SuppressWarnings("deprecation")
     @Override public void onWindowShown() {
         super.onWindowShown();
         android.view.Window window = getWindow().getWindow();

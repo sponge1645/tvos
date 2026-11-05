@@ -79,7 +79,7 @@ final class TmdbMetadata {
         if ("GB".equals(code)) return AppStrings.get(R.string.runtime_country_gb);
         if ("ZA".equals(code)) return AppStrings.get(R.string.runtime_country_za);
         if ("KR".equals(code)) return AppStrings.get(R.string.runtime_country_kr);
-        String name = new Locale("", code).getDisplayCountry(language.locale);
+        String name = Locale.forLanguageTag("und-" + code).getDisplayCountry(language.locale);
         return name.equalsIgnoreCase(code) ? "" : name;
     }
 

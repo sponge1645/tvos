@@ -128,6 +128,8 @@ public class HomeActivity extends Activity {
         super.onDestroy();
     }
 
+    // Older Android versions still deliver this memory pressure level.
+    @SuppressWarnings("deprecation")
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         if (level >= TRIM_MEMORY_COMPLETE) Recs.get(this).trim();

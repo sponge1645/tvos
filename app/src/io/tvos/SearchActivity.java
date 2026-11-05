@@ -143,6 +143,8 @@ public final class SearchActivity extends Activity {
         if (state != null) query.setText(state.getString("query", ""));
         rebuild(); query.requestFocus(); loadSuggestions();
     }
+    // Preserve the implicit keyboard request behavior on older Android versions.
+    @SuppressWarnings("deprecation")
     private void keyboard() { selected = -1; query.requestFocus(); ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(query, InputMethodManager.SHOW_IMPLICIT); }
     private void hideKeyboard() { ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(query.getWindowToken(), 0); }
     private List<String> recent() {

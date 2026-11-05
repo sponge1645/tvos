@@ -211,6 +211,8 @@ public class SettingsActivity extends Activity {
 
         private Paint pageTitle;
 
+        // Preserve accessibility announcements on older supported Android versions.
+        @SuppressWarnings("deprecation")
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;

@@ -31,8 +31,7 @@ public class SetupActivity extends Activity {
     private SetupWelcomeView welcome;
     private String regionStatus = "";
     private boolean homeRequested;
-    private final SettingsModeMonitor homeMode = new SettingsModeMonitor(this, main, () -> active, () -> false,
-            value -> android.widget.Toast.makeText(this, value, android.widget.Toast.LENGTH_LONG).show(), this::homeModeChanged);
+    private SettingsModeMonitor homeMode;
     private void homeModeChanged() {
         if (!active || page != SetupState.HOME || !homeRequested) return;
         if (homeMode.freeActive()) skip();
@@ -51,14 +50,18 @@ public class SetupActivity extends Activity {
     private AutoRegion.Result detectedCity;
     private String weatherStatus = "";
     private AlertDialog cityDialog;
-    private final SettingsCitySearch citySearch = new SettingsCitySearch(main, () -> active,
-            () -> page, this::showCityResults, this::updateWeatherText);
+    private SettingsCitySearch citySearch;
     private final List<String[]> tvApps = new ArrayList<>();
     private String text(int id) { return AppStrings.get(id); }
     private SharedPreferences settings() { return getSharedPreferences("settings", MODE_PRIVATE); }
     private SharedPreferences setup() { return getSharedPreferences("setup", MODE_PRIVATE); }
     @Override protected void onCreate(Bundle saved) {
-        super.onCreate(saved); Ui.init(this); SetupGate.restart();
+        super.onCreate(saved);
+        homeMode = new SettingsModeMonitor(this, main, () -> active, () -> false,
+                value -> android.widget.Toast.makeText(this, value, android.widget.Toast.LENGTH_LONG).show(), this::homeModeChanged);
+        citySearch = new SettingsCitySearch(main, () -> active,
+                () -> page, this::showCityResults, this::updateWeatherText);
+        Ui.init(this); SetupGate.restart();
         if (getIntent().getBooleanExtra("replay", false)) {
             getIntent().removeExtra("replay"); setup().edit().putBoolean("complete", false).putInt("step", 0).remove("home_request").apply();
         }

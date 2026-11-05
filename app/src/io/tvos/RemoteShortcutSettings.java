@@ -144,6 +144,8 @@ final class RemoteShortcutSettings extends ContextWrapper {
             default: return text(R.string.remote_button) + " " + b.code;
         }
     }
+    // Keep spoken capture instructions on Android versions without newer accessibility APIs.
+    @SuppressWarnings("deprecation")
     private void capture() {
         List<Row> rows = new ArrayList<>();
         show(text(R.string.settings_remote_add), text(R.string.remote_capture_hint), rows, this::root, 0, 2);

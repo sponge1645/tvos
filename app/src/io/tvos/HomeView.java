@@ -314,6 +314,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
     };
 
+    // Home notices still need announcement events on older supported Android versions.
+    @SuppressWarnings("deprecation")
     HomeView(Activity a) {
         super(a);
         activity = a;
