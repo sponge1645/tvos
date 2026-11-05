@@ -34,7 +34,6 @@
     <string name="home_clock_and_profile" formatted="false">"Часы и профиль"</string>
     <string name="home_random_movie" formatted="false">"Случайный фильм"</string>
     <string name="home_movies_loading_toast" formatted="false">"Загружаем фильмы…"</string>
-    <string name="home_search_heading_prefix" formatted="false">"Поиск: "</string>
     <string name="home_network_wifi" formatted="false">"Wi-Fi, интернет доступен"</string>
     <string name="home_network_ethernet" formatted="false">"Ethernet, интернет доступен"</string>
     <string name="home_network_offline" formatted="false">"Нет интернета"</string>

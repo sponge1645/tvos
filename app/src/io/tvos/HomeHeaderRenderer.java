@@ -11,15 +11,15 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import java.util.List;
 
-/** Header date/weather, tabs, search heading, clock/profile and action buttons. */
+/** Header date/weather, tabs, clock/profile and action buttons. */
 final class HomeHeaderRenderer {
     static final class Frame {
-        float k, night, headingOpacity, vpnTint, weatherAmount;
+        float k, night, vpnTint, weatherAmount;
         int tab, networkState;
         int wifiLevel = -1;
         int hiddenTab = -1;
-        boolean weatherActionStyle, weatherFocused, showDate, weatherTop, searchMode, largePostersWithoutWidgets;
-        String clockText, dateText, searchQuery;
+        boolean weatherActionStyle, weatherFocused, showDate, weatherTop, largePostersWithoutWidgets;
+        String clockText, dateText;
         String[] tabs;
         RectF[] topRects;
         Spring[] topFocus;
@@ -35,7 +35,7 @@ final class HomeHeaderRenderer {
     private final ProfileAvatar profileAvatar;
     private int profileAvatarIndex = -1;
     private Frame frame;
-    private final Paint headerDateScratch = new Paint(), headerWeatherScratch = new Paint(), searchHeadingScratch = new Paint();
+    private final Paint headerDateScratch = new Paint(), headerWeatherScratch = new Paint();
     private final Paint.FontMetrics clockMetricsScratch = new Paint.FontMetrics();
     private final Paint clockCapsuleScratch = new Paint(Paint.ANTI_ALIAS_FLAG), shadow = new Paint(Paint.ANTI_ALIAS_FLAG), fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF avatarShouldersScratch = new RectF(), cell = new RectF(), tmp = new RectF(), widgetsCapsule = new RectF();
@@ -54,7 +54,7 @@ final class HomeHeaderRenderer {
         if (frame != null) {
             frame.topRects = null; frame.topFocus = null; frame.lightButtons = null;
             frame.lDate = frame.lTab = frame.lTabOn = null;
-            frame.clockText = frame.dateText = frame.searchQuery = null; frame.tabs = null;
+            frame.clockText = frame.dateText = null; frame.tabs = null;
         }
         frame = null;
     }
@@ -210,7 +210,7 @@ final class HomeHeaderRenderer {
             float width = Math.max(frame.lTab.measureText(frame.tabs[i]), frame.lTabOn.measureText(frame.tabs[i]));
             textScale = Math.min(textScale, Math.max(0, frame.topRects[i].width() - 52 * frame.k) / Math.max(1, width));
         }
-        for (int i = 0; i < 5 && !frame.searchMode; i++) {
+        for (int i = 0; i < 5; i++) {
             if (!Prefs.categoryEnabled(i) || i == frame.hiddenTab) continue;
             RectF r = frame.topRects[i];
             if (r.isEmpty()) continue;
@@ -223,12 +223,6 @@ final class HomeHeaderRenderer {
             c.drawText(frame.tabs[i], r.centerX() - width / 2, r.centerY() + Ui.halfCap(p), p);
             c.restoreToCount(saved);
         }
-        if (frame.searchMode && frame.headingOpacity > 0.001f) {
-            Paint heading = searchHeadingScratch;
-            heading.set(frame.lTabOn);
-            heading.setColor(Ui.alpha(tone(L_INK, WHITE), Ui.clamp(frame.headingOpacity)));
-            c.drawText((AppStrings.get(R.string.home_search_heading_prefix)) + frame.searchQuery, MARGIN * frame.k,
-                    (HomeLayout.TOP + HomeLayout.BUTTON + 64) * frame.k, heading);
-        }
+
     }
 }

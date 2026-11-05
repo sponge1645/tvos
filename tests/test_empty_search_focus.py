@@ -1,4 +1,4 @@
-"""Exercise production directional navigation from Dock and empty search cards."""
+"""Exercise production directional navigation from Dock and empty categories."""
 from pathlib import Path
 import subprocess,tempfile
 source=Path('app/src/io/tvos/HomeView.java').read_text()
@@ -12,7 +12,7 @@ public class SearchFocusHarness { static final int Z_WEATHER=6;boolean canOpenWe
  static class DockState {int index;List<Object> items=new ArrayList<>(Arrays.asList(new Object()));RectF[] rects={new RectF()};}final DockState dock=new DockState();
  static final int Z_SHELF=1,Z_CARDS=2,Z_TOP=3;
  int zone=Z_SHELF,tab=1,topIndex,cardIndex,cardPage,actions=63;
- boolean enabled=true;static class Session {boolean active=true;List<Object> results=new ArrayList<>();}final Session search=new Session();int retargets,clicks;
+ boolean enabled=true;int retargets,clicks;
  static class Roulette {boolean finished(){return false;}}
  final Roulette rouletteWork=new Roulette();
  List<Object> cards=new ArrayList<>();
@@ -22,8 +22,8 @@ public class SearchFocusHarness { static final int Z_WEATHER=6;boolean canOpenWe
  static class Recs {List<Object> catalog(Object kind){return new ArrayList<>();}}
  Recs recs=new Recs();Object[] TAB_KIND=new Object[5];
  class Click {void move(){clicks++;}void app(){clicks++;}}Click click=new Click();
- boolean topControlVisible(int id){return id<5?!search.active&&enabled:topButtonEnabled(id-5);}
- java.util.List<Object> currentCatalog(){return search.active?search.results:recs.catalog(TAB_KIND[tab]);}
+ boolean topControlVisible(int id){return id<5?enabled:topButtonEnabled(id-5);}
+ java.util.List<Object> currentCatalog(){return recs.catalog(TAB_KIND[tab]);}
  boolean picksOn(){return enabled;}boolean topButtonEnabled(int i){return (actions&(1<<i))!=0;}boolean clockButtonEnabled(){return topButtonEnabled(4);}
  int posterCornerTarget(boolean right){return right?9:5;}int nextTopControl(int current,int dx){return current+dx;}
  void selectTab(int t){tab=t;}void spinRoulette(){}void updateCards(){}void retarget(boolean snap){retargets++;}
@@ -34,25 +34,22 @@ tests='''
   for(int mask=0;mask<64;mask++)for(int tab=0;tab<5;tab++){
    SearchFocusHarness h=new SearchFocusHarness();h.actions=mask;h.tab=tab;
    h.moveLight(0,-1);
-   if(mask==0){check(h.zone==Z_SHELF,"all hidden keeps focus in Dock");continue;}
-   check(h.zone==Z_TOP&&h.topIndex>=5,"empty search never focuses an invisible category");
-   check(h.topIndex>=5&&h.topIndex<=10&&h.topButtonEnabled(h.topIndex-5),"lands on enabled visible action or network fallback");
+   check(h.zone==Z_TOP&&h.topIndex==tab,"empty category retains selected tab regardless of action mask");
    check(h.retargets==1&&h.clicks==1,"normal focus movement feedback");
-   h.moveLight(0,1);check(h.zone==Z_SHELF,"down returns to Dock without entering nonexistent result");
-   h.moveLight(0,-1);check(h.zone==Z_TOP,"repeat up remains reachable without Back");
-   h.zone=Z_CARDS;h.moveLight(0,-1);check(h.zone==Z_TOP&&h.topIndex>=5,"empty result focus can also return up");
+   h.moveLight(0,1);check(h.zone==Z_SHELF,"down returns to Dock without nonexistent cards");
+   h.moveLight(0,-1);check(h.zone==Z_TOP&&h.topIndex==tab,"repeat up preserves category");
   }
   SearchFocusHarness full=new SearchFocusHarness();full.cards.add(new Object());full.moveLight(0,-1);
   check(full.zone==Z_CARDS,"nonempty results retain normal Dock-to-results navigation");
-  SearchFocusHarness category=new SearchFocusHarness();category.search.active=false;category.tab=2;category.moveLight(0,-1);
+  SearchFocusHarness category=new SearchFocusHarness();category.tab=2;category.moveLight(0,-1);
   check(category.zone==Z_TOP&&category.topIndex==2,"empty ordinary category still focuses its visible tab");
-  SearchFocusHarness noCatalog=new SearchFocusHarness();noCatalog.enabled=false;noCatalog.search.active=false;noCatalog.actions=0;noCatalog.moveLight(0,-1);
+  SearchFocusHarness noCatalog=new SearchFocusHarness();noCatalog.enabled=false;noCatalog.actions=0;noCatalog.moveLight(0,-1);
   check(noCatalog.zone==Z_SHELF,"no catalog and all actions hidden keeps focus in Dock");
-  SearchFocusHarness emptyDock=new SearchFocusHarness();emptyDock.dock.items.clear();emptyDock.actions=32;
+  SearchFocusHarness emptyDock=new SearchFocusHarness();emptyDock.dock.items.clear();emptyDock.actions=32;emptyDock.enabled=false;
   emptyDock.moveLight(0,-1);check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==10,"empty Dock reaches the visible Network action");
-  emptyDock.search.active=false;emptyDock.tab=2;emptyDock.zone=Z_SHELF;emptyDock.moveLight(0,-1);
+  emptyDock.enabled=true;emptyDock.tab=2;emptyDock.zone=Z_SHELF;emptyDock.moveLight(0,-1);
   check(emptyDock.zone==Z_TOP&&emptyDock.topIndex==2,"empty Dock with recommendations reaches current category");
-  System.out.println("PASS: empty search focus across all tabs/button masks, repeated up/down, empty cards, populated results, ordinary empty category");
+  System.out.println("PASS: empty category focus across all tabs/button masks, repeated up/down, populated cards, hidden actions and empty Dock");
  }
 }'''
 with tempfile.TemporaryDirectory() as d:

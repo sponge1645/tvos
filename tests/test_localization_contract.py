@@ -3,7 +3,7 @@ from pathlib import Path
 import re,subprocess,tempfile
 from settings_strings_fixture import write
 # П is a non-displayed capital-height reference for sizing the search SVG.
-allowed={'DockBackdrop.java':{'истори','смотр','нов','фильм','рекоменд'},'HomeSearchInput.java':{'П'},'HomeApps.java':{'игровая приставка','игровая консоль'},'AppLanguage.java':{'Русский'},'SettingsDeviceDialogs.java':{'ТВ'},'SettingsValues.java':{'ТВ'},'Recs.java':{'ы','и','а','ов'},'PosterText.java':{' г.',' г'}}
+allowed={'DockBackdrop.java':{'истори','смотр','нов','фильм','рекоменд'},'HomeApps.java':{'игровая приставка','игровая консоль'},'AppLanguage.java':{'Русский'},'SettingsDeviceDialogs.java':{'ТВ'},'SettingsValues.java':{'ТВ'},'Recs.java':{'ы','и','а','ов'},'PosterText.java':{' г.',' г'}}
 # Exact Russian calendar abbreviations are locale-format data, not untranslated UI prose.
 # Keyboard alphabets are input data, not localized prose.
 allowed['RemoteInputMethod.java']={'йцукенгшщзхъ','фывапролджэ','ячсмитьбюё'}

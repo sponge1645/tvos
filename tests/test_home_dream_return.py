@@ -21,7 +21,7 @@ import android.content.*;import android.view.View;import android.os.*;
 public class DreamReturnHarness {
  static final int VISIBLE=0,INVISIBLE=4;
  final Context context=new Context();final HomeReveal reveal=new HomeReveal();
- static class Spring {float value;}static class DrawerState {final Spring motion=new Spring();boolean open;float extraHeight;}final DrawerState drawer=new DrawerState();static class Session {boolean active;}final Session search=new Session();static class Grid {boolean open;final Spring sheet=new Spring();}final Grid grid=new Grid();
+ static class Spring {float value;}static class DrawerState {final Spring motion=new Spring();boolean open;float extraHeight;}final DrawerState drawer=new DrawerState();static class Grid {boolean open;final Spring sheet=new Spring();}final Grid grid=new Grid();
  final View revealBackdrop=new View(),sky=new View(),heroLayer=new View(),status=new View(),platter=new View(),tiles=new View(),drawerLayer=new View(),sheetLayer=new View();
  int h=1080;float k=1;boolean running=true;int wakes;
  final HomeLayerMotion layerMotion=new HomeLayerMotion(revealBackdrop,sky,heroLayer,status,platter,tiles,drawerLayer,sheetLayer);
@@ -58,8 +58,8 @@ public class DreamReturnHarness {
   v.context.reduced=true;v.prepareDreamReturn();check(!v.reveal.prepared(),"Reduce Motion skips preparation");v.revealFromDream();check(!v.reveal.active(),"Reduce Motion skips effect");near(v.sky.sx,1,"Reduce Motion preserves normal content");near(v.sky.alpha,1,"Reduce Motion keeps full opacity");check(v.revealBackdrop.visibility==INVISIBLE,"Reduce Motion adds no backdrop draw");near(v.tiles.y,0,"Reduce Motion preserves normal Dock");
   v.context.reduced=false;android.animation.ValueAnimator.enabled=false;v.prepareDreamReturn();check(!v.reveal.prepared(),"system animations disabled skips preparation");v.revealFromDream();check(!v.reveal.active(),"system animation disable respected");android.animation.ValueAnimator.enabled=true;
   v.revealFromDream();v.reveal.cancel();v.updateMotion();near(v.sky.sx,1,"pause cancellation resets scale");near(v.tiles.y,0,"pause cancellation resets translation");
-  for(int guard=0;guard<4;guard++){v.running=guard!=0;v.drawer.open=guard==1;v.grid.open=guard==2;v.search.active=guard==3;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
-  v.running=true;v.drawer.open=v.grid.open=v.search.active=false;v.drawer.motion.value=1;v.grid.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.drawer.extraHeight=30;v.updateMotion();near(v.tiles.y,-590,"expanded drawer lifts Dock by added button height");near(v.platter.y,v.tiles.y,"Dock background and icons stay together");v.drawer.extraHeight=0;v.grid.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
+  for(int guard=0;guard<3;guard++){v.running=guard!=0;v.drawer.open=guard==1;v.grid.open=guard==2;v.revealFromDream();check(!v.reveal.active(),"hidden/overlay home entrance excluded");}
+  v.running=true;v.drawer.open=v.grid.open=false;v.drawer.motion.value=1;v.grid.sheet.value=0;v.updateMotion();near(v.tiles.y,-560,"existing drawer transform retained");v.drawer.extraHeight=30;v.updateMotion();near(v.tiles.y,-590,"expanded drawer lifts Dock by added button height");near(v.platter.y,v.tiles.y,"Dock background and icons stay together");v.drawer.extraHeight=0;v.grid.sheet.value=1;v.updateMotion();near(v.tiles.alpha,0,"existing sheet opacity retained");
   for(int width:new int[]{1280,1920,3840}){
    DreamReturnHarness sized=new DreamReturnHarness();sized.k=width/1920f;sized.h=width*9/16;sized.platterRect.top=788*sized.k;sized.drawer.extraHeight=30*sized.k;
    sized.drawer.motion.value=1;sized.updateMotion();near(sized.tiles.y,-590*sized.k,"drawer lift scales at every resolution");near(sized.drawerLayer.y,0,"open drawer at resting coordinates");near(sized.status.alpha,0,"drawer hides top controls");

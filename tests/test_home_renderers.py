@@ -90,7 +90,7 @@ public class HomeRenderHarness {
   a.invalidateLabels();a.resize(.5f);a.clear();check(field(a,"frame")==null,"renderer releases borrowed frame");a.invalidateDock();check(((Object[])field(a,"tileShaders")).length==0,"list reload invalidates Dock gradients");
  }
  static void header(){
-  HomeHeaderRenderer h=new HomeHeaderRenderer(new Context(),new HomeData(),new ActionSurface(new Scene(),new Shadows()),new Shadows());h.resize(1);HomeHeaderRenderer.Frame f=new HomeHeaderRenderer.Frame();f.k=1;f.tab=0;f.clockText="12:34";f.dateText="monday";f.searchQuery="Film";f.showDate=f.weatherTop=true;f.lDate=paint(34);f.lTab=paint(30);f.lTabOn=paint(30);f.tabs=new String[]{"New","Movies","","Shows","Dice"};f.topRects=new RectF[11];f.topFocus=new Spring[11];for(int i=0;i<11;i++){f.topRects[i]=new RectF(80+i*120,46,180+i*120,114);f.topFocus[i]=new Spring(.3f,1,0);}f.lightButtons=Arrays.asList(new HomeApps.Item("Search"));f.networkState=1;
+  HomeHeaderRenderer h=new HomeHeaderRenderer(new Context(),new HomeData(),new ActionSurface(new Scene(),new Shadows()),new Shadows());h.resize(1);HomeHeaderRenderer.Frame f=new HomeHeaderRenderer.Frame();f.k=1;f.tab=0;f.clockText="12:34";f.dateText="monday";f.showDate=f.weatherTop=true;f.lDate=paint(34);f.lTab=paint(30);f.lTabOn=paint(30);f.tabs=new String[]{"New","Movies","","Shows","Dice"};f.topRects=new RectF[11];f.topFocus=new Spring[11];for(int i=0;i<11;i++){f.topRects[i]=new RectF(80+i*120,46,180+i*120,114);f.topFocus[i]=new Spring(.3f,1,0);}f.lightButtons=Arrays.asList(new HomeApps.Item("Search"));f.networkState=1;
   h.resume();Canvas c=new Canvas();h.drawDateWeather(c,f);check(entries(c,"glass").isEmpty()&&entries(c,"round").isEmpty(),"resting weather has no surface or outline");RectF capsule=new RectF();capsule.set(h.weatherBounds());near(capsule.left,40,"common left edge");near(capsule.top,40,"common top edge");near(capsule.height(),HomeLayout.BUTTON,"same height as corner controls");near(text(c,"Monday").l,60,"balanced padding");near(text(c,"Monday").t-30*.35f,HomeLayout.HEADER_CY,"centered date");near(text(c,"10°").t-30*.35f,HomeLayout.HEADER_CY,"centered weather");float fullWidth=capsule.width();
   f.weatherActionStyle=true;c=new Canvas();h.drawDateWeather(c,f);check(entries(c,"glass").size()==1,"wide artwork mode uses corner-button glass");check(text(c,"Monday").color==0xFF1D1D1F,"wide artwork mode shares corner ink");f.weatherActionStyle=false;c=new Canvas();h.drawDateWeather(c,f);check(entries(c,"glass").isEmpty(),"returning to categories restores text-only style");
   f.weatherAmount=.5f;Canvas focused=new Canvas();h.drawDateWeather(focused,f);check(entries(focused,"round").size()==1&&entries(focused,"glass").isEmpty(),"focused weather has same white capsule as categories");check(entries(focused,"round").get(0).r-entries(focused,"round").get(0).l>fullWidth,"focus grows surface");f.weatherAmount=0;
@@ -100,8 +100,7 @@ public class HomeRenderHarness {
   for(int level=0;level<4;level++){f.wifiLevel=level;c=new Canvas();h.drawButtons(c,f);final String wanted="wifi_"+level;check(entries(c,"symbol").stream().anyMatch(e->e.text.equals(wanted)),"RSSI level selects matching SVG");}f.wifiLevel=-1;
   f.networkState=2;c=new Canvas();h.drawButtons(c,f);check(entries(c,"symbol").stream().anyMatch(e->e.text.equals("ethernet")),"Ethernet state");
   ProfileAvatar.selected=3;h.resume();c=new Canvas();h.drawButtons(c,f);check(entries(c,"avatar").size()==1&&ProfileAvatar.clears==1,"avatar invalidates only when selection changes");h.resume();check(ProfileAvatar.clears==1,"unchanged avatar reused");
-  f.searchMode=true;f.headingOpacity=1;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==1,"search replaces category titles");
-  f.searchMode=false;Prefs.categories[2]=false;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==4,"disabled category skipped");Prefs.categories[2]=true;h.clearFrame();
+  Prefs.categories[2]=false;c=new Canvas();h.drawTabs(c,f);check(entries(c,"text").size()==4,"disabled category skipped");Prefs.categories[2]=true;h.clearFrame();
  }
  static void notices()throws Exception{
   Context ctx=new Context();Handler handler=new Handler();List<Runnable> worker=new ArrayList<>();int[] invalidates={0},wakes={0},announces={0};HomeNotices n=new HomeNotices(ctx,new Scene(),worker::add,handler,()->invalidates[0]++,()->wakes[0]++,text->announces[0]++);n.resize(1,1920);n.add("First");n.add("Second");check(n.busy()&&!n.visible()&&announces[0]==2&&wakes[0]==2,"queue announcement and wake");SystemClock.now=100;check(n.tick(100)&&n.visible(),"initial fade begins");Canvas c=new Canvas();SystemClock.now=500;n.draw(c);text(c,"First");check(c.depth==0,"toast layers balanced");check(!n.tick(1000),"stable toast no fade invalidation");n.tick(2601);c=new Canvas();SystemClock.now=3100;n.draw(c);text(c,"Second");n.tick(5102);check(!n.busy(),"queue drains in order");
@@ -123,19 +122,19 @@ public class HomeRenderHarness {
 
 focus=block(Path('app/src/io/tvos/HomeView.java').read_text(),'    private int focusedPoster()')
 harness=harness.replace(' static void posters()throws Exception{', ''' static class FocusHarness {
- static class Grid {boolean open;}final Grid grid=new Grid(); static class Session {boolean active;}final Session search=new Session(); int tab,zone=2,cardIndex;static final int Z_CARDS=2;
+ static class Grid {boolean open;}final Grid grid=new Grid();  int tab,zone=2,cardIndex;static final int Z_CARDS=2;
  List<Recs.Pick> cards=new ArrayList<>(Arrays.asList(new Recs.Pick()));boolean picksOn(){return true;}
  '''+focus+''' }
  static void posters()throws Exception{''')
 harness=harness.replace('  recs.missing=true;', '''  FocusHarness focus=new FocusHarness();
   for(int tab:new int[]{0,1,3,4}){
-   focus.tab=tab;focus.search.active=true;long start=10000+tab*2000;
+   focus.tab=tab;long start=10000+tab*2000;
    p.focus(focus.focusedPoster(),0,tab,start);p.begin(1,0,tab,0,true,true,title,meta);SystemClock.now=start;p.draw(new Canvas(),pick,base,1,0);
    check(!p.marqueeActive(start+999),"search keeps normal one-second dwell");
    SystemClock.now=start+1500;p.begin(1,0,tab,0,true,true,title,meta);Canvas search=new Canvas();p.draw(search,pick,base,1,0);
    check(p.marqueeActive(start+1500)&&text(search,pick.title).l<base.left&&entries(search,"rect").stream().anyMatch(e->e.mode!=null),"search scrolls full long title with edge mask from every tab, including roulette");
   }
-  focus.search.active=true;focus.grid.open=true;check(focus.focusedPoster()==-1,"sheet blocks underlying marquee");focus.grid.open=false;focus.zone=1;check(focus.focusedPoster()==-1,"top focus stops poster marquee");
+  focus.grid.open=true;check(focus.focusedPoster()==-1,"sheet blocks underlying marquee");focus.grid.open=false;focus.zone=1;check(focus.focusedPoster()==-1,"top focus stops poster marquee");
   focus.zone=2;focus.cards.clear();check(focus.focusedPoster()==-1,"empty results have no marquee");
   recs.missing=true;''')
 with tempfile.TemporaryDirectory(prefix='tvos-home-renderers-') as tmp:

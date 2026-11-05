@@ -16,7 +16,7 @@ sources={
  static void check(boolean b,String s){if(!b)throw new AssertionError(s);}
  static Recs.Pick pick(int id,double rating){Recs.Pick p=new Recs.Pick();p.id=id;p.rating=rating;p.kind="movie";return p;}
  static class Watching {List<Recs.Pick> list=new ArrayList<>();List<Recs.Pick> picks(){return list;}}final Watching watching=new Watching();
- final Recs recs=new Recs();final RandomPoster randomPoster=new RandomPoster();int tab=1;static class Session {boolean active;List<Recs.Pick> results=new ArrayList<>();}final Session search=new Session();
+ final Recs recs=new Recs();final RandomPoster randomPoster=new RandomPoster();int tab=1;
  static final String[] TAB_KIND={null,"movie",null,"tv",null};
  static class Genres {int id;List<Recs.Pick> selected;int selectedId(){return id;}List<Recs.Pick> movies(){return selected;}}final Genres genres=new Genres(),tvGenres=new Genres();
 '''+''.join(block(home,s) for s in ['    private List<Recs.Pick> baseCatalog()', '    private int randomGenre()', '    private List<Recs.Pick> currentCatalog()'])+'''
@@ -24,7 +24,6 @@ sources={
   RandomHarness h=new RandomHarness();h.recs.picks.add(pick(1,8));
   for(int tab:new int[]{0,1,3}){h.tab=tab;List<Recs.Pick> all=h.currentCatalog();check(all.size()==2&&all.get(1).id==-1,"one tail for each ordinary category");}
   for(int i=2;i<=25;i++)h.recs.picks.add(pick(i,8));h.tab=1;List<Recs.Pick> capped=h.currentCatalog();check(capped.size()==25&&capped.get(24).id==-1&&h.recs.picks.size()==25,"24 original posters plus question at position 25 without changing source catalog");
-  h.search.active=true;check(h.currentCatalog()==h.search.results,"search has no synthetic tail");h.search.active=false;
   h.tab=2;h.watching.list.add(pick(77,0));check(h.currentCatalog()==h.watching.list&&h.currentCatalog().size()==1,"Watching uses provider list without a random tail");
   RandomPoster r=new RandomPoster();GenreCatalog c=new GenreCatalog();int[] changes={0},errors={0};Runnable changed=()->changes[0]++,failed=()->errors[0]++;
   Recs.Pick placeholder=r.tail("tv:5","tv");check(r.placeholder(placeholder)&&placeholder.title.equals("Random Series"),"TV placeholder");
@@ -36,7 +35,7 @@ sources={
   r.load(c,"movie",0,Arrays.asList(pick(1,6.5),pick(2,6.6)),changed,failed);check(r.tail("movie","movie").id==2,"recent pool uses strictly greater than 6.5");
   r.clear();r.tail("empty","movie");r.load(c,"movie",0,Arrays.asList(pick(1,6.5)),changed,failed);check(errors[0]==1,"empty eligible pool reports failure");
   r.tail("new","movie");r.load(c,"movie",0,null,changed,failed);request=c.pending;r.tail("otherGenre","movie");check(request.cancelled,"genre change cancels request");
-  System.out.println("PASS: random tail catalogs/search/roulette, genre routing, loading, duplicate input, five-position reset, strict rating and stale cancellation");
+  System.out.println("PASS: random tail catalogs/roulette, genre routing, loading, duplicate input, five-position reset, strict rating and stale cancellation");
  }
 }'''
 }

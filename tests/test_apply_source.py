@@ -12,6 +12,8 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
  for folder in ['settings','home','home/dock','artwork']:(source/('app/src/io/tvos/'+folder)).mkdir(parents=True,exist_ok=True)
  for folder,name in moved:(source/('app/src/io/tvos/'+folder+'/'+name+'.java')).write_text('new '+name)
  retired=['app/src/io/tvos/RemoteKeys.java','tests/test_mi_remote.py','tools/test-volume-hold.py','tests/test_volume_hold_prototype.py']+['app/src/io/tvos/'+name+'.java' for folder,name in moved]+['app/assets/fonts/sf_display_regular.otf','app/assets/avatars/robot.webp','app/src/io/tvos/Russian.java','app/src/io/tvos/Glyphs.java','app/res/drawable/coin_btc.xml','app/res/drawable/coin_eth.xml','app/res/drawable/coin_sol.xml','app/res/drawable/coin_usdt.xml','app/assets/symbols/bitcoin.svg','app/assets/symbols/bitcoin.png','app/assets/settings/light.webp','app/assets/settings/dark.webp','app/src/io/tvos/ScreensaverWindow.java']
+ retired += ['app/src/io/tvos/'+name+'.java' for name in ['HomeSearchInput','HomeSearchGlass','HomeSearchState']]
+ retired += ['tests/'+name+'.py' for name in ['test_home_search_input','test_home_search_glass','test_home_search_lifecycle','test_search_heading']]
  for name in retired:
   p=target/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('retired')
  (target/'config.properties').write_text('personal config')

@@ -34,10 +34,10 @@ class Editor {
  void open(){openMenuButtonEditor();}void toggle(){toggleMenuButton();}void move(int d){moveMenuButton(d);}
 }
 class Navigation {final io.tvos.home.HomeGeometry geometry=new io.tvos.home.HomeGeometry();final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
- static class Session {boolean active;}final Session search=new Session(); int tab=1;float k=1;String clockText="12:34";static final float L_BUTTON_GAP=12;
+ boolean categories=true; int tab=1;float k=1;String clockText="12:34";static final float L_BUTTON_GAP=12;
  static class Ui {static android.graphics.Typeface displayMedium;}
  RectF[] topRects=new RectF[11];Navigation(){for(int i=0;i<11;i++)topRects[i]=new RectF();}
- boolean picksOn(){return !search.active;}boolean tabEnabled(int id){return id==1;}
+ boolean picksOn(){return categories;}boolean tabEnabled(int id){return id==1;}
 '''+nav+'''
  void layout(){layoutTopActions(60,1780,100);}int next(int i,int d){return nextTopControl(i,d);}int corner(boolean right){return posterCornerTarget(right);}
 }
@@ -63,8 +63,8 @@ public class TopButtonsHarness {
     check(n.topRects[visible.get(visible.size()-1)].right==1780,"last visible button remains right aligned");
     check(n.corner(false)==visible.get(0)&&n.corner(true)==visible.get(visible.size()-1),"poster corners follow saved order");
    }
-   for(boolean search:new boolean[]{false,true}){
-    n.search.active=search;List<Integer> controls=new ArrayList<>();if(!search)controls.add(1);controls.addAll(visible);
+   for(boolean categories:new boolean[]{false,true}){
+    n.categories=categories;List<Integer> controls=new ArrayList<>();if(categories)controls.add(1);controls.addAll(visible);
     for(int i=0;i<controls.size();i++){
      int id=controls.get(i);check(n.next(id,-1)==controls.get(Math.max(0,i-1)),"left skips hidden actions in saved order");
      check(n.next(id,1)==controls.get(Math.min(controls.size()-1,i+1)),"right follows order through movable clock and network");

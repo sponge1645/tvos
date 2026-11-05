@@ -34,7 +34,6 @@
     <string name="home_clock_and_profile" formatted="false">"Clock and profile"</string>
     <string name="home_random_movie" formatted="false">"Random Movie"</string>
     <string name="home_movies_loading_toast" formatted="false">"Loading movies…"</string>
-    <string name="home_search_heading_prefix" formatted="false">"Search: "</string>
     <string name="home_network_wifi" formatted="false">"Wi-Fi, internet available"</string>
     <string name="home_network_ethernet" formatted="false">"Ethernet, internet available"</string>
     <string name="home_network_offline" formatted="false">"No internet"</string>

@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
 home=Path('app/src/io/tvos/HomeView.java').read_text()
-methods='\n'.join(block(home,sig) for sig in ['    private void refreshSearch(', '    private void focusSound(', '    private boolean vpnFocused(', '    private void openVpnOnHold(', '    boolean onKey(', '    private void move(', '    private boolean moveLight(', '    private void focusHeaderAbove(', '    private void back(', '    private void beginSearch(', '    private void closeSearch(', '    private boolean topControlVisible(', '    private boolean topButtonEnabled(', '    private int nextTopControl(', '    private int firstTopControl(', '    private int availableTopButton(', '    private static boolean tabEnabled(', '    private int posterCornerTarget(', '    private static int nearest(RectF[] rects, int count, float x)'])
+methods='\n'.join(block(home,sig) for sig in ['    private void focusSound(', '    private boolean vpnFocused(', '    private void openVpnOnHold(', '    boolean onKey(', '    private void move(', '    private boolean moveLight(', '    private void focusHeaderAbove(', '    private void back(', '    private boolean topControlVisible(', '    private boolean topButtonEnabled(', '    private int nextTopControl(', '    private int firstTopControl(', '    private int availableTopButton(', '    private static boolean tabEnabled(', '    private int posterCornerTarget(', '    private static int nearest(RectF[] rects, int count, float x)'])
 handler='''package android.os;import java.util.*;public class Handler {long now;final Map<Runnable,Long> pending=new LinkedHashMap<>();public void postDelayed(Runnable r,long ms){pending.put(r,now+ms);}public void removeCallbacks(Runnable r){pending.remove(r);}public void advance(long ms){now+=ms;for(Runnable r:new ArrayList<>(pending.keySet()))if(pending.get(r)<=now){pending.remove(r);r.run();}}}'''
 keys='''package android.view;public class KeyEvent {public static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_NUMPAD_ENTER=160,KEYCODE_BACK=4;final int action,key,repeat;public KeyEvent(int action,int key,int repeat){this.action=action;this.key=key;this.repeat=repeat;}public int getAction(){return action;}public int getKeyCode(){return key;}public int getRepeatCount(){return repeat;}public boolean isCanceled(){return false;}}'''
 harness='''package io.tvos;import io.tvos.home.dock.HomeDockEditor;import io.tvos.home.HomeFocusPolicy;
@@ -25,7 +25,7 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
  int zone=Z_SHELF,widgetIndex,topIndex,cardIndex,cardPage,tab,launches,moves,retargets,work;
  boolean running=true,vpnPress;int vpnOpens;final Runnable vpnHold=this::openVpnOnHold;void openVpnApp(){vpnOpens++;}
  boolean okDown,backDown,enabled=true,heroDirty,statusDirty;
- final HomeSearchState<Object> search=new HomeSearchState<>();static class DrawerState {boolean open;int index;List<HomeApps.Item> items=new ArrayList<>();}final DrawerState drawer=new DrawerState();
+ static class DrawerState {boolean open;int index;List<HomeApps.Item> items=new ArrayList<>();}final DrawerState drawer=new DrawerState();
  List<Object> cards=new ArrayList<>();
  static class RectF {final float x;RectF(float x){this.x=x;}float centerX(){return x;}}
  RectF[] cardRects={new RectF(150),new RectF(550),new RectF(950),new RectF(1350),new RectF(1750)},topRects=new RectF[11];
@@ -36,7 +36,7 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
  class Click {void move(){moves++;}void app(){moves++;}void back(){moves++;}}final Click click=new Click();static class Spoken {boolean keyClick(){return true;}}final Spoken spoken=new Spoken();
  static class Accessibility {boolean talkBack(){return false;}}final Accessibility accessibility=new Accessibility();
  static class Genres {void cancelHold(){}void arm(){}void released(){}}final Genres genres=new Genres(),tvGenres=new Genres(),watchingMenu=new Genres();
- List<Object> currentCatalog(){return search.active?search.results:recs.catalog(TAB_KIND[tab]);}
+ List<Object> currentCatalog(){return recs.catalog(TAB_KIND[tab]);}
  final Handler handler=new Handler();final HomeDockEditor<HomeApps.Item> dockEditor=new HomeDockEditor<>(handler,new HomeDockEditor.Host<HomeApps.Item>(){
   public boolean eligible(){return okDown&&!grid.open&&zone==Z_SHELF&&!dock.items.isEmpty();}public List<HomeApps.Item> items(){return dock.items;}public int index(){return dock.index;}public void begin(){}
   public void move(int a,int b){Collections.swap(dock.items,a,b);dock.index=b;}
@@ -44,8 +44,8 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
  },items->Prefs.setShelf(HomeApps.shelfOrder(items)));
  RemoteNavigationHarness(int n){for(int i=0;i<11;i++)topRects[i]=new RectF(i*100);for(int i=0;i<n;i++)dock.items.add(new HomeApps.Item(i));dock.rects=new RectF[n];for(int i=0;i<n;i++)dock.rects[i]=new RectF(120+i*240);drawer.items.add(new HomeApps.Item(99));updateCards();}
  boolean picksOn(){return enabled;}void wake(){}void moveGrid(int dx,int dy){}void openDrawer(){drawer.open=true;zone=Z_DRAWER;}void closeDrawer(){drawer.open=false;zone=Z_SHELF;}
- List<Integer> widgets(){return Collections.emptyList();}void retarget(boolean snap){retargets++;}void closeSheet(){grid.open=false;}void layoutLight(){}void setSearchInputOpen(boolean open){}void cancelSearchWork(){}void selectTab(int id){tab=id;}
- void updateCards(){cards=new ArrayList<>(search.active?search.results:recs.catalog(null));}void spinRoulette(){rouletteWork.spin=true;}void activate(){launches++;}
+ List<Integer> widgets(){return Collections.emptyList();}void retarget(boolean snap){retargets++;}void closeSheet(){grid.open=false;}void layoutLight(){}void selectTab(int id){tab=id;}
+ void updateCards(){cards=new ArrayList<>(recs.catalog(null));}void spinRoulette(){rouletteWork.spin=true;}void activate(){launches++;}
  void event(int key,boolean down,int repeats){check(onKey(new KeyEvent(down?0:1,key,repeats)),"direction/OK/Back handled");}
  void key(int key){event(key,true,0);event(key,false,0);}void right(){key(22);}void left(){key(21);}void up(){key(19);}void down(){key(20);}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
@@ -55,10 +55,11 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
   for(int count=1;count<=8;count++){
    RemoteNavigationHarness h=new RemoteNavigationHarness(count);h.traverse();
    for(int tab=0;tab<5;tab++){
-    h.tab=tab;h.beginSearch();for(int i=0;i<5;i++)h.search.results.add(new Object());h.updateCards();h.zone=Z_TOP;h.topIndex=5;
-    h.down();check(h.zone==Z_CARDS,"search actions descend into results");h.down();check(h.zone==Z_SHELF,"results descend into Dock");h.traverse();
-    h.up();check(h.zone==Z_CARDS,"Dock returns to results");h.up();check(h.zone==Z_TOP,"results return to search actions");h.key(4);check(!h.search.active,"Back exits search through actual closeSearch");h.down();if(h.zone==Z_CARDS)h.down();check(h.zone==Z_SHELF,"return to Dock using real arrows after leaving search");h.traverse();
-    h.beginSearch();h.search.results.clear();h.updateCards();h.traverse();h.up();check(h.zone==Z_TOP,"empty search permits top focus");h.down();check(h.zone==Z_SHELF,"empty search returns to Dock");h.traverse();h.key(4);h.traverse();
+    h.tab=tab;h.updateCards();h.zone=Z_TOP;h.topIndex=tab;
+    h.down();check(h.zone==Z_CARDS,"category descends into cards");h.down();check(h.zone==Z_SHELF,"cards descend into Dock");h.traverse();
+    h.up();check(h.zone==Z_CARDS,"Dock returns to cards");h.up();check(h.zone==Z_TOP,"cards return to header");h.key(4);check(h.zone==Z_SHELF,"Back returns to Dock");h.traverse();
+    h.cards.clear();h.up();check(h.zone==Z_TOP&&h.topIndex==tab,"empty category retains current tab");h.down();check(h.zone==Z_SHELF,"empty category returns to Dock");h.traverse();
+
    }
    h.down();check(h.zone==Z_DRAWER&&h.drawer.open,"Dock down opens drawer");h.up();check(h.zone==Z_SHELF,"drawer up returns to Dock");h.traverse();
    h.dock.index=0;h.event(22,false,0);check(h.dock.index==0,"direction release alone never moves");h.event(22,true,1);check(h.dock.index==Math.min(1,count-1),"held arrow repeat moves normally");
@@ -67,18 +68,18 @@ public class RemoteNavigationHarness {final java.util.function.IntPredicate visi
   RemoteNavigationHarness offline=new RemoteNavigationHarness(6);offline.enabled=false;offline.up();check(offline.zone==Z_TOP,"no-catalog home reaches actions");offline.down();check(offline.zone==Z_SHELF,"no-catalog home returns to Dock");offline.traverse();
   RemoteNavigationHarness empty=new RemoteNavigationHarness(0);empty.right();empty.left();check(empty.dock.index==0,"empty Dock arrows remain safe");empty.up();check(empty.zone==Z_TOP,"empty Dock reaches top controls");
   RemoteNavigationHarness vpn=new RemoteNavigationHarness(1);vpn.zone=Z_TOP;vpn.topIndex=7;
-  vpn.search.active=true;vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
-  vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold works inside Search and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");
+  vpn.key(23);check(vpn.launches==1&&vpn.vpnOpens==0,"VPN short release activates once");
+  vpn.event(23,true,0);vpn.handler.advance(499);check(vpn.vpnOpens==0,"VPN shares Dock hold threshold");vpn.handler.advance(1);check(vpn.vpnOpens==1&&!vpn.okDown,"VPN long hold works on the home screen and consumes release");vpn.event(23,true,1);vpn.event(23,false,0);check(vpn.launches==1&&vpn.vpnOpens==1,"long press never toggles on release or repeats");
   vpn.event(23,true,0);vpn.right();vpn.handler.advance(500);vpn.event(23,false,0);check(vpn.vpnOpens==1&&vpn.launches==1,"moving off VPN cancels both delayed open and release activation");
   RemoteNavigationHarness spatial=new RemoteNavigationHarness(6);spatial.enabled=false;spatial.weatherAvailable=true;spatial.dock.index=0;spatial.up();check(spatial.zone==Z_WEATHER,"first Dock item reaches weather");spatial.dock.index=5;spatial.zone=Z_WEATHER;spatial.down();check(spatial.zone==Z_SHELF&&spatial.dock.index==0,"weather down returns to first Dock item instead of stale selection");spatial.topRects[10]=new RectF(1100);spatial.topRects[9]=new RectF(1700);spatial.dock.index=5;spatial.up();check(spatial.zone==Z_TOP&&spatial.topIndex==9,"last Dock item reaches rightmost visible control even when another center is nearer");spatial.down();check(spatial.zone==Z_SHELF&&spatial.dock.index==5,"top control down picks nearest Dock item");
   RemoteNavigationHarness wx=new RemoteNavigationHarness(2);wx.weatherAvailable=true;wx.zone=Z_TOP;wx.topIndex=1;wx.moveLight(0,-1);check(wx.zone==Z_TOP,"Up stays on the single header row");wx.zone=Z_WEATHER;wx.moveLight(0,1);check(wx.zone==Z_CARDS,"Down from weather reaches posters");wx.zone=Z_WEATHER;wx.moveLight(1,0);check(wx.zone==Z_TOP&&wx.topIndex==0,"Right from weather reaches first category");wx.moveLight(-1,0);check(wx.zone==Z_WEATHER,"Left from first category reaches weather");
-  System.out.println("PASS: real key→move→moveLight chain, Dock arrows/counts/edges/repeats, filled and empty search entry/exit across tabs, drawer, OK, long-press edit/save and roulette lock");
+  System.out.println("PASS: real key→move→moveLight chain, Dock arrows/counts/edges/repeats, filled and empty categories across tabs, drawer, OK, long-press edit/save and roulette lock");
  }
 }'''
 with tempfile.TemporaryDirectory(prefix='tvos-home-remote-') as tmp:
  root=Path(tmp)
  (root/'HomeFocusPolicy.java').write_text(Path('app/src/io/tvos/home/HomeFocusPolicy.java').read_text())
- for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/home/dock/HomeDockEditor.java':Path('app/src/io/tvos/home/dock/HomeDockEditor.java').read_text(),'io/tvos/Spring.java':Path('app/src/io/tvos/Spring.java').read_text(),'io/tvos/HomeSearchState.java':Path('app/src/io/tvos/HomeSearchState.java').read_text(),'io/tvos/RemoteNavigationHarness.java':harness}.items():
+ for name,value in {'android/os/Handler.java':handler,'android/view/KeyEvent.java':keys,'io/tvos/home/dock/HomeDockEditor.java':Path('app/src/io/tvos/home/dock/HomeDockEditor.java').read_text(),'io/tvos/Spring.java':Path('app/src/io/tvos/Spring.java').read_text(),'io/tvos/RemoteNavigationHarness.java':harness}.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',tmp,'io.tvos.RemoteNavigationHarness'],check=True)

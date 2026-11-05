@@ -81,3 +81,16 @@ jobs:
           python3 tests/test_keyboard_handoff.py
           python3 tests/test_remote_input_method.py
           python3 tests/test_remote_taps.py
+
+## Cleanup stages (1.1.2)
+
+Build 1B178 removes the unreachable inline Home search (`HomeSearchInput`,
+`HomeSearchGlass`, `HomeSearchState`), its extra layer, heading and lifecycle
+branches. Home continues to launch `SearchActivity`; its shared `SearchController`,
+recent queries, grid navigation and detail transitions remain in use.
+`apply-source.sh` removes the retired sources/tests from existing installations
+and keeps them in the normal backup. Tests cover the standalone search launch,
+empty categories, remote navigation and source migration.
+
+Navigation extraction and settings extraction are separate subsequent builds.
+This stage does not change the design or navigation policy.

@@ -49,11 +49,11 @@ class CategoryEditor {
  void open(){openCategoryEditor();}void toggle(){toggleCategory();}void move(int d){moveCategory(d);}
 }
 class HomeNavigation {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
- static class Session {boolean active;}final Session search=new Session(); int actions=63,tab,topIndex,zone,cancels;
+  int actions=63,tab,topIndex,zone,cancels;
  static final int Z_TOP=1,Z_CARDS=2,Z_SHELF=3;
  void selectTab(int id){tab=id;}void cancelRouletteWork(){cancels++;}
  void sync(){syncVisibleTabs();}
- boolean picksOn(){return search.active||Prefs.categoryCount()>0;}
+ boolean picksOn(){return Prefs.categoryCount()>0;}
  boolean topButtonEnabled(int index){return (actions&(1<<index))!=0;}
 ''' +nav_body+'''
  int next(int current,int direction){return nextTopControl(current,direction);}
@@ -77,9 +77,9 @@ public class CategoriesHarness {
    check(Prefs.firstCategory()==(visible.isEmpty()?-1:visible.get(0)),"first enabled follows configured order");
    check(Prefs.lastCategory()==(visible.isEmpty()?-1:visible.get(visible.size()-1)),"last enabled follows configured order");
    for(int i=0;i<visible.size();i++)check(Prefs.categoryPosition(visible.get(i))==i+1,"visible position ignores disabled entries");
-   for(int actions:new int[]{0,1,8,16,21,31,32,63})for(boolean search:new boolean[]{false,true}){
-    HomeNavigation nav=new HomeNavigation();nav.actions=actions;nav.search.active=search;
-    List<Integer> controls=new ArrayList<>();if(!search)controls.addAll(visible);
+   for(int actions:new int[]{0,1,8,16,21,31,32,63}){
+    HomeNavigation nav=new HomeNavigation();nav.actions=actions;
+    List<Integer> controls=new ArrayList<>();controls.addAll(visible);
     for(int id:Prefs.topButtonOrder())if((actions&(1<<id))!=0)controls.add(5+id);
     for(int i=0;i<controls.size();i++){
      int current=controls.get(i);
@@ -122,7 +122,7 @@ public class CategoriesHarness {
   check(nav.zone==HomeNavigation.Z_SHELF,"no visible top controls returns focus to Dock");
   permutation(new ArrayList<>(Arrays.asList(0,1,3,2)),0);
   check(permutations==24,"all category permutations covered");
-  System.out.println("PASS: category migration, persistence, editor reorder/toggle/focus, all-off, 120 orders x 32 visibility masks, home/search navigation");
+  System.out.println("PASS: category migration, persistence, editor reorder/toggle/focus, all-off, 120 orders x 32 visibility masks, home navigation");
  }
 }
 '''

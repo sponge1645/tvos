@@ -20,7 +20,7 @@ final class HomeAccessibility implements Spoken.Source {
 
     /** Reused read-only view of the current frame; list/rectangle references are never copied or retained separately. */
     static final class State {
-        boolean weatherTop, sheetOpen, searchMode, drawerOpen, picksOn, weatherBottom;
+        boolean weatherTop, sheetOpen, drawerOpen, picksOn, weatherBottom;
         int tab, zone, gridIndex, topIndex, cardIndex, shelfIndex, drawerIndex, widgetIndex, networkState;
         List<HomeApps.Item> others, shelf, drawerItems, lightButtons;
         List<Recs.Pick> cards;
@@ -69,7 +69,7 @@ final class HomeAccessibility implements Spoken.Source {
             return;
         }
         if (s.weatherTop) out.add(id(Z_WEATHER, 0));
-        if (s.picksOn && !s.searchMode) for (int id : Prefs.categoryOrder())
+        if (s.picksOn) for (int id : Prefs.categoryOrder())
             if (s.topVisible[id]) out.add(id(Z_TOP, id));
         for (int id : Prefs.topButtonOrder()) if (s.topVisible[5 + id]) out.add(id(Z_TOP, 5 + id));
         if (s.picksOn) for (int i = 0; i < Math.min(5, s.cards.size()); i++) out.add(id(Z_CARDS, i));
