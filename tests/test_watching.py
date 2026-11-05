@@ -25,12 +25,13 @@ public class ContentResolver {public List<Object[]> rows=new ArrayList<>(),chann
 }''',
 'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
 'android/os/Handler.java':'''package android.os;import java.util.*;public class Handler {public static long delay;static final java.util.Map<Runnable,Long> due=new java.util.IdentityHashMap<>();static final ArrayDeque<Runnable> tasks=new ArrayDeque<>();public Handler(Looper l){}public boolean post(Runnable r){tasks.add(r);return true;}public boolean postDelayed(Runnable r,long d){delay=d;due.put(r,android.os.SystemClock.now+d);tasks.add(r);return true;}public void removeCallbacks(Runnable r){tasks.removeIf(t->t==r);}public static void drain(){while(!tasks.isEmpty()){Runnable r=tasks.remove();Long at=due.remove(r);if(at!=null)android.os.SystemClock.now=Math.max(android.os.SystemClock.now,at);r.run();}}}''',
-'android/util/Log.java':'package android.util;public class Log {public static int i(String t,String m){return 0;}public static int w(String t,String m){return 0;}}',
+'android/util/Log.java':'package android.util;public class Log {public static final int DEBUG=3;public static boolean enabled=false;public static String output=\"\";public static boolean isLoggable(String t,int l){return enabled;}public static int d(String t,String m){output+=m;return 0;}public static int i(String t,String m){return 0;}public static int w(String t,String m){return 0;}}',
 'io/tvos/AppLaunch.java':'''package io.tvos;class AppLaunch {static android.content.Intent opened;static boolean start(android.content.Context c,android.content.Intent i,String op){opened=i;return true;}}'''
 })
 f['io/tvos/SeenaChannelRefresh.java']='package io.tvos;class SeenaChannelRefresh {static void request(Object c){}}'
 f['io/tvos/Prefs.java']='package io.tvos;class Prefs {static boolean homeContinue(){return false;}static int categoryCount(){return 0;}static boolean categoryEnabled(int i){return true;}static String source="all";static String watchingSource(){return source;}static void setWatchingSource(String value){source=value;}}'
 f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('private final Map<String,Object> m=new HashMap<>();','''public static final Map<String,JSONObject> encoded=new HashMap<>();private final Map<String,Object> m=new HashMap<>();public JSONObject(){}public JSONObject(String s)throws JSONException{JSONObject value=encoded.get(s);if(value==null)throw new JSONException("bad JSON");m.putAll(value.m);}''')
+f['org/json/JSONObject.java']=f['org/json/JSONObject.java'].replace('public JSONObject put(', 'public java.util.Iterator<String> keys(){return m.keySet().iterator();}public JSONObject put(')
 for name in ['ResumeIntentPolicy','HistoryChannels']:
  f['io/tvos/watching/'+name+'.java']=Path('app/src/io/tvos/watching/'+name+'.java').read_text()
 for name in ['WatchingCatalog','WatchingItems','WatchingText','WatchingCardReader']:
@@ -89,6 +90,7 @@ public class WatchingHarness {
   catalog.requestPermission(context);check(context.requested==WatchingCatalog.PERMISSION_REQUEST,"runtime permission requested");
   context.permitted=true;
   JSONObject.encoded.put("resume",new JSONObject().put("id",42).put("year",2008).put("posterBig","https://cdn.example/portrait.jpg"));
+  android.util.Log.enabled=true;
   String target=link("target","watch.kino.mod","resume");
   context.resolver.rows.add(row("watch.kino.mod","s42:1:2","Serial",300,target));
   context.resolver.rows.add(row("watch.kino.mod","s42:1:1","Old episode",100,target));
@@ -101,6 +103,7 @@ public class WatchingHarness {
   check(catalog.picks().size()==2,"foreign rows, broken intents and duplicate episodes excluded");
   Recs.Pick serial=catalog.picks().get(0),film=catalog.picks().get(1);
   check(serial.id==0&&serial.watchingKey.equals("kinopub:42"),"source identity never becomes TMDB id");
+  check(android.util.Log.output.contains("provider metadata: package=watch.kino.mod")&&android.util.Log.output.contains("resume.year=2008")&&!android.util.Log.output.contains("https://"),"diagnostic reports source and year without image URLs");
   check(serial.watchingYear.equals("2008"),"KinoPub resume year is preserved when provider date is missing");check(serial.backdrop.equals("https://cdn.example/landscape-thumbnail.jpg"),"separate landscape thumbnail is read instead of portrait poster");
   check(serial.watchingProgress>0&&serial.watchingProgress<1,"provider progress retained");
   check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
