@@ -11,7 +11,7 @@ files={
 'android/content/ContentResolver.java':'''package android.content;import android.net.Uri;import android.database.Cursor;public class ContentResolver {public String owner="com.seena.app";public boolean portrait=true;public boolean deny;public boolean multiple;public int programQueries;public Cursor query(Uri u,String[] columns,String sel,String[] args,String order){if(deny||sel!=null||u.url.endsWith("/preview_program"))throw new SecurityException();if(multiple){if(u.url.endsWith("/channel"))return new Cursor(new Object[][]{{1L,owner,"New movies","new_movies",""},{2L,owner,"Recommendations","recs",""},{3L,owner,"History","history",""},{4L,owner,"Series","series",""},{5L,owner,"Other","other",""},{6L,owner,"More","more",""}});if(u.url.contains("preview_program")){programQueries++;Object[][] rows=new Object[8][];for(int i=0;i<8;i++)rows[i]=new Object[]{owner,"https://example.com/poster"+i+".jpg",u.url.endsWith("=2")?"https://example.com/wide"+i+".jpg":"",4,0,u.url.endsWith("=2")?"Wide"+i:"Portrait"+i,"2026","intent://movie/42"};return new Cursor(rows);}}if(u.url.endsWith("/channel"))return new Cursor(new Object[][]{{1L,owner,"Movies","movies",""}});if(u.url.contains("preview_program"))return new Cursor(new Object[][]{{owner,"content://published/poster.jpg","",portrait?4:0,0,"Film","2026-01-01","intent://movie/42"}});return new Cursor(new Object[0][]);}public Runnable beforeRead;public java.util.List<String> opened=new java.util.concurrent.CopyOnWriteArrayList<>();public java.io.InputStream openInputStream(Uri u){if(beforeRead!=null)beforeRead.run();opened.add(u.url);return new java.io.ByteArrayInputStream(new byte[]{1});}}''',
 'android/database/Cursor.java':'package android.database;public class Cursor implements AutoCloseable {Object[][] rows;int i=-1;public Cursor(Object[][] r){rows=r;}public boolean moveToNext(){return ++i<rows.length;}public String getString(int c){return rows[i][c]==null?null:rows[i][c].toString();}public long getLong(int c){return ((Number)rows[i][c]).longValue();}public int getInt(int c){return ((Number)rows[i][c]).intValue();}public void close(){}}',
 'android/net/Uri.java':'package android.net;public class Uri {public String url;public static Uri parse(String s){Uri u=new Uri();u.url=s;return u;}}',
-'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long now;public static long uptimeMillis(){return now;}}',
+'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long now;public static long uptimeMillis(){return now;}public static long elapsedRealtime(){return now;}}',
 'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
 'android/os/Handler.java':'''package android.os;public class Handler {public static java.util.Map<Runnable,Long> tasks=new java.util.concurrent.ConcurrentHashMap<>();public Handler(Looper l){}public void removeCallbacks(Runnable r){tasks.remove(r);}public void postDelayed(Runnable r,long n){if(n!=450)tasks.put(r,n);}public void post(Runnable r){r.run();}public static void advance(long ms){SystemClock.now+=ms;for(Runnable r:new java.util.ArrayList<>(tasks.keySet())){Long n=tasks.get(r);if(n==null)continue;if(n<=ms){tasks.remove(r);r.run();}else tasks.put(r,n-ms);}}}''',
 'android/graphics/Bitmap.java':'package android.graphics;public class Bitmap {public void recycle(){}}',
@@ -59,6 +59,21 @@ files={
  check(rotating.get(rotating.size()-1).title.equals("Wide0"),"rotation wraps after available films");
  int count=rotating.size();rotation.focus(null);count=rotating.size();android.os.Handler.advance(600000);worker.submit(()->{}).get();
  check(rotating.size()==count,"leaving Dock cancels rotation");
+ rotation.focus("top.rootu.lampa");load.invoke(rotation);worker.submit(()->{}).get();
+ check(rotating.get(rotating.size()-1).title.equals("Wide1"),"time away from Dock advances recommendation on return");
+ rotation.focus("com.google.android.youtube.tv");load.invoke(rotation);worker.submit(()->{}).get();
+ android.os.Handler.advance(1200000);
+ rotation.focus("top.rootu.lampa");load.invoke(rotation);worker.submit(()->{}).get();
+ check(rotating.get(rotating.size()-1).title.equals("Wide3"),"time focused on another app advances two slots");
+ rotation.pause();android.os.Handler.advance(600000);
+ rotation.focus("top.rootu.lampa");load.invoke(rotation);worker.submit(()->{}).get();
+ check(rotating.get(rotating.size()-1).title.equals("Wide4"),"Home pause preserves elapsed recommendation time");
+ rotation.pause();android.os.Handler.advance(300000);
+ rotation.focus("top.rootu.lampa");load.invoke(rotation);worker.submit(()->{}).get();
+ check(rotating.get(rotating.size()-1).title.equals("Wide4"),"return before deadline retains current film");
+ android.os.Handler.advance(300000);worker.submit(()->{}).get();
+ check(rotating.get(rotating.size()-1).title.equals("Wide5"),"return does not reset remaining interval");
+
  rotation.focus("top.rootu.lampa");worker.submit(()->{}).get();rotation.pause();count=rotating.size();
  android.os.Handler.advance(600000);worker.submit(()->{}).get();check(rotating.size()==count,"pause cancels rotation");
  java.lang.reflect.Field canceller=DockBackdrop.class.getDeclaredField("CANCEL");canceller.setAccessible(true);((java.util.concurrent.ExecutorService)canceller.get(null)).shutdownNow();java.lang.reflect.Field io=DockBackdrop.class.getDeclaredField("IO");io.setAccessible(true);((java.util.concurrent.ExecutorService)io.get(null)).shutdownNow();System.out.println("PASS: complete Dock loader, bundled asset without provider permission/network/caption, portrait-only Seena candidates, landscape programs and publisher isolation");}
