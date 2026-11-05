@@ -67,7 +67,7 @@ public class PresentationTest {
    paint.setTextAlign(Paint.Align.LEFT);String label="ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ";
    for(boolean selected:new boolean[]{false,true}){c=new Canvas();text.drawPickerLabel(c,label,row,k,240*k,selected,paint);near(c.xs.get(0),1093*k);near(c.ys.get(0),240*k);float available=(1830-24-(selected?38:0)-1093)*k;check(String.join("",c.glyphs).equals(text.fitPickerLabel(label,paint,available,.02f)),"picker reserves selected check space");}
    text.beginShelf(paint);c=new Canvas();text.drawShelfLabel(c,"App",row,k,240*k,paint);near(TextUtils.width,520*k);near(TextUtils.paint.getTextSize(),36*k);near(c.xs.get(0),1093*k);near(c.ys.get(0),240*k);check(String.join("",c.glyphs).equals("App"),"Dock retains platform ellipsize and geometry");
-   Paint value=new Paint();value.setTextSize(36*k);value.setTypeface(face);float available=Math.max(0,(1830-61-1093-32)*k-SettingsTextRenderer.trackedWidth("Label",paint,.02f));check(text.fitRowValue("Label",label,row,k,paint,value).equals(text.fitValue(label,value,available,.02f)),"service label/value gap and arrow reserve");
+   Paint value=new Paint();value.setTextSize(36*k);value.setTypeface(face);float available=Math.max(0,(1830-51-1093-32)*k-SettingsTextRenderer.trackedWidth("Label",paint,.02f));check(text.fitRowValue("Label",label,row,k,paint,value).equals(text.fitValue(label,value,available,.02f)),"service label/value gap and arrow reserve");
   }
   SettingsLogoRenderer logo=new SettingsLogoRenderer();
   for(float k:new float[]{2f/3,1,2}){

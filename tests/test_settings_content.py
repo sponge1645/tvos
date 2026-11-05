@@ -36,7 +36,7 @@ public class ContentHarness {
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
    for(int page:new int[]{HOME_VIEW,HOME_CARD_STYLE,SCREENSAVER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
    check(SettingsContent.description(TOP_PANEL,0,0,0,0,AppLanguage.current()).equals(AppStrings.get(R.string.settings_home_screen_help)),"Home parent describes screen settings");
-   check(SettingsContent.weatherDescription(false,false,AppLanguage.current()).equals(russian?"Не показывать погоду.":"Do not show weather."),"None weather help matches hidden state");
+   check(SettingsContent.weatherDescription(false,false,AppLanguage.current()).replace((char)160, (char)32).equals(russian?"Не показывать погоду.":"Do not show weather."),"None weather help matches hidden state");
    check(SettingsContent.weatherDescription(true,false,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_home_help)),"Home weather help");
    check(SettingsContent.weatherDescription(false,true,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_bottom_help)),"bottom weather help");
    check(SettingsContent.weatherDescription(true,true,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_both_help)),"both weather help");
@@ -61,7 +61,7 @@ public class ContentHarness {
    h.picker.kind=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
    check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"рекомендац":"recommend"),"country help describes recommendations");
    check(SettingsContent.description(GENERAL,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");
-   check(SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"Регион":"Region"),"screensaver weather guidance");
+   String guidance=SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)); check(guidance.contains(russian?"Виджеты":"Widgets") && guidance.contains(russian?"Погода":"Weather") && guidance.contains(russian?"Город":"City") && !guidance.contains(russian?"Регион":"Region"),"screensaver weather guidance points to Widgets, Weather and City");
    check(SettingsContent.description(UPDATES,0,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"dynamic update data stays with view");
    for(int count=0;count<=6;count++){
     h.screen=MENU_BUTTONS;h.dynamicRows=count;check(h.menuLabels().length==count+1,"dynamic menu labels delegated to view");

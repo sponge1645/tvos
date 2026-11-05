@@ -52,28 +52,28 @@
     <string name="settings_general" formatted="false">Основные</string>
     <string name="settings_widgets" formatted="false">Виджеты</string>
     <string name="settings_system" formatted="false">Система</string>
-    <string name="settings_help_airplay" formatted="false">Через AirPlay можно выполнять потоковую передачу контента с устройства iOS или компьютера на этот ТВ.</string>
-    <string name="settings_help_dock" formatted="false">Настройка приложений на панели Dock.</string>
-    <string name="settings_help_region" formatted="false">Город для прогноза погоды.</string>
-    <string name="settings_help_weather_city" formatted="false">Город для погоды указывается в пункте «Регион».</string>
-    <string name="settings_help_launcher" formatted="false">tvOS — без рекламы, с новой заставкой. Встроенный — заводской главный экран телевизора. Переключение занимает несколько секунд; экран может мигать.</string>
-    <string name="settings_help_categories" formatted="false">Разделы верхней панели.\nOK — включить или выключить, стрелки — изменить порядок.</string>
-    <string name="settings_help_dock_editor" formatted="false">Настройка приложений на панели Dock.\nOK — добавить или убрать, стрелки — изменить порядок.</string>
-    <string name="settings_help_picker" formatted="false">Нажмите OK для выбора. Назад — отмена.</string>
-    <string name="settings_help_value_controls" formatted="false">OK или стрелки изменяют выбранный параметр.</string>
-    <string name="settings_help_sections" formatted="false">Включайте и выключайте разделы главного экрана.</string>
-    <string name="settings_help_menu_buttons" formatted="false">Настройка кнопок быстрого доступа на верхней панели.</string>
-    <string name="settings_help_vpn_app" formatted="false">Выберите приложение для кнопки VPN.</string>
-    <string name="settings_help_button_editor" formatted="false">OK — включить или выключить, стрелки — изменить порядок.</string>
-    <string name="settings_help_reset" formatted="false">Очистка кеша не удаляет настройки. Сброс tvOS удалит все данные приложения.</string>
+    <string name="settings_help_airplay" formatted="false">Трансляция видео и музыки на телевизор\nс iPhone, iPad или компьютера через AirPlay.</string>
+    <string name="settings_help_dock" formatted="false">Настройка приложений на панели Dock.</string>
+    <string name="settings_help_region" formatted="false">Город для прогноза погоды.</string>
+    <string name="settings_help_weather_city" formatted="false">Город для погоды настраивается здесь:\n«Виджеты» → «Погода» → «Город».</string>
+    <string name="settings_help_launcher" formatted="false">tvOS — без рекламы, с новой заставкой.\nВстроенный — главный экран производителя ТВ.\nПри переключении экран может мигать.</string>
+    <string name="settings_help_categories" formatted="false">Разделы верхней панели.\nOK — включить или выключить.\nСтрелки — изменить порядок.</string>
+    <string name="settings_help_dock_editor" formatted="false">Приложения на панели Dock.\nOK — добавить или убрать.\nСтрелки — изменить порядок.</string>
+    <string name="settings_help_picker" formatted="false">Нажмите OK для выбора. Назад — отмена.</string>
+    <string name="settings_help_value_controls" formatted="false">OK или стрелки изменяют выбранный параметр.</string>
+    <string name="settings_help_sections" formatted="false">Включайте и выключайте разделы главного экрана.</string>
+    <string name="settings_help_menu_buttons" formatted="false">Настройка кнопок быстрого доступа на верхней панели.</string>
+    <string name="settings_help_vpn_app" formatted="false">Выберите приложение для кнопки VPN.</string>
+    <string name="settings_help_button_editor" formatted="false">OK — включить или выключить.\nСтрелки — изменить порядок.</string>
+    <string name="settings_help_reset" formatted="false">Очистка кеша сохраняет настройки.\nСброс tvOS удаляет все данные приложения.</string>
     <string name="settings_help_remote" formatted="false">Выберите назначение кнопок пульта. Некоторые кнопки могут управляться самим телевизором.</string>
-    <string name="settings_app_airplay_description" formatted="false">Через AirPlay можно выполнять потоковую передачу контента с устройства iOS или компьютера на этот ТВ.</string>
-    <string name="settings_app_music_description" formatted="false">Музыка, альбомы и плейлисты на телевизоре.\nСторонний клиент; нужна подписка Apple Music.</string>
-    <string name="settings_app_tizentube_description" formatted="false">Альтернативный клиент YouTube\nс интерфейсом для телевизора и управлением с пульта.</string>
-    <string name="settings_app_incy_description" formatted="false">VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.</string>
-    <string name="settings_app_seena_description" formatted="false">Фильмы, сериалы и мультфильмы\nв приложении с управлением с пульта.</string>
-    <string name="settings_app_lampa_description" formatted="false">Каталог фильмов и сериалов для телевизора.\nИсточники просмотра настраиваются отдельно.</string>
-    <string name="settings_app_kinopub_description" formatted="false">Фильмы и сериалы из сервиса KinoPub.\nДля просмотра нужен аккаунт с доступом.</string>
+    <string name="settings_app_airplay_description" formatted="false">Трансляция видео и музыки на телевизор\nс iPhone, iPad или компьютера через AirPlay.</string>
+    <string name="settings_app_music_description" formatted="false">Музыка, альбомы и плейлисты на телевизоре.\nСторонний клиент; нужна подписка Apple Music.</string>
+    <string name="settings_app_tizentube_description" formatted="false">Альтернативный клиент YouTube\nдля ТВ с управлением с пульта.</string>
+    <string name="settings_app_incy_description" formatted="false">VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.</string>
+    <string name="settings_app_seena_description" formatted="false">Фильмы, сериалы и мультфильмы\nв приложении с управлением с пульта.</string>
+    <string name="settings_app_lampa_description" formatted="false">Каталог фильмов и сериалов для телевизора.\nИсточники просмотра настраиваются отдельно.</string>
+    <string name="settings_app_kinopub_description" formatted="false">Фильмы и сериалы из сервиса KinoPub.\nДля просмотра нужен аккаунт с доступом.</string>
     <string name="settings_choose_app" formatted="false">Выбор приложения</string>
     <string name="settings_settings" formatted="false">Настройки</string>
     <string name="settings_no_ads_with_the_new_screensaver" formatted="false">без рекламы, с новой заставкой</string>
@@ -191,9 +191,9 @@
     <string name="settings_default_service" formatted="false">Сервис по умолчанию</string>
     <string name="settings_ask_every_time" formatted="false">Спрашивать каждый раз</string>
     <string name="settings_service_selected" formatted="false">Выбрано</string>
-    <string name="settings_help_default_service" formatted="false">Открывать фильмы и сериалы через выбранный сервис.</string>
+    <string name="settings_help_default_service" formatted="false">Открывать фильмы и сериалы через выбранный сервис.</string>
     <string name="settings_manual" formatted="false">Вручную</string>
-    <string name="settings_help_auto_region" formatted="false">Определять город для погоды. При выбранном INCY VPN временно отключается на всём ТВ: трафик идёт напрямую. После запроса запускается восстановление VPN. При ошибке определения сохраняется прежний город.</string>
+    <string name="settings_help_auto_region" formatted="false">Определять город для погоды. При выбранном INCY VPN временно отключается на всём ТВ: трафик идёт напрямую. После запроса запускается восстановление VPN. При ошибке определения сохраняется прежний город.</string>
     <string name="settings_mi_button" formatted="false">Кнопка MI</string>
     <string name="settings_could_not_open_tv_settings" formatted="false">Не удалось открыть настройки телевизора</string>
     <string name="settings_home_screen" formatted="false">Экран «Домой»</string>
@@ -202,7 +202,7 @@
     <string name="settings_remote_taps" formatted="false">1×, 2×, 3×</string>
     <string name="settings_remote_add" formatted="false">Добавить кнопку</string>
     <string name="settings_remote_press" formatted="false">Нажмите кнопку на пульте</string>
-    <string name="settings_remote_capture_help" formatted="false">Нажмите нужную кнопку один раз. Назад отменяет обучение. Стрелки, громкость, питание и Home зарезервированы. Некоторые кнопки прошивка не передаёт приложениям.</string>
+    <string name="settings_remote_capture_help" formatted="false">Нажмите нужную кнопку один раз. Назад отменяет обучение. Стрелки, громкость, питание и Home зарезервированы. Некоторые кнопки прошивка не передаёт приложениям.</string>
     <string name="settings_remote_reserved" formatted="false">Эта кнопка зарезервирована для системного управления</string>
     <string name="settings_remote_scope" formatted="false">Где работает</string>
     <string name="settings_remote_home" formatted="false">Только экран «Домой»</string>
@@ -225,7 +225,7 @@
     <string name="settings_remote_app" formatted="false">Открыть приложение…</string>
     <string name="settings_remote_action" formatted="false">Выберите действие</string>
     <string name="settings_remote_save_failed" formatted="false">Не удалось сохранить настройки кнопок</string>
-    <string name="settings_remote_gesture_help" formatted="false">Назначения включаются только для добавленных кнопок. Интервал между нажатиями — до 300 мс. Двойное и тройное нажатие задерживают обычное действие. Удержание OK с обычным действием передаётся экрану «Домой» после 500 мс; его меню удержания появится позже. Во всех приложениях назначенная кнопка полностью перехватывается и требует выбора tvOS текущей клавиатурой. OK доступен только на «Домой». Стрелки, Назад, Home, питание и громкость не переназначаются. Действие VPN управляет только INCY.</string>
+    <string name="settings_remote_gesture_help" formatted="false">Назначения включаются только для добавленных кнопок. Интервал между нажатиями — до 300 мс. Двойное и тройное нажатие задерживают обычное действие. Удержание OK с обычным действием передаётся экрану «Домой» после 500 мс; его меню удержания появится позже. Во всех приложениях назначенная кнопка полностью перехватывается и требует выбора tvOS текущей клавиатурой. OK доступен только на «Домой». Стрелки, Назад, Home, питание и громкость не переназначаются. Действие VPN управляет только INCY.</string>
     <string name="settings_setup_repeat" formatted="false">Повторить начальную настройку</string>
     <string name="settings_setup_continue" formatted="false">Продолжить</string>
     <string name="settings_setup_finish" formatted="false">Готово</string>
@@ -270,13 +270,13 @@
     <string name="settings_setup_history_line2">на экране «Домой».</string>
     <string name="settings_setup_deny">Не разрешать</string>
     <string name="settings_setup_tv_title">Есть телепровайдер?</string>
-    <string name="settings_setup_tv_description">Выберите приложение для просмотра ТВ.\nЕго можно изменить позже.</string>
+    <string name="settings_setup_tv_description">Выберите приложение для просмотра ТВ.\nЕго можно изменить позже.</string>
     <string name="settings_setup_home_title">Изменить главный\nэкран</string>
     <string name="settings_setup_home_description">tvOS будет открываться\nпри нажатии кнопки «Домой».</string>
     <string name="settings_setup_set_home">Установить tvOS главным экраном</string>
     <string name="settings_setup_not_now">Не сейчас</string>
     <string name="settings_setup_weather_title">Погода</string>
-    <string name="settings_setup_weather_description">Выберите город для прогноза погоды.\nЕго можно изменить позже.</string>
+    <string name="settings_setup_weather_description">Выберите город для прогноза погоды.\nЕго можно изменить позже.</string>
     <string name="settings_setup_manual">Вручную</string>
     <string name="settings_setup_city_failed">Определить город ещё раз</string>
     <string name="settings_setup_tv_unavailable">У этого приложения или службы нет доступного экрана или ТВ-входа.</string>
