@@ -111,6 +111,7 @@ public class WatchingHarness {
   android.util.Log.enabled=true;
   diagnostic.invoke(null,new JSONObject().put("id",0).put("imdb","https://secret.example/token").put("kp","bad").put("original","https://secret.example/").put("year",0));
   check(android.util.Log.output.contains("id=0, imdb=other, kp=other, year=0, original=omitted")&&!android.util.Log.output.contains("secret"),"empty/zero/invalid identities distinguished without dumping URL values");
+  check(serial.originalTitle.equals("Twilight"),"source original title reaches resume model");
   check(serial.watchingYear.equals("2008"),"KinoPub resume year is preserved when provider date is missing");check(serial.backdrop.equals("https://cdn.example/landscape-thumbnail.jpg"),"separate landscape thumbnail is read instead of portrait poster");
   check(serial.watchingProgress>0&&serial.watchingProgress<1,"provider progress retained");
   check(serial.poster.equals("https://cdn.example/portrait.jpg"),"portrait extracted from resume metadata");
