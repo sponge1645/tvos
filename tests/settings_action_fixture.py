@@ -16,7 +16,7 @@ public class CLASSNAME {
  int screen=MAIN,focus,settingsGroup=GENERAL,selectedSetting,buttonCount=6;
  final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;final ModeMonitor modeMonitor=new ModeMonitor();class ModeMonitor {long pendingAt;void markPending(){pendingAt=SystemClock.uptimeMillis();}}
- final AppLoader appLoader=new AppLoader();class AppLoader {void cancel(){}}
+ final AppLoader appLoader=new AppLoader(),tvProviderLoader=new AppLoader();class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
  static class Values {void clearAppCache(){}}final Values valueSource=new Values();
  final SettingsPicker picker=new SettingsPicker();{picker.keys.addAll(Arrays.asList("FR",""));}

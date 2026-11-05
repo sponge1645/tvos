@@ -108,3 +108,11 @@ choices for remote buttons/VPN. All entry points share `showPicker()` so selecte
 rows and initial scroll offsets follow the same policy. Loading, lifecycle guards,
 row rendering, navigation and transitions keep their existing owners. Regression
 coverage includes the actual view entry points and sequential picker reuse.
+
+Build 1B181 moves TV-provider lookup out of `SettingsActivity` into
+`SettingsTvProviderLoader`. Requests use one bounded shared worker and cooperative
+cancellation; duplicate confirms share the pending request. Back and pause cancel
+the visit, including results already queued for UI delivery. Delivery also checks
+that the Media page is active. Platform lookup failures retain the automatic-only
+picker fallback. Tests exercise delayed callbacks across reentry, queue removal,
+inactive pages, duplicate input, failures and executor rejection.

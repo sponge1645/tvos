@@ -179,7 +179,7 @@ public class SettingsActivity extends Activity {
         private final SettingsUpdateDialog updateDialog;
         private final SettingsUpdateProgress updateProgress = new SettingsUpdateProgress();
         private final SettingsModeMonitor modeMonitor;
-        private boolean tvProviderLoading;
+        private final SettingsTvProviderLoader tvProviderLoader;
         private int screen = MAIN, focus, settingsGroup = GENERAL;
         private final SettingsTransitions transitions = new SettingsTransitions();
         private final java.util.function.IntUnaryOperator transitionParent = this::parentScreen;
@@ -220,6 +220,8 @@ public class SettingsActivity extends Activity {
                     () -> HomeData.get(getContext()).settingsChanged(), this::invalidate);
             deviceDialogs = new SettingsDeviceDialogs(a, this::invalidate);
             appLoader = new SettingsAppLoader(a.getApplicationContext(), handler, () -> running);
+            tvProviderLoader = new SettingsTvProviderLoader(handler::post, () -> running && screen == MEDIA,
+                    () -> LiveTvTargets.load(a.getApplicationContext()));
             citySearch = new SettingsCitySearch(handler, () -> running, () -> screen, this::showCityResults, this::invalidate);
             updateDialog = new SettingsUpdateDialog(a, this, updateProgress, this::drawSettingsContent);
             valueSource = new SettingsValues(a, buttonEditor, this::freeActive, this::weatherVisible, citySearch::status,
@@ -340,6 +342,7 @@ public class SettingsActivity extends Activity {
             running = false;
             remoteInput.reset();
             appLoader.cancel();
+            tvProviderLoader.cancel();
             valueSource.pause();
             updateDialog.pause();
             citySearch.cancel();
@@ -646,6 +649,7 @@ public class SettingsActivity extends Activity {
 
         private void backFromScreen() {
             appLoader.cancel();
+            tvProviderLoader.cancel();
             SettingsActions.Target target = SettingsActions.back(screen, picker.kind, settingsGroup, buttonEditor.size());
             if (target != null) {
                 focus = target.row;
@@ -899,22 +903,12 @@ public class SettingsActivity extends Activity {
         }
 
         private void openTvProviderPicker() {
-            if (tvProviderLoading) return; tvProviderLoading = true;
-            final Context context = activity.getApplicationContext();
-            new Thread(() -> {
-                List<String[]> targets;
-                try { targets = LiveTvTargets.load(context); }
-                catch (RuntimeException unavailable) { targets = java.util.Collections.emptyList(); }
-                final List<String[]> found = targets;
-                handler.post(() -> {
-                    tvProviderLoading = false;
-                    if (!running || screen != MEDIA) return;
-                    picker.tvProviders(PICK_TV, found, localPrefs().getString("live_tv_app", ""),
-                            AppStrings.get(R.string.settings_automatic));
-                    showPicker();
-                    invalidate(); spoken.focusMoved();
-                });
-            }, "tv-provider-picker").start();
+            tvProviderLoader.load(found -> {
+                picker.tvProviders(PICK_TV, found, localPrefs().getString("live_tv_app", ""),
+                        AppStrings.get(R.string.settings_automatic));
+                showPicker();
+                invalidate(); spoken.focusMoved();
+            });
         }
 
         private void openPicker(int which) {
