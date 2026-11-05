@@ -235,6 +235,17 @@ public final class SearchActivity extends Activity {
         selected = -1; for (Spring spring : focus) spring.target = 0;
         query.requestFocus(); scrollTo(0, true); page.invalidate();
     }
+    private void focusSuggestionAbove(float x) {
+        int nearest = -1; float distance = Float.MAX_VALUE;
+        for (int i = 0; i < targets.size(); i++) {
+            Target target = targets.get(i);
+            if (target.poster >= 0) continue;
+            float d = Math.abs(target.bounds.centerX() - x);
+            if (d < distance) { distance = d; nearest = i; }
+        }
+        if (nearest >= 0) select(nearest, false); else input();
+    }
+
     private boolean key(KeyEvent event) {
         if (transitioning) return true;
         int key = event.getKeyCode();
@@ -252,7 +263,7 @@ public final class SearchActivity extends Activity {
         if (ok) { if (event.getRepeatCount() == 0) current.action.run(); return true; }
         if (current.poster >= 0) {
             int next;
-            if (key == KeyEvent.KEYCODE_DPAD_UP && current.poster < 6) { input(); return true; }
+            if (key == KeyEvent.KEYCODE_DPAD_UP && current.poster < 6) { focusSuggestionAbove(current.bounds.centerX()); return true; }
             if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 next = SearchGridNavigation.horizontal(current.poster, posterTargets.size(), key == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
                 select(posterTargets.get(next), false);
