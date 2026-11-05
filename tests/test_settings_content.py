@@ -34,13 +34,13 @@ public class ContentHarness {
     labels[0]="modified";check(!h.menuLabels()[0].equals("modified"),"caller cannot corrupt future labels");
    }
    check(h.parentScreen(HOME_CHOICE)==SYSTEM,"launcher choice transition belongs to System");
-   for(int page:new int[]{HOME_VIEW,HOME_CARD_STYLE,SCREENSAVER,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
+   for(int page:new int[]{HOME_VIEW,HOME_CARD_STYLE,DATE_TIME,UPDATES,ACCESSIBILITY}){h.screen=page;for(int row=0;row<h.rowCount();row++)check(!h.menuChevronVisible(row),"value/action rows have no navigation arrows");}
    check(SettingsContent.description(TOP_PANEL,0,0,0,0,AppLanguage.current()).equals(AppStrings.get(R.string.settings_home_screen_help)),"Home parent describes screen settings");
    check(SettingsContent.weatherDescription(false,false,AppLanguage.current()).replace((char)160, (char)32).equals(russian?"Не показывать погоду.":"Do not show weather."),"None weather help matches hidden state");
    check(SettingsContent.weatherDescription(true,false,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_home_help)),"Home weather help");
    check(SettingsContent.weatherDescription(false,true,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_bottom_help)),"bottom weather help");
    check(SettingsContent.weatherDescription(true,true,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_both_help)),"both weather help");
-   h.screen=GENERAL;for(int row=0;row<6;row++)check(h.menuChevronVisible(row)==(row==0||row==2||row==3||row==4),"only General destinations have chevrons");
+   h.screen=GENERAL;for(int row=0;row<6;row++)check(h.menuChevronVisible(row)==(row!=5),"only General destinations have chevrons");
    h.screen=CITY;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    Prefs.automatic=true;check(!h.menuChevronVisible(1),"automatic region hides manual picker arrow");Prefs.automatic=false;
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");

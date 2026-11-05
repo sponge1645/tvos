@@ -52,7 +52,7 @@ Queries, downloads and decoding run on a single worker. Focus changes invalidate
 
 Dock navigation gives incoming banners opposing motion with a 400 ms cubic ease-out during a 400 ms fade. Panoramic bundled assets start halfway between their left/right source edge and center and settle centered, using half the side margin at a constant scale. Ordinary movie images retain their subtle 32-pixel drift. Ordinary 16:9 movie artwork uses a fixed four-percent crop to cover all edges during motion and at rest; its scale never animates. Caption enrichment does not restart motion; interrupted fades retain the outgoing image position. Reduced Motion disables both drift and fade.
 
-Published landscape candidates take precedence over portrait-only titles requiring a fallback lookup, preserving channel order within each group. Published original-resolution image.tmdb.org artwork is requested at w1280. Published-image sockets use a 2.5-second connect/read timeout before trying the TMDB fallback; metadata and fallback downloads retain their existing timeout. The tvOS-DockBackdrop log reports elapsed time to the published image, background and final caption without logging content URLs. There is no timer-based banner rotation: a load takes the first usable title in channel priority/order, reuses the current package result, and queries again after a different app has replaced it or Home resumes. A provider changing its published order can therefore change the next loaded title.
+Published landscape candidates take precedence over portrait-only titles requiring a fallback lookup, preserving channel order within each group. Published original-resolution image.tmdb.org artwork is requested at w1280. Published-image sockets use a 2.5-second connect/read timeout before trying the TMDB fallback; metadata and fallback downloads retain their existing timeout. The tvOS-DockBackdrop log reports elapsed time to the published image, background and final caption without logging content URLs. Recommendations advance every ten minutes. Elapsed time is retained across focus changes and Home pauses; returning catches up the current time slot without background downloads for hidden apps.
 
 Landscape selection inspects up to four eligible channels, retaining six titles per channel before prioritizing wide artwork and reducing the final candidates to six. A full portrait-only movies channel no longer prevents Lampa recs landscapes from being considered. History channels remain excluded. Diagnostic stage timings distinguish channel queries, published image reads, TMDB matching, fallback image reads and logo lookup; no URLs or titles are logged.
 
@@ -63,7 +63,7 @@ Lampa resolves its title through TMDB before downloading published artwork: devi
 TMDB matching treats Russian e/yo as equivalent and accepts bilingual provider labels separated by a spaced slash. At most two individual title queries are made, original title first; year checks and ambiguity rejection remain enforced. This improves matching without claiming a logo exists for a particular movie.
 
 
-Installed app icons are not drawn in the banner area. Missing artwork restores the plain background; movie captions and bundled settings/YouTube compositions remain available.
+Installed app icons are not drawn in the banner area. Missing artwork restores the plain background; only found movie logos are shown; no text title substitutes for a missing logo. Bundled settings/YouTube compositions remain available.
 
 ## Optional Dock resume row
 

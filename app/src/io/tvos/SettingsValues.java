@@ -1,6 +1,7 @@
 package io.tvos;
 
 import io.tvos.settings.SettingsOrderEditor;
+import io.tvos.settings.SettingsScreen;
 
 import io.tvos.version.SoftwareBuild;
 
@@ -75,12 +76,24 @@ final class SettingsValues {
     private SharedPreferences localPrefs() { return activity.getSharedPreferences("settings", Context.MODE_PRIVATE); }
     private boolean localFlag(String key) { return localPrefs().getBoolean(key, false); }
 
+    int selection(int screen) {
+        switch (screen) {
+            case THEME_CHOICE: return Math.max(0, java.util.Arrays.asList("auto", "light", "dark").indexOf(Prefs.theme()));
+            case TEMPERATURE_CHOICE: return Math.max(0, java.util.Arrays.asList("auto", "C", "F").indexOf(Prefs.temperature()));
+            case WEATHER_CHOICE: return (weatherVisible.test(true) ? 1 : 0) | (weatherVisible.test(false) ? 2 : 0);
+            case DREAM_CHOICE: return Math.max(0, java.util.Arrays.asList("apple", "google", "na").indexOf(localPrefs().getString("video_dream_source", "apple")));
+            default: return -1;
+        }
+    }
+
     // Keep the same display/Wi-Fi reads on Android 9+ TVs during this extraction.
     @SuppressWarnings("deprecation")
     String[] menu(int screen, int rowCount) {
         String[] v = new String[rowCount];
         java.util.Arrays.fill(v, "");
-        if (screen == MEDIA) {
+        if (SettingsScreen.multiChoice(screen)) {
+            v[selection(screen)] = AppStrings.get(R.string.settings_service_selected);
+        } else if (screen == MEDIA) {
             v[0] = MovieService.label(MovieService.index(localPrefs().getString(MovieService.KEY, "")), AppLanguage.current());
             v[1] = onOff(localPrefs().getBoolean("navigation_clicks", true));
             String target = localPrefs().getString("live_tv_app", "");

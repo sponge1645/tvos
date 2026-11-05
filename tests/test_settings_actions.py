@@ -23,7 +23,9 @@ public class ActionsTest {
   ActionView sleep=create(MAIN,10);sleep.activate();check(ActionView.events.contains("sleep:-1"),"Sleep action sends immediate sleep");
   sleep=create(GENERAL,2);sleep.activate();check(sleep.screen==SLEEP_TIMER,"sleep timeout opens list below appearance");
   sleep.focus=4;sleep.activate();check(sleep.screen==GENERAL&&sleep.focus==2&&ActionView.events.contains("sleep:4"),"sleep choice applies and returns focus to timeout row");
-  int[][] back={{HOME_SCREEN,TOP_PANEL,0},{HOME_VIEW,HOME_SCREEN,0},{HOME_CARD_STYLE,HOME_SCREEN,1},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,3},{SLEEP_TIMER,GENERAL,2},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,HOME_SCREEN,2}};
+  ActionView placement=create(WEATHER,0);placement.activate();check(placement.screen==WEATHER_CHOICE,"weather presentation opens list");placement.focus=3;placement.activate();check(placement.screen==WEATHER&&placement.focus==0&&placement.store.getInt("weather_placement",-1)==3,"explicit weather placement and return focus");
+  ActionView source=create(SCREENSAVER,0);source.activate();check(source.screen==DREAM_CHOICE,"screensaver source opens list");source.focus=2;source.activate();check(source.screen==SCREENSAVER&&source.focus==0&&source.store.getString("video_dream_source","").equals("na"),"explicit screensaver source and return focus");
+  int[][] back={{HOME_SCREEN,TOP_PANEL,0},{HOME_VIEW,HOME_SCREEN,0},{HOME_CARD_STYLE,HOME_SCREEN,1},{GENERAL,MAIN,0},{MEDIA,MAIN,1},{MOVIE_SERVICE,MEDIA,0},{SCREENSAVER,MAIN,2},{REMOTE_KEYS,MAIN,4},{ACCESSIBILITY,MAIN,5},{APPS_DOWNLOADS,MAIN,6},{SHELF_EDIT,MAIN,7},{TOP_PANEL,MAIN,8},{WIDGETS,TOP_PANEL,2},{SYSTEM,MAIN,9},{CITY,WEATHER,1},{LANGUAGE,GENERAL,3},{SLEEP_TIMER,GENERAL,2},{THEME_CHOICE,GENERAL,1},{TEMPERATURE_CHOICE,WEATHER,2},{WEATHER_CHOICE,WEATHER,0},{DREAM_CHOICE,SCREENSAVER,0},{ABOUT,GENERAL,0},{UPDATES,SYSTEM,0},{RESET,SYSTEM,1},{WEATHER,TOP_PANEL,3},{DATE_TIME,TOP_PANEL,2},{HOME_CHOICE,SYSTEM,2},{MENU_BUTTONS,TOP_PANEL,1},{CATEGORY_EDIT,HOME_SCREEN,2}};
   for(int[] route:back){check(io.tvos.settings.SettingsScreen.parent(route[0],GENERAL,0)==route[1],"animation parent agrees with Back destination");ActionView v=create(route[0],0);v.backFromScreen();check(v.appLoader.cancelled&&v.tvProviderLoader.cancelled,"Back cancels both pending app lookups");check(v.screen==route[1]&&v.focus==route[2],"Back destination "+route[0]);}
   for(int count=0;count<=6;count++){
    ActionView v=create(PICKER,0);v.picker.kind=PICK_VPN;v.buttonCount=count;v.rebuildMenuButtonRows(-1);v.backFromScreen();
@@ -56,7 +58,7 @@ public class ActionsTest {
   v=create(HOME_CHOICE,0);v.busyFlag=true;v.activate();check(ActionView.events.equals(Arrays.asList("invalidate"))&&v.modeMonitor.pendingAt==0,"busy home choice cannot restart request");
   v=create(HOME_CHOICE,1);v.activate();check(v.screen==HOME_CHOICE&&v.modeMonitor.pendingAt==123&&ActionView.events.contains("home:2"),"launcher selection stays on same screen");
   v=create(SCREENSAVER,4);v.activate();check(ActionView.events.equals(Arrays.asList("pause","preview")),"preview pauses view before opening");
-  v=create(GENERAL,1);v.activate();check(!ActionView.events.contains("snap")&&ActionView.events.contains("theme:light"),"value change preserves current focus animation");
+  v=create(GENERAL,1);v.activate();check(v.screen==THEME_CHOICE&&!ActionView.events.contains("theme:light"),"appearance opens list without changing preference");v.focus=1;v.activate();check(v.screen==GENERAL&&v.focus==1&&ActionView.events.contains("theme:light"),"explicit appearance choice applies and restores focus");
   v=create(GENERAL,0);v.activate();check(v.screen==ABOUT&&ActionView.events.contains("snap"),"page change resets focus springs");
   for(int[] route:new int[][]{{TOP_PANEL,1,MENU_BUTTONS},{HOME_SCREEN,2,CATEGORY_EDIT},{MAIN,7,SHELF_EDIT}}){
    v=create(route[0],route[1]);v.activate();check(v.screen==route[2],"editor opens expected page");
@@ -76,7 +78,7 @@ public class ActionsTest {
   v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.picker.kind==PICK_VPN,"enabled VPN opens package picker");
   v=create(CITY,0);v.activate();check(ActionView.Prefs.auto,"auto region toggles on");v.focus=1;v.activate();check(!ActionView.events.contains("ask-city"),"manual city disabled in auto mode");v.focus=0;v.activate();v.focus=1;v.activate();check(ActionView.events.contains("ask-city"),"manual city enabled when auto is off");
   v=create(WEATHER,1);v.activate();check(v.screen==CITY,"Weather opens City submenu");v=create(TOP_PANEL,2);v.activate();check(ActionView.events.contains("date-toggle"),"date toggles directly in Home settings");
-  v=create(WEATHER,2);v.activate();check(ActionView.events.contains("unit:C"),"temperature follows removed date row");
+  v=create(WEATHER,2);v.activate();check(v.screen==TEMPERATURE_CHOICE,"temperature opens choice list");v.focus=1;v.activate();check(v.screen==WEATHER&&v.focus==2&&ActionView.events.contains("unit:C"),"temperature applies exact selected unit");
   v=create(GENERAL,5);v.activate();check(ActionView.events.contains("hour24:true"),"time format follows removed date row");
   v=create(MEDIA,1);v.activate();check(ActionView.events.contains("flag:navigation_clicks:false"),"click toggle follows removed date row");
   v=create(ACCESSIBILITY,2);v.activate();check(ActionView.events.contains("tv-settings"),"system settings uses safe launcher helper");

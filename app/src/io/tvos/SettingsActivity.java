@@ -267,7 +267,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
+                case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -504,7 +504,7 @@ public class SettingsActivity extends Activity {
 
         private void drawScreenContent(Canvas c) {
             switch (screen) {
-                case MAIN: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
+                case MAIN: case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
                 case ACCESSIBILITY: case APPS_DOWNLOADS: case CITY: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
@@ -550,7 +550,7 @@ public class SettingsActivity extends Activity {
 
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
-            boolean selection = screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
+            boolean selection = SettingsScreen.multiChoice(screen) || screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
@@ -565,6 +565,7 @@ public class SettingsActivity extends Activity {
                 row.fitValue = screen == MEDIA || screen == CITY;
                 row.showValue = !selection;
                 if (screen == MOVIE_SERVICE && i == MovieService.index(localPrefs().getString(MovieService.KEY, ""))) row.marker = Marker.PICKER_CHECK;
+                if (SettingsScreen.multiChoice(screen) && i == valueSource.selection(screen)) row.marker = Marker.PICKER_CHECK;
                 if (screen == SLEEP_TIMER && i == localPrefs().getInt("sleep_choice", -1)) row.marker = Marker.PICKER_CHECK;
                 if (screen == LANGUAGE && i == ("ru".equals(Prefs.language()) ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
                 if (screen == HOME_CARD_STYLE && i == (Prefs.homeContinue() ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
@@ -975,8 +976,17 @@ public class SettingsActivity extends Activity {
             Context c = getContext();
             if (action.targetScreen >= 0) {
                 screen = action.targetScreen;
-                focus = screen == SLEEP_TIMER ? Math.max(0, Math.min(6, localPrefs().getInt("sleep_choice", -1))) : screen == HOME_VIEW ? (Prefs.homeCollection() ? 0 : 1) : screen == HOME_CARD_STYLE ? (Prefs.homeContinue() ? 0 : 1) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
+                focus = SettingsScreen.multiChoice(screen) ? valueSource.selection(screen) : screen == SLEEP_TIMER ? Math.max(0, Math.min(6, localPrefs().getInt("sleep_choice", -1))) : screen == HOME_VIEW ? (Prefs.homeCollection() ? 0 : 1) : screen == HOME_CARD_STYLE ? (Prefs.homeContinue() ? 0 : 1) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
+                case SELECT_OPTION:
+                    switch (screen) {
+                        case THEME_CHOICE: preferenceEditor.chooseTheme(focus); screen = GENERAL; focus = 1; break;
+                        case TEMPERATURE_CHOICE: preferenceEditor.chooseTemperature(focus); screen = WEATHER; focus = 2; break;
+                        case WEATHER_CHOICE: preferenceEditor.chooseWeather(focus); screen = WEATHER; focus = 0; break;
+                        case DREAM_CHOICE: preferenceEditor.chooseDream(focus); screen = SCREENSAVER; focus = 0; break;
+                        default: return;
+                    }
+                    break;
                 case SLEEP_NOW: SleepMode.request(activity, -1, this::invalidate); return;
                 case SELECT_SLEEP_TIMER: SleepMode.request(activity, focus, () -> {
                     if (running && screen == SLEEP_TIMER) { screen = GENERAL; focus = 2; invalidate(); }

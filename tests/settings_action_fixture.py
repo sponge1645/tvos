@@ -6,7 +6,7 @@ def method(signature, source=SOURCE):
  while d:d+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 HEADER='''package io.tvos;
-import java.util.*;import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsActions;
+import java.util.*;import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.SettingsActions;import io.tvos.settings.SettingsScreen;
 public class CLASSNAME {
  static final List<String> events=new ArrayList<>();
  static void note(String s){events.add(s);}
@@ -18,7 +18,7 @@ public class CLASSNAME {
  boolean updateRequested,busyFlag,freeFlag,vpnFlag;final ModeMonitor modeMonitor=new ModeMonitor();class ModeMonitor {long pendingAt;void markPending(){pendingAt=SystemClock.uptimeMillis();}}
  final AppLoader appLoader=new AppLoader(),tvProviderLoader=new AppLoader();class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}
  final ButtonEditor buttonEditor=new ButtonEditor();class ButtonEditor {final List<Integer> rows=new ArrayList<>();int size(){return rows.size();}}
- static class Values {void clearAppCache(){}}final Values valueSource=new Values();
+ static class Values {int selection(int screen){return 0;}void clearAppCache(){}}final Values valueSource=new Values();
  final SettingsPicker picker=new SettingsPicker();{picker.keys.addAll(Arrays.asList("FR",""));}
  void openCountryPicker(){openPicker(PICK_REGION);}void openTvProviderPicker(){openPicker(PICK_TV);}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();

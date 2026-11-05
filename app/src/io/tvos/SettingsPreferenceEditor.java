@@ -57,6 +57,15 @@ final class SettingsPreferenceEditor {
         setFlag(key, !preferences.getBoolean(key, false));
     }
 
+    void chooseTheme(int choice) { Prefs.setTheme(THEMES[choice]); changed.run(); refresh.run(); }
+    void chooseTemperature(int choice) { Prefs.setTemperature(UNITS[choice]); changed.run(); refresh.run(); }
+    void chooseDream(int choice) { preferences.edit().putString("video_dream_source", DREAM_SOURCES[choice]).apply(); refresh.run(); }
+    void chooseWeather(int choice) {
+        preferences.edit().putBoolean("weather_show_top", (choice & 1) != 0)
+                .putBoolean("weather_show_bottom", (choice & 2) != 0).putInt("weather_placement", choice).apply();
+        Prefs.setWeather(choice != 0); changed.run(); refresh.run();
+    }
+
     void temperature(int dir) { Prefs.setTemperature(step(UNITS, Prefs.temperature(), dir)); changed.run(); }
     void cycleWeather(int dir) {
         int current = (weatherVisible(true) ? 1 : 0) | (weatherVisible(false) ? 2 : 0);

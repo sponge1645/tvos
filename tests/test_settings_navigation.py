@@ -38,11 +38,9 @@ public class SettingsHarness {
 tests=r'''
  public static void main(String[] args){
   SettingsHarness h=new SettingsHarness();h.screen=GENERAL;
-  for(int row:new int[]{0,2,3,4}){h.focus=row;check(!h.canAdjustMenu(),"General action/submenu must require OK: "+row);}
-  for(int row:new int[]{1,5}){h.focus=row;check(h.canAdjustMenu(),"General value accepts arrows: "+row);}
-  h.focus=1;h.arrow(1);check(Prefs.theme.equals("light"),"theme advances");h.arrow(-1);check(Prefs.theme.equals("auto"),"theme reverses");
-  h.store.putInt("weather_placement",3);h.screen=WEATHER;h.focus=0;h.arrow(1);check(!h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles both to None");h.arrow(1);check(h.weatherVisible(true)&&!h.weatherVisible(false),"weather mode cycles None to home");
-  h.focus=0;h.arrow(1);check(!h.weatherVisible(true)&&h.weatherVisible(false),"weather mode cycles home to bottom");h.arrow(1);check(h.weatherVisible(true)&&h.weatherVisible(false),"weather mode cycles bottom to both");
+  for(int row:new int[]{0,1,2,3,4}){h.focus=row;check(!h.canAdjustMenu(),"General action/submenu must require OK: "+row);}
+  for(int row:new int[]{5}){h.focus=row;check(h.canAdjustMenu(),"General value accepts arrows: "+row);}
+  for(int row:new int[]{0,2}){h.screen=WEATHER;h.focus=row;check(!h.canAdjustMenu(),"weather options open explicit choice menus");}
   h.screen=DATE_TIME;h.focus=0;h.arrow(1);check(h.store.getBoolean("show_date",false),"date widget accepts arrow");h.arrow(-1);check(!h.store.getBoolean("show_date",true),"date widget reverses");
   h.screen=APPS_DOWNLOADS;Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Download "),"English download action: "+label);
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");for(String label:h.menuLabels())check(label.startsWith("Загрузить "),"Russian download action retained");
@@ -60,7 +58,7 @@ tests=r'''
   h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
   h.screen=SCREENSAVER;h.focus=4;check(!h.canAdjustMenu(),"preview requires OK");
-  for(int row:new int[]{0,1,2,3}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
+  for(int row:new int[]{1,2,3}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
   String[] overlayKeys={"aerial_show_clock","aerial_show_location","screensaver_show_weather"};
   for(int i=0;i<overlayKeys.length;i++){
    h.focus=i+1;h.arrow(1);check(h.store.getBoolean(overlayKeys[i],false),"reindexed overlay toggles its own setting");

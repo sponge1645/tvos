@@ -23,6 +23,10 @@ final class SettingsContent {
             case HOME_SCREEN: return AppStrings.get(R.string.settings_home_screen, language);
             case GENERAL: return AppStrings.get(R.string.settings_general, language);
             case SLEEP_TIMER: return AppStrings.get(R.string.settings_sleep_after, language);
+            case THEME_CHOICE: return AppStrings.get(R.string.settings_appearance, language);
+            case TEMPERATURE_CHOICE: return AppStrings.get(R.string.settings_temperature, language);
+            case WEATHER_CHOICE: return AppStrings.get(R.string.settings_weather_view, language);
+            case DREAM_CHOICE: return AppStrings.get(R.string.settings_current_selection, language);
             case WIDGETS: return AppStrings.get(R.string.settings_widgets, language);
             case WEATHER: return AppStrings.get(R.string.settings_weather, language);
             case DATE_TIME: return AppStrings.get(R.string.settings_date, language);
@@ -59,6 +63,10 @@ final class SettingsContent {
             case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_view, language), AppStrings.get(R.string.settings_home_card_style, language), AppStrings.get(R.string.settings_categories, language)};
             case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_sleep_after, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_time_format, language)};
             case SLEEP_TIMER: return new String[] {AppStrings.get(R.string.settings_sleep_5, language), AppStrings.get(R.string.settings_sleep_10, language), AppStrings.get(R.string.settings_sleep_15, language), AppStrings.get(R.string.settings_sleep_30, language), AppStrings.get(R.string.settings_sleep_60, language), AppStrings.get(R.string.settings_sleep_120, language), AppStrings.get(R.string.settings_sleep_240, language)};
+            case THEME_CHOICE: return new String[] {AppStrings.get(R.string.settings_automatic, language), AppStrings.get(R.string.settings_light, language), AppStrings.get(R.string.settings_dark, language)};
+            case TEMPERATURE_CHOICE: return new String[] {AppStrings.get(R.string.settings_automatic, language), "°C", "°F"};
+            case WEATHER_CHOICE: return new String[] {AppStrings.get(R.string.settings_weather_none, language), AppStrings.get(R.string.settings_weather_home, language), AppStrings.get(R.string.settings_weather_bottom, language), AppStrings.get(R.string.settings_weather_both, language)};
+            case DREAM_CHOICE: return new String[] {"Aerial", "Google", "National Geographic"};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_weather_view, language), AppStrings.get(R.string.settings_city, language), AppStrings.get(R.string.settings_temperature, language)};
