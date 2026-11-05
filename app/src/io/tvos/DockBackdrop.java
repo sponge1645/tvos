@@ -56,7 +56,11 @@ final class DockBackdrop {
         final Backdrop background;
         final String title;
         final Bitmap logo;
-        Artwork(Backdrop background, String title, Bitmap logo) { this.background = background; this.title = title; this.logo = logo; }
+        final String owner, link;
+        Artwork(Backdrop background, String title, Bitmap logo) { this(background, title, logo, "", ""); }
+        Artwork(Backdrop background, String title, Bitmap logo, String owner, String link) {
+            this.background = background; this.title = title; this.logo = logo; this.owner = owner; this.link = link;
+        }
     }
 
     static void requestPermission(Activity activity) {
@@ -244,7 +248,7 @@ final class DockBackdrop {
                         catch (IOException | SecurityException | IllegalArgumentException e) { /* The published title remains available. */ }
                     }
                     android.util.Log.i("tvOS-DockBackdrop", pkg + " caption ready in " + (System.nanoTime() - started) / 1_000_000 + " ms");
-                    result = new Artwork(background, candidate.title, logo);
+                    result = new Artwork(background, candidate.title, logo, candidate.owner, candidate.link);
                     break;
                 }
             } catch (IOException | RuntimeException | OutOfMemoryError e) {

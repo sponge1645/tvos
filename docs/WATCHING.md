@@ -123,3 +123,17 @@ are requested. APK download trust is documented in APK-SOURCES.md.
 Выключить: `adb shell setprop log.tag.tvOS-Artwork INFO`.
 По умолчанию подробный лог выключен. Полные URL и ключи не выводятся;
 при включении в лог попадают названия фильмов из истории просмотра.
+
+## Open the displayed Dock recommendation
+
+In tvOS View, a focused app may publish an intent_uri for its recommendation.
+The backdrop keeps the URI and actual publishing package with that exact image/title.
+Only a nonempty URI accepted by ResumeIntentPolicy for the focused publishing app enables
+the hint above Dock: Hold ↑ to open the movie.
+Short Up navigates normally on release. Holding Up for 600 ms opens the captured target once;
+autorepeats and the final release do not move focus or open it again.
+Other keys, changed app/recommendation, pause, reset or lost window focus cancel the hold.
+Providers without a usable link, loading/service banners, Collection view, the app grid,
+Dock editing and Continue Watching retain their existing navigation and show no hint.
+The provider URI is package-scoped; TMDB artwork alone never invents a movie launch target.
+This is a trial in 1B201 and needs validation with the actual TV and publishing apps.

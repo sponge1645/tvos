@@ -154,6 +154,57 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Spring weatherFocus = new Spring(.26f, .85f, 0);
     private final Spring vpnColor = new Spring(.35f, 1f, 0);
     private final Runnable vpnHold = this::openVpnOnHold;
+    private final io.tvos.home.RecommendationHold recommendationHold = new io.tvos.home.RecommendationHold(
+            new io.tvos.home.RecommendationHold.Scheduler() {
+                public void postDelayed(Runnable task, long delay) { handler.postDelayed(task, delay); }
+                public void remove(Runnable task) { handler.removeCallbacks(task); }
+            }, SystemClock::uptimeMillis);
+    private DockBackdrop.Artwork recommendationArtwork;
+    private android.content.Intent recommendationIntent;
+    private final Paint recommendationHint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    void cancelRecommendationHold() { recommendationHold.cancel(); }
+
+    private boolean recommendationAvailable() {
+        return running && hasWindowFocus() && !Prefs.homeCollection() && !grid.open && !drawer.open
+                && !dockEditor.editing() && !dockContinue.visible() && zone == Z_SHELF
+                && recommendationArtwork != null && recommendationIntent != null
+                && dock.index >= 0 && dock.index < dock.items.size()
+                && dock.items.get(dock.index).kind == HomeApps.APP
+                && recommendationArtwork.owner.equals(dock.items.get(dock.index).pkg);
+    }
+
+    private boolean recommendationKey(KeyEvent event) {
+        if (event.getKeyCode() != KeyEvent.KEYCODE_DPAD_UP) {
+            cancelRecommendationHold(); return false;
+        }
+        if (recommendationHold.active()) {
+            if (event.getAction() == KeyEvent.ACTION_UP) recommendationHold.release(event.isCanceled());
+            return true;
+        }
+        if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() != 0 || !recommendationAvailable()) return false;
+        final DockBackdrop.Artwork shown = recommendationArtwork;
+        final android.content.Intent target = new android.content.Intent(recommendationIntent);
+        final int origin = dock.index;
+        recommendationHold.begin(() -> recommendationAvailable() && recommendationArtwork == shown && dock.index == origin,
+                () -> move(0, -1), () -> {
+                    click.open();
+                    if (!AppLaunch.start(activity, target, "Dock recommendation"))
+                        showToast(AppStrings.get(R.string.home_open_error_prefix) + shown.title);
+                });
+        return true;
+    }
+
+    private void drawRecommendationHint(Canvas canvas) {
+        if (!recommendationAvailable()) return;
+        recommendationHint.setTypeface(Ui.displayMedium);
+        recommendationHint.setTextSize(22 * k);
+        recommendationHint.setTextAlign(Paint.Align.CENTER);
+        recommendationHint.setColor(0xCCFFFFFF);
+        recommendationHint.setShadowLayer(4 * k, 0, 1 * k, 0x99000000);
+        canvas.drawText(AppStrings.get(R.string.home_hold_up_recommendation), w / 2f,
+                platterRect.top - 24 * k, recommendationHint);
+    }
 
     private boolean vpnFocused() {
         return running && !grid.open && !drawer.open && zone == Z_TOP
@@ -222,7 +273,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     break;
                 }
                 case PLATTER: appSurfaces.drawPlatter(c, appFrame()); break;
-                case TILES: appSurfaces.drawTiles(c, appFrame()); break;
+                case TILES: appSurfaces.drawTiles(c, appFrame()); drawRecommendationHint(c); break;
                 case DRAWER: appSurfaces.drawDrawer(c, appFrame()); break;
                 case SHEET: appSurfaces.drawSheet(c, appFrame()); break;
                 default: notices.draw(c); break;
@@ -473,6 +524,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     void pause() {
+        cancelRecommendationHold(); recommendationArtwork = null; recommendationIntent = null;
         handler.removeCallbacks(prepareWeather); preparedWeatherPanel = null;
         if (weatherPanel != null) weatherPanel.dismiss();
         if (!running) return;
@@ -513,6 +565,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Starting state (Home pressed while the home screen is showing): first app focused, drawer and sheet closed. */
     void reset(boolean animated) {
+        cancelRecommendationHold();
         wake();
         zone = Z_SHELF;
         dock.index = 0;
@@ -604,7 +657,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void dockContinueChanged() {
-        heroDirty = true;
+        heroDirty = tilesDirty = true;
         if (running) { heroLayer.invalidate(); wake(); }
     }
 
@@ -632,6 +685,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void showDockBackdrop(DockBackdrop.Artwork artwork) {
         if (!running || Prefs.homeCollection()) return;
+        if (recommendationArtwork != artwork) cancelRecommendationHold();
+        recommendationArtwork = artwork;
+        recommendationIntent = artwork == null || artwork.link == null || artwork.link.trim().isEmpty() ? null
+                : io.tvos.watching.ResumeIntentPolicy.parse(artwork.link, artwork.owner);
+        tilesDirty = true; tiles.invalidate();
         boolean animate = !activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reduce_motion", false);
         dockBanner.show(artwork, animate);
         heroDirty = true; heroLayer.invalidate();
@@ -1065,6 +1123,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     boolean onKey(KeyEvent e) {
         wake();
+        if (recommendationKey(e)) return true;
         if (dockContinueKey(e)) return true;
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         int genreKey = e.getKeyCode();

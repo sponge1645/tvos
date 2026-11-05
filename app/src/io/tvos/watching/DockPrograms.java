@@ -11,7 +11,7 @@ import java.util.function.BiPredicate;
 /** Read-only TV-provider recommendations; publisher authorization is supplied by the Android adapter. */
 public final class DockPrograms {
     private static final String[] CHANNEL_COLUMNS = {"_id", "package_name", "display_name", "internal_provider_id", "app_link_intent_uri"};
-    private static final String[] PROGRAM_COLUMNS = {"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio", "title", "release_date"};
+    private static final String[] PROGRAM_COLUMNS = {"package_name", "poster_art_uri", "thumbnail_uri", "poster_art_aspect_ratio", "thumbnail_aspect_ratio", "title", "release_date", "intent_uri"};
     private final Context context;
     private final BiPredicate<String, String> allowed;
 
@@ -21,9 +21,12 @@ public final class DockPrograms {
     }
 
     public static final class Candidate {
-        public final String title, poster, year;
+        public final String title, poster, year, owner, link;
         public final List<String> urls = new ArrayList<>();
-        public Candidate(String title, String poster, String year) { this.title = title; this.poster = poster; this.year = year; }
+        public Candidate(String title, String poster, String year) { this(title, poster, year, "", ""); }
+        public Candidate(String title, String poster, String year, String owner, String link) {
+            this.title = title; this.poster = poster; this.year = year; this.owner = owner; this.link = link;
+        }
     }
 
     public static int priority(String name, String id) {
@@ -133,7 +136,9 @@ public final class DockPrograms {
                 if (!service.equals(WatchingSources.id(c.getString(0)))) continue;
                 owned++;
                 String date = value(c, 6);
-                Candidate candidate = new Candidate(value(c, 5), value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "");
+                String link;
+                try { link = value(c, 7); } catch (IndexOutOfBoundsException unavailable) { link = ""; }
+                Candidate candidate = new Candidate(value(c, 5), value(c, 1), date.length() >= 4 ? date.substring(0, 4) : "", value(c, 0), link);
                 if (c.getInt(4) == 0 && allowed.test(value(c, 2), value(c, 0))) add(candidate.urls, value(c, 2));
                 if (c.getInt(3) == 0 && allowed.test(value(c, 1), value(c, 0))) add(candidate.urls, value(c, 1));
                 if (!candidate.urls.isEmpty() || !candidate.title.isEmpty()) { result.add(candidate); added++; }

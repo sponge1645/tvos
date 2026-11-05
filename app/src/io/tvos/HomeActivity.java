@@ -56,6 +56,7 @@ public class HomeActivity extends Activity {
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus && home != null) home.cancelRecommendationHold();
         if (!hasFocus && shortcuts != null) shortcuts.cancel();
         if (dreamReturn != null) dreamReturn.focused(hasFocus);
         if (hasFocus && updates != null) updates.changed();
@@ -133,6 +134,7 @@ public class HomeActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (home != null && event.getKeyCode() != KeyEvent.KEYCODE_DPAD_UP) home.cancelRecommendationHold();
         if (shortcuts != null && shortcuts.onKey(event)) return true;
         if (home != null && home.onKey(event)) return true;
         return super.dispatchKeyEvent(event);

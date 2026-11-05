@@ -20,6 +20,7 @@ class HomeApps {static final String TV_SETTINGS_FAVORITE="io.tvos.virtual.tvsett
     }static class Item {String pkg,key;Item(int i){pkg=key="app"+i;}}}
 class Prefs {static boolean homeCollection(){return true;}static int saves;static final int[] order={0,1,2,3,5,4};static int[] topButtonOrder(){return order;}static int[] categoryOrder(){return new int[]{0,1,3,4};}static int firstCategory(){return 0;}static boolean categoryEnabled(int id){return true;}static boolean topButtonEnabled(int id){return true;}static void setShelf(List<String> order){saves++;}}
 public class RemoteNavigationHarness {final java.util.function.IntPredicate visibleTop=this::topControlVisible,enabledTop=this::topButtonEnabled;final java.util.function.IntSupplier topFallback=()->picksOn()?this.tab:0;
+ boolean recommendationKey(KeyEvent e){return false;}
  boolean dockContinueKey(KeyEvent e){return false;}
  static class RandomPoster {void clear(){}boolean resetAway(int p,int t){return false;}}final RandomPoster randomPoster=new RandomPoster();
  class Header {RectF weatherBounds(){return new RectF(100);}}final Header header=new Header();boolean weatherAvailable;boolean canOpenWeather(){return weatherAvailable;}static class Status {void invalidate(){}}final Status status=new Status();
