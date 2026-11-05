@@ -24,6 +24,12 @@ final class DockArtwork {
 
     static DockArtwork lookup(String title, String poster, String year, String expectedKind,
             ConnectionObserver observer) throws IOException, org.json.JSONException {
+        return lookup(title, poster, year, expectedKind, "", observer);
+    }
+
+    static DockArtwork lookup(String title, String poster, String year, String expectedKind, String originalTitle,
+            ConnectionObserver observer) throws IOException, org.json.JSONException {
+        originalTitle = originalTitle == null ? "" : originalTitle.trim();
         DockArtwork result = new DockArtwork();
         if (!TmdbClient.hasKey() || title.isEmpty()) {
             if (AppLog.artworkEnabled()) AppLog.artwork("lookup skipped: keyPresent=" + TmdbClient.hasKey() + ", emptyTitle=" + title.isEmpty());
@@ -31,19 +37,19 @@ final class DockArtwork {
         }
         AppLanguage requestedLanguage = AppLanguage.current();
         String language = requestedLanguage.apiTag;
-        String key = expectedKind + "\n" + language + "\n" + year + "\n" + poster + "\n" + title;
+        String key = expectedKind + "\n" + language + "\n" + year + "\n" + poster + "\n" + title + "\n" + originalTitle;
         synchronized (CACHE) { DockArtwork cached = CACHE.get(key); if (cached != null) {
             if (AppLog.artworkEnabled()) AppLog.artwork("metadata cache: title=" + title + ", year=" + year + ", id=" + cached.id + ", kind=" + cached.kind + ", wide=" + !cached.backdrop.isEmpty());
             return cached;
         } }
-        JSONObject match = search(title, poster, year, expectedKind, language, observer);
+        JSONObject match = search(title, poster, year, expectedKind, originalTitle, language, observer);
         // Providers may keep Russian titles/posters even when the launcher requests English metadata.
         if (match == null && !"ru".equals(requestedLanguage.code) && hasCyrillic(title))
-            match = search(title, poster, year, expectedKind, "ru-RU", observer);
+            match = search(title, poster, year, expectedKind, originalTitle, "ru-RU", observer);
         // An English provider title can differ from both the localized Russian
         // name and the original Korean/Japanese title. Resolve in English too.
         if (match == null && !"en".equals(requestedLanguage.code) && !hasCyrillic(title))
-            match = search(title, poster, year, expectedKind, "en-US", observer);
+            match = search(title, poster, year, expectedKind, originalTitle, "en-US", observer);
         if (match == null) return result;
         result.backdrop = image(match.optString("backdrop_path", ""), "w1280");
         result.languageCode = requestedLanguage.code;
@@ -63,16 +69,16 @@ final class DockArtwork {
         return false;
     }
 
-    private static JSONObject search(String title, String poster, String year, String expectedKind, String language,
+    private static JSONObject search(String title, String poster, String year, String expectedKind, String originalTitle, String language,
             ConnectionObserver observer) throws IOException, org.json.JSONException {
-        String[] variants = titles(title);
+        String[] variants = originalTitle.isEmpty() ? titles(title) : new String[]{title, originalTitle};
         for (int i = variants.length - 1; i >= 0; i--) {
             JSONArray items = TmdbClient.get("/search/multi?language=" + language + "&query="
                     + URLEncoder.encode(variants[i], "UTF-8") + "&include_adult=false", observer).optJSONArray("results");
-            JSONObject matched = match(items, title, poster, year, expectedKind);
+            JSONObject matched = match(items, title, poster, year, expectedKind, originalTitle);
             // Provider type is a hint: an unambiguous title/year remains usable
             // when a publisher has mislabeled a series as a movie.
-            if (matched == null && !expectedKind.isEmpty()) matched = match(items, title, poster, year, "");
+            if (matched == null && !expectedKind.isEmpty() && originalTitle.isEmpty()) matched = match(items, title, poster, year, "");
             if (AppLog.artworkEnabled()) {
                 StringBuilder trace = new StringBuilder("search: title=").append(title).append(", query=").append(variants[i])
                         .append(", year=").append(year).append(", kind=").append(expectedKind)
@@ -115,22 +121,32 @@ final class DockArtwork {
     }
 
     static JSONObject match(JSONArray items, String title, String poster, String year, String expectedKind) {
+        return match(items, title, poster, year, expectedKind, "");
+    }
+
+    static JSONObject match(JSONArray items, String title, String poster, String year, String expectedKind, String originalTitle) {
         if (items == null) return null;
         JSONObject named = null; int names = 0;
         String[] normalized = titles(title);
         for (int i = 0; i < normalized.length; i++) normalized[i] = normalize(normalized[i]);
         String filename = filename(poster);
+        String sourceOriginal = normalize(originalTitle);
         for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
             if (item == null) continue;
             String kind = item.optString("media_type", "");
             if (!"movie".equals(kind) && !"tv".equals(kind)) continue;
-            if (!filename.isEmpty() && filename.equals(filename(item.optString("poster_path", "")))) return item;
+            if (sourceOriginal.isEmpty() && !filename.isEmpty() && filename.equals(filename(item.optString("poster_path", "")))) return item;
             if (!expectedKind.isEmpty() && !expectedKind.equals(kind)) continue;
             String date = item.optString("movie".equals(kind) ? "release_date" : "first_air_date", "");
             if (!year.isEmpty() && !date.startsWith(year)) continue;
             String name = item.optString("movie".equals(kind) ? "title" : "name", "");
             String original = item.optString("movie".equals(kind) ? "original_title" : "original_name", "");
+            if (!sourceOriginal.isEmpty()) {
+                // An explicit original title is an identity constraint, not another loose alias.
+                if (sourceOriginal.equals(normalize(original))) { named = item; names++; }
+                continue;
+            }
             for (String variant : normalized) {
                 if (!variant.isEmpty() && (variant.equals(normalize(name)) || variant.equals(normalize(original)))) {
                     named = item; names++; break;
