@@ -55,7 +55,7 @@
     <string name="settings_help_airplay" formatted="false">AirPlay lets you stream content from an iOS device or computer to this TV.</string>
     <string name="settings_help_dock" formatted="false">Choose the apps shown in the Dock.</string>
     <string name="settings_help_region" formatted="false">The city used for weather forecasts.</string>
-    <string name="settings_help_weather_city" formatted="false">Set the weather city in Widgets → Weather → City.</string>
+    <string name="settings_help_weather_city" formatted="false">Set the weather city in Control Center &amp; Home Screen → Weather → City.</string>
     <string name="settings_help_launcher" formatted="false">tvOS has no ads and a new screen saver. Built-in uses the TV\'s original home screen. Switching can take a few seconds.</string>
     <string name="settings_help_categories" formatted="false">Menu Bar categories.\nOK turns a category on or off; left and right change its order.</string>
     <string name="settings_help_dock_editor" formatted="false">Choose the apps shown in the Dock.\nOK adds or removes an app; left and right change its order.</string>

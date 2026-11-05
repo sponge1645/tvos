@@ -61,7 +61,7 @@ public class ContentHarness {
    h.picker.kind=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
    check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"рекомендац":"recommend"),"country help describes recommendations");
    check(SettingsContent.description(GENERAL,2,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");
-   String guidance=SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)); check(guidance.contains(russian?"Виджеты":"Widgets") && guidance.contains(russian?"Погода":"Weather") && guidance.contains(russian?"Город":"City") && !guidance.contains(russian?"Регион":"Region"),"screensaver weather guidance points to Widgets, Weather and City");
+   String guidance=SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)); check(guidance.contains(russian?"Пункт управления":"Control Center") && guidance.contains(russian?"Погода":"Weather") && guidance.contains(russian?"Город":"City") && !guidance.contains(russian?"Регион":"Region"),"screensaver weather guidance points to Control Center and Home Screen, Weather and City");
    check(SettingsContent.description(UPDATES,0,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"dynamic update data stays with view");
    for(int count=0;count<=6;count++){
     h.screen=MENU_BUTTONS;h.dynamicRows=count;check(h.menuLabels().length==count+1,"dynamic menu labels delegated to view");

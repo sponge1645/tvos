@@ -55,7 +55,7 @@
     <string name="settings_help_airplay" formatted="false">Трансляция видео и музыки на телевизор\nс iPhone, iPad или компьютера через AirPlay.</string>
     <string name="settings_help_dock" formatted="false">Настройка приложений на панели Dock.</string>
     <string name="settings_help_region" formatted="false">Город для прогноза погоды.</string>
-    <string name="settings_help_weather_city" formatted="false">Город для погоды настраивается здесь:\n«Виджеты» → «Погода» → «Город».</string>
+    <string name="settings_help_weather_city" formatted="false">Город для погоды:\nПункт управления и экран «Домой»\n→ «Погода» → «Город».</string>
     <string name="settings_help_launcher" formatted="false">tvOS — без рекламы, с новой заставкой.\nВстроенный — главный экран производителя ТВ.\nПри переключении экран может мигать.</string>
     <string name="settings_help_categories" formatted="false">Разделы верхней панели.\nOK — включить или выключить.\nСтрелки — изменить порядок.</string>
     <string name="settings_help_dock_editor" formatted="false">Приложения на панели Dock.\nOK — добавить или убрать.\nСтрелки — изменить порядок.</string>
