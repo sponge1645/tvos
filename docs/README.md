@@ -124,3 +124,10 @@ VPN footer retains its disabled/chevron/value layout, categories retain their pl
 rows, and focused rows still paint last. Row-binding tests cover switching editors
 and footer styles at all supported test scales; exhaustive persistence/order tests
 remain unchanged in scope.
+
+Build 1B183 extracts resume-row artwork requests, generation guards, image paths
+and the four-card poster/logo cache window into `DockContinueArtwork`.
+`DockContinue` retains row navigation, animation and rendering. Provider metadata,
+year/type matching, TMDB w780 URLs, fallback priority and shared `PosterCache`
+budgets are unchanged. Tests cover old UI/worker callbacks after hide/replacement,
+viewport changes during loading, optional logos and published/history fallbacks.

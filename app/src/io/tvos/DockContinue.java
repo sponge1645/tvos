@@ -1,6 +1,5 @@
 package io.tvos;
 
-import io.tvos.artwork.PosterCache;
 import io.tvos.home.dock.ResumeRowRenderer;
 
 import android.content.Context;
@@ -15,10 +14,8 @@ import android.view.KeyEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -28,14 +25,9 @@ final class DockContinue {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable changed;
-    private final java.util.concurrent.Executor worker;
-    private final PosterCache images;
-    private final Map<String, String> paths = new HashMap<>();
-    private final Map<String, String> logoPaths = new HashMap<>();
-    private final Set<String> pending = new HashSet<>();
     private List<Recs.Pick> items = Collections.emptyList();
     private String signature = "";
-    private volatile int generation;
+    private final DockContinueArtwork artwork;
     private int index;
     private float scroll;
     private ValueAnimator slide, entrance, focusAnimation;
@@ -56,8 +48,7 @@ final class DockContinue {
     DockContinue(Context context, Runnable changed, java.util.concurrent.Executor worker) {
         this.context = context.getApplicationContext();
         this.changed = changed;
-        this.worker = worker;
-        images = new PosterCache(context, () -> main.post(changed), AppLog::w);
+        artwork = new DockContinueArtwork(this.context, main, worker, changed);
     }
 
     private void changedFrame() { if (visible) changed.run(); }
@@ -83,7 +74,7 @@ final class DockContinue {
                 .append(p.watchingYear).append(p.kind).append(p.meta).append('\n').append(p.watchingProgress).append('\n').append(p.backdrop).append('\n').append(p.title).append('\n').append(p.poster).append('\n');
         if (signature.equals(key.toString())) return;
         String selected = index < items.size() ? items.get(index).watchingKey : null;
-        signature = key.toString(); generation++; pending.clear(); paths.clear(); logoPaths.clear(); imageAppeared.clear();
+        signature = key.toString(); artwork.reset(); imageAppeared.clear();
         items = new ArrayList<>(picks.subList(0, Math.min(10, picks.size())));
         index = 0;
         for (int i = 0; i < items.size(); i++) if (java.util.Objects.equals(selected, items.get(i).watchingKey)) index = i;
@@ -95,105 +86,22 @@ final class DockContinue {
 
     void hide() {
         if (!visible) return;
-        visible = focused = pressed = false; generation++; signature = "";
+        visible = focused = pressed = false; signature = "";
         if (slide != null) { slide.cancel(); slide = null; }
         if (entrance != null) { entrance.cancel(); entrance = null; }
         if (focusAnimation != null) { focusAnimation.cancel(); focusAnimation = null; }
         java.util.Arrays.fill(cardFocus, 0);
         main.removeCallbacks(frame); opacity = 0; imageAppeared.clear();
         scroll = 0;
-        items = Collections.emptyList(); paths.clear(); logoPaths.clear(); pending.clear();
+        items = Collections.emptyList();
         shadows.clear();
-        images.setWindow(Collections.emptySet()); changed.run();
+        artwork.clear(); changed.run();
     }
 
-    private void prepare() {
-        int first = windowStart();
-        for (int i = first; i < Math.min(items.size(), first + 4); i++) {
-            Recs.Pick p = items.get(i);
-            String key = p.watchingKey;
-            if (paths.containsKey(key) || !pending.add(key)) continue;
-            int token = generation, itemIndex = i;
-            worker.execute(() -> {
-                if (token != generation) return;
-                String url = "";
-                DockArtwork resolved = null;
-                String year = p.watchingYear == null ? "" : p.watchingYear, source = "history-fallback";
-                try {
-                    io.tvos.watching.DockPrograms programs = new io.tvos.watching.DockPrograms(context,
-                            (image, owner) -> ProviderImages.allowed(context, image, owner));
-                    io.tvos.watching.DockPrograms.Candidate published = programs.forResume(p.pkg, p.title, p.poster);
-                    if (published != null) {
-                        if (!published.year.isEmpty()) year = published.year;
-                        if (!published.urls.isEmpty()) { url = published.urls.get(0); source = "published-landscape"; }
-                    }
-                } catch (RuntimeException e) {
-                    AppLog.w("Dock resume channels unavailable: " + e.getClass().getSimpleName());
-                }
-                year = io.tvos.watching.ResumeArtworkIdentity.year(p.pkg, p.title, year);
-                try {
-                    if (url.isEmpty()) {
-                        resolved = DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster, year, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
-                        url = resolved.backdrop;
-                        if (!url.isEmpty()) source = "tmdb-landscape";
-                    }
-                }
-                catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
-                    AppLog.w("Dock resume artwork unavailable: " + e.getClass().getSimpleName());
-                }
-                AppLog.w("Resume artwork: package=" + p.pkg + ", item=" + itemIndex + ", source=" + source + ", kind=" + p.kind + ", year=" + year);
-                final String ready = !url.isEmpty() ? url : p.backdrop != null && !p.backdrop.isEmpty() ? p.backdrop : p.poster;
-                main.post(() -> {
-                    if (!visible || token != generation) return;
-                    pending.remove(key); paths.put(key, resumeImage(ready));
-                    window(); changed.run();
-                });
-                final String logoYear = year;
-                final DockArtwork resolvedArtwork = resolved;
-                // Queue optional metadata after the current poster lookup so images
-                // can appear before logos; never create bitmaps in the draw loop.
-                worker.execute(() -> {
-                    if (token != generation) return;
-                    try {
-                        DockArtwork artwork = resolvedArtwork != null ? resolvedArtwork : DockArtwork.lookup(p.title, p.poster == null ? "" : p.poster,
-                                logoYear, p.kind == null ? "" : p.kind, io.tvos.network.ConnectionObserver.NONE);
-                        DockArtwork.loadLogo(artwork, io.tvos.network.ConnectionObserver.NONE);
-                        AppLog.w("Resume logo: package=" + p.pkg + ", item=" + itemIndex
-                                + ", status=" + artwork.logoStatus + ", kind=" + p.kind + ", year=" + logoYear);
-                        if (artwork.logo.isEmpty() || token != generation) return;
-                        main.post(() -> {
-                            if (!visible || token != generation) return;
-                            logoPaths.put(key, artwork.logo); window(); changed.run();
-                        });
-                    } catch (java.io.IOException | org.json.JSONException | RuntimeException e) {
-                        AppLog.w("Dock resume logo unavailable: " + e.getClass().getSimpleName());
-                    }
-                });
-            });
-        }
-        window();
-    }
 
-    // 780px closely matches an 850px card without decoding a 1280px image
-    // only to downsample it to 640px under the shared cache memory budget.
-    private static String resumeImage(String url) {
-        if (url == null) return "";
-        return url.startsWith("https://image.tmdb.org/t/p/")
-                ? url.replaceFirst("/t/p/(w[0-9]+|original)/", "/t/p/w780/") : url;
-    }
 
-    private void window() {
-        Set<String> wanted = new HashSet<>();
-        int first = windowStart();
-        for (int i = first; i < Math.min(items.size(), first + 4); i++) {
-            String path = paths.get(items.get(i).watchingKey);
-            if (path != null && !path.isEmpty()) wanted.add(path);
-            String logo = logoPaths.get(items.get(i).watchingKey);
-            if (logo != null && !logo.isEmpty()) wanted.add(logo);
-        }
-        images.setWindow(wanted);
-        for (String path : wanted) images.poster(path);
-    }
+
+    private void prepare() { artwork.prepare(items, windowStart()); }
 
     private int windowStart() { return Math.max(0, Math.min(Math.max(0, index - 1), (int) Math.floor(scroll) - 1)); }
 
@@ -281,8 +189,8 @@ final class DockContinue {
         for (int i = first; i < Math.min(items.size(), first + 4); i++) {
             if (!renderer.visible(i - scroll)) continue;
             Recs.Pick pick = items.get(i);
-            String url = paths.get(pick.watchingKey);
-            Bitmap image = url == null || url.isEmpty() ? null : images.poster(url);
+            String url = artwork.posterPath(pick.watchingKey);
+            Bitmap image = url == null || url.isEmpty() ? null : artwork.image(url);
             int alpha = 255;
             if (image != null) {
                 long now = SystemClock.uptimeMillis();
@@ -297,8 +205,8 @@ final class DockContinue {
                 fadingImage |= progress < 1;
                 alpha = Math.round(255 * progress * progress * (3 - 2 * progress));
             }
-            String logoPath = logoPaths.get(pick.watchingKey);
-            Bitmap logo = logoPath == null ? null : images.poster(logoPath);
+            String logoPath = artwork.logoPath(pick.watchingKey);
+            Bitmap logo = logoPath == null ? null : artwork.image(logoPath);
             int logoAlpha = 0;
             if (logo != null) {
                 long now = SystemClock.uptimeMillis();
