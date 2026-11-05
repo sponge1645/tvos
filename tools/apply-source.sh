@@ -18,6 +18,10 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  docs/AUDIT-1.1.2.md \
+  docs/FINAL-AUDIT.md \
+  docs/REFACTORING-AUDIT.md \
+  docs/DEVELOPMENT-NOTES.md \
   app/src/io/tvos/HomeSearchInput.java \
   app/src/io/tvos/HomeSearchGlass.java \
   app/src/io/tvos/HomeSearchState.java \

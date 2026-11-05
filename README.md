@@ -23,6 +23,8 @@ https://github.com/sponge1645/tvos/releases
 
 ## Документация
 
+- [Все документы и состояние проекта](docs/README.md)
+
 - [Ресурсы](docs/ASSETS.md)
 - [Публикация](docs/RELEASING.md)
 - [Подпись](docs/KEY-ROTATION.md)

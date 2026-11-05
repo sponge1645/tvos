@@ -14,6 +14,7 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
  retired=['app/src/io/tvos/RemoteKeys.java','tests/test_mi_remote.py','tools/test-volume-hold.py','tests/test_volume_hold_prototype.py']+['app/src/io/tvos/'+name+'.java' for folder,name in moved]+['app/assets/fonts/sf_display_regular.otf','app/assets/avatars/robot.webp','app/src/io/tvos/Russian.java','app/src/io/tvos/Glyphs.java','app/res/drawable/coin_btc.xml','app/res/drawable/coin_eth.xml','app/res/drawable/coin_sol.xml','app/res/drawable/coin_usdt.xml','app/assets/symbols/bitcoin.svg','app/assets/symbols/bitcoin.png','app/assets/settings/light.webp','app/assets/settings/dark.webp','app/src/io/tvos/ScreensaverWindow.java']
  retired += ['app/src/io/tvos/'+name+'.java' for name in ['HomeSearchInput','HomeSearchGlass','HomeSearchState']]
  retired += ['tests/'+name+'.py' for name in ['test_home_search_input','test_home_search_glass','test_home_search_lifecycle','test_search_heading']]
+ retired += ['docs/AUDIT-1.1.2.md', 'docs/FINAL-AUDIT.md', 'docs/REFACTORING-AUDIT.md', 'docs/DEVELOPMENT-NOTES.md']
  for name in retired:
   p=target/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('retired')
  (target/'config.properties').write_text('personal config')
@@ -31,4 +32,5 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
  backup=next((target/'patch-backups').glob('github-updater-*'))
  assert all((backup/('app/src/io/tvos/'+name+'.java')).read_text()=='retired' for folder,name in moved)
  assert (backup/'app/src/io/tvos/Glyphs.java').read_text()=='retired'
+ assert all((backup/name).read_text()=='retired' for name in ['docs/AUDIT-1.1.2.md', 'docs/FINAL-AUDIT.md', 'docs/REFACTORING-AUDIT.md', 'docs/DEVELOPMENT-NOTES.md'])
  print('PASS: source application removes retired files, backs up the previous app and preserves config/key/custom files')
