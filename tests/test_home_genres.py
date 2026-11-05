@@ -118,7 +118,8 @@ public class MenuHarness implements HomeGenres.Host {
 })
 home=Path('app/src/io/tvos/HomeView.java').read_text()
 assert 'currentCatalog()' in block(home,'    private void updateCards(')
-assert 'currentCatalog()' in block(home,'    private boolean moveLight(')
+assert 'currentCatalog().size()' in home
+assert 'host.catalogSize()' in Path('app/src/io/tvos/HomeNavigation.java').read_text()
 assert 'genres.pause()' in block(home,'    void pause(')
 assert 'labels[1] = genres.label()' in block(home,'    private String[] tabs(')
 with tempfile.TemporaryDirectory(prefix='tvos-home-genres-') as tmp:

@@ -1212,19 +1212,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     /** Vertical navigation follows visible horizontal positions, including the left widget. */
-    private void focusHeaderAbove(float x) {
-        int target = -1; float distance = Float.MAX_VALUE;
-        for (int i = 0; i < topRects.length; i++) if (topControlVisible(i)) {
-            float d = Math.abs(topRects[i].centerX() - x);
-            if (d < distance) { distance = d; target = i; }
-        }
-        if (canOpenWeather() && Math.abs(header.weatherBounds().centerX() - x) < distance) {
-            zone = Z_WEATHER;
-        } else {
-            zone = Z_TOP; topIndex = target >= 0 ? target : availableTopButton(5);
-        }
-        status.invalidate();
-    }
 
     private static int nearest(RectF[] rects, float x) {
         return nearest(rects, rects.length, x);
@@ -1538,100 +1525,48 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         showToast(AppStrings.get(R.string.home_could_not_open_network_settings));
     }
 
-    private boolean moveLight(int dx, int dy) {
-        switch (zone) {
-            case Z_WEATHER:
-                if (dy > 0 && canOpenWeather()) {
-                    if (picksOn() && !cards.isEmpty()) { zone = Z_CARDS; cardIndex = 0; }
-                    else { zone = Z_SHELF; if (!dock.items.isEmpty()) dock.index = 0; }
-                } else if (dx > 0 || !canOpenWeather()) {
-                    zone = Z_TOP; topIndex = firstTopControl();
-                    status.invalidate();
-                } else return true;
-                break;
-            case Z_SHELF:
-                if (dy >= 0) return false;
-                if (dock.items.isEmpty()) {
-                    zone = Z_TOP;
-                    topIndex = !picksOn() ? availableTopButton(5) : tab;
-                } else if (!picksOn() || cards.isEmpty()) {
-                    if (picksOn()) {
-                        zone = Z_TOP; topIndex = tab;
-                    } else if (dock.index == dock.items.size() - 1 && dock.index > 0) {
-                        zone = Z_TOP; topIndex = posterCornerTarget(true);
-                        status.invalidate();
-                    } else focusHeaderAbove(dock.rects[dock.index].centerX());
-                } else {
-                    zone = Z_CARDS;
-                    cardIndex = nearest(cardRects, cards.size(), dock.rects[dock.index].centerX());
-                }
-                break;
-            case Z_CARDS:
+    // Navigation bridge: one reusable snapshot, no per-key allocations or retained movie lists.
+    private final HomeNavigation navigation = new HomeNavigation(new HomeNavigation.Host() {
+            public int catalogSize() { return currentCatalog().size(); }
+            public int firstTopControl() { return HomeView.this.firstTopControl(); }
+            public int availableTopButton(int preferred) { return HomeView.this.availableTopButton(preferred); }
+            public int posterCornerTarget(boolean rightmost) { return HomeView.this.posterCornerTarget(rightmost); }
+            public int nextTopControl(int current, int direction) { return HomeView.this.nextTopControl(current, direction); }
+            public boolean topControlVisible(int id) { return HomeView.this.topControlVisible(id); }
+            public boolean resetRandom(int index, int last) { return randomPoster.resetAway(index, last); }
+            public void refresh(HomeNavigation.State state) {
+                writeNavigation(state); updateCards(); readNavigation(state);
+            }
+            public void selectTab(HomeNavigation.State state, int selected) {
+                writeNavigation(state); HomeView.this.selectTab(selected); readNavigation(state);
+            }
+        });
 
-                if (dx != 0) {
-                    int next = Math.max(0, Math.min(cards.size() - 1, cardIndex + dx));
-                    if (next == cardIndex) {
-                        int total = currentCatalog().size();
-                        int perPage = 5;
-                        if (dx > 0 && (cardPage + 1) * perPage < total) {
-                            cardPage++;
-                            cardIndex = 0;
-                        } else if (dx < 0 && cardPage > 0) {
-                            cardPage--;
-                            cardIndex = perPage - 1;
-                        } else return true;
-                        updateCards();
-                        // updateCards() clamps focus for the last (possibly incomplete) page.
-                    } else cardIndex = next;
-                    if (randomPoster.resetAway(cardPage * 5 + cardIndex, currentCatalog().size() - 1))
-                        updateCards();
-                } else if (dy < 0) {
-                    zone = Z_TOP;
-                    // Route by visible position, not fixed action IDs. The last poster
-                    // reaches the rightmost action; the preceding poster reaches the
-                    // action immediately to its left (or the same one if only one exists).
-                    if (cardIndex == 4) {
-                        topIndex = posterCornerTarget(true);
-                    } else if (cardIndex == 3) {
-                        topIndex = posterCornerTarget(false);
-                    } else {
-                        topIndex = tab;
-                    }
-                } else {
-                    zone = Z_SHELF;
-                    if (!dock.items.isEmpty()) dock.index = nearest(dock.rects, dock.rects.length, cardRects[cardIndex].centerX());
-                }
-                break;
-            case Z_TOP:
-                if (dy < 0) return true; // All header controls share one row.
-                if (dx != 0) {
-                    if (dx < 0 && canOpenWeather() && topIndex == firstTopControl()) {
-                        zone = Z_WEATHER; status.invalidate(); break;
-                    }
-                    int next = nextTopControl(topIndex, dx);
-                    if (next == topIndex) return true;
-                    topIndex = next;
-                    if (topIndex < 5) selectTab(topIndex);   // category tabs: focusing a tab selects it
-                } else if (dy > 0) {
-                    if (!picksOn() || cards.isEmpty()) {
-                        zone = Z_SHELF;
-                        if (!dock.items.isEmpty()) dock.index = nearest(dock.rects, dock.rects.length, topRects[topIndex].centerX());
-                    } else {
-                        zone = Z_CARDS;
-                        cardIndex = nearest(cardRects, cards.size(), topRects[topIndex].centerX());
-                    }
-                } else {
-                    return true;
-                }
-                break;
-            default:
-                return false;
-        }
-        if (zone == Z_TOP && !topControlVisible(topIndex)) zone = Z_SHELF;
-        retarget(false);
-        focusSound();
-        return true;
+    private void readNavigation(HomeNavigation.State state) {
+        state.zone = zone; state.tab = tab; state.topIndex = topIndex;
+        state.cardIndex = cardIndex; state.cardPage = cardPage; state.dockIndex = dock.index;
+        state.dockCount = dock.items.size(); state.cardCount = cards.size();
+        state.dockRects = dock.rects; state.cardRects = cardRects; state.topRects = topRects;
+        state.picksOn = picksOn(); state.weatherAvailable = canOpenWeather();
+        state.weatherX = state.weatherAvailable ? header.weatherBounds().centerX() : 0;
     }
+
+    private void writeNavigation(HomeNavigation.State state) {
+        zone = state.zone; tab = state.tab; topIndex = state.topIndex;
+        cardIndex = state.cardIndex; cardPage = state.cardPage; dock.index = state.dockIndex;
+    }
+
+    private boolean moveLight(int dx, int dy) {
+        HomeNavigation.State state = navigation.state;
+        readNavigation(state);
+        boolean handled = navigation.move(state, dx, dy);
+        writeNavigation(state);
+        if (state.headerDirty) status.invalidate();
+        if (state.moved) { retarget(false); focusSound(); }
+        return handled;
+    }
+    // End navigation bridge.
+
 
     private static int nearest(RectF[] rects, int count, float x) {
         int best = 0;

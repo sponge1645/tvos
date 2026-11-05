@@ -94,3 +94,10 @@ empty categories, remote navigation and source migration.
 
 Navigation extraction and settings extraction are separate subsequent builds.
 This stage does not change the design or navigation policy.
+
+Build 1B179 extracts directional routing between weather, header actions, poster
+pages and the Dock into `HomeNavigation`. A reused state snapshot bridges the
+router to `HomeView`; content refreshes copy back clamped selection and updated
+geometry before routing continues. Key press/release, long holds, app launches,
+accessibility, drawer and grid controls retain their existing owners and behavior.
+The remote navigation tests compile both the production router and HomeView bridge.

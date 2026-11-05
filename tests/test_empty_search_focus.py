@@ -1,6 +1,7 @@
 """Exercise production directional navigation from Dock and empty categories."""
 from pathlib import Path
 import subprocess,tempfile
+from home_navigation_fixture import bridge, router
 source=Path('app/src/io/tvos/HomeView.java').read_text()
 def method(sig):
  a=source.index(sig);b=source.index('{',a);d=1;i=b+1
@@ -54,6 +55,6 @@ tests='''
 }'''
 with tempfile.TemporaryDirectory() as d:
  (Path(d)/'HomeFocusPolicy.java').write_text(Path('app/src/io/tvos/home/HomeFocusPolicy.java').read_text())
- p=Path(d)/'SearchFocusHarness.java';p.write_text(header+method('    private void focusHeaderAbove(')+method('    private void focusSound(')+method('    private boolean moveLight(')+method('    private int firstTopControl(')+method('    private int availableTopButton(')+method('    private static int nearest(RectF[] rects, int count, float x)')+tests)
+ p=Path(d)/'SearchFocusHarness.java';p.write_text(header+method('    private void focusSound(')+bridge(source, 'SearchFocusHarness')+method('    private int firstTopControl(')+method('    private int availableTopButton(')+method('    private static int nearest(RectF[] rects, int count, float x)')+tests+router('SearchFocusHarness'))
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,Path(d).glob('*.java'))],check=True)
  subprocess.run(['java','-cp',d,'SearchFocusHarness'],check=True)
