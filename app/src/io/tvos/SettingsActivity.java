@@ -561,6 +561,7 @@ public class SettingsActivity extends Activity {
                 row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = (screen == CITY && i == 1 && Prefs.automaticRegion())
                         || (screen == HOME_SCREEN && (i == 1 ? Prefs.homeCollection() : i == 2 && !Prefs.homeCollection()))
+                        || (screen == SCREENSAVER && i == 6 && localPrefs().getString("icloud_album", "").isEmpty())
                         || (screen == SCREENSAVER && i == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple")));
                 boolean chevron = !row.disabled && menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
@@ -968,6 +969,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
+            if (screen == SCREENSAVER && focus == 6 && localPrefs().getString("icloud_album", "").isEmpty()) return;
             if (screen == SCREENSAVER && focus == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple"))) return;
             if (screen == HOME_SCREEN && (focus == 1 ? Prefs.homeCollection() : focus == 2 && !Prefs.homeCollection())) return;
             final int screenBeforeAction = screen;
@@ -983,6 +985,7 @@ public class SettingsActivity extends Activity {
                 screen = action.targetScreen;
                 focus = SettingsScreen.multiChoice(screen) ? valueSource.selection(screen) : screen == SLEEP_TIMER ? Math.max(0, Math.min(6, localPrefs().getInt("sleep_choice", -1))) : screen == HOME_VIEW ? (Prefs.homeCollection() ? 0 : 1) : screen == HOME_CARD_STYLE ? (Prefs.homeContinue() ? 0 : 1) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
+                case DISCONNECT_ICLOUD: ICloudSetup.disconnect(activity); invalidate(); return;
                 case SELECT_OPTION:
                     switch (screen) {
                         case THEME_CHOICE: preferenceEditor.chooseTheme(focus); screen = GENERAL; focus = 1; break;

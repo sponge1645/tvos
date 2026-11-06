@@ -7,7 +7,7 @@ public final class SettingsActions {
     private SettingsActions() { }
 
     public enum Action {
-        NONE, NAME, SELECT_OPTION, SLEEP_NOW, SELECT_SLEEP_TIMER, HOME_MODE, SELECT_HOME_VIEW, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_COUNTRY, SELECT_TV, SELECT_LANGUAGE, TV_PICKER, OPEN_REGION, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
+        NONE, NAME, DISCONNECT_ICLOUD, SELECT_OPTION, SLEEP_NOW, SELECT_SLEEP_TIMER, HOME_MODE, SELECT_HOME_VIEW, SELECT_HOME_SCREEN, SELECT_MOVIE_SERVICE, SELECT_CITY, SELECT_COUNTRY, SELECT_TV, SELECT_LANGUAGE, TV_PICKER, OPEN_REGION, SELECT_VPN, SELECT_KEY, CATEGORY, SHELF,
         KEY_PICKER, ADVANCED_KEYS, INPUT_METHOD, CITY_PICKER, HOME_ADJUST, AIRPLAY, REMOTES, SHELF_EDITOR, DOWNLOAD,
         MENU_ADJUST, CHECK_UPDATE, AUTO_UPDATE, MENU_BUTTON,
         REGION_TOGGLE, VPN_PICKER, DATE_TOGGLE, WEATHER_TOGGLE, PREVIEW, CATEGORY_EDITOR,
@@ -112,7 +112,7 @@ public final class SettingsActions {
             case CITY: return row == 0 ? Action.REGION_TOGGLE : citySetting ? Action.NONE : Action.CITY_PICKER;
             case DATE_TIME: return Action.DATE_TOGGLE;
             case WEATHER: return row == 1 ? Action.CITY_SCREEN : row == 0 ? Action.WEATHER_CHOICE_SCREEN : row == 2 ? Action.TEMPERATURE_SCREEN : Action.NONE;
-            case SCREENSAVER: return row == 0 ? Action.DREAM_SCREEN : row == 1 ? Action.SLIDESHOW_SCREEN : row == 5 ? Action.PREVIEW : row >= 2 && row < 5 ? Action.MENU_ADJUST : Action.NONE;
+            case SCREENSAVER: return row == 6 ? Action.DISCONNECT_ICLOUD : row == 0 ? Action.DREAM_SCREEN : row == 1 ? Action.SLIDESHOW_SCREEN : row == 5 ? Action.PREVIEW : row >= 2 && row < 5 ? Action.MENU_ADJUST : Action.NONE;
             case TOP_PANEL: return row == 0 ? Action.HOME_SCREEN_MODE_SCREEN : row == 1 ? Action.BUTTON_EDITOR : row == 2 ? Action.DATE_TOGGLE : row == 3 ? Action.WEATHER_SCREEN : Action.NONE;
             case ACCESSIBILITY: return row == 0 || row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_SETTINGS : Action.NONE;
             case RESET: return Action.RESET_CONFIRM;

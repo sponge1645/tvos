@@ -317,6 +317,8 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     }
 
     /** The prepared photo goes on screen when its turn comes (the first one right away; the others every 30 s). */
+    private long fadeDuration() { return "icloud".equals(settings.getString("video_dream_source", "apple")) ? 1000 : FADE_MS; }
+
     private void advance(long up) {
         if (current == null) {
             if (prepared == null) return;
@@ -335,7 +337,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             bindPhotos();
             return;
         }
-        if (incoming != null && up >= incoming.startedAt + FADE_MS) {
+        if (incoming != null && up >= incoming.startedAt + fadeDuration()) {
             Slide old = current;
             current = incoming;
             incoming = null;
@@ -361,7 +363,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
     /** Photo position and scale now: zoom from 1 to 1.1 (or back) and a pan toward a corner, never showing an edge. */
     private void place(Slide s, long up, float[] out) {
-        float u = Ui.clamp((up - s.startedAt) / (float) (SHOW_MS + FADE_MS));
+        float u = Ui.clamp((up - s.startedAt) / (float) (SHOW_MS + fadeDuration()));
         float f = s.zoomIn ? u : 1 - u;
         float z = "icloud".equals(settings.getString("video_dream_source", "apple")) && (settings.getBoolean("reduce_motion", false) || !"kenburns".equals(settings.getString("icloud_style", "kenburns"))) ? 1 : 1 + ZOOM * f;
         float rx = w * (z - 1) / 2, ry = h * (z - 1) / 2;
@@ -384,7 +386,10 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
     @Override public void doFrame(long frameTimeNanos) {
         if (!running) return;
-        if (frameTimeNanos - lastFrame >= 45_000_000L) {
+        boolean cloudMotion = "icloud".equals(settings.getString("video_dream_source", "apple"))
+                && (incoming != null || (!settings.getBoolean("reduce_motion", false)
+                && "kenburns".equals(settings.getString("icloud_style", "kenburns"))));
+        if (cloudMotion || frameTimeNanos - lastFrame >= 45_000_000L) {
             lastFrame = frameTimeNanos;
             invalidate();
         }
@@ -408,7 +413,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             chromeDirty = true;
         }
         if (running) advance(up);
-        if (!glassFor.equals(clock)) buildGlass(clock);
+        if (showScreensaverClock() && !glassFor.equals(clock)) buildGlass(clock);
 
         // The parent owns initial fade for every source. Keep later photo crossfades unchanged.
         if (current != null && contentReady != null) parentPhotoEntrance = true;
@@ -424,7 +429,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         if (fallback && first >= 1) fallback = false;
 
         place(current, up, placeA);
-        float e = incoming == null ? 0 : fadeIn(up - incoming.startedAt, FADE_MS);
+        float e = incoming == null ? 0 : fadeIn(up - incoming.startedAt, fadeDuration());
         boolean slide = "icloud".equals(settings.getString("video_dream_source", "apple")) && "slide".equals(settings.getString("icloud_style", "kenburns")) && !settings.getBoolean("reduce_motion", false);
         if(slide && incoming != null)placeA[0]-=e*w;
         drawPhoto(canvas, current, placeA, first);

@@ -47,7 +47,18 @@ final class ICloudSetup implements AutoCloseable {
                         public void commit() throws IOException {
                             if(!app.getSharedPreferences("settings",Context.MODE_PRIVATE).edit().putString("icloud_album",link).putString("video_dream_source","icloud").commit())throw new IOException("Save failed");
                         }
-                        public void close(){ }
+                        static void disconnect(Context context) {
+        Context app=context.getApplicationContext();
+        android.content.SharedPreferences prefs=app.getSharedPreferences("settings",Context.MODE_PRIVATE);
+        android.content.SharedPreferences.Editor edit=prefs.edit().remove("icloud_album");
+        if("icloud".equals(prefs.getString("video_dream_source","apple")))edit.putString("video_dream_source","google");
+        edit.apply();
+        Thread cleanup=new Thread(() -> {
+            File[] folders=app.getCacheDir().listFiles((dir,name)->name.startsWith("tvos_gallery_v2_icloud_"));
+            if(folders!=null)for(File folder:folders){File[] files=folder.listFiles();if(files!=null)for(File file:files)file.delete();folder.delete();}
+        },"icloud-disconnect");cleanup.setDaemon(true);cleanup.start();
+    }
+    public void close(){ }
                     };
                 },() -> main.post(() -> {if(!closed)listener.saved();}),"/icloud","text/plain",4096);
                 server=session;if(closed){session.close();return;}
@@ -58,6 +69,17 @@ final class ICloudSetup implements AutoCloseable {
                 main.postDelayed(() -> {if(!closed){session.close();listener.message(R.string.icloud_expired);}},10*60_000L);
             }catch(IOException|RuntimeException failure){AvatarUploadServer session=server;if(session!=null)session.close();main.post(() -> {if(!closed)listener.message(R.string.icloud_no_network);});}
         },"icloud-setup");setup.setDaemon(true);setup.start();
+    }
+    static void disconnect(Context context) {
+        Context app=context.getApplicationContext();
+        android.content.SharedPreferences prefs=app.getSharedPreferences("settings",Context.MODE_PRIVATE);
+        android.content.SharedPreferences.Editor edit=prefs.edit().remove("icloud_album");
+        if("icloud".equals(prefs.getString("video_dream_source","apple")))edit.putString("video_dream_source","google");
+        edit.apply();
+        Thread cleanup=new Thread(() -> {
+            File[] folders=app.getCacheDir().listFiles((dir,name)->name.startsWith("tvos_gallery_v2_icloud_"));
+            if(folders!=null)for(File folder:folders){File[] files=folder.listFiles();if(files!=null)for(File file:files)file.delete();folder.delete();}
+        },"icloud-disconnect");cleanup.setDaemon(true);cleanup.start();
     }
     public void close(){closed=true;AvatarUploadServer session=server;if(session!=null)session.close();main.removeCallbacksAndMessages(null);}
 }

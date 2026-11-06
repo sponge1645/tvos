@@ -23,6 +23,7 @@ public class CLASSNAME {
  void openCountryPicker(){openPicker(PICK_REGION);}void openTvProviderPicker(){openPicker(PICK_TV);}
  final List<String> appPkgs=new ArrayList<>();final List<String[]> cities=new ArrayList<>();
  static class Ui {static boolean ru;}
+ static class ICloudSetup {static void disconnect(Activity a){note("disconnect-icloud");}}
  boolean running=true;
  static class SleepMode {static void request(Activity a,int choice,Runnable done){note("sleep:"+choice);done.run();}}
  static class Context {}final Context context=new Context();Context getContext(){return context;}
