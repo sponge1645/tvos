@@ -82,11 +82,11 @@ public final class SettingsListRenderer {
             case SPINNER: spinner.draw(c, bounds.right - 43 * scale, bounds.centerY(), scale,
                     f > .5f ? 0xFF777777 : secondaryInk(light)); break;
             case SERVICE_CHECK: check.draw(c, bounds.right - 43 * scale, bounds.centerY(), 24 * scale,
-                    blend(normalInk(light), INK, f)); break;
+                    blend(light ? valueInk(true, 0) : normalInk(false), INK, f)); break;
             case CHOICE_CHECK: case PICKER_CHECK: {
                 float size = 26 * scale;
                 float width = check.width(size);
-                int ink = marker == Marker.CHOICE_CHECK ? arrowInk(light) : 0xFFFFFFFF;
+                int ink = light ? valueInk(true, 0) : marker == Marker.CHOICE_CHECK ? arrowInk(false) : 0xFFFFFFFF;
                 check.draw(c, bounds.right - 30 * scale - width / 2, bounds.centerY(), size, blend(ink, INK, f));
                 break;
             }
