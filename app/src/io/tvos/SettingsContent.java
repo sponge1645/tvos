@@ -27,6 +27,7 @@ final class SettingsContent {
             case TEMPERATURE_CHOICE: return AppStrings.get(R.string.settings_temperature, language);
             case WEATHER_CHOICE: return AppStrings.get(R.string.settings_weather_view, language);
             case DREAM_CHOICE: return AppStrings.get(R.string.settings_current_selection, language);
+            case SLIDESHOW_STYLE: return AppStrings.get(R.string.icloud_slideshow_style, language);
             case WIDGETS: return AppStrings.get(R.string.settings_widgets, language);
             case WEATHER: return AppStrings.get(R.string.settings_weather, language);
             case DATE_TIME: return AppStrings.get(R.string.settings_date, language);
@@ -66,7 +67,8 @@ final class SettingsContent {
             case THEME_CHOICE: return new String[] {AppStrings.get(R.string.settings_automatic, language), AppStrings.get(R.string.settings_light, language), AppStrings.get(R.string.settings_dark, language)};
             case TEMPERATURE_CHOICE: return new String[] {AppStrings.get(R.string.settings_automatic, language), "°C", "°F"};
             case WEATHER_CHOICE: return new String[] {AppStrings.get(R.string.settings_weather_none, language), AppStrings.get(R.string.settings_weather_home, language), AppStrings.get(R.string.settings_weather_bottom, language), AppStrings.get(R.string.settings_weather_both, language)};
-            case DREAM_CHOICE: return new String[] {"Aerial", "Google", "National Geographic"};
+            case DREAM_CHOICE: return new String[] {"Aerial", "Google", "National Geographic", AppStrings.get(R.string.icloud_photos, language)};
+            case SLIDESHOW_STYLE: return new String[] {"Ken Burns", AppStrings.get(R.string.icloud_classic, language), AppStrings.get(R.string.icloud_slide, language)};
             case WIDGETS: return new String[] {AppStrings.get(R.string.settings_weather, language), AppStrings.get(R.string.settings_date, language)};
             case DATE_TIME: return new String[] {AppStrings.get(R.string.settings_show_in_menu_bar, language)};
             case WEATHER: return new String[] {AppStrings.get(R.string.settings_weather_view, language), AppStrings.get(R.string.settings_city, language), AppStrings.get(R.string.settings_temperature, language)};
@@ -77,7 +79,7 @@ final class SettingsContent {
             case APPS_DOWNLOADS: return new String[] {AppStrings.get(R.string.settings_download_airplay, language), AppStrings.get(R.string.settings_download_apple_music, language), AppStrings.get(R.string.settings_download_tizentube, language), AppStrings.get(R.string.settings_download_incy, language), AppStrings.get(R.string.settings_download_seena, language), AppStrings.get(R.string.settings_download_lampa, language), AppStrings.get(R.string.settings_download_kinopub, language)};
             case ACCESSIBILITY: return new String[] {AppStrings.get(R.string.settings_reduce_transparency, language), AppStrings.get(R.string.settings_reduce_motion, language), AppStrings.get(R.string.settings_tv_settings, language)};
             case CITY: return new String[] {AppStrings.get(R.string.settings_automatic_value, language), AppStrings.get(R.string.settings_manual, language)};
-            case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, language), AppStrings.get(R.string.settings_show_clock, language), AppStrings.get(R.string.settings_show_location, language), AppStrings.get(R.string.settings_show_weather, language), AppStrings.get(R.string.settings_preview, language)};
+            case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, language), AppStrings.get(R.string.icloud_slideshow_style, language), AppStrings.get(R.string.settings_show_clock, language), AppStrings.get(R.string.settings_show_location, language), AppStrings.get(R.string.settings_show_weather, language), AppStrings.get(R.string.settings_preview, language)};
             case ABOUT: return new String[] {AppStrings.get(R.string.settings_name, language), AppStrings.get(R.string.settings_model, language), AppStrings.get(R.string.settings_serial_number, language), "tvOS", AppStrings.get(R.string.settings_os, language), AppStrings.get(R.string.settings_resolution, language), AppStrings.get(R.string.settings_wi_fi_network_name, language), AppStrings.get(R.string.settings_ip_address, language), AppStrings.get(R.string.settings_signal_strength, language)};
             default: return new String[] {AppStrings.get(R.string.settings_general, language), AppStrings.get(R.string.settings_video_audio, language), AppStrings.get(R.string.settings_screen_saver, language), "AirPlay", AppStrings.get(R.string.settings_remotes_and_devices, language), AppStrings.get(R.string.settings_accessibility, language), AppStrings.get(R.string.settings_apps, language), "Dock", AppStrings.get(R.string.settings_menu_bar, language), AppStrings.get(R.string.settings_system, language), AppStrings.get(R.string.settings_sleep_now, language)};
         }
@@ -105,8 +107,11 @@ final class SettingsContent {
 
                 break;
             case SLEEP_TIMER: return AppStrings.get(R.string.settings_sleep_help, language);
+            case DREAM_CHOICE: return focus == 3 ? AppStrings.get(R.string.icloud_setup_help, language) : null;
+            case SLIDESHOW_STYLE: return AppStrings.get(R.string.icloud_style_help, language);
             case SCREENSAVER:
-                if (focus == 3) info = AppStrings.get(R.string.settings_help_weather_city, language);
+                if (focus == 1) return AppStrings.get(R.string.icloud_style_help, language);
+                if (focus == 4) info = AppStrings.get(R.string.settings_help_weather_city, language);
                 break;
             case APPS_DOWNLOADS:
                 info = appDownloadDescription(focus, language);

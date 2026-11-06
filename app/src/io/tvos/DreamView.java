@@ -162,7 +162,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         weatherBadge = new ScreensaverWeather(c);
         data = HomeData.get(c);
         String source = settings.getString("video_dream_source", "apple");
-        gallery = new GalleryPhotos(c, ("na".equals(source) || "nasa".equals(source)) ? "na" : "google");
+        gallery = new GalleryPhotos(c, "icloud".equals(source) ? "icloud" : ("na".equals(source) || "nasa".equals(source)) ? "na" : "google", settings.getString("icloud_album", ""));
         Shaders.dream(scene.palette);
         scene.setMotion(0.4f, 0.32f);
         scene.applyPalette();
@@ -285,7 +285,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             Bitmap[] images = null;
             float[] light = new float[2];
             try {
-                images = Backdrop.photo(file, PW, PH, light);
+                images = Backdrop.photo(file, PW, PH, light, "icloud".equals(settings.getString("video_dream_source", "apple")));
                 images[0] = Backdrop.gpu(withScrims(images[0], light[0]));
             } catch (Exception | OutOfMemoryError e) {
                 AppLog.w("screensaver: photo for “" + chosen.title + "”: " + e.getMessage());
@@ -363,7 +363,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private void place(Slide s, long up, float[] out) {
         float u = Ui.clamp((up - s.startedAt) / (float) (SHOW_MS + FADE_MS));
         float f = s.zoomIn ? u : 1 - u;
-        float z = 1 + ZOOM * f;
+        float z = "icloud".equals(settings.getString("video_dream_source", "apple")) && (settings.getBoolean("reduce_motion", false) || !"kenburns".equals(settings.getString("icloud_style", "kenburns"))) ? 1 : 1 + ZOOM * f;
         float rx = w * (z - 1) / 2, ry = h * (z - 1) / 2;
         out[0] = rx * (s.panX * f - 1);
         out[1] = ry * (s.panY * f - 1);
@@ -425,10 +425,13 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
         place(current, up, placeA);
         float e = incoming == null ? 0 : fadeIn(up - incoming.startedAt, FADE_MS);
+        boolean slide = "icloud".equals(settings.getString("video_dream_source", "apple")) && "slide".equals(settings.getString("icloud_style", "kenburns")) && !settings.getBoolean("reduce_motion", false);
+        if(slide && incoming != null)placeA[0]-=e*w;
         drawPhoto(canvas, current, placeA, first);
         if (incoming != null) {
             place(incoming, up, placeB);
-            drawPhoto(canvas, incoming, placeB, e);
+            if(slide)placeB[0]+=(1-e)*w;
+            drawPhoto(canvas, incoming, placeB, slide?first:e);
         }
 
         if (chromeDirty) recordChrome();

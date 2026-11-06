@@ -15,6 +15,7 @@ final class GalleryCache {
     private final File folder;
     private final int maxPhotos;
     private final long maxBytes;
+    private final int minBytes;
     private final List<File> ready = new ArrayList<>();
     private final Map<File, Integer> borrowed = new HashMap<>();
     private int next;
@@ -22,12 +23,16 @@ final class GalleryCache {
     GalleryCache(File folder) { this(folder, MAX_PHOTOS, MAX_BYTES); }
 
     GalleryCache(File folder, int maxPhotos, long maxBytes) {
+        this(folder,maxPhotos,maxBytes,80_000);
+    }
+    GalleryCache(File folder, int maxPhotos, long maxBytes, int minBytes) {
         this.folder = folder;
+        this.minBytes = minBytes;
         this.maxPhotos = maxPhotos;
         this.maxBytes = maxBytes;
         folder.mkdirs();
         File[] existing = photos();
-        for (File file : existing) if (file.length() > 80_000) ready.add(file);
+        for (File file : existing) if (file.length() > minBytes) ready.add(file);
         prune();
         Collections.shuffle(ready);
     }
@@ -53,7 +58,7 @@ final class GalleryCache {
     }
 
     synchronized boolean add(File file) {
-        if (!file.isFile() || file.length() <= 80_000) return false;
+        if (!file.isFile() || file.length() <= minBytes) return false;
         if (!ready.contains(file)) ready.add(file);
         return true;
     }

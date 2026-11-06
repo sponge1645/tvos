@@ -37,7 +37,7 @@ public class PreferenceHarness {
  Prefs.language="en";e.general(2,1);check(Prefs.language.equals("en"),"language submenu is not cycled by arrows");e.general(5,1);check(Prefs.h24,"time format toggle");
  events.clear();e.general(2,1);check(p.getBoolean("navigation_clicks",true),"General no longer changes navigation clicks");
  events.clear();e.legacy(4,1);e.legacy(99,1);check(events.isEmpty(),"city and unknown legacy rows do not mutate or notify");
- p.data.remove("video_dream_source");events.clear();e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("google")&&events.equals(Arrays.asList("refresh")),"dream source default and redraw");e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("na"),"dream source cycles");p.putString("video_dream_source","unknown");e.cycleDreamSource(-1);check(p.getString("video_dream_source","").equals("na"),"unknown dream source fallback preserved");
+ p.data.remove("video_dream_source");events.clear();e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("google")&&events.equals(Arrays.asList("refresh")),"dream source default and redraw");e.cycleDreamSource(1);check(p.getString("video_dream_source","").equals("na"),"dream source cycles");p.putString("video_dream_source","unknown");e.cycleDreamSource(-1);check(p.getString("video_dream_source","").equals("icloud"),"unknown dream source fallback preserved");
  check(p.getString("personal","").equals("keep"),"unrelated settings survive");
  System.out.println("PASS: actual preference adapter, weather migration/master/independent switches, defaults, direction/wrap/unknown values, legacy settings, exact callbacks and key preservation");
  }}'''

@@ -48,20 +48,20 @@ tests=r'''
   h.screen=MAIN;check(Arrays.equals(h.menuLabels(),new String[]{"General","Video and Audio","Screen Saver","AirPlay","Remotes and Devices","Accessibility","Apps","Dock","Control Center & Home Screen","System","Sleep"}),"main menu naming contract");
   h.screen=GENERAL;check(Arrays.equals(h.menuLabels(),new String[]{"About","Appearance","Sleep After","Language","Region","Time Format"}),"General naming contract");
   h.screen=ABOUT;check(Arrays.equals(h.menuLabels(),new String[]{"Name","Model","Serial Number","tvOS","OS","Resolution","Wi-Fi Network Name","IP Address","Signal Strength"}),"About naming contract");
-  h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
+  h.screen=SCREENSAVER;check(Arrays.equals(h.menuLabels(),new String[]{"Current Selection","Slideshow Style","Show Clock","Show Location","Show Weather","Preview"}),"Screen Saver naming contract");
   h.screen=UPDATES;check(Arrays.equals(h.menuLabels(),new String[]{"Update Software","Automatic Updates"}),"update actions naming contract");
   h.screen=SYSTEM;check(Arrays.equals(h.menuLabels(),new String[]{"Software Updates","Reset","Default Launcher","Restart tvOS"}),"System launcher appears directly below Reset");
   h.screen=ACCESSIBILITY;check(Arrays.equals(h.menuLabels(),new String[]{"Reduce Transparency","Reduce Motion","TV Settings"}),"accessibility naming contract");
   h.screen=WEATHER;check(h.menuLabels()[0].equals("Show")&&h.menuLabels()[1].equals("City"),"weather exposes presentation and city");
   h.screen=CITY;check(h.menuLabels()[0].equals("Automatic")&&h.menuLabels()[1].equals("Manually"),"region has auto and manual controls");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");h.screen=ABOUT;check(h.menuLabels()[2].equals("Серийный номер"),"Russian About retained");
-  h.screen=SCREENSAVER;check(h.menuLabels()[2].equals("Показывать место съёмки"),"Russian Screen Saver retained");
+  h.screen=SCREENSAVER;check(h.menuLabels()[3].equals("Показывать место съёмки"),"Russian Screen Saver retained");
   h.screen=HOME_SETTINGS;h.focus=0;h.arrow(1);check(h.adjusted==1,"category/quote value rows stay adjustable");
-  h.screen=SCREENSAVER;h.focus=4;check(!h.canAdjustMenu(),"preview requires OK");
-  for(int row:new int[]{1,2,3}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
+  h.screen=SCREENSAVER;h.focus=5;check(!h.canAdjustMenu(),"preview requires OK");
+  for(int row:new int[]{2,3,4}){h.focus=row;check(h.canAdjustMenu(),"source and overlay rows retain arrows");}
   String[] overlayKeys={"aerial_show_clock","aerial_show_location","screensaver_show_weather"};
   for(int i=0;i<overlayKeys.length;i++){
-   h.focus=i+1;h.arrow(1);check(h.store.getBoolean(overlayKeys[i],false),"reindexed overlay toggles its own setting");
+   h.focus=i+2;h.arrow(1);check(h.store.getBoolean(overlayKeys[i],false),"reindexed overlay toggles its own setting");
    h.arrow(-1);check(!h.store.getBoolean(overlayKeys[i],true),"reindexed overlay can toggle back");
   }
   h.screen=MENU_BUTTONS;h.focus=3;h.arrow(1);check(h.moved==1,"Menu Bar arrows reorder instead of toggling");

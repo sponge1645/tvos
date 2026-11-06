@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 /** Preference mutation adapter; no Activity, screen navigation or rendering state. */
 final class SettingsPreferenceEditor {
     private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
-    private static final String[] DREAM_SOURCES = {"apple", "google", "na"};
+    private static final String[] DREAM_SOURCES = {"apple", "google", "na", "icloud"};
     private static final int CITY_ROW = 4;
     private final SharedPreferences preferences;
     private final Runnable changed, refresh;
@@ -59,6 +59,7 @@ final class SettingsPreferenceEditor {
 
     void chooseTheme(int choice) { Prefs.setTheme(THEMES[choice]); changed.run(); refresh.run(); }
     void chooseTemperature(int choice) { Prefs.setTemperature(UNITS[choice]); changed.run(); refresh.run(); }
+    void chooseStyle(int choice) { preferences.edit().putString("icloud_style", new String[]{"kenburns", "classic", "slide"}[choice]).apply(); refresh.run(); }
     void chooseDream(int choice) { preferences.edit().putString("video_dream_source", DREAM_SOURCES[choice]).apply(); refresh.run(); }
     void chooseWeather(int choice) {
         preferences.edit().putBoolean("weather_show_top", (choice & 1) != 0)

@@ -163,6 +163,7 @@ public class SettingsActivity extends Activity {
         private final RectF rowRect = new RectF(), focusBox = new RectF();
         private final SettingsTextRenderer textRenderer = new SettingsTextRenderer();
         private final SettingsLogoRenderer logoRenderer = new SettingsLogoRenderer();
+        private ICloudSetupPanel icloudPanel;
         private final SettingsListRenderer.Row rowData = new SettingsListRenderer.Row();
         private final SettingsListRenderer listRenderer = new SettingsListRenderer(rowRenderer, textRenderer,
                 new SettingsListRenderer.Check() {
@@ -216,6 +217,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
+            icloudPanel = new ICloudSetupPanel(a, this::postInvalidateOnAnimation);
             modeMonitor = new SettingsModeMonitor(a, handler, () -> running, () -> screen == CITY,
                     this::announceForAccessibility, this::invalidate);
             preferenceEditor = new SettingsPreferenceEditor(localPrefs(),
@@ -267,7 +269,7 @@ public class SettingsActivity extends Activity {
                     String[] names = menuLabels();
                     return row < names.length ? names[row] : "";
                 }
-                case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
+                case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLIDESHOW_STYLE: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case SYSTEM: case RESET: case ABOUT: case SCREENSAVER: case CITY: case ACCESSIBILITY: case TOP_PANEL: {
                     String[] names = menuLabels(), values = valueSource.menu(screen, rowCount());
                     return row < names.length ? names[row] + (values[row].isEmpty() ? "" : ", " + values[row]) : "";
                 }
@@ -342,6 +344,7 @@ public class SettingsActivity extends Activity {
 
         void pause() {
             running = false;
+            icloudPanel.pause();
             remoteInput.reset();
             appLoader.cancel();
             tvProviderLoader.cancel();
@@ -436,7 +439,7 @@ public class SettingsActivity extends Activity {
             background.draw(c, w, h, lightSettings());
             pageTitle.setColor(lightSettings() ? 0xFF738190 : 0xFF5A676D);
             drawPageTitle(c, SystemClock.uptimeMillis());
-            logoRenderer.draw(c, k, lightSettings(), Ui.displaySemibold);
+            icloudPanel.draw(c, k, lightSettings(), running && screen == DREAM_CHOICE && focus == 3, localFlag("reduce_motion"), logoRenderer);
             listViewport.draw(c, listContent);
             drawTileDescription(c);
         }
@@ -504,7 +507,7 @@ public class SettingsActivity extends Activity {
 
         private void drawScreenContent(Canvas c) {
             switch (screen) {
-                case MAIN: case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
+                case MAIN: case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLIDESHOW_STYLE: case SLEEP_TIMER: case LANGUAGE: case MEDIA: case HOME_SCREEN: case HOME_VIEW: case HOME_CARD_STYLE: case MOVIE_SERVICE: case GENERAL: case WIDGETS: case WEATHER: case DATE_TIME:
                 case SYSTEM: case RESET: case TOP_PANEL:
                 case ACCESSIBILITY: case APPS_DOWNLOADS: case CITY: case ABOUT: case SCREENSAVER:
                 case UPDATES: drawMenu(c); break;
@@ -557,7 +560,8 @@ public class SettingsActivity extends Activity {
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
                 row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = (screen == CITY && i == 1 && Prefs.automaticRegion())
-                        || (screen == HOME_SCREEN && (i == 1 ? Prefs.homeCollection() : i == 2 && !Prefs.homeCollection()));
+                        || (screen == HOME_SCREEN && (i == 1 ? Prefs.homeCollection() : i == 2 && !Prefs.homeCollection()))
+                        || (screen == SCREENSAVER && i == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple")));
                 boolean chevron = !row.disabled && menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
                         : chevron ? Marker.CHEVRON : Marker.NONE;
@@ -964,6 +968,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
+            if (screen == SCREENSAVER && focus == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple"))) return;
             if (screen == HOME_SCREEN && (focus == 1 ? Prefs.homeCollection() : focus == 2 && !Prefs.homeCollection())) return;
             final int screenBeforeAction = screen;
             SettingsActions.Action action = SettingsActions.activation(screen, focus, picker.kind,
@@ -984,6 +989,7 @@ public class SettingsActivity extends Activity {
                         case TEMPERATURE_CHOICE: preferenceEditor.chooseTemperature(focus); screen = WEATHER; focus = 2; break;
                         case WEATHER_CHOICE: preferenceEditor.chooseWeather(focus); screen = WEATHER; focus = 0; break;
                         case DREAM_CHOICE: preferenceEditor.chooseDream(focus); screen = SCREENSAVER; focus = 0; break;
+                        case SLIDESHOW_STYLE: preferenceEditor.chooseStyle(focus); screen = SCREENSAVER; focus = 1; break;
                         default: return;
                     }
                     break;

@@ -16,7 +16,7 @@ public final class SettingsActions {
         ACCESSIBILITY_SCREEN(ACCESSIBILITY), DOWNLOADS_SCREEN(APPS_DOWNLOADS),
         TOP_PANEL_SCREEN(TOP_PANEL), WIDGETS_SCREEN(WIDGETS), SYSTEM_SCREEN(SYSTEM),
         HOME_SCREEN_MODE_SCREEN(HOME_SCREEN), HOME_VIEW_SCREEN(HOME_VIEW), HOME_CARD_STYLE_SCREEN(HOME_CARD_STYLE), ABOUT_SCREEN(ABOUT), DATE_SCREEN(DATE_TIME), WEATHER_SCREEN(WEATHER),
-        THEME_SCREEN(THEME_CHOICE), TEMPERATURE_SCREEN(TEMPERATURE_CHOICE), WEATHER_CHOICE_SCREEN(WEATHER_CHOICE), DREAM_SCREEN(DREAM_CHOICE), SLEEP_TIMER_SCREEN(SLEEP_TIMER), CITY_SCREEN(CITY), LANGUAGE_SCREEN(LANGUAGE), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
+        THEME_SCREEN(THEME_CHOICE), TEMPERATURE_SCREEN(TEMPERATURE_CHOICE), WEATHER_CHOICE_SCREEN(WEATHER_CHOICE), DREAM_SCREEN(DREAM_CHOICE), SLIDESHOW_SCREEN(SLIDESHOW_STYLE), SLEEP_TIMER_SCREEN(SLEEP_TIMER), CITY_SCREEN(CITY), LANGUAGE_SCREEN(LANGUAGE), UPDATES_SCREEN(UPDATES), RESET_SCREEN(RESET);
 
         public final int targetScreen;
         Action() { targetScreen = -1; }
@@ -36,7 +36,7 @@ public final class SettingsActions {
             case REMOTE_KEYS: return false;
             case MEDIA: return row == 1;
             case GENERAL: return row == 5;
-            case SCREENSAVER: return row >= 1 && row < 4;
+            case SCREENSAVER: return row >= 2 && row < 5;
             case UPDATES: return row == 1;
             case ACCESSIBILITY: return row < 2;
             case CITY: return row == 0;
@@ -55,9 +55,9 @@ public final class SettingsActions {
             case SCREENSAVER:
                 switch (row) {
                     case 0: return Adjustment.DREAM_SOURCE;
-                    case 1: return Adjustment.DREAM_CLOCK;
-                    case 2: return Adjustment.DREAM_LOCATION;
-                    case 3: return Adjustment.DREAM_WEATHER;
+                    case 2: return Adjustment.DREAM_CLOCK;
+                    case 3: return Adjustment.DREAM_LOCATION;
+                    case 4: return Adjustment.DREAM_WEATHER;
                     default: return Adjustment.NONE;
                 }
             case UPDATES: return row == 1 ? Adjustment.AUTO_UPDATE : Adjustment.NONE;
@@ -73,7 +73,7 @@ public final class SettingsActions {
     public static Action activation(int screen, int row, int pickFor, boolean citySetting,
                              int buttonCount, boolean vpnEnabled) {
         switch (screen) {
-            case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: return Action.SELECT_OPTION;
+            case THEME_CHOICE: case TEMPERATURE_CHOICE: case WEATHER_CHOICE: case DREAM_CHOICE: case SLIDESHOW_STYLE: return Action.SELECT_OPTION;
             case ABOUT: return Action.NAME;
             case HOME_CHOICE: return Action.HOME_MODE;
             case PICKER: return pickFor == PICK_REGION ? Action.SELECT_COUNTRY : pickFor == PICK_TV ? Action.SELECT_TV : pickFor == PICK_CITY ? Action.SELECT_CITY : pickFor == PICK_VPN ? Action.SELECT_VPN : Action.SELECT_KEY;
@@ -112,7 +112,7 @@ public final class SettingsActions {
             case CITY: return row == 0 ? Action.REGION_TOGGLE : citySetting ? Action.NONE : Action.CITY_PICKER;
             case DATE_TIME: return Action.DATE_TOGGLE;
             case WEATHER: return row == 1 ? Action.CITY_SCREEN : row == 0 ? Action.WEATHER_CHOICE_SCREEN : row == 2 ? Action.TEMPERATURE_SCREEN : Action.NONE;
-            case SCREENSAVER: return row == 0 ? Action.DREAM_SCREEN : row == 4 ? Action.PREVIEW : row >= 0 && row < 4 ? Action.MENU_ADJUST : Action.NONE;
+            case SCREENSAVER: return row == 0 ? Action.DREAM_SCREEN : row == 1 ? Action.SLIDESHOW_SCREEN : row == 5 ? Action.PREVIEW : row >= 2 && row < 5 ? Action.MENU_ADJUST : Action.NONE;
             case TOP_PANEL: return row == 0 ? Action.HOME_SCREEN_MODE_SCREEN : row == 1 ? Action.BUTTON_EDITOR : row == 2 ? Action.DATE_TOGGLE : row == 3 ? Action.WEATHER_SCREEN : Action.NONE;
             case ACCESSIBILITY: return row == 0 || row == 1 ? Action.MENU_ADJUST : row == 2 ? Action.TV_SETTINGS : Action.NONE;
             case RESET: return Action.RESET_CONFIRM;
@@ -146,7 +146,7 @@ public final class SettingsActions {
             case CITY: return new Target(parent, 1);
             case LANGUAGE: return new Target(parent, 3);
             case SLEEP_TIMER: return new Target(parent, 2);
-            case THEME_CHOICE: return new Target(parent, 1);
+            case THEME_CHOICE: case SLIDESHOW_STYLE: return new Target(parent, 1);
             case WEATHER_CHOICE: case DREAM_CHOICE: return new Target(parent, 0);
             case TEMPERATURE_CHOICE: return new Target(parent, 2);
             case APPS_DOWNLOADS: return new Target(parent, 6);

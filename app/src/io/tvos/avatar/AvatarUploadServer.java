@@ -16,7 +16,8 @@ public final class AvatarUploadServer implements AutoCloseable {
     public interface Sink { Prepared prepare(byte[] photo) throws IOException; }
     private final ServerSocket server;
     private final byte[] page;
-    private final String token, authority;
+    private final String token, authority, route, acceptedType;
+    private final int maxBytes;
     private final Sink sink;
     private final Runnable uploaded;
     private final Object commitLock = new Object();
@@ -24,6 +25,12 @@ public final class AvatarUploadServer implements AutoCloseable {
     private volatile Socket active;
     private final long expires = System.nanoTime()+10*60_000_000_000L;
     public AvatarUploadServer(InetAddress address, byte[] page, Sink sink, Runnable uploaded) throws IOException {
+        this(address,page,sink,uploaded,"/avatar","image",MAX_BYTES);
+    }
+    public AvatarUploadServer(InetAddress address, byte[] page, Sink sink, Runnable uploaded,
+            String route, String acceptedType, int maxBytes) throws IOException {
+        if (!(route.equals("/avatar") || route.equals("/icloud")) || maxBytes <= 0 || maxBytes > MAX_BYTES) throw new IllegalArgumentException("Upload route");
+        this.route=route;this.acceptedType=acceptedType;this.maxBytes=maxBytes;
         this.page=page; this.sink=sink; this.uploaded=uploaded;
         byte[] secret=new byte[16];new SecureRandom().nextBytes(secret);
         StringBuilder value=new StringBuilder();for(byte b:secret)value.append(String.format(Locale.ROOT,"%02x",b&255));token=value.toString();
@@ -32,7 +39,7 @@ public final class AvatarUploadServer implements AutoCloseable {
         catch(IOException|RuntimeException failed){try{server.close();}catch(IOException ignored){}throw failed;}
         authority=address.getHostAddress()+":"+server.getLocalPort();
     }
-    public String url() { return "http://"+authority+"/avatar"; }
+    public String url() { return "http://"+authority+route; }
     public void start() { Thread thread=new Thread(this::serve,"avatar-upload");thread.setDaemon(true);thread.start(); }
     private void serve() {
         try {
@@ -61,15 +68,15 @@ public final class AvatarUploadServer implements AutoCloseable {
                 if(headers.put(name,value)!=null)throw new IOException("Duplicate header");
             }
             if(!authority.equals(headers.get("host"))) {reply(out,404,"application/json","{}");return;}
-            if(parts[0].equals("GET")&&(parts[1].equals("/avatar")||parts[1].equals("/avatar/"))){reply(out,200,"text/html; charset=utf-8",page);return;}
+            if(parts[0].equals("GET")&&(parts[1].equals(route)||parts[1].equals(route+"/"))){reply(out,200,"text/html; charset=utf-8",page);return;}
             if(!parts[0].equals("POST")||!parts[1].equals("/"+token+"/upload")){reply(out,404,"application/json","{}");return;}
             String origin=headers.get("origin");
             if(origin!=null&&!origin.equals("http://"+authority)){reply(out,403,"application/json","{}");return;}
             String type=headers.getOrDefault("content-type","").split(";",2)[0];
-            if(!Arrays.asList("image/jpeg","image/png","image/webp").contains(type)||headers.containsKey("transfer-encoding")){reply(out,415,"application/json","{}");return;}
+            if(!(acceptedType.equals("text/plain") ? type.equals("text/plain") : Arrays.asList("image/jpeg","image/png","image/webp").contains(type))||headers.containsKey("transfer-encoding")){reply(out,415,"application/json","{}");return;}
             long length;
             try{length=Long.parseLong(headers.getOrDefault("content-length","-1"));}catch(NumberFormatException bad){length=-1;}
-            if(length<=0||length>MAX_BYTES){reply(out,413,"application/json","{}");return;}
+            if(length<=0||length>maxBytes){reply(out,413,"application/json","{}");return;}
             byte[] data=new byte[(int)length];int at=0;
             while(at<data.length){if(System.nanoTime()>deadline)throw new IOException("Request expired");int n=in.read(data,at,data.length-at);if(n<0)throw new EOFException();at+=n;}
             try(Prepared prepared=sink.prepare(data)) {

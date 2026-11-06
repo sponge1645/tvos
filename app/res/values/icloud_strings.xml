@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="icloud_photos">iCloud Photos</string>
+    <string name="icloud_slideshow_style">Slideshow Style</string>
+    <string name="icloud_classic">Classic</string>
+    <string name="icloud_slide">Slide</string>
+    <string name="icloud_setup_help">Scan the QR code or open the address\non a phone connected to the same Wi-Fi network.\nPaste a public iCloud Shared Album link.</string>
+    <string name="icloud_style_help">Slideshow styles for iCloud Photos.\nKen Burns: slow movement.\nClassic: crossfade. Slide: horizontal transition.</string>
+    <string name="icloud_connecting">Connecting…</string>
+    <string name="icloud_no_network">No local network connection</string>
+    <string name="icloud_expired">Session ended. Select this item again.</string>
+    <string name="icloud_saved">Album connected</string>
+</resources>

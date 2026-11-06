@@ -37,8 +37,8 @@ public abstract class ContentProvider {
 import android.content.*; import android.os.Bundle; import android.net.Uri; import java.util.*;
 public class SettingsHarness {
  static class Prefs implements SharedPreferences {
-  String source="apple"; boolean clock,location,weather;
-  public String getString(String k,String d){return source;}
+  String source="apple",album="",style="kenburns"; boolean clock,location,weather;
+  public String getString(String k,String d){return k.equals("icloud_album")?album:k.equals("icloud_style")?style:source;}
   public boolean getBoolean(String k,boolean d){return k.equals("aerial_show_clock")?clock:k.equals("aerial_show_location")?location:weather;}
  }
  static class App extends Context {
@@ -51,10 +51,11 @@ public class SettingsHarness {
   App home=new App(),dream=new App(); ScreensaverSettingsProvider provider=new ScreensaverSettingsProvider();
   provider.context=home; dream.owner=provider; home.owner=provider;
   check(ScreensaverSettingsProvider.read(dream).getString("video_dream_source").equals("apple"));
-  for(String source:new String[]{"google","na","apple","google"}){
-   home.prefs.source=source;home.prefs.clock=true;home.prefs.weather=true;home.prefs.location=true;
+  for(String source:new String[]{"google","na","icloud","apple","google"}){
+   home.prefs.source=source;home.prefs.album="https://www.icloud.com/sharedalbum/#A1ExampleAlbum";home.prefs.style="classic";home.prefs.clock=true;home.prefs.weather=true;home.prefs.location=true;
    Bundle snapshot=ScreensaverSettingsProvider.read(dream);
    check(snapshot.getString("video_dream_source").equals(source));
+   check(snapshot.getString("icloud_album").equals(home.prefs.album)&&snapshot.getString("icloud_style").equals("classic"));
    check(snapshot.getBoolean("aerial_show_clock") && snapshot.getBoolean("screensaver_show_weather") && snapshot.getBoolean("aerial_show_location"));
   }
   check(dream.prefs.source.equals("apple")); // stale cache was never consulted

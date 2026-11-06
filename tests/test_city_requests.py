@@ -19,6 +19,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
     header='''package io.tvos;
     import java.util.*;import java.util.concurrent.*;import android.os.Handler;
     public class CityHarness {
+     static class CloudPanel {void pause(){}}final CloudPanel icloudPanel=new CloudPanel();
      static class Values {boolean paused;void pause(){paused=true;}}final Values valueSource=new Values();
      static final int GENERAL=1,HOME_SETTINGS=2,CITY=23,PICK_CITY=0;
      static class Prefs {static boolean automatic;static boolean automaticRegion(){return automatic;}}

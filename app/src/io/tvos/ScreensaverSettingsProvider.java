@@ -25,6 +25,9 @@ public final class ScreensaverSettingsProvider extends ContentProvider {
         SharedPreferences prefs = getContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
         Bundle result = new Bundle();
         result.putString("video_dream_source", prefs.getString("video_dream_source", "apple"));
+        result.putString("icloud_album", prefs.getString("icloud_album", ""));
+        result.putString("icloud_style", prefs.getString("icloud_style", "kenburns"));
+        result.putBoolean("reduce_motion", prefs.getBoolean("reduce_motion", false));
         for (String key : new String[]{"aerial_show_clock", "aerial_show_location", "screensaver_show_weather"})
             result.putBoolean(key, prefs.getBoolean(key, false));
         return result;

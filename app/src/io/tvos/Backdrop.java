@@ -112,15 +112,27 @@ final class Backdrop {
      * (bottom left) and the clock (top right) sit, for the scrims. Returns {photo (mutable), frosted}.
      */
     static Bitmap[] photo(java.io.File f, int w, int h, float[] light) throws java.io.IOException {
+        return photo(f,w,h,light,false);
+    }
+    static Bitmap[] photo(java.io.File f, int w, int h, float[] light, boolean fit) throws java.io.IOException {
         android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         android.graphics.BitmapFactory.decodeFile(f.getPath(), bounds);
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new java.io.IOException("unreadable image");
         android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
         opts.inSampleSize = 1;
-        while (bounds.outWidth / (opts.inSampleSize * 2) >= w && bounds.outHeight / (opts.inSampleSize * 2) >= h) opts.inSampleSize *= 2;
+        while (fit ? bounds.outWidth / (opts.inSampleSize * 2) >= w || bounds.outHeight / (opts.inSampleSize * 2) >= h : bounds.outWidth / (opts.inSampleSize * 2) >= w && bounds.outHeight / (opts.inSampleSize * 2) >= h) opts.inSampleSize *= 2;
         Bitmap src = android.graphics.BitmapFactory.decodeFile(f.getPath(), opts);
         if (src == null) throw new java.io.IOException("unreadable image");
+        Bitmap out;
+        if (fit) {
+            out=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+            Canvas canvas=new Canvas(out);canvas.drawColor(0xFF000000);
+            float scale=Math.min((float)w/src.getWidth(),(float)h/src.getHeight());
+            float width=src.getWidth()*scale,height=src.getHeight()*scale;
+            canvas.drawBitmap(src,null,new android.graphics.RectF((w-width)/2,(h-height)/2,(w+width)/2,(h+height)/2),new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG));
+            src.recycle();
+        } else {
         float ratio = (float) w / h;
         int cw = Math.min(src.getWidth(), Math.round(src.getHeight() * ratio));
         int ch = Math.min(src.getHeight(), Math.round(cw / ratio));
@@ -131,8 +143,9 @@ final class Backdrop {
             b.recycle();
             b = half;
         }
-        Bitmap out = b.getWidth() == w && b.getHeight() == h ? b : Bitmap.createScaledBitmap(b, w, h, true);
+        out = b.getWidth() == w && b.getHeight() == h ? b : Bitmap.createScaledBitmap(b, w, h, true);
         if (out != b) b.recycle();
+        }
         if (light != null && light.length >= 2) {
             light[0] = luminance(out, 0, 0.6f, 0.5f, 0.95f);
             light[1] = luminance(out, 0.62f, 0.04f, 0.96f, 0.36f);

@@ -11,6 +11,7 @@ sources={
  'android/os/Looper.java':'package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}',
  'android/os/Handler.java':'package android.os;public class Handler {public Handler(Looper l){}public void post(Runnable r){r.run();}}',
  'android/graphics/BitmapFactory.java':'package android.graphics;public class BitmapFactory {public static class Options {public boolean inJustDecodeBounds;public int outWidth=1920,outHeight=1080;}public static Object decodeFile(String p,Options o){return null;}}',
+ 'io/tvos/icloud/ICloudAlbum.java':'package io.tvos.icloud;public class ICloudAlbum {public static class Photo {public String id,url;}public static String key(String s){return Integer.toHexString(s.hashCode());}public static java.util.List<Photo> photos(String s,int n){return java.util.Collections.emptyList();}public static void download(String u,java.io.File f)throws java.io.IOException{throw new java.io.IOException();}}',
  'io/tvos/AppLog.java':'package io.tvos;class AppLog {static void w(String text){}}',
  'io/tvos/GalleryCache.java':Path('app/src/io/tvos/GalleryCache.java').read_text(),
  'io/tvos/GalleryPhotos.java':Path('app/src/io/tvos/GalleryPhotos.java').read_text(),
@@ -32,6 +33,8 @@ public class GalleryCacheHarness {
   File externalFolder=new File(root,"external");File external=photo(externalFolder,0,80001);GalleryCache externalCache=new GalleryCache(externalFolder);external.delete();check(externalCache.next()==null&&!externalCache.hasImages(),"manual cache removal removes missing playlist entries");
   File appRoot=new File(root,"app");GalleryPhotos google=new GalleryPhotos(new Context(appRoot),"google");check(!google.hasImages(),"empty GalleryPhotos adapter");google.close();
   File googleFolder=new File(appRoot,"tvos_gallery_v2_google"),natureFolder=new File(appRoot,"tvos_gallery_v2_na");for(int i=0;i<95;i++)photo(googleFolder,i,80001);photo(natureFolder,0,80001);google=new GalleryPhotos(new Context(appRoot),"google");check(count(googleFolder)==80&&count(natureFolder)==1,"source budgets are isolated");File selected=google.next();check(selected!=null,"real adapter borrows from bounded cache");google.release(selected);google.close();
+  File smallFolder=new File(root,"icloud-small");photo(smallFolder,999,2000);GalleryCache small=new GalleryCache(smallFolder,80,128L*1024*1024,1000);check(small.hasImages(),"small valid personal photos accepted by iCloud-specific budget");File tiny=photo(smallFolder,1000,500);check(!small.add(tiny),"empty/tiny images still rejected");
+  GalleryPhotos firstCloud=new GalleryPhotos(new Context(appRoot),"icloud","album-one");File oldCloud=new File(appRoot,"tvos_gallery_v2_icloud_"+io.tvos.icloud.ICloudAlbum.key("album-one"));photo(oldCloud,1,90000);firstCloud.close();GalleryPhotos nextCloud=new GalleryPhotos(new Context(appRoot),"icloud","album-two");check(!oldCloud.exists()&&!nextCloud.hasImages()&&count(natureFolder)==1,"changing albums never serves previous personal photos or deletes other sources");nextCloud.close();
   System.out.println("PASS: whole GalleryCache/GalleryPhotos, 95→80 startup cleanup, byte cap, sidecars, LRU, overlapping decoder leases, empty/missing files and source isolation");
  }
 }'''

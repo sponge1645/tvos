@@ -23,7 +23,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,CITY,SCREENSAVER,ABOUT,LANGUAGE,SLEEP_TIMER};
-  int[] rows={11,3,5,3,6,2,3,1,2,4,2,4,7,3,2,5,9,2,7};
+  int[] rows={11,3,5,3,6,2,3,1,2,4,2,4,7,3,2,6,9,2,7};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -61,7 +61,7 @@ public class ContentHarness {
    h.picker.kind=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");
    check(SettingsContent.description(GENERAL,4,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)).contains(russian?"рекомендац":"recommend"),"country help describes recommendations");
    check(SettingsContent.description(GENERAL,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"neighbor row has no inherited region description");
-   String guidance=SettingsContent.description(SCREENSAVER,3,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)); check(guidance.contains(russian?"Пункт управления":"Control Center") && guidance.contains(russian?"Погода":"Weather") && guidance.contains(russian?"Город":"City") && !guidance.contains(russian?"Регион":"Region"),"screensaver weather guidance points to Control Center and Home Screen, Weather and City");
+   String guidance=SettingsContent.description(SCREENSAVER,4,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH)); check(guidance.contains(russian?"Пункт управления":"Control Center") && guidance.contains(russian?"Погода":"Weather") && guidance.contains(russian?"Город":"City") && !guidance.contains(russian?"Регион":"Region"),"screensaver weather guidance points to Control Center and Home Screen, Weather and City");
    check(SettingsContent.description(UPDATES,0,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"dynamic update data stays with view");
    for(int count=0;count<=6;count++){
     h.screen=MENU_BUTTONS;h.dynamicRows=count;check(h.menuLabels().length==count+1,"dynamic menu labels delegated to view");

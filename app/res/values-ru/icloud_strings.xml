@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="icloud_photos">Фото iCloud</string>
+    <string name="icloud_slideshow_style">Стиль слайдшоу</string>
+    <string name="icloud_classic">Классический</string>
+    <string name="icloud_slide">Сдвиг</string>
+    <string name="icloud_setup_help">Отсканируйте QR-код или откройте адрес\nна телефоне в той же сети Wi-Fi.\nВставьте публичную ссылку на альбом iCloud.</string>
+    <string name="icloud_style_help">Стиль слайдшоу для фото iCloud.\nKen Burns — плавное движение.\nКлассический — растворение.\nСдвиг — переход по горизонтали.</string>
+    <string name="icloud_connecting">Подключение…</string>
+    <string name="icloud_no_network">Нет подключения к локальной сети</string>
+    <string name="icloud_expired">Сеанс завершён. Выберите пункт заново.</string>
+    <string name="icloud_saved">Альбом подключён</string>
+</resources>

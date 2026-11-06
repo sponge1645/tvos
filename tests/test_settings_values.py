@@ -36,7 +36,7 @@ public class ValuesHarness {
    String[] general=v.menu(GENERAL,6);check(general.length==6&&general[0].isEmpty()&&!general[3].isEmpty(),"general ordering");
    check(general[3].equals(AppLanguage.current().nativeName)&&general[1].equals(ru?"Авто":"Automatic"),"live language and theme");
    Prefs.unit="C";Prefs.theme="dark";Prefs.h24=true;general=v.menu(GENERAL,6);check(v.menu(WEATHER,3)[2].equals("°C")&&general[5].equals(ru?"24 ч":"24 h"),"units/hour");
-   for(int choiceScreen:new int[]{THEME_CHOICE,TEMPERATURE_CHOICE,WEATHER_CHOICE,DREAM_CHOICE}){String[] choices=v.menu(choiceScreen,choiceScreen==WEATHER_CHOICE?4:3);int selected=v.selection(choiceScreen);check(selected>=0&&selected<choices.length,"valid current choice");for(int option=0;option<choices.length;option++)check(choices[option].equals(option==selected?AppStrings.get(R.string.settings_service_selected):""),"exactly one multi-option selection");}
+   for(int choiceScreen:new int[]{THEME_CHOICE,TEMPERATURE_CHOICE,WEATHER_CHOICE,DREAM_CHOICE,SLIDESHOW_STYLE}){String[] choices=v.menu(choiceScreen,(choiceScreen==WEATHER_CHOICE||choiceScreen==DREAM_CHOICE)?4:3);int selected=v.selection(choiceScreen);check(selected>=0&&selected<choices.length,"valid current choice");for(int option=0;option<choices.length;option++)check(choices[option].equals(option==selected?AppStrings.get(R.string.settings_service_selected):""),"exactly one multi-option selection");}
    check(v.menu(GENERAL,6)[2].equals(AppStrings.get(R.string.settings_sleep_unset)),"no unsolicited system timeout change before selection");
    for(int choice=0;choice<7;choice++){a.prefs.data.put("sleep_choice",choice);String[] selected=v.menu(SLEEP_TIMER,7);check(selected[choice].equals(AppStrings.get(R.string.settings_service_selected))&&v.menu(GENERAL,6)[2].equals(SettingsContent.menuLabels(SLEEP_TIMER)[choice]),"sleep duration value and accessible selection agree");for(int other=0;other<7;other++)if(other!=choice)check(selected[other].isEmpty(),"only chosen sleep duration selected");}a.prefs.data.remove("sleep_choice");
    Prefs.unit="auto";Prefs.theme="auto";Prefs.h24=false;
@@ -46,7 +46,7 @@ public class ValuesHarness {
    a.prefs.data.put("self_update_attempt",0L);int reads=SettingsUpdateDialog.reads;String details=v.updateDetailsText();check(details.equals("tvOS installed\\n"+AppStrings.get(R.string.settings_last_check_never)),"localized update details owned by values");v.updateDetailsText();check(SettingsUpdateDialog.reads==(reads==0?1:reads),"installed version cached across frames/language changes");
    a.prefs.data.put("self_update_attempt",1700000000000L);check(v.updateDetailsText().equals("tvOS installed\\n"+SettingsValues.formatLastUpdateCheck(1700000000000L,AppLanguage.current())),"new check timestamp refreshes details");
    a.prefs.data.put("auto_update",true);check(v.menu(UPDATES,2)[1].equals(SettingsValues.onOff(true)),"auto update value");
-   a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,5);check(saver[0].equals("National Geographic")&&saver[4].isEmpty(),"saver source and action row");
+   a.prefs.data.put("video_dream_source","na");String[] saver=v.menu(SCREENSAVER,6);check(saver[0].equals("National Geographic")&&saver[5].isEmpty(),"saver source and action row");
    SettingsValues hidden=new SettingsValues(a,new SettingsOrderEditor(),()->false,top->false,()->"",new SettingsValueLoader<>(),new SettingsValueLoader<>());
    check(hidden.menu(WEATHER,3)[0].equals(ru?"Нет":"None"),"weather absent on both surfaces displays None");
    check(v.menu(WEATHER,3)[0].equals(AppStrings.get(R.string.settings_weather_home))&&v.menu(WEATHER,3)[1].equals("City"),"independent weather callback");
@@ -66,7 +66,7 @@ public class ValuesHarness {
    check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");
    a.prefs.data.put("vpn_app","missing");check(v.vpnApp().equals(AppStrings.get(R.string.settings_not_found)),"missing VPN label fallback");a.pm.fail=false;android.os.Build.deny=false;a.prefs.data.remove("vpn_app");
   }
-  a.prefs.data.remove("video_dream_source");check(v.menu(SCREENSAVER,5)[0].equals("Aerial"),"Aerial is the default source");
+  a.prefs.data.remove("video_dream_source");check(v.menu(SCREENSAVER,6)[0].equals("Aerial"),"Aerial is the default source");
   System.out.println("PASS: production settings values, live locale, controls, dynamic rows, device/network data and platform fallbacks");
  }
 }'''

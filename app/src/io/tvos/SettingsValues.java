@@ -81,7 +81,8 @@ final class SettingsValues {
             case THEME_CHOICE: return Math.max(0, java.util.Arrays.asList("auto", "light", "dark").indexOf(Prefs.theme()));
             case TEMPERATURE_CHOICE: return Math.max(0, java.util.Arrays.asList("auto", "C", "F").indexOf(Prefs.temperature()));
             case WEATHER_CHOICE: return (weatherVisible.test(true) ? 1 : 0) | (weatherVisible.test(false) ? 2 : 0);
-            case DREAM_CHOICE: return Math.max(0, java.util.Arrays.asList("apple", "google", "na").indexOf(localPrefs().getString("video_dream_source", "apple")));
+            case SLIDESHOW_STYLE: return Math.max(0, java.util.Arrays.asList("kenburns", "classic", "slide").indexOf(localPrefs().getString("icloud_style", "kenburns")));
+            case DREAM_CHOICE: return Math.max(0, java.util.Arrays.asList("apple", "google", "na", "icloud").indexOf(localPrefs().getString("video_dream_source", "apple")));
             default: return -1;
         }
     }
@@ -138,10 +139,11 @@ final class SettingsValues {
             }
         } else if (screen == SCREENSAVER) {
             String src = localPrefs().getString("video_dream_source", "apple");
-            v[0] = "apple".equals(src) ? "Aerial" : "na".equals(src) ? "National Geographic" : "Google";
-            v[1] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
-            v[2] = onOff(localPrefs().getBoolean("aerial_show_location", false));
-            v[3] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
+            v[0] = "icloud".equals(src) ? AppStrings.get(R.string.icloud_photos) : "apple".equals(src) ? "Aerial" : "na".equals(src) ? "National Geographic" : "Google";
+            v[1] = SettingsContent.menuLabels(SLIDESHOW_STYLE)[selection(SLIDESHOW_STYLE)];
+            v[2] = onOff(localPrefs().getBoolean("aerial_show_clock", false));
+            v[3] = onOff(localPrefs().getBoolean("aerial_show_location", false));
+            v[4] = onOff(localPrefs().getBoolean("screensaver_show_weather", false));
         } else if (screen == TOP_PANEL) {
             v[2] = onOff(localPrefs().getBoolean("show_date", false));
         } else if (screen == WIDGETS) {

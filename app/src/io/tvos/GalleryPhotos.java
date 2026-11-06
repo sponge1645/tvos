@@ -1,5 +1,7 @@
 package io.tvos;
 
+import io.tvos.icloud.ICloudAlbum;
+
 import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
@@ -15,7 +17,9 @@ import java.util.concurrent.*;
 
 /** Chromecast archive and openly licensed Wikimedia nature photography; offline image cache. */
 final class GalleryPhotos {
-    private final String source;
+    private final String source, album;
+    private volatile boolean closed;
+    private volatile long cloudRefreshed;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final GalleryCache cache;
@@ -23,9 +27,16 @@ final class GalleryPhotos {
     private boolean loading;
 
     GalleryPhotos(Context context, String source) {
-        this.source = source;
-        folder = new File(context.getCacheDir(), "tvos_gallery_v2_" + source);
-        cache = new GalleryCache(folder);
+        this(context,source,"");
+    }
+    GalleryPhotos(Context context, String source, String album) {
+        this.source = source;this.album=album;
+        folder = new File(context.getCacheDir(), "tvos_gallery_v2_" + source + ("icloud".equals(source) ? "_" + ICloudAlbum.key(album) : ""));
+        if ("icloud".equals(source)) {
+            File[] old=context.getCacheDir().listFiles((dir,name) -> name.startsWith("tvos_gallery_v2_icloud_") && !name.equals(folder.getName()));
+            if(old!=null)for(File dir:old){File[] files=dir.listFiles();if(files!=null)for(File f:files)f.delete();dir.delete();}
+        }
+        cache = new GalleryCache(folder,GalleryCache.MAX_PHOTOS,GalleryCache.MAX_BYTES,"icloud".equals(source)?1000:80_000);
     }
 
     boolean hasImages() { return cache.hasImages(); }
@@ -33,24 +44,26 @@ final class GalleryPhotos {
     void release(File file) { cache.release(file); }
 
     void refresh(Runnable onReady) {
-        if (loading) return;
+        if (loading || closed || ("icloud".equals(source) && cache.hasImages() && System.currentTimeMillis()-cloudRefreshed < 10*60_000L)) return;
         loading = true;
         io.execute(() -> {
             try {
-                ArrayList<Photo> photos = "na".equals(source) ? commons() : chromecast();
+                ArrayList<Photo> photos;
+                if("icloud".equals(source)){photos=new ArrayList<>();for(ICloudAlbum.Photo p:ICloudAlbum.photos(album,12))photos.add(new Photo(p.url,null,p.id));cloudRefreshed=System.currentTimeMillis();}
+                else photos = "na".equals(source) ? commons() : chromecast();
                 Collections.shuffle(photos);
                 int added = 0;
                 for (Photo photo : photos) {
                     if (Thread.currentThread().isInterrupted() || added >= 12) break;
-                    String id = Integer.toHexString(photo.url.hashCode());
+                    String id = photo.id == null ? Integer.toHexString(photo.url.hashCode()) : photo.id;
                     File file = new File(folder, id + ".jpg");
-                    if (!file.isFile() || file.length() < 80_000) {
+                    if (!file.isFile() || file.length() < ("icloud".equals(source)?1000:80_000)) {
                         File temp = new File(folder, id + ".tmp");
                         try {
-                            download(photo.url, temp);
+                            if("icloud".equals(source))ICloudAlbum.download(photo.url,temp);else download(photo.url, temp);
                             int[] size = dimensions(temp);
                             float ratio = size[1] == 0 ? 0 : (float)size[0] / size[1];
-                            if (size[0] < 1600 || size[1] < 900 || ratio < 1.35f || ratio > 2.3f)
+                            if ("icloud".equals(source) ? size[0] < 200 || size[1] < 200 : size[0] < 1600 || size[1] < 900 || ratio < 1.35f || ratio > 2.3f)
                                 throw new IOException("Unsuitable image dimensions");
                             if (!temp.renameTo(file)) throw new IOException("Rename failed");
                             if (photo.metadata != null) {
@@ -63,20 +76,22 @@ final class GalleryPhotos {
                     added++;
                     cache.prune();
                     main.post(() -> {
-                        if (cache.add(file) && onReady != null) onReady.run();
+                        if (!closed && cache.add(file) && onReady != null) onReady.run();
                     });
                 }
                 cache.prune();
-            } catch (Exception e) { AppLog.w("gallery " + source + ": " + e); }
+            } catch (Exception e) { AppLog.w("gallery " + source + ": " + e.getClass().getSimpleName()); }
             finally { main.post(() -> loading = false); }
         });
     }
-    void close() { io.shutdownNow(); }
+    void close() { closed=true;io.shutdownNow(); }
 
     private static final class Photo {
         final String url;
         final JSONObject metadata;
-        Photo(String url, JSONObject metadata) { this.url = url; this.metadata = metadata; }
+        final String id;
+        Photo(String url, JSONObject metadata) { this(url,metadata,null); }
+        Photo(String url, JSONObject metadata,String id) { this.url = url; this.metadata = metadata; this.id=id; }
     }
 
     private ArrayList<Photo> chromecast() throws Exception {

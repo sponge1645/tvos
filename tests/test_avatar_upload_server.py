@@ -42,6 +42,14 @@ with tempfile.TemporaryDirectory() as d:
    try{handle.invoke(broken,disconnected);throw new AssertionError("response should fail");}catch(java.lang.reflect.InvocationTargetException expected){check(expected.getCause() instanceof IOException,"response write failed");}
    check(committed.get()==1&&notified.get()==1,"successful commit notifies TV exactly once even when response fails");
   }
+  AtomicInteger links=new AtomicInteger();
+  try(AvatarUploadServer link=new AvatarUploadServer(InetAddress.getLoopbackAddress(),"link form".getBytes(StandardCharsets.UTF_8),bytes->{if(!new String(bytes,StandardCharsets.UTF_8).startsWith("https://www.icloud.com/sharedalbum/"))throw new IOException("Invalid link");return new AvatarUploadServer.Prepared(){public void commit(){links.incrementAndGet();}public void close(){}};},()->{},"/icloud","text/plain",4096)){
+   link.start();check(new URI(link.url()).getPath().equals("/icloud"),"short manual iCloud route");String linkPath=uploadPath(link);
+   check(request(link,"POST",linkPath,"Content-Type: image/jpeg\\r\\nContent-Length: 1\\r\\n",new byte[]{1}).startsWith("HTTP/1.1 415"),"iCloud form rejects image bodies");
+   check(request(link,"POST",linkPath,"Content-Type: text/plain\\r\\nContent-Length: 4097\\r\\n",null).startsWith("HTTP/1.1 413"),"iCloud link body is bounded");
+   byte[] body="https://www.icloud.com/sharedalbum/#A1ExampleAlbum".getBytes(StandardCharsets.UTF_8);
+   check(request(link,"POST",linkPath,"Content-Type: text/plain;charset=UTF-8\\r\\nContent-Length: "+body.length+"\\r\\n",body).startsWith("HTTP/1.1 200")&&links.get()==1,"local link form commits once");
+  }
   System.out.println("PASS: real HTTP, session token, nonce/length, type/body bounds, Origin, single commit and cancellation race");
  }}''')
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',d,*map(str,root.glob('*.java'))],check=True)
