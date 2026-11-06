@@ -970,6 +970,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
+            if (screen == DREAM_CHOICE && focus == 3 && localPrefs().getString("icloud_album", "").isEmpty()) return;
             if (screen == SCREENSAVER && focus == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple"))) return;
             if (screen == HOME_SCREEN && (focus == 1 ? Prefs.homeCollection() : focus == 2 && !Prefs.homeCollection())) return;
             final int screenBeforeAction = screen;
