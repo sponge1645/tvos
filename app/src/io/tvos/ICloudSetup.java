@@ -37,6 +37,8 @@ final class ICloudSetup implements AutoCloseable {
                         for(int i=0;cause!=null&&i<6;i++,cause=cause.getCause()){
                             if(i>0)types.append(" > ");
                             types.append(cause.getClass().getSimpleName());
+                            String detail=cause.getMessage();
+                            if("connect".equals(detail)||"response".equals(detail)||"body".equals(detail))types.append("(").append(detail).append(")");
                         }
                         android.util.Log.w("tvOS-iCloud","Album validation: "+stage+" ["+types+"]");
                         throw new IOException("Album unavailable");

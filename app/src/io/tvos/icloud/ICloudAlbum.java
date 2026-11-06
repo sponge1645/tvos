@@ -84,25 +84,36 @@ public final class ICloudAlbum {
         return result;
     }
     private static JSONObject request(Transport transport,String host,String token,String path,JSONObject body) throws Exception {
-        try { return transport.post(host,token,path,body); }
-        catch(Exception failure) { throw new IOException(path,failure); }
+        for(int retry=0;;retry++) {
+            try { return transport.post(host,token,path,body); }
+            catch(Exception failure) {
+                boolean timeout=false;
+                for(Throwable cause=failure;cause!=null;cause=cause.getCause())
+                    if(cause instanceof java.net.SocketTimeoutException)timeout=true;
+                if(!timeout || retry>=1 || Thread.currentThread().isInterrupted())throw new IOException(path,failure);
+            }
+        }
     }
     private static JSONObject post(String host,String token,String path,JSONObject body) throws Exception {
         for(int attempt=0;attempt<2;attempt++) {
             if(!apiHost(host))throw new IOException("Invalid iCloud endpoint");
             HttpURLConnection c=(HttpURLConnection)new URL("https://"+host+"/"+token+"/sharedstreams/"+path).openConnection();
-            c.setConnectTimeout(10000);c.setReadTimeout(15000);c.setInstanceFollowRedirects(false);c.setRequestMethod("POST");c.setDoOutput(true);
+            c.setConnectTimeout(20000);c.setReadTimeout(45000);c.setInstanceFollowRedirects(false);c.setRequestMethod("POST");c.setDoOutput(true);
             c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Origin","https://www.icloud.com");
+            String phase="connect";
             try {
                 try(OutputStream out=c.getOutputStream()){out.write(body.toString().getBytes(StandardCharsets.UTF_8));}
+                phase="response";
                 int status=c.getResponseCode();
                 InputStream in=status==330?c.getErrorStream():c.getInputStream();
                 if(in==null&&status==330)in=c.getInputStream();
+                phase="body";
                 JSONObject result=new JSONObject(read(in,5*1024*1024));
                 if(status==330){host=result.optString("X-Apple-MMe-Host","");continue;}
                 if(status!=200)throw new IOException("iCloud unavailable");
                 return result;
-            } finally {c.disconnect();}
+            } catch(java.net.SocketTimeoutException timeout) { throw new IOException(phase,timeout); }
+            finally {c.disconnect();}
         }
         throw new IOException("iCloud endpoint redirect");
     }
