@@ -217,7 +217,7 @@ public class SettingsActivity extends Activity {
         SettingsView(SettingsActivity a) {
             super(a);
             activity = a;
-            icloudPanel = new ICloudSetupPanel(a, this::postInvalidateOnAnimation);
+            icloudPanel = new ICloudSetupPanel(a, this::postInvalidateOnAnimation, this::announceForAccessibility);
             modeMonitor = new SettingsModeMonitor(a, handler, () -> running, () -> screen == CITY,
                     this::announceForAccessibility, this::invalidate);
             preferenceEditor = new SettingsPreferenceEditor(localPrefs(),
@@ -538,7 +538,7 @@ public class SettingsActivity extends Activity {
         }
 
         private SettingsListRenderer.Row prepareRow(int index, String label, String value) {
-            return rowData.set(label, value, index >= 0 && index < pop.length ? pop[index].value : 0f);
+            return rowData.set(label, value, icloudPanel.hasFocus() ? 0f : index >= 0 && index < pop.length ? pop[index].value : 0f);
         }
 
         private void drawRow(Canvas c) {
@@ -561,7 +561,6 @@ public class SettingsActivity extends Activity {
                 row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = (screen == CITY && i == 1 && Prefs.automaticRegion())
                         || (screen == HOME_SCREEN && (i == 1 ? Prefs.homeCollection() : i == 2 && !Prefs.homeCollection()))
-                        || (screen == SCREENSAVER && i == 6 && localPrefs().getString("icloud_album", "").isEmpty())
                         || (screen == SCREENSAVER && i == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple")));
                 boolean chevron = !row.disabled && menuChevronVisible(i);
                 row.marker = screen == UPDATES && i == 0 && updateProgress.busy() ? Marker.SPINNER
@@ -612,6 +611,7 @@ public class SettingsActivity extends Activity {
                 return;
             }
             if (info == null) return;
+            if (screen == DREAM_CHOICE && focus == 3 && !localPrefs().getString("icloud_album", "").isEmpty()) info = AppStrings.get(R.string.icloud_connected_help);
             textRenderer.drawDescription(c, info, k, lightSettings(), Ui.displaySemibold);
         }
 
@@ -633,6 +633,7 @@ public class SettingsActivity extends Activity {
                 }
                 return updateDialog.onKey(e);
             }
+            if (icloudPanel.onKey(e, screen == DREAM_CHOICE && focus == 3)) { remoteInput.reset(); return true; }
             return remoteInput.onKey(e, screen == MAIN, remoteActions);
         }
 
@@ -969,7 +970,6 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
-            if (screen == SCREENSAVER && focus == 6 && localPrefs().getString("icloud_album", "").isEmpty()) return;
             if (screen == SCREENSAVER && focus == 1 && !"icloud".equals(localPrefs().getString("video_dream_source", "apple"))) return;
             if (screen == HOME_SCREEN && (focus == 1 ? Prefs.homeCollection() : focus == 2 && !Prefs.homeCollection())) return;
             final int screenBeforeAction = screen;
@@ -985,7 +985,6 @@ public class SettingsActivity extends Activity {
                 screen = action.targetScreen;
                 focus = SettingsScreen.multiChoice(screen) ? valueSource.selection(screen) : screen == SLEEP_TIMER ? Math.max(0, Math.min(6, localPrefs().getInt("sleep_choice", -1))) : screen == HOME_VIEW ? (Prefs.homeCollection() ? 0 : 1) : screen == HOME_CARD_STYLE ? (Prefs.homeContinue() ? 0 : 1) : screen == LANGUAGE ? ("ru".equals(Prefs.language()) ? 0 : 1) : screen == MOVIE_SERVICE ? MovieService.index(localPrefs().getString(MovieService.KEY, "")) : 0;
             } else switch (action) {
-                case DISCONNECT_ICLOUD: ICloudSetup.disconnect(activity); invalidate(); return;
                 case SELECT_OPTION:
                     switch (screen) {
                         case THEME_CHOICE: preferenceEditor.chooseTheme(focus); screen = GENERAL; focus = 1; break;

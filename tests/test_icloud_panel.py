@@ -3,11 +3,14 @@ from pathlib import Path
 import tempfile,subprocess
 from settings_list_renderer_fixture import graphics
 from settings_strings_fixture import sources as strings
+from settings_remote_fixture import write as remote
 f=graphics();f.update(strings())
 f['android/graphics/Canvas.java']=f['android/graphics/Canvas.java'].replace('public void drawRect(float', 'public void drawRoundRect(float l,float t,float r,float b,float rx,float ry,Paint p){drawRoundRect(new RectF(l,t,r,b),rx,ry,p);}public void drawRect(float')
 f['android/os/SystemClock.java']='package android.os;public class SystemClock {public static long now=1000;public static long uptimeMillis(){return now;}}'
 f['io/tvos/settings/SettingsLogoRenderer.java']='package io.tvos.settings;public class SettingsLogoRenderer {public int calls;public void draw(android.graphics.Canvas c,float k,boolean light,android.graphics.Typeface t){calls++;}}'
 f['io/tvos/ICloudSetup.java']='''package io.tvos;class ICloudSetup {interface Listener{void ready(String s,android.graphics.Path p,int n);void message(int r);void saved();}static Listener listener;static int opened,closed;ICloudSetup(android.content.Context c,Listener l){listener=l;opened++;l.ready("http://192.168.1.2:1234/icloud",new android.graphics.Path(),29);}void close(){closed++;}}'''
+f['android/content/SharedPreferences.java']=f['android/content/SharedPreferences.java'].replace('public final Map<String,Long>', 'public final Map<String,String> text=new HashMap<>();public String getString(String k,String d){return text.getOrDefault(k,d);}public final Map<String,Long>')
+f['io/tvos/ICloudSetup.java']=f['io/tvos/ICloudSetup.java'].replace('static Listener listener;', 'static void disconnect(android.content.Context c){c.getSharedPreferences("settings",0).text.clear();}static Listener listener;')
 f['io/tvos/ICloudSetupPanel.java']=Path('app/src/io/tvos/ICloudSetupPanel.java').read_text()
 f['io/tvos/PanelHarness.java']='''package io.tvos;import android.graphics.*;import android.os.SystemClock;class PanelHarness {static void check(boolean b,String s){if(!b)throw new AssertionError(s);}static boolean qr(Canvas c){return c.entries.stream().anyMatch(e->e.kind.equals("path"));}public static void main(String[] args){
  io.tvos.settings.SettingsLogoRenderer logo=new io.tvos.settings.SettingsLogoRenderer();int[] wakes={0};ICloudSetupPanel panel=new ICloudSetupPanel(new android.content.Context(),()->wakes[0]++);
@@ -18,10 +21,12 @@ f['io/tvos/PanelHarness.java']='''package io.tvos;import android.graphics.*;impo
  ICloudSetup.Listener old=ICloudSetup.listener;SystemClock.now+=120;panel.draw(new Canvas(),1,true,false,false,logo);check(ICloudSetup.closed==1,"leaving focus closes socket immediately");int before=wakes[0];old.saved();check(wakes[0]==before,"late session events ignored");
  SystemClock.now+=240;c=new Canvas();panel.draw(c,1,true,false,false,logo);check(!qr(c),"QR gone after fade");
  panel.draw(new Canvas(),1,false,true,true,logo);check(ICloudSetup.opened==2,"return opens fresh short form");panel.pause();before=wakes[0];ICloudSetup.listener.message(R.string.icloud_expired);check(ICloudSetup.closed==2&&wakes[0]==before,"pause closes session and rejects stale events");
+ android.content.Context linked=new android.content.Context();linked.prefs.text.put("icloud_album","old-album");ICloudSetupPanel change=new ICloudSetupPanel(linked,()->wakes[0]++);int opened=ICloudSetup.opened;change.draw(new Canvas(),1,true,true,true,logo);check(ICloudSetup.opened==opened,"connected album shows button instead of creating QR session");
+ change.onKey(new android.view.KeyEvent(1,3,0,false),true);change.onKey(new android.view.KeyEvent(0,5,0,false),true);change.onKey(new android.view.KeyEvent(1,5,0,true),true);check(!linked.prefs.text.isEmpty(),"cancelled confirm retains old album");change.onKey(new android.view.KeyEvent(0,5,0,false),true);change.onKey(new android.view.KeyEvent(1,5,0,false),true);check(linked.prefs.text.isEmpty()&&ICloudSetup.opened==opened+1,"disconnect removes old album and starts fresh QR session");change.pause();
  System.out.println("PASS: QR focus lifecycle, crossfade, single listener, cancellation, stale events and reduced motion");}}
 '''
 with tempfile.TemporaryDirectory() as d:
- root=Path(d)
+ root=Path(d);remote(root)
  for name,text in f.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
  subprocess.run(['java','com.sun.tools.javac.Main','-d',d,*map(str,root.rglob('*.java'))],check=True)

@@ -6,6 +6,7 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 harness='''package io.tvos;import android.graphics.*;import io.tvos.settings.*;import io.tvos.settings.SettingsListRenderer.Kind;import io.tvos.settings.SettingsListRenderer.Marker;import static io.tvos.settings.SettingsScreen.*;import java.util.*;
 public class BindingHarness {
+ static class CloudPanel {boolean hasFocus(){return false;}}final CloudPanel icloudPanel=new CloudPanel();
  Object getContext(){return this;}boolean lightSettings(){return true;}
  static class Symbols {static float width(Object c,String name,float size){return size;}static void draw(Object context,Canvas c,String name,float x,float y,float size,int color){}}
 

@@ -11,4 +11,6 @@
     <string name="icloud_expired">Session ended. Select this item again.</string>
     <string name="icloud_saved">Album connected</string>
     <string name="icloud_disconnect">Disconnect Album</string>
+    <string name="icloud_disconnect_hint">← — focus the button</string>
+    <string name="icloud_connected_help">To connect another album,\ndisconnect the current one using the button on the left.</string>
 </resources>

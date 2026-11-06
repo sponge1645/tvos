@@ -26,7 +26,7 @@ public final class SettingsScreen {
             case HOME_SCREEN: case WEATHER: case ACCESSIBILITY: return 3;
             case TOP_PANEL: return 4;
             case SYSTEM: return 4;
-            case SCREENSAVER: return 7;
+            case SCREENSAVER: return 6;
             case APPS_DOWNLOADS: return 7;
             case GENERAL: return 6;
             case LANGUAGE: return 2;

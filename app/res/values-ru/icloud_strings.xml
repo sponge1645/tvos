@@ -11,4 +11,6 @@
     <string name="icloud_expired">Сеанс завершён. Выберите пункт заново.</string>
     <string name="icloud_saved">Альбом подключён</string>
     <string name="icloud_disconnect">Отключить альбом</string>
+    <string name="icloud_disconnect_hint">← — перейти к кнопке</string>
+    <string name="icloud_connected_help">Чтобы подключить другой альбом,\nотключите текущий кнопкой слева.</string>
 </resources>
