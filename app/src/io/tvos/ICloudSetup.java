@@ -29,7 +29,18 @@ final class ICloudSetup implements AutoCloseable {
                 }
                 AvatarUploadServer session=new AvatarUploadServer(InetAddress.getByName(network.address),page,bytes -> {
                     final String link=new String(bytes,StandardCharsets.UTF_8).trim();
-                    try {ICloudAlbum.photos(link,1);}catch(Exception failure){throw new IOException("Album unavailable");}
+                    try {ICloudAlbum.photos(link,1);}catch(Exception failure){
+                        String stage=failure.getMessage();
+                        if(!"webstream".equals(stage)&&!"webasseturls".equals(stage))stage="link/photo parsing";
+                        StringBuilder types=new StringBuilder();
+                        Throwable cause=failure;
+                        for(int i=0;cause!=null&&i<6;i++,cause=cause.getCause()){
+                            if(i>0)types.append(" > ");
+                            types.append(cause.getClass().getSimpleName());
+                        }
+                        android.util.Log.w("tvOS-iCloud","Album validation: "+stage+" ["+types+"]");
+                        throw new IOException("Album unavailable");
+                    }
                     return new AvatarUploadServer.Prepared(){
                         public void commit() throws IOException {
                             if(!app.getSharedPreferences("settings",Context.MODE_PRIVATE).edit().putString("icloud_album",link).putString("video_dream_source","icloud").commit())throw new IOException("Save failed");

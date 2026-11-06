@@ -49,7 +49,7 @@ public final class ICloudAlbum {
     public static List<Photo> photos(String link,int limit) throws Exception { return photos(link,limit,ICloudAlbum::post); }
     public static List<Photo> photos(String link,int limit,Transport transport) throws Exception {
         String token=token(link),host=host(token);
-        JSONObject stream=transport.post(host,token,"webstream",new JSONObject());
+        JSONObject stream=request(transport,host,token,"webstream",new JSONObject());
         JSONArray raw=stream.optJSONArray("photos");
         List<JSONObject> eligible=new ArrayList<>();
         if(raw!=null)for(int i=0;i<Math.min(raw.length(),5000);i++) {
@@ -62,7 +62,7 @@ public final class ICloudAlbum {
         if(eligible.size()>Math.max(1,Math.min(limit,12)))eligible.subList(Math.max(1,Math.min(limit,12)),eligible.size()).clear();
         JSONArray guids=new JSONArray();for(JSONObject p:eligible)guids.put(p.getString("photoGuid"));
         if(eligible.isEmpty())throw new IOException("Album has no usable photos");
-        JSONObject assets=transport.post(host,token,"webasseturls",new JSONObject().put("photoGuids",guids));
+        JSONObject assets=request(transport,host,token,"webasseturls",new JSONObject().put("photoGuids",guids));
         JSONObject items=assets.optJSONObject("items"),locations=assets.optJSONObject("locations");
         List<Photo> result=new ArrayList<>();
         if(items!=null&&locations!=null)for(JSONObject p:eligible) {
@@ -82,6 +82,10 @@ public final class ICloudAlbum {
         }
         if(result.isEmpty())throw new IOException("No photo URLs");
         return result;
+    }
+    private static JSONObject request(Transport transport,String host,String token,String path,JSONObject body) throws Exception {
+        try { return transport.post(host,token,path,body); }
+        catch(Exception failure) { throw new IOException(path,failure); }
     }
     private static JSONObject post(String host,String token,String path,JSONObject body) throws Exception {
         for(int attempt=0;attempt<2;attempt++) {
