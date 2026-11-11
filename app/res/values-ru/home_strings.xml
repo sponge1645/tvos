@@ -65,4 +65,5 @@
     <string name="home_no_exact_kinopoisk_match" formatted="false">Открываем поиск по названию в Кинопоиске.</string>
     <string name="home_kinopoisk_lookup_failed" formatted="false">Не удалось получить ссылку на карточку. Открываем поиск Кинопоиска.</string>
     <string name="home_kinopoisk_open_failed" formatted="false">Не удалось открыть карточку в Кинопоиске.</string>
+    <string name="home_could_not_open_rutube_search" formatted="false">Не удалось открыть поиск RUTUBE.</string>
 </resources>

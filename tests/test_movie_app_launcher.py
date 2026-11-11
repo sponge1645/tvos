@@ -49,6 +49,9 @@ public class MovieLauncherHarness implements MovieAppLauncher.Host {
    JSONArray.response=Arrays.asList(item(81,"Тест (2024)","movie"));direct.launcher.choose(pick());direct.worker();direct.handler.drain();
    check(direct.activity.launched!=null&&direct.activity.launched.pkg.equals(pkg)&&AlertDialog.labels==null,"preferred service bypasses chooser and keeps route: "+service);
   }
+  MovieLauncherHarness rutube=app("ru.rutube.app");rutube.activity.prefs.strings.put(MovieService.KEY,"rutube");AlertDialog.labels=null;rutube.launcher.choose(pick());
+  check(rutube.activity.launched.pkg.equals("ru.rutube.app")&&rutube.activity.launched.uri.toString().startsWith("rutube://rutube.ru/search?query=")&&AlertDialog.labels==null,"saved Rutube service opens native search directly");
+  check(MovieService.id(5).equals("kinopoisk")&&MovieService.id(6).equals("rutube"),"existing saved provider indices preserved");
   MovieLauncherHarness kp=app("ru.kinopoisk.tv");kp.activity.prefs.strings.put(MovieService.KEY,"kinopoisk");
   kp.launcher.choose(pick());kp.launcher.choose(pick());check(kp.queue.size()==1&&kp.activity.starts==0,"Kinopoisk lookup queued once");kp.worker();check(kp.activity.starts==0,"Kinopoisk waits for main publication");kp.handler.drain();check(kp.activity.launched.pkg.equals("ru.kinopoisk.tv")&&kp.activity.launched.uri.toString().equals(KinopoiskLink.url),"exact HD link opens in TV app");
   for(boolean inactive:new boolean[]{false,true}){MovieLauncherHarness stale=app("ru.kinopoisk.tv");stale.launcher.choose(pick());stale.worker();if(inactive)stale.active=false;else stale.epoch++;stale.handler.drain();check(stale.activity.starts==0,"stale Kinopoisk lookup never opens after navigation");}

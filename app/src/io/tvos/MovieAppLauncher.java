@@ -81,7 +81,7 @@ final class MovieAppLauncher {
         }
         // WATCH_APPS_ONLY_V4: show only supported video applications.
         java.util.Set<String> allowed = new java.util.HashSet<>(java.util.Arrays.asList(
-                "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv", "ru.kinopoisk.tv"));
+                "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv", "ru.kinopoisk.tv", "ru.rutube.app"));
         apps.keySet().retainAll(allowed);
         if (apps.isEmpty()) {
             host.toast(AppStrings.get(R.string.home_no_launchable_apps_found));
@@ -111,6 +111,10 @@ final class MovieAppLauncher {
     }
 
     private void open(Recs.Pick pick, String pkg, String label) {
+        if ("ru.rutube.app".equals(pkg)) {
+            openRutubeSearch(pick.title);
+            return;
+        }
         if ("ru.kinopoisk.tv".equals(pkg)) {
             openKinopoisk(pick);
             return;
@@ -193,6 +197,24 @@ final class MovieAppLauncher {
                 host.toast(AppStrings.get(R.string.home_kinopoisk_open_failed));
             });
         });
+    }
+
+    /** Rutube TV's VIEW route consumes the decoded query parameter. */
+    private void openRutubeSearch(String title) {
+        if (title == null || title.trim().isEmpty()) return;
+        try {
+            String query = java.net.URLEncoder.encode(title.trim(), "UTF-8").replace("+", "%20");
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse("rutube://rutube.ru/search?query=" + query));
+            intent.setPackage("ru.rutube.app");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (AppLaunch.start(activity, intent, "Rutube search")) return;
+        } catch (java.io.UnsupportedEncodingException e) {
+            AppLog.w("Rutube query encoding: " + e.getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            AppLog.unexpected("Rutube search preparation", e);
+        }
+        host.toast(AppStrings.get(R.string.home_could_not_open_rutube_search));
     }
 
     /** Open VK Video search with the selected movie title; no automation. */

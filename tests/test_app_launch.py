@@ -37,7 +37,7 @@ public class LaunchHarness extends View {
  static Recs.Pick pick(){Recs.Pick p=new Recs.Pick();p.kind="movie";p.id=42;p.title="A & Б";return p;}
  static LaunchHarness app(String pkg){LaunchHarness h=new LaunchHarness();h.activity.pm.tv.add(new ResolveInfo(pkg,"Video"));
   h.activity.pm.leanback=new Intent("launch").setPackage(pkg);return h;}
-'''+''.join(block(movie,s).replace('choose(', 'chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(Recs.Pick pick)', '    private void choose(Recs.Pick pick, boolean alwaysAsk)', '    private void open(', '    private void openVkVideoSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
+'''+''.join(block(movie,s).replace('choose(', 'chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(Recs.Pick pick)', '    private void choose(Recs.Pick pick, boolean alwaysAsk)', '    private void open(', '    private void openVkVideoSearch(', '    private void openRutubeSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
  public static void main(String[] args){
   Intent intent=new Intent("test");Context c=new Context();Log.reset();
   check(AppLaunch.start(c,intent,"launch")&&c.launched==intent,"one-argument launch success");
@@ -102,6 +102,10 @@ public class LaunchHarness extends View {
   LaunchHarness explicit=app("top.rootu.lampa");explicit.chooseWatchApp(pick(),true);
   check(AlertDialog.labels!=null&&AlertDialog.labels.length==1,"title-page Watch presents chooser despite saved default");Context.service="";
   LaunchHarness missing=new LaunchHarness();missing.chooseWatchApp(pick());check(missing.toasts==1,"empty provider list message");
+  LaunchHarness rutube=app("ru.rutube.app");rutube.chooseWatchApp(pick());
+  check(rutube.activity.launched.pkg.equals("ru.rutube.app")&&rutube.activity.launched.uri.toString().equals("rutube://rutube.ru/search?query=A%20%26%20%D0%91"),"Rutube chooser sends encoded title to native search");
+  rutube=new LaunchHarness();rutube.activity.startFailure=new ActivityNotFoundException("unsupported route");rutube.openRutubeSearch("A+B / ?");check(rutube.toasts==1&&rutube.activity.starts==1,"Rutube refusal reported without opening home");
+  rutube=new LaunchHarness();rutube.openRutubeSearch(" ");check(rutube.activity.starts==0,"Rutube blank query ignored");
   LaunchHarness vk=new LaunchHarness();vk.openVkVideoSearch("A & Б");
   check(vk.activity.launched.uri.toString().equals("vkvideo://video/search?query=A+%26+%D0%91")&&vk.activity.launched.pkg.equals("com.vk.tv"),"VK encoded query and package retained");
   vk=new LaunchHarness();vk.activity.startFailure=new ActivityNotFoundException("private title");vk.openVkVideoSearch("movie");

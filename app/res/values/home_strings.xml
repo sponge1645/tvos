@@ -65,4 +65,5 @@
     <string name="home_no_exact_kinopoisk_match" formatted="false">Opening Kinopoisk search for this title.</string>
     <string name="home_kinopoisk_lookup_failed" formatted="false">Could not retrieve the title link. Opening Kinopoisk search.</string>
     <string name="home_kinopoisk_open_failed" formatted="false">Could not open the title in Kinopoisk.</string>
+    <string name="home_could_not_open_rutube_search" formatted="false">Could not open RUTUBE search.</string>
 </resources>

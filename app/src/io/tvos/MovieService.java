@@ -6,7 +6,7 @@ import java.util.function.Predicate;
 final class MovieService {
     private MovieService() { }
     static final String KEY = "movie_service";
-    private static final String[] IDS = {"", "kinopub", "lampa", "seena", "vk", "kinopoisk"};
+    private static final String[] IDS = {"", "kinopub", "lampa", "seena", "vk", "kinopoisk", "rutube"};
     static int count() { return IDS.length; }
     static String id(int index) { return index >= 0 && index < IDS.length ? IDS[index] : ""; }
     static int index(String id) {
@@ -20,6 +20,7 @@ final class MovieService {
             case 3: return "Seena";
             case 4: return "VK";
             case 5: return AppStrings.get(R.string.service_kinopoisk, language);
+            case 6: return "RUTUBE";
             default: return AppStrings.get(R.string.settings_ask_every_time, language);
         }
     }
@@ -34,6 +35,7 @@ final class MovieService {
             case "kinopub": packages = new String[]{"watch.kino", "watch.kino.mod"}; break;
             case "lampa": packages = new String[]{"top.rootu.lampa"}; break;
             case "seena": packages = new String[]{"com.seena.app"}; break;
+            case "rutube": packages = new String[]{"ru.rutube.app"}; break;
             case "kinopoisk": packages = new String[]{"ru.kinopoisk.tv"}; break;
             case "vk": packages = new String[]{"com.vk.tv"}; break;
             default: return "";
