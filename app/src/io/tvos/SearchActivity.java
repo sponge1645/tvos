@@ -375,7 +375,7 @@ public final class SearchActivity extends Activity {
         detailOverview = paragraph(data == null ? text(R.string.search_loading) : data.overview.isEmpty() ? text(R.string.search_no_overview) : data.overview, 30, 0xFFDDDFE4, 860, 3);
         detailActionsTop = 936;
         detailOverviewTop = detailActionsTop - 32 - detailOverview.getHeight();
-        detailMetaTop = detailOverviewTop - 18 - detailMeta.getHeight();
+        detailMetaTop = detailOverviewTop - 8 - detailMeta.getHeight();
         targets.clear(); posterTargets.clear(); focus.clear();
         target(80, detailActionsTop, 270, 76, "\u25b6  " + text(R.string.search_watch), -1,
                 () -> launcher.chooseService(detail));
