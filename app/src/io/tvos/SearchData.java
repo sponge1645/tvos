@@ -9,7 +9,7 @@ import org.json.JSONObject;
 final class SearchData {
     private SearchData() { }
     static final class Detail {
-        String overview = "", genres = "", backdrop = "";
+        String overview = "", genres = "", backdrop = "", logo = "";
         int minutes;
     }
     static List<Recs.Pick> trending() throws java.io.IOException, org.json.JSONException {
@@ -25,11 +25,14 @@ final class SearchData {
     }
     static Detail detail(Recs.Pick pick) throws java.io.IOException, org.json.JSONException {
         JSONObject data = TmdbClient.get("/" + ("tv".equals(pick.kind) ? "tv" : "movie") + "/" + pick.id
-                + "?language=" + AppLanguage.current().apiTag);
+                + "?language=" + AppLanguage.current().apiTag + "&append_to_response=images");
         Detail result = new Detail();
         result.overview = data.optString("overview", "");
         result.backdrop = data.optString("backdrop_path", "");
         result.minutes = data.optInt("runtime", 0);
+        JSONObject images = data.optJSONObject("images");
+        result.logo = DockArtwork.image(DockArtwork.logo(images == null ? null : images.optJSONArray("logos"),
+                AppLanguage.current().code, data.optString("original_language", "")), "w500");
         List<String> names = new ArrayList<>();
         JSONArray genres = data.optJSONArray("genres");
         if (genres != null) for (int i = 0; i < genres.length(); i++) {

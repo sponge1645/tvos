@@ -8,10 +8,11 @@ sources = {
  'org/json/JSONArray.java': ARRAY,
  'org/json/JSONException.java': 'package org.json;public class JSONException extends Exception {public JSONException(String s){super(s);}}',
  'io/tvos/Recs.java': 'package io.tvos;class Recs {' + block(Path('app/src/io/tvos/Recs.java').read_text(), '    static final class Pick {') + '}',
- 'io/tvos/AppLanguage.java': 'package io.tvos;class AppLanguage {String apiTag="ru-RU";static AppLanguage current(){return new AppLanguage();}}',
+ 'io/tvos/AppLanguage.java': 'package io.tvos;class AppLanguage {String code="ru",apiTag="ru-RU";static AppLanguage current(){return new AppLanguage();}}',
  'io/tvos/TmdbMetadata.java': '''package io.tvos;class TmdbMetadata {static Recs.Pick search(org.json.JSONObject item){if(!item.optString("media_type").equals("movie")&&!item.optString("media_type").equals("tv"))return null;Recs.Pick p=new Recs.Pick();p.id=item.optInt("id");return p;}}''',
  'io/tvos/TmdbClient.java': '''package io.tvos;class TmdbClient {static org.json.JSONObject response;static String path;static org.json.JSONObject get(String p)throws java.io.IOException,org.json.JSONException{path=p;return response;}}''',
 }
+sources['io/tvos/DockArtwork.java']='package io.tvos;import org.json.*;class DockArtwork {'+block(Path('app/src/io/tvos/DockArtwork.java').read_text(),'    static String logo(JSONArray items, String language, String originalLanguage)')+block(Path('app/src/io/tvos/DockArtwork.java').read_text(),'    static String image(')+'}'
 for name in ['SearchData', 'SearchHistory']:
  sources['io/tvos/' + name + '.java'] = Path('app/src/io/tvos/' + name + '.java').read_text()
 sources['io/tvos/SearchHarness.java'] = '''package io.tvos;
@@ -34,8 +35,16 @@ public class SearchHarness {
   Recs.Pick pick=new Recs.Pick();pick.id=42;pick.kind="tv";
   TmdbClient.response=new JSONObject().put("overview","Synopsis").put("backdrop_path","/wide.jpg").put("genres",new JSONArray().put(new JSONObject().put("name","Drama")).put(new JSONObject().put("name","Comedy")));
   SearchData.Detail detail=SearchData.detail(pick);
-  check(TmdbClient.path.equals("/tv/42?language=ru-RU"),"series identity and language retained");
+  check(TmdbClient.path.equals("/tv/42?language=ru-RU&append_to_response=images"),"series identity and language retained");
   check(detail.genres.equals("Drama, Comedy")&&detail.overview.equals("Synopsis")&&detail.backdrop.equals("/wide.jpg"),"detail fields mapped");
+  check(detail.logo.isEmpty(),"missing logo leaves text fallback");
+  TmdbClient.response.put("original_language","ja").put("images",new JSONObject().put("logos",new JSONArray()
+   .put(new JSONObject().put("file_path","/en.png").put("iso_639_1","en"))
+   .put(new JSONObject().put("file_path","/ru.svg").put("iso_639_1","ru"))
+   .put(new JSONObject().put("file_path","/ru.png").put("iso_639_1","ru"))));
+  detail=SearchData.detail(pick);check(detail.logo.endsWith("/w500/ru.png"),"localized raster logo preferred to English and SVG");
+  TmdbClient.response.put("images",new JSONObject().put("logos",new JSONArray().put(new JSONObject().put("file_path","/ja.png").put("iso_639_1","ja"))));
+  detail=SearchData.detail(pick);check(detail.logo.endsWith("/ja.png"),"original language logo fallback");
   check(detail.minutes==0,"unknown runtime is not invented");
   pick.kind="movie";TmdbClient.response=new JSONObject().put("runtime",123);detail=SearchData.detail(pick);
   check(TmdbClient.path.startsWith("/movie/42?")&&detail.minutes==123&&detail.genres.isEmpty(),"movie runtime and missing optional fields");

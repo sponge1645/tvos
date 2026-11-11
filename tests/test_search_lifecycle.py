@@ -10,10 +10,10 @@ public class SearchLifecycle extends Base {
  static class View {static final int INVISIBLE=4;void setVisibility(int n){}String getText(){return "query";}}View query=new View();
  static class Search {void cancel(){}void pause(boolean b){}void resume(String s){}void restore(String s,boolean b){}}Search search=new Search();static class Shortcuts{void cancel(){}void reload(){}}Shortcuts shortcuts=new Shortcuts();
  static class Animation {void cancel(){}}Animation scrolling;void resetPageTransition(){}
- static class SearchData {static int calls;static class Detail {String backdrop="new";}static Detail detail(Recs.Pick p)throws java.io.IOException,org.json.JSONException{calls++;return new Detail();}}
+ static class SearchData {static int calls;static class Detail {String backdrop="new",overview="";}static Detail detail(Recs.Pick p)throws java.io.IOException,org.json.JSONException{calls++;return new Detail();}}
  static class R {static class string {static final int search_detail_unavailable=1;}}
  List<Runnable> posted=Collections.synchronizedList(new ArrayList<>());class Main{void post(Runnable r){posted.add(r);}}Main main=new Main();
- ExecutorService metadataIo=Executors.newSingleThreadExecutor();Future<?> detailWork;Recs.Pick detail;int generation,selected=0,savedSelected,builds,refreshes;float scroll,searchScroll;boolean closed,running=true,detailNeedsLoad;String detailArt,detailOverview;
+ ExecutorService metadataIo=Executors.newSingleThreadExecutor();Future<?> detailWork;Recs.Pick detail;int generation,selected=0,savedSelected,builds,refreshes;float scroll,searchScroll;boolean closed,running=true,detailNeedsLoad;String detailArt,detailLogo,detailOverview;
  List<Object> matches=new ArrayList<>();static class Cache{boolean empty;void setWindow(Set<String> s){empty=s.isEmpty();}}Cache images=new Cache();static class Renderer{void clear(){}}Renderer rounded=new Renderer(),posters=new Renderer();
  void remember(){}void hideKeyboard(){}String wide(String v){return v;}void buildDetail(SearchData.Detail d){builds++;}void scrollTo(float v,boolean a){}void select(int i,boolean b){}void refreshImages(){refreshes++;images.empty=false;}String text(int n){return "error";}String paragraph(String s,int a,int b,int c,int d){return s;}static class Page{void invalidate(){}}Page page=new Page();
  void drain(){for(Runnable r:new ArrayList<>(posted))r.run();posted.clear();}static void check(boolean b,String m){if(!b)throw new AssertionError(m);}

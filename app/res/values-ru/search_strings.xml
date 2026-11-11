@@ -19,4 +19,5 @@
     <string name="search_detail_unavailable">Не удалось загрузить описание. Проверьте подключение.</string>
     <string name="search_voice_unavailable">Голосовой поиск недоступен. Воспользуйтесь клавиатурой.</string>
     <string name="search_clear">Очистить</string>
+    <string name="search_watch">Смотреть</string>
 </resources>

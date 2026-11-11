@@ -36,7 +36,7 @@ public class LaunchHarness extends View {
  static Recs.Pick pick(){Recs.Pick p=new Recs.Pick();p.kind="movie";p.id=42;p.title="A & Б";return p;}
  static LaunchHarness app(String pkg){LaunchHarness h=new LaunchHarness();h.activity.pm.tv.add(new ResolveInfo(pkg,"Video"));
   h.activity.pm.leanback=new Intent("launch").setPackage(pkg);return h;}
-'''+''.join(block(movie,s).replace('void choose(', 'void chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(', '    private void open(', '    private void openVkVideoSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
+'''+''.join(block(movie,s).replace('choose(', 'chooseWatchApp(').replace('host.toast(', 'showToast(').replace('app, anchor,', 'app, this,') for s in ['    void choose(Recs.Pick pick)', '    private void choose(Recs.Pick pick, boolean alwaysAsk)', '    private void open(', '    private void openVkVideoSearch('])+block(home,'    private void openNetworkSettings(')+block(settings,'        private void launchAirPlay(')+'''
  public static void main(String[] args){
   Intent intent=new Intent("test");Context c=new Context();Log.reset();
   check(AppLaunch.start(c,intent,"launch")&&c.launched==intent,"one-argument launch success");
@@ -95,6 +95,10 @@ public class LaunchHarness extends View {
   for(String pkg:new String[]{"watch.kino","watch.kino.mod"}){
    LaunchHarness kino=app(pkg);kino.chooseWatchApp(pick());check(pkg.equals(kino.target)&&kino.activity.starts==0,"chosen KinoPub package preserved");
   }
+  Context.service="lampa";AlertDialog.labels=null;LaunchHarness preferred=app("top.rootu.lampa");preferred.chooseWatchApp(pick());
+  check(AlertDialog.labels==null,"Home keeps saved default without chooser");
+  LaunchHarness explicit=app("top.rootu.lampa");explicit.chooseWatchApp(pick(),true);
+  check(AlertDialog.labels!=null&&AlertDialog.labels.length==1,"title-page Watch presents chooser despite saved default");Context.service="";
   LaunchHarness missing=new LaunchHarness();missing.chooseWatchApp(pick());check(missing.toasts==1,"empty provider list message");
   LaunchHarness vk=new LaunchHarness();vk.openVkVideoSearch("A & Б");
   check(vk.activity.launched.uri.toString().equals("vkvideo://video/search?query=A+%26+%D0%91")&&vk.activity.launched.pkg.equals("com.vk.tv"),"VK encoded query and package retained");
@@ -114,7 +118,7 @@ public class LaunchHarness extends View {
 }
 '''
 sources=files()
-sources['android/content/Context.java']=sources['android/content/Context.java'].replace('public class Context {','public class Context {public static final int MODE_PRIVATE=0;public static class Preferences {public String getString(String k,String d){return d;}}public Preferences getSharedPreferences(String n,int m){return new Preferences();}')
+sources['android/content/Context.java']=sources['android/content/Context.java'].replace('public class Context {','public class Context {public static final int MODE_PRIVATE=0;public static String service="";public static class Preferences {public String getString(String k,String d){return k.equals("movie_service")?service:d;}}public Preferences getSharedPreferences(String n,int m){return new Preferences();}')
 sources['io/tvos/HomeApps.java']=app_wrapper
 sources['io/tvos/LaunchHarness.java']=harness
 sources['io/tvos/KinoPubLink.java']=Path('app/src/io/tvos/KinoPubLink.java').read_text()

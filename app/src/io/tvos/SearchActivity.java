@@ -65,7 +65,8 @@ public final class SearchActivity extends Activity {
     private Future<?> detailWork;
     private Recs.Pick detail;
     private StaticLayout detailTitle, detailOverview, detailMeta;
-    private String detailArt = "", problem = "";
+    private String detailArt = "", detailLogo = "", problem = "";
+    private float detailMetaTop, detailOverviewTop;
     private float scale, scroll, scrollDestination, contentHeight, resultsTop, detailActionsTop, searchScroll;
     private int selected = -1, savedSelected = -1, column, generation;
     private long lastFrame;
@@ -196,7 +197,7 @@ public final class SearchActivity extends Activity {
     private void refreshImages() {
         if (!running || closed) { images.setWindow(java.util.Collections.emptySet()); return; }
         Set<String> wanted = new HashSet<>();
-        if (detail != null) { if (!detailArt.isEmpty()) wanted.add(detailArt); }
+        if (detail != null) { if (!detailArt.isEmpty()) wanted.add(detailArt); if (!detailLogo.isEmpty()) wanted.add(detailLogo); }
         else for (int index : posterTargets) {
             Target t = targets.get(index);
             if (t.bounds.bottom >= scroll-100 && t.bounds.top <= scroll+1180) {
@@ -337,7 +338,7 @@ public final class SearchActivity extends Activity {
     }
     private void showDetail(Recs.Pick pick) {
         remember(); hideKeyboard(); search.cancel(); savedSelected = selected; searchScroll = scroll; detail = pick; generation++;
-        detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
+        detailLogo = ""; detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
         buildDetail(null); scrollTo(0, false); select(0, false);
         detailNeedsLoad = true;
         loadDetail();
@@ -355,32 +356,31 @@ public final class SearchActivity extends Activity {
             }); } catch (java.io.IOException | org.json.JSONException e) { main.post(() -> {
                 if (running && !closed && generation == expected && detail == pick) {
                     detailNeedsLoad = false;
-                    detailOverview = paragraph(text(R.string.search_detail_unavailable), 30, 0xFFDDDFE4, 820, 5); page.invalidate();
+                    SearchData.Detail fallback = new SearchData.Detail();
+                    fallback.overview = text(R.string.search_detail_unavailable); buildDetail(fallback); page.invalidate();
                 }
             }); }
         });
     }
     private void buildDetail(SearchData.Detail data) {
-        detailTitle = paragraph(detail.title, 64, 0xFFFFFFFF, 820, 2, Ui.displayBold);
+        detailLogo = data == null ? "" : data.logo;
+        detailTitle = paragraph(detail.title, 76, 0xFFFFFFFF, 820, 2, Ui.displayBold);
         List<String> values = new ArrayList<>(); String year = "tv".equals(detail.kind) ? detail.tvOrigin : detail.movieOrigin;
-        if (year != null && !year.isEmpty()) values.add(year);
         values.add(text("tv".equals(detail.kind) ? R.string.search_series : R.string.search_movie));
+        if (year != null && !year.isEmpty()) values.add(year);
         if (data != null && !data.genres.isEmpty()) values.add(data.genres);
         if (detail.rating > 0) values.add(String.format(Ui.locale(), "TMDB %.1f", detail.rating));
         if (data != null && data.minutes > 0) values.add(String.format(Ui.locale(), text(R.string.search_runtime), data.minutes));
-        detailMeta = paragraph(String.join("  ·  ", values), 27, 0xFFB7BAC0, 820, 2);
-        detailOverview = paragraph(data == null ? text(R.string.search_loading) : data.overview.isEmpty() ? text(R.string.search_no_overview) : data.overview, 30, 0xFFDDDFE4, 820, 5);
-        detailActionsTop = 90+detailTitle.getHeight()+26+detailMeta.getHeight()+32+detailOverview.getHeight()+100;
+        detailMeta = paragraph(String.join("  ·  ", values), 27, 0xFFE0E1E5, 1040, 2);
+        detailOverview = paragraph(data == null ? text(R.string.search_loading) : data.overview.isEmpty() ? text(R.string.search_no_overview) : data.overview, 30, 0xFFDDDFE4, 860, 3);
+        detailActionsTop = 936;
+        detailOverviewTop = detailActionsTop - 32 - detailOverview.getHeight();
+        detailMetaTop = detailOverviewTop - 18 - detailMeta.getHeight();
         targets.clear(); posterTargets.clear(); focus.clear();
-        float y = detailActionsTop;
-        for (int i = 1; i < MovieService.count(); i++) {
-            String pkg = MovieService.resolve(MovieService.id(i), p -> HomeApps.launchIntent(getPackageManager(), p) != null); if (pkg.isEmpty()) continue;
-            String name = MovieService.label(i, AppLanguage.current());
-            target(80, y, 520, 72, String.format(Ui.locale(), text(R.string.search_watch_in), name), -1, () -> launcher.openIn(detail, pkg, name)); y += 96;
-        }
-        if (selected >= targets.size()) selected = targets.isEmpty() ? -1 : 0;
-        if (selected >= 0) focus.get(selected).snap(1);
-        contentHeight = Math.max(1080, y+100); refreshImages(); page.invalidate();
+        target(80, detailActionsTop, 270, 76, "\u25b6  " + text(R.string.search_watch), -1,
+                () -> launcher.chooseService(detail));
+        selected = 0; focus.get(0).snap(1);
+        contentHeight = 1080; refreshImages(); page.invalidate();
     }
     private void closeDetail() { transitionPage(this::returnToResults, false); }
     private void returnToResults() {
@@ -418,7 +418,12 @@ public final class SearchActivity extends Activity {
             c.drawBitmap(backdrop, null, scratch, paint);
             if (detail != null) {
                 Bitmap image = images.poster(detailArt); if (image != null) rounded.draw(c, image, scratch, 0);
-                paint.setShader(new LinearGradient(0, 0, getWidth(), 0, new int[]{0xF7101419,0xD9101419,0x42101419}, null, Shader.TileMode.CLAMP)); c.drawRect(scratch, paint); paint.setShader(null);
+                paint.setShader(new LinearGradient(0, 0, getWidth(), 0,
+                        new int[]{0x99101419,0x18101419,0xD9101419}, new float[]{0,.55f,1}, Shader.TileMode.CLAMP));
+                c.drawRect(scratch, paint);
+                paint.setShader(new LinearGradient(0, getHeight() * .3f, 0, getHeight(),
+                        new int[]{0x00101419,0x66101419,0xF7101419}, new float[]{0,.55f,1}, Shader.TileMode.CLAMP));
+                c.drawRect(scratch, paint); paint.setShader(null);
             }
             int saved = c.save(); c.clipRect(0, 0, getWidth(), getHeight()); c.scale(scale, scale); c.translate(0, -scroll);
             long now = SystemClock.uptimeMillis(); float dt = lastFrame == 0 ? .016f : Math.min(.04f, (now-lastFrame)/1000f); lastFrame = now; boolean moving = false;
@@ -440,10 +445,17 @@ public final class SearchActivity extends Activity {
                     }
                 }
             } else {
-                paragraph(c, detailTitle, 80, 90); paragraph(c, detailMeta, 80, 116+detailTitle.getHeight());
-                paragraph(c, detailOverview, 80, 148+detailTitle.getHeight()+detailMeta.getHeight());
-                label(c, text(R.string.search_how), 80, detailActionsTop-34, 27, 0xFFB7BAC0);
-                if (targets.isEmpty()) label(c, text(R.string.search_no_apps), 80, detailActionsTop+30, 27, 0xFFDDDFE4);
+                float titleBottom = detailMetaTop - 28;
+                Bitmap logo = detailLogo.isEmpty() ? null : images.poster(detailLogo);
+                if (logo != null) {
+                    float fit = Math.min(640f / logo.getWidth(), 180f / logo.getHeight());
+                    scratch.set(80, titleBottom - logo.getHeight() * fit,
+                            80 + logo.getWidth() * fit, titleBottom);
+                    paint.setShader(null); paint.setColor(0xFFFFFFFF);
+                    c.drawBitmap(logo, null, scratch, paint);
+                } else paragraph(c, detailTitle, 80, titleBottom - detailTitle.getHeight());
+                paragraph(c, detailMeta, 80, detailMetaTop);
+                paragraph(c, detailOverview, 80, detailOverviewTop);
                 for (int i = 0; i < targets.size(); i++) capsule(c, targets.get(i), focus.get(i).value);
             }
             c.restoreToCount(saved);

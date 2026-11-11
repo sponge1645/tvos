@@ -47,12 +47,17 @@ final class MovieAppLauncher {
     }
 
     /** Choose a launchable installed TV application. Does not claim the title is available there. */
-    void choose(Recs.Pick pick) {
+    void choose(Recs.Pick pick) { choose(pick, false); }
+
+    /** Title-page Watch always presents the service chooser, even with a saved default. */
+    void chooseService(Recs.Pick pick) { choose(pick, true); }
+
+    private void choose(Recs.Pick pick, boolean alwaysAsk) {
         if (pick == null) return;
         PackageManager pm = activity.getPackageManager();
         String service = MovieService.id(MovieService.index(activity.getSharedPreferences("settings", Context.MODE_PRIVATE)
                 .getString(MovieService.KEY, "")));
-        if (!service.isEmpty()) {
+        if (!alwaysAsk && !service.isEmpty()) {
             String preferred = MovieService.resolve(service, pkg -> HomeApps.launchIntent(pm, pkg) != null);
             if (!preferred.isEmpty()) { open(pick, preferred, MovieService.label(MovieService.index(service), AppLanguage.current())); return; }
             host.toast(AppStrings.get(R.string.home_default_service_unavailable));
