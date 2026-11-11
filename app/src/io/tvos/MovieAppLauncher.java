@@ -37,6 +37,7 @@ final class MovieAppLauncher {
     private final Executor worker;
     private final Handler handler;
     private final Host host;
+    private boolean kinopoiskBusy;
 
     MovieAppLauncher(Activity activity, View anchor, Executor worker, Handler handler, Host host) {
         this.activity = activity;
@@ -80,7 +81,7 @@ final class MovieAppLauncher {
         }
         // WATCH_APPS_ONLY_V4: show only supported video applications.
         java.util.Set<String> allowed = new java.util.HashSet<>(java.util.Arrays.asList(
-                "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv"));
+                "top.rootu.lampa", "com.seena.app", "watch.kino", "watch.kino.mod", "com.vk.tv", "ru.kinopoisk.tv"));
         apps.keySet().retainAll(allowed);
         if (apps.isEmpty()) {
             host.toast(AppStrings.get(R.string.home_no_launchable_apps_found));
@@ -110,6 +111,10 @@ final class MovieAppLauncher {
     }
 
     private void open(Recs.Pick pick, String pkg, String label) {
+        if ("ru.kinopoisk.tv".equals(pkg)) {
+            openKinopoisk(pick);
+            return;
+        }
         if ("top.rootu.lampa".equals(pkg)) {
             try {
                 Intent link = new Intent(Intent.ACTION_VIEW,
@@ -149,6 +154,37 @@ final class MovieAppLauncher {
         if (!HomeApps.open(activity, app, anchor, 0, 0, 1, 1)) {
             host.toast(AppStrings.get(R.string.home_couldn_t_open_app));
         }
+    }
+
+    private void openKinopoisk(Recs.Pick pick) {
+        if (pick == null || kinopoiskBusy) return;
+        kinopoiskBusy = true;
+        final int epoch = host.epoch();
+        host.toast(AppStrings.get(R.string.home_searching_kinopoisk));
+        worker.execute(() -> {
+            String url = "";
+            boolean failed = false;
+            try { url = KinopoiskLink.resolve(pick, () -> Thread.currentThread().isInterrupted()); }
+            catch (java.io.IOException | org.json.JSONException | RuntimeException error) {
+                AppLog.w("Kinopoisk lookup failed: " + error.getClass().getSimpleName());
+                failed = true;
+            }
+            final String resolved = url; final boolean unavailable = failed;
+            handler.post(() -> {
+                kinopoiskBusy = false;
+                if (!host.running() || epoch != host.epoch()) return;
+                if (resolved.isEmpty()) {
+                    host.toast(AppStrings.get(unavailable ? R.string.home_kinopoisk_lookup_failed
+                            : R.string.home_no_exact_kinopoisk_match));
+                    return;
+                }
+                Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(resolved));
+                intent.setPackage(KinopoiskLink.PACKAGE);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (!AppLaunch.start(activity, intent, "Kinopoisk title link"))
+                    host.toast(AppStrings.get(R.string.home_kinopoisk_open_failed));
+            });
+        });
     }
 
     /** Open VK Video search with the selected movie title; no automation. */

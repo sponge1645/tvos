@@ -20,6 +20,7 @@ class HomeApps {static class Item {String pkg,label;}static Item app(String pkg,
  static Intent launchIntent(PackageManager pm,String pkg){boolean found=false;for(ResolveInfo ri:pm.tv)found|=ri.activityInfo.packageName.equals(pkg);for(ResolveInfo ri:pm.phone)found|=ri.activityInfo.packageName.equals(pkg);return found?AppLaunch.launchIntent(pm,pkg):null;}
  static boolean open(Activity a,Item i,View v,int x,int y,int w,int h){Intent intent=launchIntent(a.getPackageManager(),i.pkg);return intent!=null&&AppLaunch.start(a,intent,"app");}
 }'''
+sources['io/tvos/KinopoiskLink.java']='package io.tvos;class KinopoiskLink {static final String PACKAGE="ru.kinopoisk.tv";static String url="https://hd.kinopoisk.ru/film/4ba2562d337ca9548d398f4a80509f08";static boolean fail;static String resolve(Recs.Pick p,java.util.function.BooleanSupplier cancelled)throws java.io.IOException,org.json.JSONException{if(fail)throw new java.io.IOException();return url;}}'
 sources['io/tvos/Recs.java']='package io.tvos;class Recs {'+block(Path('app/src/io/tvos/Recs.java').read_text(),'    static final class Pick {')+'}'
 for name in ['MovieAppLauncher','KinoPubLink']:
  sources['io/tvos/'+name+'.java']=Path('app/src/io/tvos/'+name+'.java').read_text()
@@ -48,6 +49,10 @@ public class MovieLauncherHarness implements MovieAppLauncher.Host {
    JSONArray.response=Arrays.asList(item(81,"Тест (2024)","movie"));direct.launcher.choose(pick());direct.worker();direct.handler.drain();
    check(direct.activity.launched!=null&&direct.activity.launched.pkg.equals(pkg)&&AlertDialog.labels==null,"preferred service bypasses chooser and keeps route: "+service);
   }
+  MovieLauncherHarness kp=app("ru.kinopoisk.tv");kp.activity.prefs.strings.put(MovieService.KEY,"kinopoisk");
+  kp.launcher.choose(pick());kp.launcher.choose(pick());check(kp.queue.size()==1&&kp.activity.starts==0,"Kinopoisk lookup queued once");kp.worker();check(kp.activity.starts==0,"Kinopoisk waits for main publication");kp.handler.drain();check(kp.activity.launched.pkg.equals("ru.kinopoisk.tv")&&kp.activity.launched.uri.toString().equals(KinopoiskLink.url),"exact HD link opens in TV app");
+  for(boolean inactive:new boolean[]{false,true}){MovieLauncherHarness stale=app("ru.kinopoisk.tv");stale.launcher.choose(pick());stale.worker();if(inactive)stale.active=false;else stale.epoch++;stale.handler.drain();check(stale.activity.starts==0,"stale Kinopoisk lookup never opens after navigation");}
+  for(boolean fail:new boolean[]{false,true}){KinopoiskLink.fail=fail;KinopoiskLink.url="";MovieLauncherHarness absent=app("ru.kinopoisk.tv");absent.launcher.choose(pick());absent.worker();absent.handler.drain();check(absent.activity.starts==0&&absent.toasts==2,"missing link or network error never falls back to wrong title/main screen");}KinopoiskLink.fail=false;
   MovieLauncherHarness selected=app("com.seena.app");selected.activity.prefs.strings.put(MovieService.KEY,"kinopub");AlertDialog.labels=null;
   selected.launcher.openIn(pick(),"com.seena.app","Seena");
   check(selected.activity.starts==1&&selected.activity.launched.pkg.equals("com.seena.app")&&AlertDialog.labels==null,"title page uses the selected provider regardless of default");

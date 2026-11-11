@@ -32,6 +32,7 @@ public class LaunchHarness extends View {
  Activity activity=new Activity();int toasts;String target;
  Context getContext(){return activity;}void showToast(String message){toasts++;}
  void openKinoPub(Recs.Pick p,String pkg){target=pkg;}
+ void openKinopoisk(Recs.Pick p){target="ru.kinopoisk.tv";}
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
  static Recs.Pick pick(){Recs.Pick p=new Recs.Pick();p.kind="movie";p.id=42;p.title="A & Б";return p;}
  static LaunchHarness app(String pkg){LaunchHarness h=new LaunchHarness();h.activity.pm.tv.add(new ResolveInfo(pkg,"Video"));
@@ -95,6 +96,7 @@ public class LaunchHarness extends View {
   for(String pkg:new String[]{"watch.kino","watch.kino.mod"}){
    LaunchHarness kino=app(pkg);kino.chooseWatchApp(pick());check(pkg.equals(kino.target)&&kino.activity.starts==0,"chosen KinoPub package preserved");
   }
+  LaunchHarness kp=app("ru.kinopoisk.tv");kp.chooseWatchApp(pick());check("ru.kinopoisk.tv".equals(kp.target),"Kinopoisk is selectable and uses its title resolver");
   Context.service="lampa";AlertDialog.labels=null;LaunchHarness preferred=app("top.rootu.lampa");preferred.chooseWatchApp(pick());
   check(AlertDialog.labels==null,"Home keeps saved default without chooser");
   LaunchHarness explicit=app("top.rootu.lampa");explicit.chooseWatchApp(pick(),true);

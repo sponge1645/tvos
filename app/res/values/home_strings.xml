@@ -60,4 +60,9 @@
     <string name="home_watching_services" formatted="false">"Services"</string>
     <string name="home_watching_all" formatted="false">"All"</string>
     <string name="home_hold_up_recommendation">Hold the ↑ Up button to watch</string>
+    <string name="service_kinopoisk" formatted="false">Kinopoisk</string>
+    <string name="home_searching_kinopoisk" formatted="false">Finding title on Kinopoisk…</string>
+    <string name="home_no_exact_kinopoisk_match" formatted="false">An exact Kinopoisk link was not found.</string>
+    <string name="home_kinopoisk_lookup_failed" formatted="false">Could not find the Kinopoisk link. Check your connection.</string>
+    <string name="home_kinopoisk_open_failed" formatted="false">Could not open the title in Kinopoisk.</string>
 </resources>
