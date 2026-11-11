@@ -66,6 +66,10 @@ final class AppDownloadCatalog {
                 "e1430d81de511c72253a6a409910e609686f084e3944eab6f154999ac7128b13",
                 source("https://github.com/INCY-DEV/incy-platforms/releases/download/latest/Incy.apk",
                         null), "INCY-DEV/incy-platforms", false, 0),
+        new Entry("HAPP", "su.happ.proxyutility",
+                "397e98abed03c5f263ffaf4e8a1043b2a59f538b99e75cf152fa05a7e8007d8d",
+                source("https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk",
+                        null), "Happ-proxy/happ-android", false, 1731),
         new Entry("Seena", "com.seena.app",
                 "731e85d4ed0224a0aea4d58058b5d73f82cb4d4e2dcf8dc9ab54b0c5ef20c59d",
                 source("https://seena.su/d.apk", null), null, false, 0),
@@ -119,7 +123,29 @@ final class AppDownloadCatalog {
         throw new IOException("INCY APK not found in release");
     }
 
+    private static Source happ(Entry app, BooleanSupplier cancelled) throws Exception {
+        JSONObject release = new JSONObject(ApkTransfer.json(
+                "https://api.github.com/repos/" + app.repository + "/releases/latest", cancelled));
+        if (release.optBoolean("draft") || release.optBoolean("prerelease"))
+            throw new IOException("HAPP release is not stable");
+        JSONArray assets = release.optJSONArray("assets");
+        if (assets != null) for (int i = 0; i < assets.length(); i++) {
+            ApkTransfer.checkCancelled(cancelled);
+            JSONObject asset = assets.getJSONObject(i);
+            if (!"Happ.apk".equals(asset.optString("name"))) continue;
+            String url = asset.optString("browser_download_url");
+            String prefix = "https://github.com/" + app.repository + "/releases/download/";
+            String digest = asset.optString("digest");
+            if (!url.startsWith(prefix) || !url.endsWith("/Happ.apk")
+                    || !digest.matches("sha256:[0-9a-f]{64}"))
+                throw new IOException("HAPP release has no verified APK source");
+            return source(url, digest.substring(7));
+        }
+        throw new IOException("HAPP APK not found in release");
+    }
+
     static Source resolve(Entry app, boolean installed, String[] abis, BooleanSupplier cancelled) throws Exception {
+        if ("su.happ.proxyutility".equals(app.packageName)) return happ(app, cancelled);
         if ("llc.itdev.incy".equals(app.packageName)) return incy(app, cancelled);
         if ("com.seena.app".equals(app.packageName)) return seena(abis, cancelled);
         if ("KinoPub".equals(app.name)) return kinoPub(cancelled);

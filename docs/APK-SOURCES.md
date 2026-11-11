@@ -72,3 +72,18 @@ Legacy manifests without buildSequence remain supported for higher versionCode
 updates but cannot authorize an equal-code update. Snooze and ready-APK identity
 include the build. Old installed updater code must first be replaced manually or
 by a release with a higher Android versionCode to gain this behavior.
+
+## HAPP stable releases
+
+First installation and updates resolve the exact `Happ.apk` asset from
+`Happ-proxy/happ-android/releases/latest`. Beta assets, drafts and prereleases
+are excluded. Require an official versioned asset URL and a SHA-256 digest;
+metadata failures are reported without falling back to an older APK.
+
+Reviewed HAPP 4.10.1: package `su.happ.proxyutility`, versionCode 1731,
+minSdk 24, armeabi-v7a and arm64-v8a. The supplied APK matches the official
+release digest `169f39f9d79ab4d6343588c3ed107e9113f1ecaf793e9ecd06a4fe7e6cc6e7b5`.
+Pinned certificate SHA-256:
+`397e98abed03c5f263ffaf4e8a1043b2a59f538b99e75cf152fa05a7e8007d8d`.
+The shared installer checks package, pinned and installed signer, minSdk,
+file digest and versionCode before handing the APK to Android's installer.

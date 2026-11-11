@@ -76,7 +76,7 @@ final class SettingsContent {
             case SYSTEM: return new String[] {AppStrings.get(R.string.settings_software_updates, language), AppStrings.get(R.string.settings_reset, language), AppStrings.get(R.string.settings_default_launcher, language), AppStrings.get(R.string.settings_restart_tvos, language)};
             case RESET: return new String[] {AppStrings.get(R.string.settings_clear_cache, language), AppStrings.get(R.string.settings_reset_tvos, language)};
             case TOP_PANEL: return new String[] {AppStrings.get(R.string.settings_home_screen, language), AppStrings.get(R.string.settings_buttons, language), AppStrings.get(R.string.settings_date, language), AppStrings.get(R.string.settings_weather, language)};
-            case APPS_DOWNLOADS: return new String[] {AppStrings.get(R.string.settings_download_airplay, language), AppStrings.get(R.string.settings_download_apple_music, language), AppStrings.get(R.string.settings_download_tizentube, language), AppStrings.get(R.string.settings_download_incy, language), AppStrings.get(R.string.settings_download_seena, language), AppStrings.get(R.string.settings_download_lampa, language), AppStrings.get(R.string.settings_download_kinopub, language)};
+            case APPS_DOWNLOADS: return new String[] {AppStrings.get(R.string.settings_download_airplay, language), AppStrings.get(R.string.settings_download_apple_music, language), AppStrings.get(R.string.settings_download_tizentube, language), AppStrings.get(R.string.settings_download_incy, language), AppStrings.get(R.string.settings_download_happ, language), AppStrings.get(R.string.settings_download_seena, language), AppStrings.get(R.string.settings_download_lampa, language), AppStrings.get(R.string.settings_download_kinopub, language)};
             case ACCESSIBILITY: return new String[] {AppStrings.get(R.string.settings_reduce_transparency, language), AppStrings.get(R.string.settings_reduce_motion, language), AppStrings.get(R.string.settings_tv_settings, language)};
             case CITY: return new String[] {AppStrings.get(R.string.settings_automatic_value, language), AppStrings.get(R.string.settings_manual, language)};
             case SCREENSAVER: return new String[] {AppStrings.get(R.string.settings_current_selection, language), AppStrings.get(R.string.icloud_slideshow_style, language), AppStrings.get(R.string.settings_show_clock, language), AppStrings.get(R.string.settings_show_location, language), AppStrings.get(R.string.settings_show_weather, language), AppStrings.get(R.string.settings_preview, language)};
@@ -168,9 +168,10 @@ final class SettingsContent {
             case 1: return AppStrings.get(R.string.settings_app_music_description, language);
             case 2: return AppStrings.get(R.string.settings_app_tizentube_description, language);
             case 3: return AppStrings.get(R.string.settings_app_incy_description, language);
-            case 4: return AppStrings.get(R.string.settings_app_seena_description, language);
-            case 5: return AppStrings.get(R.string.settings_app_lampa_description, language);
-            case 6: return AppStrings.get(R.string.settings_app_kinopub_description, language);
+            case 4: return AppStrings.get(R.string.settings_app_happ_description, language);
+            case 5: return AppStrings.get(R.string.settings_app_seena_description, language);
+            case 6: return AppStrings.get(R.string.settings_app_lampa_description, language);
+            case 7: return AppStrings.get(R.string.settings_app_kinopub_description, language);
             default: return null;
         }
     }

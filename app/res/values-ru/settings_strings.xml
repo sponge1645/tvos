@@ -282,4 +282,6 @@
     <string name="settings_setup_tv_unavailable">У этого приложения или службы нет доступного экрана или ТВ-входа.</string>
     <string name="settings_auto_update_help" formatted="false">При наличии обновлений tvOS может устанавливать их автоматически.</string>
     <string name="settings_signal_strength" formatted="false">Интенсивность сигнала</string>
+    <string name="settings_download_happ" formatted="false">Загрузить HAPP</string>
+    <string name="settings_app_happ_description" formatted="false">VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.</string>
 </resources>

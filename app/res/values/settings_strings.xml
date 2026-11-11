@@ -277,4 +277,6 @@
     <string name="settings_setup_tv_unavailable">This app or service has no accessible screen or TV input.</string>
     <string name="settings_auto_update_help" formatted="false">When updates are available, tvOS may install them automatically.</string>
     <string name="settings_signal_strength" formatted="false">Signal Strength</string>
+    <string name="settings_download_happ" formatted="false">Download HAPP</string>
+    <string name="settings_app_happ_description" formatted="false">A VPN client for connecting to your servers.\nImport configurations and subscription links.</string>
 </resources>

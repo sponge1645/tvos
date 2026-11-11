@@ -23,7 +23,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,CITY,SCREENSAVER,ABOUT,LANGUAGE,SLEEP_TIMER};
-  int[] rows={11,3,5,3,6,2,3,1,2,4,2,4,7,3,2,6,9,2,7};
+  int[] rows={11,3,5,3,6,2,3,1,2,4,2,4,8,3,2,6,9,2,7};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -49,13 +49,13 @@ public class ContentHarness {
    h.screen=WIDGETS;check(Arrays.equals(h.menuLabels(),russian?new String[]{"Погода","Дата"}:new String[]{"Weather","Date"}),"widget menu contains only weather and date");
    h.screen=ABOUT;check(h.screenTitle().equals(russian?"Об этом устройстве":"About"),"About heading");
    check(h.menuLabels()[2].equals(russian?"Серийный номер":"Serial Number"),"capitalization preserved");
-   h.screen=APPS_DOWNLOADS;String[] expected={"AirPlay","Apple Music","TizenTube","INCY","Seena","Lampa","KinoPub"};
-   for(int i=0;i<7;i++){
+   h.screen=APPS_DOWNLOADS;String[] expected={"AirPlay","Apple Music","TizenTube","INCY","HAPP","Seena","Lampa","KinoPub"};
+   for(int i=0;i<8;i++){
     check(h.menuLabels()[i].endsWith(expected[i]),"download app order");
     String description=SettingsContent.description(h.screen,i,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH));
     check(description!=null&&(i==0||description.contains("\\n")),"each download keeps its two-line description");
    }
-   check(SettingsContent.description(APPS_DOWNLOADS,7,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"no stale description beyond downloads");
+   check(SettingsContent.description(APPS_DOWNLOADS,8,0,0,0,(russian?AppLanguage.RUSSIAN:AppLanguage.ENGLISH))==null,"no stale description beyond downloads");
    h.screen=PICKER;h.picker.kind=PICK_CITY;check(h.screenTitle().equals(russian?"Город":"City"),"city picker title");
    h.picker.kind=PICK_VPN;check(h.screenTitle().equals(russian?"VPN-служба":"VPN"),"VPN picker title");
    h.picker.kind=1;check(h.screenTitle().equals(russian?"Выбор приложения":"Choose app"),"remote picker title");

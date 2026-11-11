@@ -88,7 +88,30 @@ public class DownloadHarness {
   githubAssets("app-release.apk");
   AppDownloadCatalog.Source first=AppDownloadCatalog.resolve(AppDownloadCatalog.get(0),false,arm32,()->false);
   check(first.sha256!=null && first.url.contains("/v99/"),"first install discovers new stable release with digest");
-  AppDownloadCatalog.Entry kino=AppDownloadCatalog.get(6);
+  AppDownloadCatalog.Entry happ=AppDownloadCatalog.get(4);
+  check("su.happ.proxyutility".equals(happ.packageName),"HAPP row maps to expected package");
+  String happUrl="https://github.com/Happ-proxy/happ-android/releases/download/99.0/Happ.apk";
+  for(boolean installed:new boolean[]{false,true}) {
+   org.json.JSONArray.next=Arrays.asList(
+    new org.json.JSONObject().put("name","Happ_beta.apk").put("browser_download_url",happUrl.replace("Happ.apk","Happ_beta.apk")).put("digest","sha256:"+"b".repeat(64)),
+    new org.json.JSONObject().put("name","Happ.apk").put("browser_download_url",happUrl).put("digest","sha256:"+"a".repeat(64)));
+   reply("{}".getBytes(),2);
+   AppDownloadCatalog.Source current=AppDownloadCatalog.resolve(happ,installed,arm32,()->false);
+   check(happUrl.equals(current.url)&&"a".repeat(64).equals(current.sha256),"HAPP install/update selects exact stable APK with current hash");
+  }
+  for(String digest:new String[]{"","bad","sha256:"+"z".repeat(64)}) {
+   org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","Happ.apk").put("browser_download_url",happUrl).put("digest",digest));
+   reply("{}".getBytes(),2);
+   rejects(()->AppDownloadCatalog.resolve(happ,false,arm64,()->false),"HAPP rejects absent/malformed hash");
+  }
+  org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","Happ.apk").put("browser_download_url","https://example.test/Happ.apk").put("digest","sha256:"+"a".repeat(64)));
+  reply("{}".getBytes(),2);
+  rejects(()->AppDownloadCatalog.resolve(happ,true,arm64,()->false),"HAPP rejects foreign asset URL");
+  org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","Happ_beta.apk"));
+  reply("{}".getBytes(),2);
+  rejects(()->AppDownloadCatalog.resolve(happ,true,arm64,()->false),"HAPP never falls back to beta");
+  rejects(()->AppDownloadCatalog.resolve(happ,false,arm64,()->true),"HAPP cancellation before metadata");
+  AppDownloadCatalog.Entry kino=AppDownloadCatalog.get(7);
   PackageInfo oldKino=new PackageInfo(),newKino=new PackageInfo();oldKino.code=newKino.code=169;oldKino.versionName="2.19";newKino.versionName="2.23";
   check(!ApkTrust.alreadyInstalled(kino,oldKino,newKino),"KinoPub reused code accepts newer numeric name");
   check(ApkTrust.alreadyInstalled(kino,newKino,oldKino),"KinoPub reused code rejects older numeric name");
@@ -119,9 +142,9 @@ public class DownloadHarness {
    new org.json.JSONObject().put("name","kino-watch-2.19.apk"),
    new org.json.JSONObject().put("name","kino-watch-9999999999999.apk"));
   reply("[]".getBytes(),2);
-  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(6),true,arm32,()->false).url.endsWith("2.19.apk"),"KinoPub numeric selection");
+  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(7),true,arm32,()->false).url.endsWith("2.19.apk"),"KinoPub numeric selection");
 
-  for(int index:new int[]{0,1,2,5}) {
+  for(int index:new int[]{0,1,2,6}) {
    githubAssets("universal.apk");AppDownloadCatalog.Source fresh=AppDownloadCatalog.resolve(AppDownloadCatalog.get(index),false,arm32,()->false);
    githubAssets("universal.apk");AppDownloadCatalog.Source update=AppDownloadCatalog.resolve(AppDownloadCatalog.get(index),true,arm32,()->false);
    check(fresh.url.equals(update.url)&&fresh.sha256.equals(update.sha256),"first install and update share stable discovery for "+index);
@@ -132,11 +155,11 @@ public class DownloadHarness {
   String hash=ApkTransfer.hex(ApkTransfer.digest().digest(bytes));
   AppDownloadCatalog.Source src=new AppDownloadCatalog.Source("https://test.invalid/app.apk",hash);
   reply("metadata".getBytes(),8);
-  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(4),false,arm32,()->false).url.endsWith("Seena-1.9.3-armeabi-v7a.apk"),"Seena first install resolves current official release");
+  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(5),false,arm32,()->false).url.endsWith("Seena-1.9.3-armeabi-v7a.apk"),"Seena first install resolves current official release");
   org.json.JSONObject.version="../../bad";reply("metadata".getBytes(),8);
-  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(4),true,arm32,()->false).url.equals("https://seena.su/d.apk"),"invalid release metadata uses official stable endpoint");
+  check(AppDownloadCatalog.resolve(AppDownloadCatalog.get(5),true,arm32,()->false).url.equals("https://seena.su/d.apk"),"invalid release metadata uses official stable endpoint");
   org.json.JSONObject.version="1.9.3";
-  check(!ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(4),new AppDownloadCatalog.Source("https://seena.su/d.apk",null)),"Seena rolling first install authenticated by signer pin");
+  check(!ApkTrust.requiresInstalledApp(AppDownloadCatalog.get(5),new AppDownloadCatalog.Source("https://seena.su/d.apk",null)),"Seena rolling first install authenticated by signer pin");
   check(ApkTrust.requiresInstalledApp(new AppDownloadCatalog.Entry("Mirror","test.app",null,null,null,false,0),new AppDownloadCatalog.Source("https://example.test/update.apk",null)),"unpinned mirror update still requires installed app");
   AppDownloadCatalog.Entry incy=AppDownloadCatalog.get(3);
   org.json.JSONObject asset=new org.json.JSONObject().put("name","Incy.apk").put("browser_download_url",incy.bootstrap.url).put("digest","sha256:"+hash);
