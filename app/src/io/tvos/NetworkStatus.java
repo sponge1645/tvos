@@ -9,6 +9,9 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Handler;
 import android.os.Looper;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Collections;
 
 /** Menu Bar status. Listen only while Home is visible; never probe servers or poll per frame. */
 final class NetworkStatus {
@@ -20,7 +23,11 @@ final class NetworkStatus {
     private final Runnable changed;
     private boolean running, allRegistered, defaultRegistered, vpn;
     private int state = OFFLINE;
-    private final Runnable refresh = this::refreshNow;
+    // Callback facts override snapshots that some TV firmware updates after onLost/onCapabilitiesChanged.
+    // Owned by the main handler and discarded when Home stops.
+    private final Map<Network, Boolean> vpnEvents = new HashMap<>();
+    private boolean refreshPending;
+    private final Runnable refresh = () -> { refreshPending = false; refreshNow(); };
     private int checks;
     private final Runnable convergence = new Runnable() {
         @Override public void run() {
@@ -35,7 +42,7 @@ final class NetworkStatus {
     private void refreshNow() {
         if (!running) return;
         int next = detect(manager);
-        boolean nextVpn = detectVpn(manager);
+        boolean nextVpn = detectVpn(manager, vpnEvents);
         int nextLevel = next == WIFI ? signal.level() : -1;
         if (next != state || nextVpn != vpn || nextLevel != wifiLevel) {
             state = next; vpn = nextVpn; wifiLevel = nextLevel; changed.run();
@@ -55,34 +62,56 @@ final class NetworkStatus {
 
     @SuppressWarnings("deprecation")
     static boolean detectVpn(ConnectivityManager manager) {
+        return detectVpn(manager, Collections.emptyMap());
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean detectVpn(ConnectivityManager manager, Map<Network, Boolean> events) {
+        if (events.containsValue(Boolean.TRUE)) return true;
         if (manager == null) return false;
         try {
             for (Network network : manager.getAllNetworks()) {
-                NetworkCapabilities caps = manager.getNetworkCapabilities(network);
-                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return true;
+                if (Boolean.FALSE.equals(events.get(network))) continue;
+                try {
+                    NetworkCapabilities caps = manager.getNetworkCapabilities(network);
+                    if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return true;
+                } catch (RuntimeException ignored) { /* One disappearing network must not hide another VPN. */ }
             }
         } catch (RuntimeException ignored) {}
         return false;
     }
 
-    private ConnectivityManager.NetworkCallback callback() {
+    private ConnectivityManager.NetworkCallback callback(boolean trackVpn) {
         return new ConnectivityManager.NetworkCallback() {
-            @Override public void onAvailable(Network n) { schedule(); }
-            @Override public void onLost(Network n) { schedule(); }
-            @Override public void onCapabilitiesChanged(Network n, NetworkCapabilities c) { schedule(); }
+            @Override public void onAvailable(Network n) {
+                if (!running) return;
+                if (trackVpn) vpnEvents.remove(n);
+                schedule();
+            }
+            @Override public void onLost(Network n) {
+                if (!running) return;
+                if (trackVpn) vpnEvents.put(n, Boolean.FALSE);
+                schedule();
+            }
+            @Override public void onCapabilitiesChanged(Network n, NetworkCapabilities c) {
+                if (!running) return;
+                if (trackVpn) vpnEvents.put(n, c.hasTransport(NetworkCapabilities.TRANSPORT_VPN));
+                schedule();
+            }
             @Override public void onLinkPropertiesChanged(Network n, LinkProperties p) { schedule(); }
         };
     }
-    private final ConnectivityManager.NetworkCallback all = callback(), defaults = callback();
+    private final ConnectivityManager.NetworkCallback all = callback(true), defaults = callback(false);
 
     private void schedule() {
-        if (!running) return;
-        handler.removeCallbacks(refresh);
-        handler.postDelayed(refresh, 100);
+        if (!running || refreshPending) return;
+        refreshPending = true;
+        handler.postDelayed(refresh, 0);
     }
 
     void start() {
         if (running) return;
+        vpnEvents.clear();
         running = true;
         if (manager != null) {
             try {
@@ -102,6 +131,8 @@ final class NetworkStatus {
     void stop() {
         if (!running) return;
         running = false;
+        vpnEvents.clear();
+        refreshPending = false;
         signal.stop();
         handler.removeCallbacks(refresh); handler.removeCallbacks(convergence);
         if (allRegistered) {

@@ -6,8 +6,8 @@ stubs.pop('io/tvos/NetworkHarness.java')
 stubs['android/content/Context.java']=stubs['android/content/Context.java'].replace('public Object service;', 'public Context getApplicationContext(){return this;}public Object service;')
 stubs['android/os/Looper.java']='package android.os;public class Looper {public static Looper getMainLooper(){return new Looper();}}'
 stubs['android/os/Handler.java']='''package android.os;import java.util.*;public class Handler {
- public static List<Runnable> pending=new ArrayList<>();public Handler(Looper l){}
- public void removeCallbacks(Runnable r){pending.removeIf(x->x==r);}public void postDelayed(Runnable r,long t){pending.add(r);}
+ public static int removals;public static List<Runnable> pending=new ArrayList<>();public Handler(Looper l){}
+ public void removeCallbacks(Runnable r){removals++;pending.removeIf(x->x==r);}public void postDelayed(Runnable r,long t){pending.add(r);}
  public static void drain(){List<Runnable> copy=new ArrayList<>(pending);pending.clear();for(Runnable r:copy)r.run();}
 }'''
 stubs['android/net/NetworkRequest.java']='package android.net;public class NetworkRequest {public static class Builder {public Builder clearCapabilities(){return this;}public NetworkRequest build(){return new NetworkRequest();}}}'
@@ -58,6 +58,18 @@ public class StatusHarness {
   check(!s.vpn()&&s.state()==1&&changes[0]==4,"disconnect updates icon while internet stays Wi-Fi");
   m.networks.add(vpn);m.callbacks.get(0).onAvailable(vpn);Handler.drain();
   check(s.vpn()&&s.state()==1&&changes[0]==5,"connect updates icon without changing physical state");io.tvos.network.WifiSignal.value=1;m.callbacks.get(0).onCapabilitiesChanged(wifi,m.caps.get(wifi));Handler.drain();check(s.wifiLevel()==1&&changes[0]==6,"signal bucket alone redraws icon");m.callbacks.get(0).onAvailable(wifi);Handler.drain();check(changes[0]==6,"unchanged signal does not redraw");m.networks.remove(vpn);s.checkSoon();Handler.drain();check(!s.vpn(),"toggle convergence updates icon even without network callbacks");for(int i=0;i<25;i++)Handler.drain();check(Handler.pending.isEmpty(),"convergence polling stops after bounded checks");s.stop();check(io.tvos.network.WifiSignal.starts==2&&io.tvos.network.WifiSignal.stops==2,"RSSI listener follows visible lifecycle");
+  // Firmware can deliver callback facts before synchronous snapshots catch up.
+  s.start();ConnectivityManager.NetworkCallback events=m.callbacks.get(0);
+  m.networks.add(vpn);events.onCapabilitiesChanged(vpn,m.caps.get(vpn));Handler.drain();check(s.vpn(),"VPN capabilities activate icon");
+  events.onLost(vpn);Handler.drain();check(!s.vpn(),"lost VPN immediately overrides stale snapshot");
+  s.rescan();check(!s.vpn(),"15-second rescan cannot resurrect lost VPN");
+  m.networks.remove(vpn);events.onAvailable(vpn);events.onCapabilitiesChanged(vpn,m.caps.get(vpn));
+  int removals=Handler.removals;for(int i=0;i<100;i++)events.onLinkPropertiesChanged(wifi,null);
+  check(Handler.pending.size()==1&&Handler.removals==removals,"event storm keeps first queued refresh without postponing it");Handler.drain();check(s.vpn(),"capabilities activate icon before network appears in snapshot");
+  m.networks.add(vpn);Network vpn2=add(m,4,true);events.onCapabilitiesChanged(vpn2,m.caps.get(vpn2));events.onLost(vpn);Handler.drain();check(s.vpn(),"one lost tunnel does not hide another VPN");
+  events.onLost(vpn2);Handler.drain();check(!s.vpn(),"both lost tunnels ignored despite stale snapshot");
+  s.stop();events.onCapabilitiesChanged(vpn,m.caps.get(vpn));check(Handler.pending.isEmpty(),"late callbacks while stopped cannot revive VPN state");
+  m.networks.remove(vpn);m.networks.remove(vpn2);s.start();check(!s.vpn(),"resume clears old event facts and takes fresh snapshot");s.stop();
   System.out.println("PASS: three menu states, validation, dual transport, VPN, IPv6-only LAN, callback coalescing, pause/resume cleanup");
  }
 }'''
