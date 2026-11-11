@@ -64,6 +64,7 @@ public final class SearchActivity extends Activity {
     private Bitmap backdrop;
     private Future<?> detailWork;
     private Recs.Pick detail;
+    private final SearchTitleReveal titleReveal = new SearchTitleReveal();
     private StaticLayout detailTitle, detailOverview, detailMeta;
     private String detailArt = "", detailLogo = "", problem = "";
     private float detailMetaTop, detailOverviewTop;
@@ -338,6 +339,7 @@ public final class SearchActivity extends Activity {
     }
     private void showDetail(Recs.Pick pick) {
         remember(); hideKeyboard(); search.cancel(); savedSelected = selected; searchScroll = scroll; detail = pick; generation++;
+        titleReveal.open(SystemClock.uptimeMillis());
         detailLogo = ""; detailArt = wide(pick.backdrop); query.setVisibility(View.INVISIBLE);
         buildDetail(null); scrollTo(0, false); select(0, false);
         detailNeedsLoad = true;
@@ -447,18 +449,29 @@ public final class SearchActivity extends Activity {
             } else {
                 float titleBottom = detailMetaTop - 28;
                 Bitmap logo = detailLogo.isEmpty() ? null : images.poster(detailLogo);
-                if (logo != null) {
+                titleReveal.update(now, logo != null, reduced());
+                if (logo != null && titleReveal.logoAlpha() > 0) {
                     float fit = Math.min(640f / logo.getWidth(), 180f / logo.getHeight());
                     scratch.set(80, titleBottom - logo.getHeight() * fit,
                             80 + logo.getWidth() * fit, titleBottom);
                     paint.setShader(null); paint.setColor(0xFFFFFFFF);
-                    c.drawBitmap(logo, null, scratch, paint);
-                } else paragraph(c, detailTitle, 80, titleBottom - detailTitle.getHeight());
+                    paint.setAlpha(Math.round(255 * titleReveal.logoAlpha()));
+                    c.drawBitmap(logo, null, scratch, paint); paint.setAlpha(255);
+                }
+                if (titleReveal.textAlpha() > 0) {
+                    detailTitle.getPaint().setAlpha(Math.round(255 * titleReveal.textAlpha()));
+                    paragraph(c, detailTitle, 80, titleBottom - detailTitle.getHeight());
+                    detailTitle.getPaint().setAlpha(255);
+                }
                 paragraph(c, detailMeta, 80, detailMetaTop);
                 paragraph(c, detailOverview, 80, detailOverviewTop);
                 for (int i = 0; i < targets.size(); i++) capsule(c, targets.get(i), focus.get(i).value);
             }
             c.restoreToCount(saved);
+            if (detail != null) {
+                long titleDelay = titleReveal.nextDelay(now);
+                if (titleDelay > 0) postInvalidateDelayed(titleDelay);
+            }
             if (moving) postInvalidateOnAnimation();
             else if (detail == null && selected >= 0 && targets.get(selected).poster >= 0) postInvalidateDelayed(posters.nextDelay(now));
         }

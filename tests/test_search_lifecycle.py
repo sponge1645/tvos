@@ -6,6 +6,7 @@ source=Path('app/src/io/tvos/SearchActivity.java').read_text()
 h='''import java.util.*;import java.util.concurrent.*;
 class Base {protected void onPause(){}protected void onResume(){}}
 public class SearchLifecycle extends Base {
+ static class SystemClock {static long uptimeMillis(){return 0;}}static class SearchTitleReveal{void open(long t){}}final SearchTitleReveal titleReveal=new SearchTitleReveal();
  static class Recs {static class Pick {String backdrop="old";}}
  static class View {static final int INVISIBLE=4;void setVisibility(int n){}String getText(){return "query";}}View query=new View();
  static class Search {void cancel(){}void pause(boolean b){}void resume(String s){}void restore(String s,boolean b){}}Search search=new Search();static class Shortcuts{void cancel(){}void reload(){}}Shortcuts shortcuts=new Shortcuts();
