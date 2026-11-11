@@ -17,6 +17,10 @@ sources={
  c.denied=true;VpnControl.toggle(c);check(Adb.connects==2&&Adb.closed==2);
  c.denied=false;c.pm.info.exported=false;Adb.result="SecurityException: Permission Denial";try{VpnControl.toggle(c);throw new AssertionError();}catch(java.io.IOException expected){}check(Adb.closed==3);
  c.pm.missing=true;try{VpnControl.toggle(c);throw new AssertionError();}catch(java.io.IOException expected){}check(Adb.connects==3);
+ Context h=new Context();VpnControl.toggle(h,VpnControl.HAPP_PACKAGE);check(h.broadcasts==1&&h.sent.component.pkg.equals("su.happ.proxyutility")&&h.sent.component.name.equals("su.happ.proxyutility.receiver.WidgetProvider")&&h.sent.action.equals("su.happ.proxyutility.action.widget.click"));
+ h.pm.info.exported=false;Adb.result="Broadcast completed: result=0";VpnControl.toggle(h,VpnControl.HAPP_PACKAGE);check(Adb.command.equals("am broadcast -n su.happ.proxyutility/.receiver.WidgetProvider -a su.happ.proxyutility.action.widget.click"));
+ check(VpnControl.supports(VpnControl.PACKAGE)&&VpnControl.supports(VpnControl.HAPP_PACKAGE)&&!VpnControl.supports("other")&&!VpnControl.supports(null));
+ int prior=Adb.connects;try{VpnControl.toggle(h,"other; injected");throw new AssertionError();}catch(java.io.IOException expected){}check(Adb.connects==prior);
  System.out.println("PASS: explicit VPN target, direct control, permission/export checks, fixed ADB fallback and rejected commands");
 }}'''}
 home=Path('app/src/io/tvos/HomeView.java').read_text()

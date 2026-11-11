@@ -227,8 +227,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
     private void toggleVpn() {
         String pkg = activity.getSharedPreferences("settings", Context.MODE_PRIVATE).getString("vpn_app", "");
-        if (!VpnControl.PACKAGE.equals(pkg)) { openVpnApp(); return; }
-        appWork.toggleVpn(); networkStatus.checkSoon();
+        if (!VpnControl.supports(pkg)) { openVpnApp(); return; }
+        appWork.toggleVpn(pkg); networkStatus.checkSoon();
     }
     private void beginDockEdit() {
         dock.begin(SystemClock.uptimeMillis());

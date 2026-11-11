@@ -53,13 +53,15 @@ final class HomeAppWork {
         });
     }
 
-    void toggleVpn() {
+    void toggleVpn() { toggleVpn(VpnControl.PACKAGE); }
+
+    void toggleVpn(String pkg) {
         if (vpnBusy) return;
         vpnBusy = true;
         int generation = epoch;
         executor.execute(() -> {
             boolean failed = false;
-            try { VpnControl.toggle(context); }
+            try { VpnControl.toggle(context, pkg); }
             catch (IOException | RuntimeException e) {
                 AppLog.w("VPN toggle failed: " + e.getClass().getSimpleName());
                 failed = true;

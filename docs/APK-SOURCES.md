@@ -87,3 +87,11 @@ Pinned certificate SHA-256:
 `397e98abed03c5f263ffaf4e8a1043b2a59f538b99e75cf152fa05a7e8007d8d`.
 The shared installer checks package, pinned and installed signer, minSdk,
 file digest and versionCode before handing the APK to Android's installer.
+
+HAPP top-right VPN control (reviewed APK 4.10.1): explicit broadcast to exported
+`su.happ.proxyutility.receiver.WidgetProvider`, action
+`su.happ.proxyutility.action.widget.click`, no extras. Its onReceive handler
+checks its own connection state and starts/stops the selected configuration.
+No home-screen widget needs to be installed. Initial profile setup and Android
+VPN consent must be completed in HAPP. Holding the button opens the selected
+VPN app. INCY control and region-pause recovery retain their existing targets.

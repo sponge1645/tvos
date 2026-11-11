@@ -9,7 +9,7 @@ class HomeApps {static class Item {final String name;Item(String n){name=n;}}sta
  static List<Item> result(Context c,String s){if(c!=expected)throw new AssertionError("context");calls.add(s);return new ArrayList<>(Arrays.asList(new Item(s)));}
  static List<Item> shelf(Context c,boolean refresh){if(!refresh)throw new AssertionError("refresh");return result(c,"shelf");}
  static List<Item> allInputs(Context c){return result(c,"input");}static List<Item> drawerShortcuts(){calls.add("shortcut");return new ArrayList<>(Arrays.asList(new Item("shortcut")));}static List<Item> others(Context c){return result(c,"others");}}
-class VpnControl {static int calls,fail;static void toggle(Context c)throws IOException {if(c!=HomeApps.expected)throw new AssertionError("context");calls++;if(fail==1)throw new IOException();if(fail==2)throw new IllegalStateException();}}
+class VpnControl {static final String PACKAGE="llc.itdev.incy";static String selected;static int calls,fail;static void toggle(Context c,String pkg)throws IOException {selected=pkg;if(c!=HomeApps.expected)throw new AssertionError("context");calls++;if(fail==1)throw new IOException();if(fail==2)throw new IllegalStateException();}}
 class AppLog {static int warnings;static void w(String s){warnings++;}}
 ''',
 'io/tvos/WorkTest.java':'''package io.tvos;import android.content.Context;import android.os.Handler;import java.util.*;import java.util.concurrent.Executor;
@@ -22,6 +22,7 @@ public class WorkTest {
  w.load();worker.run();active[0]=false;ui.drain();check(delivered[0]==2,"inactive delivery suppressed");active[0]=true;w.load();worker.run();w.invalidate();ui.drain();check(delivered[0]==2,"resume cannot revive old delivery");w.load();worker.run();ui.drain();check(delivered[0]==3,"new generation delivers");
  VpnControl.fail=1;w.toggleVpn();w.toggleVpn();check(worker.q.size()==1,"busy prevents duplicate command");worker.run();w.toggleVpn();check(worker.q.isEmpty()&&errors[0]==0,"busy until UI completion");ui.drain();check(errors[0]==1&&AppLog.warnings==1,"IO failure reported once");
  VpnControl.fail=2;w.toggleVpn();worker.run();w.invalidate();ui.drain();check(errors[0]==1&&AppLog.warnings==2,"stale runtime failure silent");w.toggleVpn();worker.run();active[0]=false;ui.drain();check(errors[0]==1,"inactive failure silent");active[0]=true;VpnControl.fail=0;w.toggleVpn();worker.run();ui.drain();check(VpnControl.calls==4&&errors[0]==1,"busy resets after stale/inactive delivery; success silent");
+ w.toggleVpn("su.happ.proxyutility");worker.run();ui.drain();check("su.happ.proxyutility".equals(VpnControl.selected),"selected VPN forwarded to queued command");
  System.out.println("PASS: application IO ordering, lifecycle generations, UI delivery and VPN busy/error handling");}}
 '''}
 with tempfile.TemporaryDirectory() as tmp:
