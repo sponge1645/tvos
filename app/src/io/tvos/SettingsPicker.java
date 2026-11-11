@@ -35,6 +35,14 @@ final class SettingsPicker {
         for (String[] city : found) labels.add(city[0]);
     }
 
+    void vpn(int which, String selected, String none) {
+        begin(which);
+        keys.add(""); labels.add(none);
+        keys.add("su.happ.proxyutility"); labels.add("HAPP");
+        keys.add("llc.itdev.incy"); labels.add("INCY");
+        current = Math.max(0, keys.indexOf(selected));
+    }
+
     void applications(int which, List<String> packages, List<String> names, String selected, String unconfigured) {
         begin(which);
         labels.addAll(names);

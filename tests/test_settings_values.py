@@ -63,8 +63,8 @@ public class ValuesHarness {
    String[] about=v.menu(ABOUT,9);check(about[0].equals("Living room")&&about[1].equals("Test TV")&&about[2].equals("SN126")&&about[3].equals("1.1.0 (1B__BUILD__)")&&about[5].equals("1920 × 1080")&&about[6].equals("Ethernet")&&about[7].equals("192.168.0.111"),"about values and physical network address");check(about[8].equals("—"),"Ethernet has no Wi-Fi signal");
    LocalNetwork.info.ethernet=false;a.wifi.info.ssid="\\\"Home\\\"";check(v.menu(ABOUT,9)[6].equals("Home"),"SSID quotes removed");check(v.menu(ABOUT,9)[8].equals("4/5"),"fifth-dot signal value remains accessible");
    a.pm.fail=true;android.os.Build.deny=true;about=v.menu(ABOUT,9);check(about[3].equals("—")&&about[2].equals(AppStrings.get(R.string.settings_unavailable)),"platform permission failures preserve fallbacks");
-   check(v.vpnApp().equals(ru?"Не настроено":"Not configured"),"unset VPN status");
-   a.prefs.data.put("vpn_app","missing");check(v.vpnApp().equals(AppStrings.get(R.string.settings_not_found)),"missing VPN label fallback");a.pm.fail=false;android.os.Build.deny=false;a.prefs.data.remove("vpn_app");
+   check(v.vpnApp().equals(AppStrings.get(R.string.settings_not_selected)),"unset VPN status");
+   a.prefs.data.put("vpn_app","missing");check(v.vpnApp().equals(AppStrings.get(R.string.settings_not_selected)),"unsupported VPN is unselected");a.pm.fail=false;android.os.Build.deny=false;a.prefs.data.remove("vpn_app");
   }
   a.prefs.data.remove("video_dream_source");check(v.menu(SCREENSAVER,6)[0].equals("Aerial"),"Aerial is the default source");
   System.out.println("PASS: production settings values, live locale, controls, dynamic rows, device/network data and platform fallbacks");

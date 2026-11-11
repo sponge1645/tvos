@@ -42,13 +42,11 @@ final class SettingsValues {
 
     String vpnApp() {
         String pkg = localPrefs().getString("vpn_app", "");
-        if (pkg.isEmpty()) return AppStrings.get(R.string.settings_not_configured);
-        String missing = AppStrings.get(R.string.settings_not_found);
-        return labels.get("vpn:" + AppLanguage.current().code + ":" + pkg, "…", () -> {
-            try { return String.valueOf(activity.getPackageManager().getApplicationLabel(activity.getPackageManager().getApplicationInfo(pkg, 0))); }
-            catch (android.content.pm.PackageManager.NameNotFoundException | RuntimeException unavailable) { return missing; }
-        });
+        if ("su.happ.proxyutility".equals(pkg)) return "HAPP";
+        if ("llc.itdev.incy".equals(pkg)) return "INCY";
+        return AppStrings.get(R.string.settings_not_selected);
     }
+
     private String automaticTvLabel() {
         String missing = AppStrings.get(R.string.settings_tv_unselected);
         return labels.get("automatic-tv:" + AppLanguage.current().code, "…", () -> {

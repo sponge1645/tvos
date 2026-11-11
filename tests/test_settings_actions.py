@@ -54,7 +54,7 @@ public class ActionsTest {
   service=create(MOVIE_SERVICE,3);service.activate();check(service.screen==MEDIA&&service.focus==0&&ActionView.events.contains("movie_service:seena"),"service selection saves stable identity and returns to parent");service.activate();check(service.screen==MOVIE_SERVICE&&service.focus==3,"reopening focuses the saved service");
   ActionView v=create(PICKER,2);v.picker.kind=PICK_CITY;v.activate();
   check(v.screen==CITY&&v.focus==1&&ActionView.events.get(0).startsWith("city:"),"city selected before returning to General");
-  v=create(PICKER,1);v.picker.kind=PICK_VPN;v.activate();
+  v=create(PICKER,2);v.picker.vpn(PICK_VPN,"","Not selected");v.activate();
   check(v.screen==MENU_BUTTONS&&v.focus==v.buttonEditor.size()&&ActionView.Prefs.shelf.equals(Arrays.asList("watch.kino")),"VPN selection preserves removal of duplicate INCY Dock entry");
   v=create(PICKER,1);v.picker.kind=2;v.activate();check(v.screen==REMOTE_KEYS&&v.focus==1&&ActionView.events.contains("key:youtube:app1"),"remote picker updates correct key");
   v=create(HOME_CHOICE,0);v.busyFlag=true;v.activate();check(ActionView.events.equals(Arrays.asList("invalidate"))&&v.modeMonitor.pendingAt==0,"busy home choice cannot restart request");
@@ -77,7 +77,7 @@ public class ActionsTest {
   v=create(UPDATES,0);v.activate();check(v.updateRequested&&ActionView.events.indexOf("update:false")<ActionView.events.indexOf("on-update"),"update check order preserved");
   v=create(SYSTEM,3);v.activate();check(ActionView.events.contains("start:HomeActivity:3")&&ActionView.events.get(ActionView.events.size()-1).equals("finish"),"restart targets HomeActivity then closes Settings");
   v=create(MENU_BUTTONS,6);v.vpnFlag=false;v.activate();check(!ActionView.events.contains("load-apps"),"hidden VPN app cannot open picker");
-  v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.picker.kind==PICK_VPN,"enabled VPN opens package picker");
+  v=create(MENU_BUTTONS,6);v.vpnFlag=true;v.activate();check(v.screen==PICKER&&v.picker.kind==PICK_VPN&&!ActionView.events.contains("load-apps"),"enabled VPN opens fixed picker without app scan");
   v=create(CITY,0);v.activate();check(ActionView.Prefs.auto,"auto region toggles on");v.focus=1;v.activate();check(!ActionView.events.contains("ask-city"),"manual city disabled in auto mode");v.focus=0;v.activate();v.focus=1;v.activate();check(ActionView.events.contains("ask-city"),"manual city enabled when auto is off");
   v=create(WEATHER,1);v.activate();check(v.screen==CITY,"Weather opens City submenu");v=create(TOP_PANEL,2);v.activate();check(ActionView.events.contains("date-toggle"),"date toggles directly in Home settings");
   v=create(WEATHER,2);v.activate();check(v.screen==TEMPERATURE_CHOICE,"temperature opens choice list");v.focus=1;v.activate();check(v.screen==WEATHER&&v.focus==2&&ActionView.events.contains("unit:C"),"temperature applies exact selected unit");

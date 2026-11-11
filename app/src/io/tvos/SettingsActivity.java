@@ -922,8 +922,10 @@ public class SettingsActivity extends Activity {
 
         private void openPicker(int which) {
             if (which == PICK_CITY) picker.cities(which, cities);
+            else if (which == PICK_VPN) picker.vpn(which, localPrefs().getString("vpn_app", ""),
+                    AppStrings.get(R.string.settings_not_selected));
             else picker.applications(which, appPkgs, appLabels,
-                    which == PICK_VPN ? localPrefs().getString("vpn_app", "") : Prefs.keyApp(Prefs.KEYS[which - 1]),
+                    Prefs.keyApp(Prefs.KEYS[which - 1]),
                     AppStrings.get(R.string.settings_not_configured));
             showPicker();
         }
@@ -1038,12 +1040,12 @@ public class SettingsActivity extends Activity {
                     break;
                 }
                 case SELECT_VPN: {
-                    String pkg = appPkgs.get(listWindow.absoluteRow(focus));
+                    String pkg = picker.keys.get(listWindow.absoluteRow(focus));
                     localPrefs().edit().putString("vpn_app", pkg).apply();
                     if (!pkg.isEmpty()) {
                         java.util.List<String> shelf = Prefs.shelf();
                         if (shelf == null) shelf = new java.util.ArrayList<>(HomeApps.shelfPackages(c));
-                        if (shelf.remove("llc.itdev.incy")) Prefs.setShelf(shelf);
+                        if (shelf.remove(pkg)) Prefs.setShelf(shelf);
                     }
                     focus = buttonEditor.size(); screen = MENU_BUTTONS;
                     break;
@@ -1072,7 +1074,7 @@ public class SettingsActivity extends Activity {
                 case AUTO_UPDATE: toggleAutomaticUpdates(); break;
                 case MENU_BUTTON: toggleMenuButton(); break;
                 case REGION_TOGGLE: toggleAutomaticRegion(); break;
-                case VPN_PICKER: loadApps(() -> openPicker(PICK_VPN)); break;
+                case VPN_PICKER: openPicker(PICK_VPN); break;
                 case DATE_TOGGLE: toggleDateTime(); break;
                 case WEATHER_TOGGLE: toggleWeather(focus == 0); break;
                 case PREVIEW: pause(); activity.showPreview(); return;
