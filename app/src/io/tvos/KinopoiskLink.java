@@ -52,6 +52,16 @@ final class KinopoiskLink {
         return "";
     }
 
+    static String searchUrl(String title) {
+        if (title == null || title.trim().isEmpty()) return "";
+        try {
+            return "kpatv://home?page=search&search_query="
+                    + java.net.URLEncoder.encode(title.trim(), "UTF-8").replace("+", "%20");
+        } catch (java.io.UnsupportedEncodingException impossible) {
+            throw new IllegalStateException("UTF-8 unavailable", impossible);
+        }
+    }
+
     static String canonical(String url) {
         return url != null && url.matches("https://hd\\.kinopoisk\\.ru/film/[0-9a-f]{32}/?(?:\\?[^#\\s]*)?")
                 ? url.substring(0, "https://hd.kinopoisk.ru/film/".length() + 32) : "";

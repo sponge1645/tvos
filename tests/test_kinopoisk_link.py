@@ -17,6 +17,10 @@ class LinkTest {
    public OutputStream getOutputStream(){return new ByteArrayOutputStream();}public int getResponseCode(){return status;}
    public InputStream getInputStream(){return new ByteArrayInputStream(body.getBytes());}
   };}});
+  String query="Субстанция & Обсессия / A+B?";
+  String search=KinopoiskLink.searchUrl(query);check(search.startsWith("kpatv://home?page=search&search_query="),"confirmed search route");
+  check(java.net.URLDecoder.decode(search.substring(search.indexOf("search_query=")+13),"UTF-8").equals(query),"Unicode and reserved characters round-trip as one query");
+  check(KinopoiskLink.searchUrl("  ").isEmpty()&&KinopoiskLink.searchUrl(null).isEmpty(),"blank query never opens generic home");
   check(KinopoiskLink.select(reply(entry("MOVIE",438631,URL)),"movie",438631).equals(URL),"exact movie ID resolves");
   check(KinopoiskLink.select(reply(entry("SHOW",438631,URL)),"movie",438631).isEmpty(),"movie/series numeric ID collision rejected");
   check(KinopoiskLink.select(reply(entry("MOVIE",841,URL)),"movie",438631).isEmpty(),"Dune remake does not open older namesake");

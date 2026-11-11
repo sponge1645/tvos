@@ -173,16 +173,24 @@ final class MovieAppLauncher {
             handler.post(() -> {
                 kinopoiskBusy = false;
                 if (!host.running() || epoch != host.epoch()) return;
-                if (resolved.isEmpty()) {
-                    host.toast(AppStrings.get(unavailable ? R.string.home_kinopoisk_lookup_failed
-                            : R.string.home_no_exact_kinopoisk_match));
-                    return;
+                String search = KinopoiskLink.searchUrl(pick.title);
+                if (search.isEmpty()) search = KinopoiskLink.searchUrl(pick.originalTitle);
+                String destination = resolved.isEmpty() ? search : resolved;
+                if (resolved.isEmpty()) host.toast(AppStrings.get(unavailable
+                        ? R.string.home_kinopoisk_lookup_failed : R.string.home_no_exact_kinopoisk_match));
+                if (!destination.isEmpty()) {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(destination));
+                    intent.setPackage(KinopoiskLink.PACKAGE);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    if (AppLaunch.start(activity, intent, "Kinopoisk title/search link")) return;
+                    if (!resolved.isEmpty() && !search.isEmpty()) {
+                        Intent fallback = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(search));
+                        fallback.setPackage(KinopoiskLink.PACKAGE);
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        if (AppLaunch.start(activity, fallback, "Kinopoisk search fallback")) return;
+                    }
                 }
-                Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(resolved));
-                intent.setPackage(KinopoiskLink.PACKAGE);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (!AppLaunch.start(activity, intent, "Kinopoisk title link"))
-                    host.toast(AppStrings.get(R.string.home_kinopoisk_open_failed));
+                host.toast(AppStrings.get(R.string.home_kinopoisk_open_failed));
             });
         });
     }
