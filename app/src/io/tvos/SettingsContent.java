@@ -62,7 +62,7 @@ final class SettingsContent {
             case HOME_CARD_STYLE: return new String[] {AppStrings.get(R.string.home_continue_watching, language), AppStrings.get(R.string.settings_home_recommendations, language)};
             case HOME_VIEW: return new String[] {AppStrings.get(R.string.settings_home_collection, language), AppStrings.get(R.string.settings_home_tvos, language)};
             case HOME_SCREEN: return new String[] {AppStrings.get(R.string.settings_home_view, language), AppStrings.get(R.string.settings_home_card_style, language), AppStrings.get(R.string.settings_categories, language)};
-            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_sleep_after, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_time_format, language)};
+            case GENERAL: return new String[] {AppStrings.get(R.string.settings_about, language), AppStrings.get(R.string.settings_appearance, language), AppStrings.get(R.string.settings_sleep_after, language), AppStrings.get(R.string.settings_language, language), AppStrings.get(R.string.settings_region, language), AppStrings.get(R.string.settings_time_format, language), AppStrings.get(R.string.storage_manage, language)};
             case SLEEP_TIMER: return new String[] {AppStrings.get(R.string.settings_sleep_5, language), AppStrings.get(R.string.settings_sleep_10, language), AppStrings.get(R.string.settings_sleep_15, language), AppStrings.get(R.string.settings_sleep_30, language), AppStrings.get(R.string.settings_sleep_60, language), AppStrings.get(R.string.settings_sleep_120, language), AppStrings.get(R.string.settings_sleep_240, language)};
             case THEME_CHOICE: return new String[] {AppStrings.get(R.string.settings_automatic, language), AppStrings.get(R.string.settings_light, language), AppStrings.get(R.string.settings_dark, language)};
             case TEMPERATURE_CHOICE: return new String[] {AppStrings.get(R.string.settings_automatic, language), "°C", "°F"};
@@ -102,6 +102,7 @@ final class SettingsContent {
             case UPDATES: return focus == 1 ? AppStrings.get(R.string.settings_auto_update_help, language) : null;
             case MEDIA: return focus == 0 ? AppStrings.get(R.string.settings_help_default_service, language) : null;
             case GENERAL:
+                if (focus == 6) return AppStrings.get(R.string.storage_hint, language);
                 if (focus == 4) info = AppStrings.get(R.string.settings_help_country, language);
                 else if (focus == 2) info = AppStrings.get(R.string.settings_sleep_help, language);
 

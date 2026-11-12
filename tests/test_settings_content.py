@@ -23,7 +23,7 @@ public class ContentHarness {
  public static void main(String[] args){
   ContentHarness h=new ContentHarness();
   int[] screens={MAIN,MEDIA,MOVIE_SERVICE,HOME_SCREEN,GENERAL,WIDGETS,WEATHER,DATE_TIME,UPDATES,SYSTEM,RESET,TOP_PANEL,APPS_DOWNLOADS,ACCESSIBILITY,CITY,SCREENSAVER,ABOUT,LANGUAGE,SLEEP_TIMER};
-  int[] rows={11,3,7,3,6,2,3,1,2,4,2,4,8,3,2,6,9,2,7};
+  int[] rows={11,3,7,3,7,2,3,1,2,4,2,4,8,3,2,6,9,2,7};
   check(MAIN==0&&GENERAL==6&&SCREENSAVER==10&&MENU_BUTTONS==13&&CATEGORY_EDIT==20&&PICK_CITY==0&&PICK_VPN==-1,"stable screen/picker IDs");
   for(boolean russian:new boolean[]{false,true}){
    Ui.ru=russian;AppLanguage.select(Ui.ru?"ru":"en");
@@ -40,7 +40,7 @@ public class ContentHarness {
    check(SettingsContent.weatherDescription(true,false,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_home_help)),"Home weather help");
    check(SettingsContent.weatherDescription(false,true,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_bottom_help)),"bottom weather help");
    check(SettingsContent.weatherDescription(true,true,AppLanguage.current()).equals(AppStrings.get(R.string.settings_weather_both_help)),"both weather help");
-   h.screen=GENERAL;for(int row=0;row<6;row++)check(h.menuChevronVisible(row)==(row!=5),"only General destinations have chevrons");
+   h.screen=GENERAL;for(int row=0;row<7;row++)check(h.menuChevronVisible(row)==(row!=5),"only General destinations have chevrons");
    h.screen=CITY;check(!h.menuChevronVisible(0)&&h.menuChevronVisible(1),"region switch has no arrow, manual picker retains arrow");
    Prefs.automatic=true;check(!h.menuChevronVisible(1),"automatic region hides manual picker arrow");Prefs.automatic=false;
    h.screen=SYSTEM;check(h.menuChevronVisible(2)&&!h.menuChevronVisible(3),"launcher has submenu arrow, restart is an action");

@@ -1056,6 +1056,7 @@ public class SettingsActivity extends Activity {
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
+                case STORAGE: activity.startActivity(new Intent(activity,StorageActivity.class)); return;
                 case OPEN_ACCESSIBILITY: activity.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); return;
                 case ADVANCED_KEYS: RemoteShortcutSettingsActivity.open(activity, this, screenTitle()); break;
                 case KEY_PICKER: openPicker(focus + 1); break;

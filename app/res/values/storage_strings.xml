@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="storage_manage" formatted="false">Manage Storage</string>
+    <string name="storage_title" formatted="false">Storage</string>
+    <string name="storage_apps" formatted="false">APPLICATIONS</string>
+    <string name="storage_delete" formatted="false">Delete</string>
+    <string name="storage_hint" formatted="false">Installed applications, sorted by space used. Select the trash button to delete an application.</string>
+    <string name="storage_protected" formatted="false">tvOS cannot be deleted from this screen.</string>
+    <string name="storage_empty" formatted="false">No applications</string>
+    <string name="storage_size_unavailable" formatted="false">Size is unavailable. Check local ADB to allow access to storage statistics.</string>
+    <string name="storage_confirm" formatted="true">Delete “%1$s”? Its data will also be deleted.</string>
+    <string name="storage_deleting" formatted="false">Deleting…</string>
+    <string name="storage_delete_failed" formatted="false">Could not delete the application. Check local ADB.</string>
+    <string name="storage_load_failed" formatted="false">Could not load applications. Press OK to retry.</string>
+</resources>
