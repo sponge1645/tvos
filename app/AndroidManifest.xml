@@ -38,8 +38,6 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/network_security_config">
-        <activity android:name=".StorageActivity" android:process=":home" android:exported="false"
-            android:screenOrientation="landscape" android:theme="@style/TvOS.Home" />
         <activity android:name=".ResetActivity" android:exported="false" android:process=":reset"
             android:taskAffinity="io.tvos.reset" android:excludeFromRecents="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode"

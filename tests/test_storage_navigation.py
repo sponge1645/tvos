@@ -2,7 +2,7 @@
 from pathlib import Path
 import subprocess,tempfile
 from tmdb_metadata_fixture import block
-source=Path('app/src/io/tvos/StorageActivity.java').read_text()
+source=Path('app/src/io/tvos/StorageSettings.java').read_text()
 methods='\n'.join(block(source,sig) for sig in ['        void reveal(', '        void activate(', '        boolean key(', '        @Override public boolean onTouchEvent('])
 harness='''import java.util.*;
 class KeyEvent{static final int ACTION_DOWN=0,ACTION_UP=1,KEYCODE_BACK=4,KEYCODE_DPAD_CENTER=23,KEYCODE_ENTER=66,KEYCODE_DPAD_UP=19,KEYCODE_DPAD_DOWN=20,KEYCODE_DPAD_LEFT=21,KEYCODE_DPAD_RIGHT=22;int code,action;KeyEvent(int c,int a){code=c;action=a;}int getKeyCode(){return code;}int getAction(){return action;}boolean isCanceled(){return false;}}
@@ -10,7 +10,7 @@ class MotionEvent{static final int ACTION_DOWN=0,ACTION_UP=1;int action;float x,
 class Base{public boolean onTouchEvent(MotionEvent e){return false;}}
 class Test extends Base{
  static class Item{boolean removable;Item(boolean r){removable=r;}}List<Item> items=new ArrayList<>();boolean loading,deleting,loadFailed,confirm,finished;int focus,offset,confirmFocus,deleted,selected,loads,pressed;float k=1;
- static class Spring{void snap(float v){}}Spring focusSpring=new Spring();void finish(){finished=true;}void invalidate(){}void select(){selected++;}void delete(){deleted++;}void load(){loads++;}
+ static class Spring{void snap(float v){}}Spring focusSpring=new Spring();boolean ready(){return true;}void finish(){finished=true;}void invalidate(){}void select(){selected++;}void delete(){deleted++;}void load(){loads++;}
 '''+methods+'''
  static void check(boolean v,String why){if(!v)throw new AssertionError(why);}void tap(int code){key(new KeyEvent(code,0));key(new KeyEvent(code,1));}
  public static void main(String[] args){Test t=new Test();for(int i=0;i<14;i++)t.items.add(new Item(i!=0));

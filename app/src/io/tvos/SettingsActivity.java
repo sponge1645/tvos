@@ -53,6 +53,17 @@ import java.util.List;
 public class SettingsActivity extends Activity {
     private SettingsView view;
     private RemoteShortcutSettings remoteSettings;
+    private StorageSettings storageSettings;
+    void openStorageSettings(View source,String title){
+        if(storageSettings!=null||remoteSettings!=null)return;
+        android.view.ViewGroup host=(android.view.ViewGroup)source.getParent();
+        storageSettings=new StorageSettings(this,source,title,()->{
+            StorageSettings old=storageSettings;storageSettings=null;if(old==null)return;
+            host.removeView(old.content());old.close();source.setVisibility(View.VISIBLE);source.requestFocus();source.invalidate();
+        });
+        host.addView(storageSettings.content(),new android.view.ViewGroup.LayoutParams(-1,-1));
+        source.setVisibility(View.INVISIBLE);storageSettings.start();
+    }
     void openRemoteSettings(View source, String title) {
         if (remoteSettings != null) return;
         android.view.ViewGroup host = (android.view.ViewGroup) source.getParent();
@@ -79,7 +90,7 @@ public class SettingsActivity extends Activity {
         view = new SettingsView(this);
         preview = new SettingsPreview(this, view, view::resume);
         setContentView(preview.host());
-        automaticUpdates = new HomeUpdatePrompt(this, () -> remoteSettings == null && hasWindowFocus() && !preview.active()
+        automaticUpdates = new HomeUpdatePrompt(this, () -> remoteSettings == null && storageSettings == null && hasWindowFocus() && !preview.active()
                 && !view.updateDialog.visible() && !SetupGate.blocking(this));
         WifiPermission.requestOnce(this);
     }
@@ -88,6 +99,7 @@ public class SettingsActivity extends Activity {
         super.onResume();
         if (shortcuts != null) shortcuts.reload();
         if (remoteSettings != null) remoteSettings.resume();
+        if (storageSettings != null) storageSettings.resume();
         view.resume();
         SetupGate.route(this);
         if (automaticUpdates != null) automaticUpdates.resume();
@@ -106,6 +118,7 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onPause() {
         if (remoteSettings != null) remoteSettings.pause();
+        if (storageSettings != null) storageSettings.pause();
         if (shortcuts != null) shortcuts.cancel();
         if (automaticUpdates != null) automaticUpdates.pause();
         preview.close();     // before pausing the view: closing the preview resumes it (view.resume)
@@ -116,16 +129,19 @@ public class SettingsActivity extends Activity {
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
         if (remoteSettings != null) remoteSettings.windowFocus(focused);
+        if (storageSettings != null) storageSettings.windowFocus(focused);
         if (!focused && shortcuts != null) shortcuts.cancel();
         if (focused && automaticUpdates != null) automaticUpdates.changed();
     }
 
     @Override protected void onDestroy() {
         if (remoteSettings != null) { remoteSettings.close(); remoteSettings = null; }
+        if (storageSettings != null) { storageSettings.close(); storageSettings = null; }
         if (shortcuts != null) { shortcuts.close(); shortcuts = null; }
         super.onDestroy();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if(storageSettings!=null){if(storageSettings.dispatchKeyEvent(event))return true;return super.dispatchKeyEvent(event);}
         if (remoteSettings != null) {
             if (remoteSettings.dispatchKeyEvent(event)) return true;
             return super.dispatchKeyEvent(event);
@@ -1056,7 +1072,7 @@ public class SettingsActivity extends Activity {
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
-                case STORAGE: activity.startActivity(new Intent(activity,StorageActivity.class)); return;
+                case STORAGE: activity.openStorageSettings(this,screenTitle()); return;
                 case OPEN_ACCESSIBILITY: activity.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); return;
                 case ADVANCED_KEYS: RemoteShortcutSettingsActivity.open(activity, this, screenTitle()); break;
                 case KEY_PICKER: openPicker(focus + 1); break;

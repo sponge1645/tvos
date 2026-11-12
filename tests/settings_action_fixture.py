@@ -33,7 +33,7 @@ public class CLASSNAME {
   Intent addFlags(int f){flags|=f;return this;}Intent putExtra(String k,boolean b){note("extra:"+k+":"+b);return this;}
  }
  static class StorageActivity {}static class SetupActivity {}static class RemoteShortcutSettingsActivity {static void open(Activity activity,Object source,String title){if(source==null||title.isEmpty())throw new AssertionError();note("remote-source-frame");activity.startActivity(new Intent(activity,RemoteShortcutSettingsActivity.class));}}static class HomeActivity {}static class Settings {static final String ACTION_ACCESSIBILITY_SETTINGS="accessibility",ACTION_DATE_SETTINGS="date",ACTION_SETTINGS="settings";}
- static class Activity {void startActivity(Intent i){note("start:"+i.action+":"+i.flags);}void finish(){note("finish");}void showPreview(){note("preview");}}
+ static class Activity {void openStorageSettings(Object source,String title){note("storage-source-frame");}void startActivity(Intent i){note("start:"+i.action+":"+i.flags);}void finish(){note("finish");}void showPreview(){note("preview");}}
  final Activity activity=new Activity();
  static class Prefs {static boolean collection=true;static boolean homeCollection(){return collection;}static void setHomeCollection(boolean enabled){collection=enabled;}static boolean homeContinue(){return home;}static boolean home;static void setHomeContinue(boolean v){home=v;}
   static String theme="auto",language="en",unit="auto";static boolean weather=true,random;static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static boolean randomMovie(){return random;}static void setRandomMovie(boolean v){random=v;}static boolean h24,auto;static boolean automaticRegion(){return auto;}

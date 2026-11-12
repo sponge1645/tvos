@@ -1,16 +1,21 @@
 # Storage management — 1.2
 
-General > Manage Storage is the seventh row, below Time Format. The child
-activity runs in the settings process with the same theme, SettingsBackground,
+General > Manage Storage is the seventh row, below Time Format. The controller is embedded in the existing settings window, with the same
+theme, SettingsBackground,
 SettingsListRenderer/SettingsRowRenderer capsules, SF Pro Display typography,
-Shadows fallback and reduce-motion preference. The parent remains on General
+Shadows fallback and reduce-motion preference. SettingsTransitions handles the
+right list slide and title crossfade in both directions. The left tile fades
+tvOS out over 140 ms, then fades the app icon in over 140 ms without scaling.
+Late icons wait at zero opacity until ready; changing apps uses the same
+sequential opacity transition. Back fades the icon out and tvOS back in.
+Reduce Motion switches immediately. The parent remains on General
 row 6, so Back returns focus to the exact entry.
 
 The list includes installed non-system apps, including disabled apps and tvOS.
 System packages are excluded and tvOS has a disabled delete control. Rows sort
 by total size, largest first, with stable label ordering for ties/unknown values.
 Selection loads one banner/icon off the UI thread, bounded to 512 pixels, and
-crossfades it in the left tile. The right list scrolls in nine visible rows;
+fades it in the left tile. The right list scrolls in nine visible rows;
 Up/Down selects the delete control, OK opens confirmation, Back cancels first.
 Confirmation defaults to Cancel. Touching blank space cannot delete an app.
 
@@ -25,7 +30,7 @@ worker rechecks that the package is neither system nor tvOS, validates the
 package name, and invokes pm uninstall for the launcher's Android user through
 local ADB. It never removes packages from other users. Failure leaves the list
 and shows a localized message; success reloads sizes and keeps the adjacent
-selection visible. Leaving the activity cancels an unsubmitted confirmation.
+selection visible. Leaving the settings window cancels an unsubmitted confirmation.
 
 Validation covers real StorageApps code with simulated Android/ADB services:
 statistics access, totals, unknown sizes, ordering, protected-package guards,

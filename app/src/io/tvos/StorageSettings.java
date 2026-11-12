@@ -1,6 +1,7 @@
 package io.tvos;
 
 import android.app.Activity;
+import android.content.ContextWrapper;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -8,7 +9,6 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.TextUtils;
 import android.text.format.Formatter;
@@ -21,13 +21,20 @@ import io.tvos.settings.SettingsListRenderer;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
 import io.tvos.settings.SettingsTextRenderer;
+import io.tvos.settings.SettingsTransitions;
+import io.tvos.settings.SettingsTileMotion;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /** The same settings canvas, typography and capsules, with app artwork and a focused delete control. */
-public final class StorageActivity extends Activity {
+final class StorageSettings extends ContextWrapper {
+    private final Activity activity;
+    private final View sourceView;
+    private final String sourceTitle;
+    private final Runnable exit;
+    private boolean resumed;
     private final ExecutorService work=Executors.newSingleThreadExecutor();
     private Menu menu;
     private int generation;
@@ -42,15 +49,24 @@ public final class StorageActivity extends Activity {
     private long artworkAt;
     private RemoteShortcuts shortcuts;
     private String text(int id){return AppStrings.get(id);}
-    @Override protected void onCreate(Bundle state){super.onCreate(state);Ui.init(this);android.content.res.Configuration config=new android.content.res.Configuration(getResources().getConfiguration());config.setLocale(AppLanguage.current().locale);sizeContext=createConfigurationContext(config);menu=new Menu();setContentView(menu);shortcuts=new RemoteShortcuts(this,true,null);}
-    @Override protected void onResume(){super.onResume();if(shortcuts!=null)shortcuts.reload();load();}
-    @Override protected void onPause(){if(menu!=null&&!deleting){menu.confirm=false;menu.confirmFocus=0;}if(shortcuts!=null)shortcuts.cancel();super.onPause();}
-    @Override protected void onDestroy(){closed=true;generation++;iconGeneration++;work.shutdownNow();if(shortcuts!=null)shortcuts.close();menu.clear();artwork=previousArtwork=null;super.onDestroy();}
-    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&shortcuts!=null)shortcuts.cancel();}
-    @Override public boolean dispatchKeyEvent(KeyEvent event){
+    StorageSettings(Activity activity,View source,String title,Runnable exit){
+        super(activity);this.activity=activity;sourceView=source;sourceTitle=title;this.exit=exit;
+        android.content.res.Configuration config=new android.content.res.Configuration(getResources().getConfiguration());
+        config.setLocale(AppLanguage.current().locale);sizeContext=createConfigurationContext(config);
+        menu=new Menu();shortcuts=new RemoteShortcuts(this,true,null);
+    }
+    View content(){return menu;}
+    void start(){resume();}
+    void resume(){resumed=true;if(shortcuts!=null)shortcuts.reload();load();}
+    void pause(){resumed=false;if(menu!=null&&!deleting){menu.confirm=false;menu.confirmFocus=0;}if(shortcuts!=null)shortcuts.cancel();}
+    void windowFocus(boolean focus){if(!focus&&shortcuts!=null)shortcuts.cancel();}
+    void close(){closed=true;generation++;iconGeneration++;work.shutdownNow();if(shortcuts!=null)shortcuts.close();menu.removeCallbacks(menu.finishExit);menu.clear();artwork=previousArtwork=null;}
+    private void runOnUiThread(Runnable task){activity.runOnUiThread(task);}
+    private void finish(){menu.exitToSettings();}
+    boolean dispatchKeyEvent(KeyEvent event){
         if(shortcuts!=null&&shortcuts.onKey(event))return true;
         if(menu.key(event))return true;
-        return super.dispatchKeyEvent(event);
+        return false;
     }
     private void load(){
         if(closed)return;loading=true;final int token=++generation;menu.invalidate();
@@ -79,7 +95,7 @@ public final class StorageActivity extends Activity {
                 bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);drawable.setBounds(0,0,width,height);drawable.draw(new Canvas(bitmap));
             }catch(Exception ignored){}
             final Bitmap ready=bitmap;
-            runOnUiThread(()->{if(closed||token!=iconGeneration)return;previousArtwork=artwork;artwork=ready;artworkAt=SystemClock.uptimeMillis();menu.invalidate();});
+            runOnUiThread(()->{if(closed||token!=iconGeneration)return;menu.replaceArtwork(ready);menu.invalidate();});
         });
     }
     private String size(StorageApps.Item item){String value=sizes.get(item.pkg);if(value==null){value=item.bytes<0?"—":Formatter.formatShortFileSize(sizeContext,item.bytes);sizes.put(item.pkg,value);}return value;}
@@ -108,11 +124,17 @@ public final class StorageActivity extends Activity {
         final RectF bounds=new RectF(),trash=new RectF(),image=new RectF();final Path clip=new Path();
         final Spring focusSpring=new Spring(.3f,1,0);
         int focus,offset,confirmFocus;boolean confirm;float k=1;long last;int pressed=-1;
-        Menu(){super(StorageActivity.this);setFocusable(true);setFocusableInTouchMode(true);requestFocus();}
+        final SettingsTransitions transitions=new SettingsTransitions();
+        final java.util.function.IntUnaryOperator parent=page->page==1?0:-1;
+        boolean started,exiting,drawLight,drawReduced,exitLogo;
+        long entered,exitAt;Bitmap exitArtwork;float oldOpacity=1,exitOpacity=1;
+        final Runnable finishExit=()->{if(!closed)exit.run();};
+        Menu(){super(activity);setFocusable(true);setFocusableInTouchMode(true);requestFocus();}
         void clear(){background.clear();typography.clear();shadows.clear();}
         void reveal(){offset=Math.max(0,Math.min(offset,focus));if(focus>=offset+9)offset=focus-8;}
         @Override protected void onSizeChanged(int w,int h,int ow,int oh){k=w/1920f;clear();}
         void activate(){
+            if(!ready())return;
             if(loadFailed){load();return;}
             if(loading||deleting||items.isEmpty())return;
             if(confirm){if(confirmFocus==1)delete();else{confirm=false;invalidate();}return;}
@@ -120,6 +142,7 @@ public final class StorageActivity extends Activity {
             confirm=true;confirmFocus=0;focusSpring.snap(0);invalidate();
         }
         boolean key(KeyEvent event){
+            if(!ready())return true;
             int code=event.getKeyCode();boolean down=event.getAction()==KeyEvent.ACTION_DOWN;
             if(code==KeyEvent.KEYCODE_BACK){if(event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled()&&!deleting){if(confirm){confirm=false;invalidate();}else finish();}return true;}
             if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){if(event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled())activate();return true;}
@@ -133,6 +156,7 @@ public final class StorageActivity extends Activity {
             return code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT;
         }
         @Override public boolean onTouchEvent(MotionEvent event){
+            if(!ready())return true;
             if(event.getAction()==MotionEvent.ACTION_DOWN){pressed=(int)((event.getY()/k-189)/84)+offset;return true;}
             if(event.getAction()==MotionEvent.ACTION_UP){int hit=(int)((event.getY()/k-189)/84)+offset;
                 if(hit==pressed&&event.getX()>1000*k&&!loading&&!deleting){if(confirm){if(hit-offset>=0&&hit-offset<2){confirmFocus=hit-offset;activate();}}
@@ -142,19 +166,23 @@ public final class StorageActivity extends Activity {
         }
         @Override protected void onDraw(Canvas c){
             long now=SystemClock.uptimeMillis();float dt=Math.min(.05f,Math.max(0,now-last)/1000f);last=now;
-            boolean light=!HomeData.get(getContext()).isNight(System.currentTimeMillis());
-            boolean reduced=getSharedPreferences("settings",MODE_PRIVATE).getBoolean("reduce_motion",false);
+            boolean light=!HomeData.get(getContext()).isNight(System.currentTimeMillis());drawLight=light;
+            boolean reduced=reduced();drawReduced=reduced;
+            if(!started){started=true;entered=now;artworkAt=now;transitions.seedTitle(sourceTitle);transitions.sync(0,now,true,false,parent);transitions.sync(1,now,reduced,false,parent);}
             background.draw(c,getWidth(),getHeight(),light);
             title.setTypeface(Ui.displayBold);title.setTextSize(56*k);title.setTextAlign(Paint.Align.CENTER);title.setColor(light?0xFF738190:0xFF5A676D);
-            typography.drawTracked(c,text(R.string.storage_title),getWidth()/2f,111*k,title,.005f);
+            boolean moving=transitions.drawTitle(c,exiting?sourceTitle:text(R.string.storage_title),now,reduced,getWidth()/2f,111*k,title,typography);
             label.setTypeface(Ui.displaySemibold);label.setTextSize(36*k);value.setTypeface(Ui.displayRegular);value.setTextSize(36*k);value.setTextAlign(Paint.Align.RIGHT);
-            float alpha=reduced?1:Math.min(1,(now-artworkAt)/220f);
-            if(artwork==null)logo.draw(c,k,light,Ui.displaySemibold);
-            else {
-                if(alpha<1){if(previousArtwork==null)logo.draw(c,k,light,Ui.displaySemibold);else drawArtwork(c,previousArtwork,1);}
-                drawArtwork(c,artwork,alpha);if(alpha<1)postInvalidateOnAnimation();else previousArtwork=null;
-            }
-            focusSpring.target=1;if(reduced)focusSpring.snap(1);else if(focusSpring.step(dt))postInvalidateOnAnimation();
+            drawTile(c,now);
+            typography.drawDescription(c,description(),k,light,Ui.displaySemibold);
+            focusSpring.target=1;if(reduced)focusSpring.snap(1);else if(focusSpring.step(dt))moving=true;
+            moving|=transitions.drawList(c,exiting?0:1,now,k,getWidth(),getHeight(),parent,(canvas,page)->{
+                if(page==0)sourceView.draw(canvas);else drawRows(canvas);
+            });
+            if(moving&&resumed)postInvalidateOnAnimation();
+        }
+        private void drawRows(Canvas c){
+            boolean light=drawLight;
             String hint=text(R.string.storage_hint);
             if(loading||items.isEmpty()){
                 label.setColor(SettingsListRenderer.normalInk(light));c.drawText(text(loading?R.string.remote_loading:loadFailed?R.string.storage_load_failed:R.string.storage_empty),1080*k,230*k,label);
@@ -175,7 +203,46 @@ public final class StorageActivity extends Activity {
                 }
                 StorageApps.Item app=items.get(focus);if(!app.removable)hint=text(R.string.storage_protected);else if(app.bytes<0)hint=text(R.string.storage_size_unavailable);
             }
-            typography.drawDescription(c,hint,k,light,Ui.displaySemibold);
+
+        }
+        boolean reduced(){return getSharedPreferences("settings",MODE_PRIVATE).getBoolean("reduce_motion",false);}
+        boolean ready(){return !exiting&&(reduced()||transitions.focusReady(SystemClock.uptimeMillis()));}
+        String description(){
+            if(exiting)return "";
+            if(deleting)return text(R.string.storage_deleting);
+            if(confirm&&!items.isEmpty())return String.format(AppLanguage.current().locale,text(R.string.storage_confirm),items.get(focus).label);
+            if(!items.isEmpty()){StorageApps.Item app=items.get(focus);if(!app.removable)return text(R.string.storage_protected);if(app.bytes<0)return text(R.string.storage_size_unavailable);}
+            return text(R.string.storage_hint);
+        }
+        void exitToSettings(){
+            if(exiting)return;
+            if(reduced()){exit.run();return;}
+            long now=SystemClock.uptimeMillis();float age=now-artworkAt;
+            exitLogo=now-entered<140||artwork==null;
+            exitArtwork=age<140&&previousArtwork!=null?previousArtwork:artwork;
+            exitOpacity=exitLogo?SettingsTileMotion.out(now-entered):age<140&&previousArtwork!=null?oldOpacity*SettingsTileMotion.out((long)age):SettingsTileMotion.in((long)age);
+            exiting=true;exitAt=now;transitions.sync(0,now,false,false,parent);invalidate();postDelayed(finishExit,280);
+        }
+        void replaceArtwork(Bitmap next){
+            long now=SystemClock.uptimeMillis();long age=now-artworkAt;
+            if(artwork==null){artwork=next;artworkAt=Math.max(entered,now-140);previousArtwork=null;oldOpacity=1;return;}
+            Bitmap visible=age<140&&previousArtwork!=null?previousArtwork:artwork;
+            oldOpacity=age<140&&previousArtwork!=null?oldOpacity*SettingsTileMotion.out(age):SettingsTileMotion.in(age);
+            previousArtwork=visible;artwork=next;artworkAt=now;
+        }
+        void drawTile(Canvas c,long now){
+            if(drawReduced){if(artwork==null)logo.draw(c,k,drawLight,Ui.displaySemibold);else drawArtwork(c,artwork,1);return;}
+            if(exiting){long age=now-exitAt;if(age<140)fadeTile(c,exitArtwork,exitLogo,exitOpacity*SettingsTileMotion.out(age));else fadeTile(c,null,true,SettingsTileMotion.in(age));if(age<280)postInvalidateOnAnimation();return;}
+            long entry=now-entered,age=now-artworkAt;
+            if(entry<140)fadeTile(c,null,true,SettingsTileMotion.out(entry));
+            else if(previousArtwork!=null&&age<140)fadeTile(c,previousArtwork,false,oldOpacity*SettingsTileMotion.out(age));
+            else if(artwork!=null)fadeTile(c,artwork,false,SettingsTileMotion.in(age));
+            if(entry<280||artwork!=null&&age<280)postInvalidateOnAnimation();else previousArtwork=null;
+        }
+        void fadeTile(Canvas c,Bitmap bitmap,boolean isLogo,float opacity){
+            if(opacity<=0.001f)return;
+            if(isLogo){int layer=c.saveLayerAlpha(250*k,230*k,795*k,778*k,Math.round(255*opacity));logo.draw(c,k,drawLight,Ui.displaySemibold);c.restoreToCount(layer);}
+            else if(bitmap!=null)drawArtwork(c,bitmap,opacity);
         }
         void drawArtwork(Canvas c,Bitmap bitmap,float alpha){
             float width=536*k,height=width*bitmap.getHeight()/bitmap.getWidth();if(height>536*k){height=536*k;width=height*bitmap.getWidth()/bitmap.getHeight();}

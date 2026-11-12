@@ -18,6 +18,7 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  app/src/io/tvos/StorageActivity.java \
   app/src/io/tvos/VolumeKeyRepeat.java \
   app/src/io/tvos/RemoteInputMethod.java \
   app/src/io/tvos/RemoteKeyboardBridge.java \

@@ -67,7 +67,7 @@ public class ActionsTest {
    check(ActionView.events.contains("snap")&&ActionView.events.contains("invalidate")&&ActionView.events.contains("spoken"),"editor starts transition immediately without waiting for another input or background event");
   }
   v=create(SYSTEM,2);v.activate();check(v.screen==HOME_CHOICE,"System launcher row opens choice");
-  v=create(GENERAL,6);v.activate();check(ActionView.events.contains("start:StorageActivity:0")&&v.screen==GENERAL&&v.focus==6,"storage opens below time format and parent keeps exact return focus");
+  v=create(GENERAL,6);v.activate();check(ActionView.events.contains("storage-source-frame")&&v.screen==GENERAL&&v.focus==6,"storage opens below time format and parent keeps exact return focus");
   check(!SettingsActions.canAdjust(GENERAL,6,6),"storage is an OK-only destination");
   check(SettingsActions.activation(ACCESSIBILITY,2,0,false,6,false)==SettingsActions.Action.TV_SETTINGS,"TV settings remains third accessibility row");
   v=create(RESET,0);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-cache")),"cache clear requires existing confirmation");
