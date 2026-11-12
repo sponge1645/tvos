@@ -55,13 +55,14 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private boolean isDestroyed() { return closed || activity.isDestroyed(); }
     private boolean isFinishing() { return closed || activity.isFinishing(); }
     private void finishToSettings() { if (closed) return; exit.run(); }
-    void resume() { resumed = true; shortcuts.reload(); if (capturing) captureBridge.start(); view.invalidate(); }
+    void resume() { resumed = true; shortcuts.reload(); if (capturing) captureBridge.start(); if(volumeStep!=0)beginVolumeCapture(); view.invalidate(); }
     void pause() {
         resumed = false; captureBridge.stop(); input.reset(); learned = null; captureBackDown = false;
         shortcuts.cancel(); view.clearCaches();
     }
     void windowFocus(boolean focused) {
         if (focused && resumed && capturing) captureBridge.start();
+        if (focused && resumed && volumeStep!=0)beginVolumeCapture();
         if (!focused) { captureBridge.stop(); input.reset(); learned = null; captureBackDown = false; shortcuts.cancel(); }
     }
     void close() {
@@ -76,6 +77,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private Menu view;
     private Click click;
     private boolean busy, resumed, capturing;
+    private int volumeStep;
     private KeyEvent learned;
     private boolean captureBackDown;
     private int generation;
@@ -96,6 +98,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private Row row(String label, String value, Runnable action) { Row row = new Row(label, value, false, action); row.picker = false; return row; }
     private Row row(int label, Runnable action) { return row(text(label), "", action); }
     private void show(String title, String hint, List<Row> rows, Runnable previous, int selected, int depth) {
+        volumeStep=0;
         view.captureOutgoing(capturing, depth);
         if (captureBridge != null) captureBridge.stop();
         generation++; capturing = false; learned = null; captureBackDown = false; input.reset();
@@ -124,6 +127,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
         }
         rows.add(row(R.string.settings_remote_add, this::capture));
         rows.add(row(R.string.remote_accessibility_enable, this::connection));
+        rows.add(row(R.string.remote_volume_setup, () -> volumeSetup(1)));
         show(text(R.string.remote_buttons), text(R.string.remote_root_hint), rows, null, 0, 1);
     }
     private static boolean unselected(String action) { return action.isEmpty() || "none".equals(action); }
@@ -236,6 +240,19 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private void assign(int at, int tap, String action) {
         Binding b = bindings.get(at); String[] actions = b.actions(); actions[tap] = action;
         bindings.set(at, new Binding(b.code, b.scan, b.device, b.global, actions)); save(() -> edit(at));
+    }
+    private void volumeSetup(int direction) {
+        List<Row> rows=new ArrayList<>();
+        rows.add(row(R.string.settings_cancel,this::root));
+        show(text(R.string.remote_volume_setup),text(R.string.remote_volume_connecting),rows,this::root,0,2);
+        volumeStep=direction;beginVolumeCapture();
+    }
+    private void beginVolumeCapture() {
+        final int direction=volumeStep;
+        captureBridge.startVolume(direction,()->{
+            view.hint=text(direction>0?R.string.remote_volume_up_hint:R.string.remote_volume_down_hint);
+            view.setContentDescription(view.title+", "+view.hint);view.invalidate();
+        },()->{if(!closed&&resumed){if(direction>0)volumeSetup(-1);else root();}});
     }
     private void connection() {
         startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));

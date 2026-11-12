@@ -22,9 +22,15 @@ final class RemoteKeyCapture implements AutoCloseable {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String token = "";
     private boolean closed;
+    private int volumeMode;
+    private Runnable volumeDone,volumeReady;
     private final BroadcastReceiver events = new BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) {
             if (closed || token.isEmpty() || !token.equals(i.getStringExtra("token"))) return;
+            if(volumeMode!=0&&i.getBooleanExtra("volumeReady",false)) { if(volumeReady!=null)volumeReady.run();return; }
+            if(volumeMode!=0&&i.getStringExtra("volumeDevice")!=null){
+                Runnable done=volumeDone;stop();if(done!=null)done.run();return;
+            }
             KeyEvent event = event(i);
             if (event != null) sink.accept(event);
         }
@@ -33,7 +39,7 @@ final class RemoteKeyCapture implements AutoCloseable {
         @Override public void run() {
             if (closed || token.isEmpty()) return;
             context.sendBroadcast(new Intent(COMMAND).setPackage(context.getPackageName())
-                    .putExtra("token", token).putExtra("until", SystemClock.elapsedRealtime() + 5000), PERMISSION);
+                    .putExtra("token", token).putExtra("volume",volumeMode).putExtra("until", SystemClock.elapsedRealtime() + 5000), PERMISSION);
             handler.postDelayed(this, 2000);
         }
     };
@@ -49,9 +55,10 @@ final class RemoteKeyCapture implements AutoCloseable {
         if (closed || !token.isEmpty()) return;
         token = UUID.randomUUID().toString(); renew.run();
     }
+    void startVolume(int direction,Runnable ready,Runnable done) { stop();volumeMode=direction;volumeDone=done;volumeReady=ready;start(); }
     void stop() {
         if (token.isEmpty()) return;
-        String old = token; token = ""; handler.removeCallbacks(renew);
+        String old = token; token = "";volumeMode=0;volumeDone=null;volumeReady=null; handler.removeCallbacks(renew);
         context.sendBroadcast(new Intent(COMMAND).setPackage(context.getPackageName())
                 .putExtra("token", old).putExtra("until", 0L), PERMISSION);
     }

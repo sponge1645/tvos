@@ -52,28 +52,46 @@ has one Not Selected choice; legacy empty/none values display the same label.
 Bindings match Android code, Linux scan code and remote name, with up to 32 keys.
 Tap interval is 300 ms. Single-only assignments execute on release. Double/triple
 assignments delay the single action. Original OK is supported on Home only.
-Arrows, Back, Home, power and volume are reserved and pass unchanged to Android,
-including repeats/releases. While the accessibility filter is active, VolumeKeyRepeat
-adds missing volume steps after the normal hold timeout plus 100 ms, using
-AudioManager on the suggested stream. Short presses add no steps. Any real
-repeat disables the fallback for that press, so normal remotes keep their
-firmware repeat rate. Release, another key, screen-off, interruption or service
-teardown cancels it; a 30-second deadline bounds a lost release. Volume events
-are never consumed or entered into the assignment engine. No audio listener
-is installed.
+Arrows, Back, Home, power and volume are reserved for native Android handling.
+The accessibility callback no longer generates audio-volume steps and has no
+manufacturer-specific volume mappings.
 
-The tested MStar Smart TV IR Receiver emits Linux scan 30 (KEY_A) for
-Volume Up and scan 33 (KEY_F) for Volume Down. VolumeKeyRepeat accepts these
-scans only on that exact input-device name, in addition to standard Android
-volume codes; physical keyboard A/F stay untouched. Diagnostics record
-recognized volume DOWN/UP/repeat events and generated volume steps. If
-firmware consumes these keys before accessibility delivery, this fallback
-cannot see them; the diagnostics distinguish that from audio adjustment failure.
+## Volume hold through local ADB
+
+While the accessibility service is connected, AdbVolumeKeys owns one local ADB
+shell running VolumeRelay from the installed APK via app_process. The relay
+reads getevent directly and passes synthetic standard Volume Up/Down events to
+Android's input service; it never guesses an audio stream or sets absolute volume.
+The original physical press remains native. After 600 ms without native hardware
+repeats it emits one paired repeat every 80 ms until the physical release.
+Hardware repeats, another physical key or a 30-second lost-release deadline
+cancel the synthetic repeat. Idle timer polling is 200 ms, active polling 20 ms.
+
+Linux volume scans 115/114 work automatically. Other remotes use **Set Up Volume
+Buttons** in the button editor: press/release Up, then Down after each prompt.
+Prompts wait for acknowledgement from the relay. Mapping uses input-device name
+and Linux scan rather than /dev/input/eventN, so event numbering can change.
+Only the active signature-protected capture lease can save a mapping. Leaving
+Settings stops learning. Stored mappings survive app updates; no vendor names
+or letter-key mappings are baked into the app.
+
+The relay reads owner heartbeats and exits on stdin EOF or a 2-second heartbeat
+timeout. Service destruction, interruption or screen-off closes its ADB socket;
+screen-on reconnects. Connection failures retry after 5 seconds. Early key filtering is enabled only
+after relay READY; loss of the relay disables it so native volume autorepeat
+remains available while ADB is down. The relay uses
+shell input-injection privileges, no root and no keyboard/IME replacement. Local
+ADB and the firmware's getevent/input-injection permissions remain prerequisites;
+real-TV behavior still requires validation. No raw key stream is logged or saved.
+Only READY/errors and the two explicitly learned button identities leave the relay.
 
 ## Validation
 
 Key-filter tests execute capture/release matching, reserved-key passthrough,
-Home/global scope, volume fallback, native-repeat suppression and cleanup.
+Home/global scope and cleanup. Raw-volume tests cover standard/custom devices,
+paired calibration, hold/release, native-repeat suppression and deadlines.
+Process tests execute the actual relay with simulated getevent/injection APIs,
+including owner EOF and heartbeat loss.
 Editor and Settings tests cover learning, gestures, focus and lifecycle.
 The APK builds against Android API 34. Netflix and Prime interception was
 confirmed on the tested DEXP; volume fallback still requires a TV check.

@@ -142,6 +142,7 @@ final class Adb implements Closeable {
     /** One dedicated streaming shell. The owner closes this connection to cancel blocked reads. */
     interface Stream {
         boolean active();
+        default String input() { return "PING\n"; }
         void output(byte[] bytes) throws IOException;
     }
 
@@ -161,7 +162,7 @@ final class Adb implements Closeable {
                     }
                     if (remote.get() != 0 && pending.compareAndSet(false, true)) {
                         pendingSince.set(System.nanoTime());
-                        send(WRTE, local, remote.get(), "PING\n".getBytes(StandardCharsets.US_ASCII));
+                        send(WRTE, local, remote.get(), stream.input().getBytes(StandardCharsets.US_ASCII));
                     }
                     Thread.sleep(500);
                 }

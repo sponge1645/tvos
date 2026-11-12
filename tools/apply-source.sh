@@ -18,6 +18,14 @@ for ITEM in app build.sh release.sh tools tests README.md LICENSE config.example
 done
 # Retired tracked files must also disappear from an existing checkout; BACKUP already holds the old app.
 for RETIRED_FILE in \
+  app/src/io/tvos/VolumeKeyRepeat.java \
+  app/src/io/tvos/RemoteInputMethod.java \
+  app/src/io/tvos/RemoteKeyboardBridge.java \
+  app/src/io/tvos/remote/KeyboardHandoff.java \
+  app/res/xml/remote_input_method.xml \
+  app/res/values/settings_remote_input_strings.xml \
+  app/res/values-ru/settings_remote_input_strings.xml \
+  tests/test_remote_input_method.py tests/test_keyboard_bridge.py tests/test_keyboard_handoff.py \
   app/src/io/tvos/watching/ResumeArtworkIdentity.java \
   tests/test_resume_artwork_identity.py \
   docs/AUDIT-1.1.2.md \

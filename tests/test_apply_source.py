@@ -16,6 +16,8 @@ with tempfile.TemporaryDirectory(prefix='tvos-apply-source-') as tmp:
  retired += ['tests/'+name+'.py' for name in ['test_home_search_input','test_home_search_glass','test_home_search_lifecycle','test_search_heading']]
  retired += ['docs/AUDIT-1.1.2.md', 'docs/FINAL-AUDIT.md', 'docs/REFACTORING-AUDIT.md', 'docs/DEVELOPMENT-NOTES.md']
  retired += ['app/src/io/tvos/watching/ResumeArtworkIdentity.java', 'tests/test_resume_artwork_identity.py']
+ retired += ["app/src/io/tvos/"+name+".java" for name in ["VolumeKeyRepeat","RemoteInputMethod","RemoteKeyboardBridge"]]
+ retired += ["app/src/io/tvos/remote/KeyboardHandoff.java","app/res/xml/remote_input_method.xml","app/res/values/settings_remote_input_strings.xml","app/res/values-ru/settings_remote_input_strings.xml"]
  for name in retired:
   p=target/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('retired')
  (target/'config.properties').write_text('personal config')
