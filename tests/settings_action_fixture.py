@@ -32,7 +32,7 @@ public class CLASSNAME {
   Intent(String s){action=s;}Intent(Object activity,Class<?> type){action=type.getSimpleName();}
   Intent addFlags(int f){flags|=f;return this;}Intent putExtra(String k,boolean b){note("extra:"+k+":"+b);return this;}
  }
- static class SetupActivity {}static class RemoteShortcutSettingsActivity {static void open(Activity activity,Object source,String title){if(source==null||title.isEmpty())throw new AssertionError();note("remote-source-frame");activity.startActivity(new Intent(activity,RemoteShortcutSettingsActivity.class));}}static class HomeActivity {}static class Settings {static final String ACTION_DATE_SETTINGS="date",ACTION_SETTINGS="settings";}
+ static class SetupActivity {}static class RemoteShortcutSettingsActivity {static void open(Activity activity,Object source,String title){if(source==null||title.isEmpty())throw new AssertionError();note("remote-source-frame");activity.startActivity(new Intent(activity,RemoteShortcutSettingsActivity.class));}}static class HomeActivity {}static class Settings {static final String ACTION_ACCESSIBILITY_SETTINGS="accessibility",ACTION_DATE_SETTINGS="date",ACTION_SETTINGS="settings";}
  static class Activity {void startActivity(Intent i){note("start:"+i.action+":"+i.flags);}void finish(){note("finish");}void showPreview(){note("preview");}}
  final Activity activity=new Activity();
  static class Prefs {static boolean collection=true;static boolean homeCollection(){return collection;}static void setHomeCollection(boolean enabled){collection=enabled;}static boolean homeContinue(){return home;}static boolean home;static void setHomeContinue(boolean v){home=v;}
@@ -61,7 +61,7 @@ public class CLASSNAME {
  static class Spoken {void focusMoved(){note("spoken");}}final Spoken spoken=new Spoken();
  CLASSNAME(){for(int i=0;i<20;i++){appPkgs.add("app"+i);cities.add(new String[]{"city","Name","1","2","3","Zone"});}rebuildMenuButtonRows(-1);events.clear();Prefs.shelf=null;Prefs.theme="auto";Prefs.language="en";Prefs.unit="auto";Prefs.h24=false;Prefs.auto=false;}
  int settingIndex(){return selectedSetting;}boolean busy(){return busyFlag;}boolean freeActive(){return freeFlag;}boolean vpnTopEnabled(){return vpnFlag;}
- static class RemoteInputMethod {static void choose(Activity a){note("input-method");}}void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
+ void invalidate(){note("invalidate");}void askCity(){note("ask-city");}
  void toggleCategory(){note("category");}void toggleShelfApp(){note("shelf-toggle");}void adjust(int d){note("adjust:"+d);}
  void launchAirPlay(){note("airplay");}void loadApps(Runnable ready){note("load-apps");ready.run();}void openTvSettings(){note("tv-settings");}
  void openPicker(int p){picker.kind=p;screen=PICKER;focus=0;note("picker:"+p);}

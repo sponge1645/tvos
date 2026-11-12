@@ -19,7 +19,7 @@ import static io.tvos.settings.SettingsScreen.*;import io.tvos.settings.Settings
 public class SettingsHarness {
  static class Ui {static boolean ru;}
  static class Prefs {static boolean random;static boolean randomMovie(){return random;}static void setRandomMovie(boolean v){random=v;}static boolean weather=true,h24;static String theme="auto",language="en",unit="auto";static boolean weather(){return weather;}static void setWeather(boolean v){weather=v;}static String theme(){return theme;}static void setTheme(String v){theme=v;}static String language(){return language;}static void setLanguage(String v){language=v;}static String temperature(){return unit;}static void setTemperature(String v){unit=v;}static boolean hour24(){return h24;}static void setHour24(boolean v){h24=v;}}
- static class RemoteInputMethod {static void choose(Object a){}}
+
  final Object activity=new Object();
  static class Intent {final String action;String pkg;Intent(String a){action=a;}Intent setPackage(String p){pkg=p;return this;}}
  static class Context {final List<Intent> sent=new ArrayList<>();String getPackageName(){return "io.tvos";}void sendBroadcast(Intent i){sent.add(i);}}
@@ -69,7 +69,7 @@ tests=r'''
   Ui.ru=false;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Network")&&h.menuLabels()[6].equals("VPN"),"Menu Bar labels follow saved rows");
   Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[3].equals("Сеть"),"network button has Russian label");
   h.screen=MAIN;Ui.ru=true;AppLanguage.select(Ui.ru?"ru":"en");check(h.menuLabels()[7].equals("Dock"),"Dock naming matches both languages");
-  h.screen=REMOTE_KEYS;h.focus=REMOTE_INPUT_ROW;check(!h.canAdjustMenu(),"input method setup requires OK");
+  h.screen=REMOTE_KEYS;h.focus=REMOTE_ACCESSIBILITY_ROW;check(!h.canAdjustMenu(),"accessibility setup requires OK");
   System.out.println("PASS: General OK-only actions, value arrows, independent weather/date toggles, bilingual download labels");
  }
 }

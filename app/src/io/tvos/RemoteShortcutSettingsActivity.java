@@ -14,7 +14,7 @@ public final class RemoteShortcutSettingsActivity extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state); Ui.init(this);
         controller = new RemoteShortcutSettings(this, null, "", this::finish);
-        setContentView(controller.content()); controller.start(getIntent().getBooleanExtra("input_options", false));
+        setContentView(controller.content()); controller.start();
     }
     @Override protected void onResume() { super.onResume(); if (controller != null) controller.resume(); }
     @Override protected void onPause() { if (controller != null) controller.pause(); super.onPause(); }

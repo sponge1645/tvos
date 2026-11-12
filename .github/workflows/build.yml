@@ -78,6 +78,5 @@ jobs:
           java-version: '25'
       - name: Remote input regressions on JDK 25
         run: |
-          python3 tests/test_keyboard_handoff.py
-          python3 tests/test_remote_input_method.py
+          python3 tests/test_remote_key_filter.py
           python3 tests/test_remote_taps.py

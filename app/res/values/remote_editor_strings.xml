@@ -2,7 +2,6 @@
 <resources>
     <string name="remote_buttons" formatted="false">Remote Buttons</string>
     <string name="remote_multiple" formatted="false">Multiple actions</string>
-    <string name="remote_input_options" formatted="false">Input Settings</string>
     <string name="remote_root_hint" formatted="false">Choose a button or add a new one.</string>
     <string name="remote_voice" formatted="false">Voice</string>
     <string name="remote_red" formatted="false">Red button</string>
@@ -10,7 +9,7 @@
     <string name="remote_yellow" formatted="false">Yellow button</string>
     <string name="remote_blue" formatted="false">Blue button</string>
     <string name="remote_button" formatted="false">Button</string>
-    <string name="remote_capture_hint" formatted="false">Back cancels. If app buttons are not detected, enable interception in Input Settings.</string>
+    <string name="remote_capture_hint" formatted="false">Back cancels. If app buttons are not detected, enable button interception in Accessibility.</string>
     <string name="remote_limit" formatted="false">You can add up to 32 buttons.</string>
     <string name="remote_works" formatted="false">Works</string>
     <string name="remote_everywhere" formatted="false">Everywhere</string>
@@ -18,9 +17,7 @@
     <string name="remote_single" formatted="false">Single Press</string>
     <string name="remote_double" formatted="false">Double Press</string>
     <string name="remote_triple" formatted="false">Triple Press</string>
-    <string name="remote_enable" formatted="false">Enable tvOS</string>
-    <string name="remote_select" formatted="false">Use tvOS for Buttons</string>
-    <string name="remote_connection_hint" formatted="false">Enable tvOS in Accessibility for system app buttons. The tvOS keyboard is an alternative input method. Navigation, volume and power stay with the TV.</string>
+    <string name="remote_connection_hint" formatted="false">Enable tvOS in Accessibility so assigned buttons work in other apps.</string>
     <string name="remote_loading" formatted="false">Loading…</string>
     <string name="remote_no_apps" formatted="false">No apps found.</string>
 </resources>

@@ -30,18 +30,9 @@ with tempfile.TemporaryDirectory() as directory:
  root=Path(directory);(root/'Test.java').write_text(harness)
  subprocess.run(['java','com.sun.tools.javac.Main','--release','8','-Xlint:all,-options','-Werror','-d',directory,str(root/'Test.java')],check=True)
  subprocess.run(['java','-cp',directory,'Test'],check=True)
-# The transport must preserve the pending show request but never draw its own keyboard.
-ime=Path('app/src/io/tvos/RemoteInputMethod.java').read_text()
-assert 'onCreateInputView() { return null; }' in ime
-assert 'onCreateCandidatesView() { return null; }' in ime
-assert 'onEvaluateInputViewShown() { return false; }' in ime
-assert 'out.touchableRegion.setEmpty()' in ime
-assert 'return RemoteKeyboardBridge.request(this)' in ime
-
-# Android keyboard rows must enable/select the IME, rather than launch the shortcut editor.
-import xml.etree.ElementTree as ET
-a='{http://schemas.android.com/apk/res/android}'
-metadata=ET.parse('app/res/xml/remote_input_method.xml').getroot()
-assert metadata.get(a+'settingsActivity') is None
-subtypes=metadata.findall('subtype')
-assert any(s.get(a+'imeSubtypeMode')=='keyboard' and s.get(a+'isAsciiCapable')=='true' for s in subtypes)
+# Button interception no longer registers a system keyboard or a keyboard handoff service.
+manifest=Path('app/AndroidManifest.xml').read_text()
+assert 'BIND_INPUT_METHOD' not in manifest
+assert 'RemoteKeyboardBridge' not in manifest
+assert not Path('app/src/io/tvos/RemoteInputMethod.java').exists()
+assert 'ACTION_INPUT_METHOD_SETTINGS' not in Path('app/src/io/tvos/RemoteShortcutSettings.java').read_text()

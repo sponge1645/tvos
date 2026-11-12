@@ -70,8 +70,8 @@ public class ActionsTest {
   check(SettingsActions.activation(ACCESSIBILITY,2,0,false,6,false)==SettingsActions.Action.TV_SETTINGS,"TV settings remains third accessibility row");
   v=create(RESET,0);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-cache")),"cache clear requires existing confirmation");
   v=create(RESET,1);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-reset")),"reset requires existing confirmation");
-  v=create(REMOTE_KEYS,REMOTE_INPUT_ROW);v.activate();check(ActionView.events.contains("input-method")&&!ActionView.events.contains("load-apps"),"input method setup opens without package picker");
-  check(!SettingsActions.canAdjust(REMOTE_KEYS,REMOTE_INPUT_ROW,6),"input method setup is an OK-only action");
+  v=create(REMOTE_KEYS,REMOTE_ACCESSIBILITY_ROW);v.activate();check(ActionView.events.contains("start:accessibility:0")&&!ActionView.events.contains("load-apps"),"accessibility setup opens without package picker");
+  check(!SettingsActions.canAdjust(REMOTE_KEYS,REMOTE_ACCESSIBILITY_ROW,6),"accessibility setup is an OK-only action");
   check(!SettingsActions.canAdjust(REMOTE_KEYS,4,6)&&SettingsActions.activation(REMOTE_KEYS,4,0,false,6,false)==SettingsActions.Action.KEY_PICKER,"MI still uses app picker");
   check(SettingsActions.activation(UPDATES,2,0,false,6,false)==SettingsActions.Action.NONE,"retired test row has no action");
   v=create(UPDATES,0);v.activate();check(v.updateRequested&&ActionView.events.indexOf("update:false")<ActionView.events.indexOf("on-update"),"update check order preserved");

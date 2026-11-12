@@ -137,14 +137,7 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
-        <!-- Input method for button assignments; optional accessibility component filters assigned app keys and guards CHiQ boot. -->
-        <service android:name=".RemoteKeyboardBridge" android:process=":keys" android:exported="false" />
-        <service android:name=".RemoteInputMethod" android:process=":keys"
-            android:exported="true" android:label="@string/settings_remote_input"
-            android:permission="android.permission.BIND_INPUT_METHOD">
-            <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
-            <meta-data android:name="android.view.im" android:resource="@xml/remote_input_method" />
-        </service>
+        <!-- Optional early button filter and CHiQ boot guard. -->
         <service
             android:name=".RemoteKeyService"
             android:process=":keys"

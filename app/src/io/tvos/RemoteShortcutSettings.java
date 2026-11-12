@@ -16,10 +16,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeProvider;
-import android.view.inputmethod.InputMethodInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
-import io.tvos.remote.KeyboardHandoff;
 import io.tvos.remote.RemoteBindings;
 import io.tvos.remote.RemoteBindings.Binding;
 import io.tvos.settings.SettingsBackground;
@@ -53,7 +50,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
         });
     }
     View content() { return view; }
-    void start(boolean inputOptions) { if (inputOptions) connection(); else root(); resume(); }
+    void start() { root(); resume(); }
     private void runOnUiThread(Runnable task) { activity.runOnUiThread(task); }
     private boolean isDestroyed() { return closed || activity.isDestroyed(); }
     private boolean isFinishing() { return closed || activity.isFinishing(); }
@@ -126,7 +123,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
             rows.add(row(name(b), value, () -> edit(at)));
         }
         rows.add(row(R.string.settings_remote_add, this::capture));
-        rows.add(row(R.string.remote_input_options, this::connection));
+        rows.add(row(R.string.remote_accessibility_enable, this::connection));
         show(text(R.string.remote_buttons), text(R.string.remote_root_hint), rows, null, 0, 1);
     }
     private static boolean unselected(String action) { return action.isEmpty() || "none".equals(action); }
@@ -241,28 +238,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
         bindings.set(at, new Binding(b.code, b.scan, b.device, b.global, actions)); save(() -> edit(at));
     }
     private void connection() {
-        List<Row> rows = new ArrayList<>();
-        rows.add(row(R.string.remote_accessibility_enable, () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))));
-        rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
-        rows.add(row(R.string.remote_select, () -> ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker()));
-        rows.add(row(R.string.settings_remote_text_keyboard, this::keyboards));
-        show(text(R.string.remote_input_options), text(R.string.remote_connection_hint), rows, this::root, 0, 2);
-    }
-    private void keyboards() {
-        List<Row> rows = new ArrayList<>(); String selected = RemoteKeyboardBridge.target(this);
-        for (InputMethodInfo info : RemoteKeyboardBridge.keyboards(this)) rows.add(new Row(
-                String.valueOf(info.loadLabel(getPackageManager())), "", info.getId().equals(selected), () -> {
-                    busy = true;
-                    io.execute(() -> {
-                        boolean ok = true;
-                        try { KeyboardHandoff.writeTarget(getFilesDir(), info.getId()); } catch (java.io.IOException error) { ok = false; }
-                        final boolean saved = ok;
-                        runOnUiThread(() -> { busy = false; if (isDestroyed() || isFinishing()) return;
-                            if (!saved) message(R.string.settings_remote_save_failed); connection(); });
-                    });
-                }));
-        if (rows.isEmpty()) rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
-        show(text(R.string.settings_remote_text_keyboard), "", rows, this::connection, 0, 3);
+        startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
     }
     private void apps(java.util.function.Consumer<String> select, Runnable previous, boolean allowNone) {
         show(text(R.string.settings_remote_app), text(R.string.remote_loading), new ArrayList<>(), previous, 0, 4);

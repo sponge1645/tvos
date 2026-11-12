@@ -2,7 +2,6 @@
 <resources>
     <string name="remote_buttons" formatted="false">Кнопки пульта</string>
     <string name="remote_multiple" formatted="false">Несколько действий</string>
-    <string name="remote_input_options" formatted="false">Настройки ввода</string>
     <string name="remote_root_hint" formatted="false">Выберите кнопку или добавьте новую.</string>
     <string name="remote_voice" formatted="false">Голос</string>
     <string name="remote_red" formatted="false">Красная кнопка</string>
@@ -10,7 +9,7 @@
     <string name="remote_yellow" formatted="false">Жёлтая кнопка</string>
     <string name="remote_blue" formatted="false">Синяя кнопка</string>
     <string name="remote_button" formatted="false">Кнопка</string>
-    <string name="remote_capture_hint" formatted="false">Назад — отменить. Если кнопки приложений не определяются, включите перехват в настройках ввода.</string>
+    <string name="remote_capture_hint" formatted="false">Назад — отменить. Если кнопки приложений не определяются, включите перехват кнопок в специальных возможностях.</string>
     <string name="remote_limit" formatted="false">Можно добавить до 32 кнопок.</string>
     <string name="remote_works" formatted="false">Работает</string>
     <string name="remote_everywhere" formatted="false">Везде</string>
@@ -18,9 +17,7 @@
     <string name="remote_single" formatted="false">Одно нажатие</string>
     <string name="remote_double" formatted="false">Два нажатия</string>
     <string name="remote_triple" formatted="false">Три нажатия</string>
-    <string name="remote_enable" formatted="false">Включить tvOS</string>
-    <string name="remote_select" formatted="false">Выбрать tvOS для кнопок</string>
-    <string name="remote_connection_hint" formatted="false">Включите tvOS в специальных возможностях для системных кнопок приложений. Клавиатура tvOS остаётся дополнительным способом ввода. Навигация, громкость и питание остаются системными.</string>
+    <string name="remote_connection_hint" formatted="false">Включите tvOS в специальных возможностях, чтобы назначенные кнопки работали в других приложениях.</string>
     <string name="remote_loading" formatted="false">Загрузка…</string>
     <string name="remote_no_apps" formatted="false">Приложения не найдены.</string>
 </resources>

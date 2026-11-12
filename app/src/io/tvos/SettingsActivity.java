@@ -65,7 +65,7 @@ public class SettingsActivity extends Activity {
         });
         host.addView(remoteSettings.content(), new android.view.ViewGroup.LayoutParams(-1, -1));
         source.setVisibility(View.INVISIBLE);
-        remoteSettings.start(false);
+        remoteSettings.start();
     }
     private SettingsPreview preview;
     private RemoteShortcuts shortcuts;
@@ -1056,7 +1056,7 @@ public class SettingsActivity extends Activity {
                     break;
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
-                case INPUT_METHOD: RemoteInputMethod.choose(activity); return;
+                case OPEN_ACCESSIBILITY: activity.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); return;
                 case ADVANCED_KEYS: RemoteShortcutSettingsActivity.open(activity, this, screenTitle()); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;

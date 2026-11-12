@@ -220,7 +220,7 @@
     <string name="settings_remote_app" formatted="false">Open an app…</string>
     <string name="settings_remote_action" formatted="false">Choose action</string>
     <string name="settings_remote_save_failed" formatted="false">Could not save button settings</string>
-    <string name="settings_remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require tvOS to be selected as the current keyboard. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls INCY only.</string>
+    <string name="settings_remote_gesture_help" formatted="false">Only added buttons are mapped. Tap interval is up to 300 ms. Double/triple taps delay the single action. Holding OK with the original action is forwarded to Home after 500 ms; its hold menu appears later. Across-app bindings fully consume the selected key and require tvOS to be enabled in Accessibility. OK is Home-only. Arrows, Back, Home, power and volume cannot be remapped. The VPN action controls the selected VPN service.</string>
     <string name="settings_setup_repeat" formatted="false">Run setup again</string>
     <string name="settings_setup_continue" formatted="false">Continue</string>
     <string name="settings_setup_finish" formatted="false">Finish</string>
