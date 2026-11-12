@@ -364,7 +364,7 @@ public class SettingsActivity extends Activity {
         }
 
         private SettingsListRenderer.Layout rowLayout() {
-            return screen == MAIN ? SettingsListRenderer.Layout.ROOT
+            return screen == MAIN || screen == APPS_DOWNLOADS ? SettingsListRenderer.Layout.ROOT
                     : screen == ABOUT ? SettingsListRenderer.Layout.ABOUT : SettingsListRenderer.Layout.STANDARD;
         }
 
@@ -490,8 +490,10 @@ public class SettingsActivity extends Activity {
         }
 
         private void stepMainScroll(float dt) {
-            if (screen != MAIN) return;
-            mainScroll.target = Math.max(0, focus - (listWindow.capacity() - 1));
+            if (screen != MAIN && screen != APPS_DOWNLOADS) return;
+            mainScroll.target = screen == APPS_DOWNLOADS
+                    ? Math.max(0, (189 + DownloadGroups.position(focus)*84 + DownloadGroups.TOP_INSET + 62 - (h/k - 80))/84)
+                    : Math.max(0, focus - (listWindow.capacity() - 1));
             if (localFlag("reduce_motion")) mainScroll.snap(mainScroll.target);
             else if (mainScroll.step(dt)) postInvalidateOnAnimation();
         }
@@ -598,7 +600,7 @@ public class SettingsActivity extends Activity {
                 // Center capital letters in the gap, rather than positioning their baseline.
                 float[] centers = {157, 451, 661};
                 rowLabel.setTextSize(28 * k); rowLabel.setColor(SettingsListRenderer.secondaryInk(lightSettings()));
-                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, (centers[n]+DownloadGroups.TOP_INSET)*k + Ui.halfCap(rowLabel), rowLabel);
+                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, (centers[n]+DownloadGroups.TOP_INSET-mainScroll.value*84)*k + Ui.halfCap(rowLabel), rowLabel);
                 rowLabel.setTextSize(36*k);
             }
             boolean selection = SettingsScreen.multiChoice(screen) || screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;

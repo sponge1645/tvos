@@ -283,4 +283,6 @@
     <string name="apps_utilities">UTILITIES</string>
     <string name="apps_entertainment">ENTERTAINMENT</string>
     <string name="apps_cinema">STREAMING SERVICES</string>
+    <string name="settings_download_zonafree" formatted="false">Download ZonaFree</string>
+    <string name="settings_app_zonafree_description" formatted="false">Watch movies and TV shows\nwith ZonaFree.</string>
 </resources>

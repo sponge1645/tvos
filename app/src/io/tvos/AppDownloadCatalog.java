@@ -82,7 +82,12 @@ final class AppDownloadCatalog {
         new Entry("KinoPub", "watch.kino",
                 "e3e5f1d63be9737e932a5851f64838b64730f9b68998754fbff78dd9350b9568",
                 source("https://raw.githubusercontent.com/kotlinbestuser/apk/HEAD/kino-watch-2.23.apk", null),
-                "kotlinbestuser/apk", false, 169)
+                "kotlinbestuser/apk", false, 169),
+        new Entry("ZonaFree", "free.zona",
+                "a40da80a59d170caa950cf15c18c454d47a39b26989d8b640ecd745ba71bf5dc",
+                source("https://github.com/julay123/mobi.zona/releases/download/1078/FreeZona_3.0.78_ultra_aligned.apk",
+                        "5d3a9f2799014b2b4ea0c1aaef46bd085a1e1cfc1eb1331a5f9a0a01ce420d6a"),
+                "julay123/mobi.zona", false, 1078)
     };
 
     static Entry get(int index) { return index >= 0 && index < ENTRIES.length ? ENTRIES[index] : null; }
@@ -144,7 +149,32 @@ final class AppDownloadCatalog {
         throw new IOException("HAPP APK not found in release");
     }
 
+    private static Source zona(Entry app, BooleanSupplier cancelled) throws Exception {
+        JSONObject release = new JSONObject(ApkTransfer.json(
+                "https://api.github.com/repos/" + app.repository + "/releases/latest", cancelled));
+        if (release.optBoolean("draft") || release.optBoolean("prerelease"))
+            throw new IOException("ZonaFree release is not stable");
+        JSONArray assets = release.optJSONArray("assets");
+        if (assets != null) for (int i = 0; i < assets.length(); i++) {
+            ApkTransfer.checkCancelled(cancelled);
+            JSONObject asset = assets.getJSONObject(i);
+            String name = asset.optString("name");
+            // Keep the exact non-RU/non-World distribution selected by the user.
+            if (!name.matches("FreeZona_[0-9]+(?:\\.[0-9]+){1,3}_ultra_aligned\\.apk")) continue;
+            String url = asset.optString("browser_download_url");
+            String prefix = "https://github.com/" + app.repository + "/releases/download/";
+            String digest = asset.optString("digest");
+            String tag = release.optString("tag_name");
+            if (!tag.matches("[A-Za-z0-9._-]+") || !url.equals(prefix + tag + "/" + name)
+                    || !digest.matches("sha256:[0-9a-f]{64}"))
+                throw new IOException("ZonaFree release has no verified APK source");
+            return source(url, digest.substring(7));
+        }
+        throw new IOException("ZonaFree APK not found in release");
+    }
+
     static Source resolve(Entry app, boolean installed, String[] abis, BooleanSupplier cancelled) throws Exception {
+        if ("free.zona".equals(app.packageName)) return zona(app, cancelled);
         if ("su.happ.proxyutility".equals(app.packageName)) return happ(app, cancelled);
         if ("llc.itdev.incy".equals(app.packageName)) return incy(app, cancelled);
         if ("com.seena.app".equals(app.packageName)) return seena(abis, cancelled);

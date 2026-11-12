@@ -33,7 +33,7 @@ stubs = {
  public JSONArray(String s){items=next;}public JSONArray(List<JSONObject> v){items=v;}
  public int length(){return items.size();}public JSONObject getJSONObject(int n){return items.get(n);} }''',
  'org/json/JSONObject.java': '''package org.json; import java.util.*; public class JSONObject {
- public static String version="1.9.3";public JSONObject(){}public JSONObject(String text){data.put("version",version);data.put("assets",new JSONArray(JSONArray.next));}public final Map<String,Object> data=new HashMap<>();public JSONObject put(String k,Object v){data.put(k,v);return this;}
+ public static String version="1.9.3";public JSONObject(){}public JSONObject(String text){data.put("tag_name","1079");data.put("version",version);data.put("assets",new JSONArray(JSONArray.next));}public final Map<String,Object> data=new HashMap<>();public JSONObject put(String k,Object v){data.put(k,v);return this;}
  public String optString(String k){return data.containsKey(k)?data.get(k).toString():"";}
  public boolean optBoolean(String k){return Boolean.TRUE.equals(data.get(k));}
  public JSONArray optJSONArray(String k){return (JSONArray)data.get(k);} }'''
@@ -88,6 +88,29 @@ public class DownloadHarness {
   githubAssets("app-release.apk");
   AppDownloadCatalog.Source first=AppDownloadCatalog.resolve(AppDownloadCatalog.get(0),false,arm32,()->false);
   check(first.sha256!=null && first.url.contains("/v99/"),"first install discovers new stable release with digest");
+  AppDownloadCatalog.Entry zona=AppDownloadCatalog.get(8);
+  check("free.zona".equals(zona.packageName)&&zona.reviewedVersionCode==1078,"ZonaFree identity from reviewed APK");
+  String zonaName="FreeZona_3.0.79_ultra_aligned.apk",zonaUrl="https://github.com/julay123/mobi.zona/releases/download/1079/"+zonaName;
+  for(boolean installed:new boolean[]{false,true}){
+   org.json.JSONArray.next=Arrays.asList(
+    new org.json.JSONObject().put("name","FreeZona_3.0.79_RU_ultra_aligned.apk"),
+    new org.json.JSONObject().put("name","FreeZona_3.0.79_World_ultra_aligned.apk"),
+    new org.json.JSONObject().put("name",zonaName).put("browser_download_url",zonaUrl).put("digest","sha256:"+"c".repeat(64)));
+   reply("{}".getBytes(),2);
+   AppDownloadCatalog.Source selected=AppDownloadCatalog.resolve(zona,installed,arm32,()->false);
+   check(selected.url.equals(zonaUrl)&&selected.sha256.equals("c".repeat(64)),"first install/update keeps base ZonaFree distribution");
+  }
+  for(String url:new String[]{"https://example.test/"+zonaName,zonaUrl.replace("1079/","1078/")}){
+   org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name",zonaName).put("browser_download_url",url).put("digest","sha256:"+"c".repeat(64)));
+   reply("{}".getBytes(),2);rejects(()->AppDownloadCatalog.resolve(zona,true,arm32,()->false),"ZonaFree rejects foreign URL or wrong tag");
+  }
+  for(String digest:new String[]{"","invalid"}){
+   org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name",zonaName).put("browser_download_url",zonaUrl).put("digest",digest));
+   reply("{}".getBytes(),2);rejects(()->AppDownloadCatalog.resolve(zona,true,arm32,()->false),"ZonaFree updates require verified digest");
+  }
+  org.json.JSONArray.next=Arrays.asList(new org.json.JSONObject().put("name","FreeZona_3.0.79_RU_ultra_aligned.apk"));
+  reply("{}".getBytes(),2);rejects(()->AppDownloadCatalog.resolve(zona,false,arm32,()->false),"ZonaFree never substitutes another regional variant");
+  rejects(()->AppDownloadCatalog.resolve(zona,false,arm32,()->true),"ZonaFree cancellation before request");
   AppDownloadCatalog.Entry happ=AppDownloadCatalog.get(4);
   check("su.happ.proxyutility".equals(happ.packageName),"HAPP row maps to expected package");
   String happUrl="https://github.com/Happ-proxy/happ-android/releases/download/99.0/Happ.apk";

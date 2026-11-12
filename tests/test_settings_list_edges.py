@@ -24,13 +24,13 @@ body = ''.join(method(s) for s in [
 harness = '''package io.tvos;import android.graphics.RectF;import io.tvos.settings.SettingsListRenderer;
 public class ListEdgesHarness {
  final io.tvos.settings.SettingsListWindow listWindow=new io.tvos.settings.SettingsListWindow(10);
- static final int PICK_VISIBLE=10, MAIN=0;
+ static final int PICK_VISIBLE=10, MAIN=0, APPS_DOWNLOADS=19;
  int screen,focus,invalidations;boolean reduced;final Spring mainScroll=new Spring(.30f,1f,0);
  boolean localFlag(String key){return reduced;}void postInvalidateOnAnimation(){invalidations++;}
  static final float LIST_TOP=186, ROW_H=62, ABOUT_ROW_GAP=22,
   ABOUT_NAME_Y_OFFSET=3, LIST_X=1000, LIST_R=1824, ABOUT_NAME_RIGHT_EXTENSION=6;
  final RectF rowRect=new RectF(); final Spring listScroll=new Spring(0.30f,1f,0);
- int size=35; float k=1;
+ int size=35,h=1080; float k=1;
  int listSize(){return size;}
  static void check(boolean ok,String reason){if(!ok)throw new AssertionError(reason);}
 ''' + body + '''
@@ -39,6 +39,7 @@ public class ListEdgesHarness {
   h.focus=10;h.stepMainScroll(1f/60);check(h.mainScroll.value>0&&h.mainScroll.value<1&&h.invalidations>0,"root final row scrolls smoothly");
   h.reduced=true;h.stepMainScroll(1f/60);check(h.mainScroll.value==1,"reduced motion exposes last root row immediately");
   h.focus=0;h.stepMainScroll(1f/60);check(h.mainScroll.value==0,"first root row returns to top");
+  h.screen=APPS_DOWNLOADS;h.focus=8;h.stepMainScroll(1f/60);check(189+DownloadGroups.position(8)*84+DownloadGroups.TOP_INSET+62-h.mainScroll.value*84<=1000.01,"last download is fully above bottom fade");h.screen=MAIN;
   check(h.listWindow.endDrawn(h.listScroll.value,h.listSize())>PICK_VISIBLE,"draw past the old ten-row cutoff");
   h.setScrollingRowRect(10);
   check(h.rowRect.top<1080 && h.rowRect.bottom>1016,"next row intersects bottom fade");
@@ -64,6 +65,7 @@ public class ListEdgesHarness {
 '''
 with tempfile.TemporaryDirectory(prefix='tvos-list-edges-') as directory:
     root = Path(directory)
+    (root / "DownloadGroups.java").write_text(Path("app/src/io/tvos/DownloadGroups.java").read_text())
     for name,body in geometry_sources().items():
         p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
     (root / 'ListEdgesHarness.java').write_text(harness)

@@ -51,7 +51,7 @@ public class WindowHarness {
  v.listWindow.openPicker(20,35);int offset=v.listWindow.offset();v.screen=GENERAL;v.focus=7;v.key(2,true,0);check(v.focus==7&&v.listWindow.offset()==offset,"fixed page ignores stored list window");
  for(float k:new float[]{2f/3,1,2})for(int screen=0;screen<=24;screen++)for(int row=0;row<10;row++){
   v.k=k;v.screen=screen;v.mainScroll.value=.5f;v.listScroll.value=v.listWindow.offset()+.25f;RectF box=v.rowBox(row);
-  float expected=189+row*84+(screen==ABOUT&&row!=0?10:0)-(screen==MAIN?42:0)-(v.scrolling()?21:0);
+  float expected=189+row*84+(screen==ABOUT&&row!=0?10:0)-(screen==MAIN||screen==APPS_DOWNLOADS?42:0)-(v.scrolling()?21:0);
   if(screen==APPS_DOWNLOADS)expected+=(DownloadGroups.position(row)-row)*84+DownloadGroups.TOP_INSET;
   near(box.top,expected*k);near(box.bottom,(expected+62)*k);near(box.left,1000*k);near(box.right,1830*k);
  }

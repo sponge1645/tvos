@@ -95,3 +95,16 @@ checks its own connection state and starts/stops the selected configuration.
 No home-screen widget needs to be installed. Initial profile setup and Android
 VPN consent must be completed in HAPP. Holding the button opens the selected
 VPN app. INCY control and region-pause recovery retain their existing targets.
+
+## ZonaFree (1C248)
+
+The user-selected base distribution is `julay123/mobi.zona`, excluding the RU
+and World variants. Stable releases/latest metadata must provide the exact
+`FreeZona_<numeric-version>_ultra_aligned.apk` asset, its repository/tag URL and
+a SHA-256 digest, for both first install and updates. Signed CDN URLs are never stored.
+The supplied 1078 / 3.0.78 APK was downloaded and verified: package `free.zona`,
+versionCode 1078, minSdk 21, SHA-256
+`5d3a9f2799014b2b4ea0c1aaef46bd085a1e1cfc1eb1331a5f9a0a01ce420d6a`,
+certificate SHA-256 `a40da80a59d170caa950cf15c18c454d47a39b26989d8b640ecd745ba71bf5dc`.
+Existing APK identity, signer, SDK and installed-version checks apply.
+No device installation was performed.

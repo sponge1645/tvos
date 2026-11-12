@@ -288,4 +288,6 @@
     <string name="apps_utilities">УТИЛИТЫ</string>
     <string name="apps_entertainment">РАЗВЛЕЧЕНИЯ</string>
     <string name="apps_cinema">ОНЛАЙН-КИНОТЕАТРЫ</string>
+    <string name="settings_download_zonafree" formatted="false">Загрузить ZonaFree</string>
+    <string name="settings_app_zonafree_description" formatted="false">Фильмы и сериалы\nв приложении ZonaFree.</string>
 </resources>

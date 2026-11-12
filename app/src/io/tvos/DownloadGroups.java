@@ -4,7 +4,7 @@ package io.tvos;
 final class DownloadGroups {
     private DownloadGroups() { }
     static final int TOP_INSET = 60;
-    static final int[] ORDER = {0, 3, 4, 1, 2, 5, 6, 7};
+    static final int[] ORDER = {0, 3, 4, 1, 2, 5, 6, 7, 8};
     static float position(int row) {
         switch (row) {
             case 0: return 0;
@@ -14,7 +14,8 @@ final class DownloadGroups {
             case 2: return 4.5f;
             case 5: return 6;
             case 6: return 7;
-            default: return 8;
+            case 7: return 8;
+            default: return 9;
         }
     }
     static int move(int row, int direction) {
