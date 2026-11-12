@@ -39,6 +39,20 @@ with tempfile.TemporaryDirectory() as tmp:
         assert Path(create[4]).name=='update.json'
         assert Path(create[4]) != root/'release/update.json'
         calls.clear()
+        (root/'docs/releases').mkdir(parents=True)
+        notes=root/'docs/releases/1.1.md';notes.write_text('Reviewed release notes')
+        publisher.execute(root,target='b'*40)
+        create=[x for x in calls if x[:2] == ('release','create')][0]
+        assert create[create.index('--target')+1]=='b'*40
+        assert create[create.index('--notes-file')+1]==str(notes)
+        calls.clear()
+        try:
+            publisher.execute(root,target='main')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('Ambiguous release target was accepted')
+        assert not calls
         with patch.object(publisher,'ensure_channel',lambda:None):
             publisher.execute(root,publish=True)
         assert ('release','edit','v1.1','--draft=false','--latest=true') in calls

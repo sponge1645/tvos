@@ -60,10 +60,12 @@ def ensure_channel():
             '--notes', 'OTA manifest for tvOS 1.0.4 and later.')
 
 
-def execute(root, publish=False, channel=False):
+def execute(root, publish=False, channel=False, target=None):
     release = root / 'release'
     current = manifest(release / 'update.json')
     tag = current['tag']
+    if target is not None and not re.fullmatch(r'[0-9a-f]{40}', target):
+        raise ValueError('Expected an exact 40-character source commit SHA.')
     if channel:
         if json.loads(run('release', 'view', tag, '--json', 'isDraft', capture=True).stdout)['isDraft']:
             raise ValueError('Publish the versioned release before updating OTA.')
@@ -97,18 +99,22 @@ def execute(root, publish=False, channel=False):
             legacy_path = Path(directory) / 'update.json'
         # The new APK is always in the version's release. update.json on Latest
         # intentionally points at the immutable v1.0.4 APK for old binaries.
+        options = ['--target', target] if target else []
+        notes = root / 'docs/releases' / (current['versionName'] + '.md')
+        options += ['--notes-file', str(notes)] if notes.is_file() else ['--notes', 'tvOS ' + current['versionName'] + ' release.']
         run('release', 'create', tag, str(release / 'tvOS.apk'), str(legacy_path),
             '--title', 'tvOS ' + current['versionName'],
-            '--draft', '--latest=true', '--notes', 'tvOS ' + current['versionName'] + ' release.')
+            '--draft', '--latest=true', *options)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target", help="Exact source commit SHA for a new release tag")
     options = parser.add_mutually_exclusive_group()
     options.add_argument('--publish', action='store_true')
     options.add_argument('--update-channel', action='store_true')
     args = parser.parse_args()
     try:
-        execute(ROOT, publish=args.publish, channel=args.update_channel)
+        execute(ROOT, publish=args.publish, channel=args.update_channel, target=args.target)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         raise SystemExit('Release publishing failed: ' + str(error)) from error
