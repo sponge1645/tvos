@@ -10,6 +10,7 @@ public class BindingHarness {
  Object getContext(){return this;}boolean lightSettings(){return true;}
  static class Symbols {static float width(Object c,String name,float size){return size;}static void draw(Object context,Canvas c,String name,float x,float y,float size,int color){}}
 
+ boolean pending;boolean storagePending(){return pending;}
  boolean running=true,reduced;int frames;boolean localFlag(String key){return reduced;}void postInvalidateDelayed(long d){check(d==80,"spinner frame delay");frames++;}
  int screen,focus,settingsGroup;final SettingsPicker picker=new SettingsPicker();float k=1;static final int CITY_ROW=4;
  static class Position {float value;}final Position mainScroll=new Position(),listScroll=new Position();final Position[] pop=new Position[12];{for(int i=0;i<12;i++)pop[i]=new Position();}
@@ -33,6 +34,7 @@ public class BindingHarness {
 ''' + ''.join(block(source,s) for s in ['        private SettingsListRenderer.Row prepareRow(', '        private void setApprovedRowRect(', '        private void setScrollingRowRect(', '        private SettingsListRenderer.Layout rowLayout(', '        private boolean menuChevronVisible(', '        private void drawUpdateSpinner(', '        private void drawMenu(', '        private void drawChoice(', '        private void drawMenuButtonEditor(', '        private void drawOrderEditor(', '        private void drawCategoryEditor(', '        private void drawShelfEditor(', '        private void drawPicker(', '        private void drawList('])+'''
  public static void main(String[] args){BindingHarness v=new BindingHarness();Canvas c=new Canvas();
  for(float k:new float[]{2f/3,1,2}){
+  v.k=k;v.menu(GENERAL,7);v.pending=true;v.drawMenu(c);check(v.row("Row6").marker==Marker.SPINNER,"initial storage load keeps parent row stable with spinner");v.pending=false;v.menu(GENERAL,7);v.drawMenu(c);check(v.row("Row6").marker==Marker.CHEVRON,"ready storage restores destination arrow before sliding");
   v.k=k;v.menu(MAIN,10);v.focus=3;v.mainScroll.value=.5f;v.drawMenu(c);check(v.rows.size()==10&&v.rows.get(9).label.equals("Row3"),"menu binds focused row last");near(v.row("Row3").top,(189+3*84-42)*k);check(v.row("Row3").marker==Marker.CHEVRON&&v.row("Row3").inset==51,"menu arrow and inset");
   v.menu(ABOUT,8);v.focus=0;v.drawMenu(c);check(v.row("Row0").kind==Kind.NORMAL,"name actionable");near(v.row("Row0").right,1830*k);for(int i=1;i<8;i++){check(v.row("Row"+i).kind==Kind.DETAIL,"About detail binding");near(v.row("Row"+i).right,1824*k);}
   v.menu(CITY,2);Prefs.automatic=true;v.drawMenu(c);check(v.row("Row1").disabled&&v.row("Row1").fit&&v.row("Row1").marker==Marker.NONE,"automatic region disables manual row");Prefs.automatic=false;v.rows.clear();v.drawMenu(c);check(!v.row("Row1").disabled&&v.row("Row1").marker==Marker.CHEVRON&&v.row("Row1").inset==51,"manual region row restored");

@@ -57,7 +57,9 @@ public class SettingsActivity extends Activity {
     void openStorageSettings(View source,String title){
         if(storageSettings!=null||remoteSettings!=null)return;
         android.view.ViewGroup host=(android.view.ViewGroup)source.getParent();
-        storageSettings=new StorageSettings(this,source,title,()->{
+        storageSettings=new StorageSettings(this,source,title,
+                canvas->((SettingsView)source).drawMenu(canvas),
+                canvas->((SettingsView)source).background.draw(canvas,source.getWidth(),source.getHeight(),!HomeData.get(this).isNight(System.currentTimeMillis())),()->{
             StorageSettings old=storageSettings;storageSettings=null;if(old==null)return;
             host.removeView(old.content());old.close();source.setVisibility(View.VISIBLE);source.requestFocus();source.invalidate();
         });
@@ -572,6 +574,7 @@ public class SettingsActivity extends Activity {
             if (running && !reduced) postInvalidateDelayed(80);
         }
 
+        private boolean storagePending(){return activity.storageSettings!=null&&activity.storageSettings.waiting();}
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
             boolean selection = SettingsScreen.multiChoice(screen) || screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
@@ -597,6 +600,7 @@ public class SettingsActivity extends Activity {
                 if (screen == HOME_VIEW && i == (Prefs.homeCollection() ? 0 : 1)) row.marker = Marker.PICKER_CHECK;
                 boolean signal = screen == ABOUT && i == 8 && values[i] != null && values[i].matches("[0-5]/5");
                 if (signal) row.showValue = false;
+                if(screen==GENERAL&&i==6&&storagePending())row.marker=Marker.SPINNER;
                 drawRow(c);
                 if (signal) {
                     String icon = "airport_" + values[i].charAt(0);

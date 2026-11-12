@@ -4,7 +4,12 @@ General > Manage Storage is the seventh row, below Time Format. The controller i
 theme, SettingsBackground,
 SettingsListRenderer/SettingsRowRenderer capsules, SF Pro Display typography,
 Shadows fallback and reduce-motion preference. SettingsTransitions handles the
-right list slide and title crossfade in both directions. The left tile fades
+right list slide and title crossfade in both directions. The animated parent
+page paints only the original rows, not the whole SettingsView. Storage reuses
+the parent background cache and starts the entry transition only after the first
+application list is ready. General shows a spinner while this initial load runs.
+Initial visible size strings are prepared before the animation clock starts;
+row focus waits for the same focusReady boundary as normal settings. The left tile fades
 tvOS out over 140 ms, then fades the app icon in over 140 ms without scaling.
 Late icons wait at zero opacity until ready; changing apps uses the same
 sequential opacity transition. Back fades the icon out and tvOS back in.

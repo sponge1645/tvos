@@ -16,7 +16,6 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
-import io.tvos.settings.SettingsBackground;
 import io.tvos.settings.SettingsListRenderer;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
@@ -34,6 +33,7 @@ final class StorageSettings extends ContextWrapper {
     private final View sourceView;
     private final String sourceTitle;
     private final Runnable exit;
+    private final java.util.function.Consumer<Canvas> sourceRows,sourceBackground;
     private boolean resumed;
     static final int UNINSTALL_REQUEST=904;
     private final ExecutorService work=Executors.newSingleThreadExecutor();
@@ -50,13 +50,14 @@ final class StorageSettings extends ContextWrapper {
     private long artworkAt;
     private RemoteShortcuts shortcuts;
     private String text(int id){return AppStrings.get(id);}
-    StorageSettings(Activity activity,View source,String title,Runnable exit){
-        super(activity);this.activity=activity;sourceView=source;sourceTitle=title;this.exit=exit;
+    StorageSettings(Activity activity,View source,String title,java.util.function.Consumer<Canvas> sourceRows,java.util.function.Consumer<Canvas> sourceBackground,Runnable exit){
+        super(activity);this.activity=activity;sourceView=source;sourceTitle=title;this.exit=exit;this.sourceRows=sourceRows;this.sourceBackground=sourceBackground;
         android.content.res.Configuration config=new android.content.res.Configuration(getResources().getConfiguration());
         config.setLocale(AppLanguage.current().locale);sizeContext=createConfigurationContext(config);
         menu=new Menu();shortcuts=new RemoteShortcuts(this,true,null);
     }
     View content(){return menu;}
+    boolean waiting(){return !menu.rowsReady;}
     void start(){resume();}
     void resume(){resumed=true;deleting=false;if(shortcuts!=null)shortcuts.reload();load();}
     void pause(){resumed=false;if(shortcuts!=null)shortcuts.cancel();}
@@ -70,14 +71,16 @@ final class StorageSettings extends ContextWrapper {
         return false;
     }
     private void load(){
-        if(closed)return;loading=true;final int token=++generation;menu.invalidate();
+        if(closed||menu.exiting)return;loading=true;final int token=++generation;menu.invalidate();
         work.execute(()->{
             List<StorageApps.Item> result;boolean failed=false;
             try{result=StorageApps.load(this);}catch(RuntimeException e){result=new ArrayList<>();failed=true;AppLog.w("Storage list unavailable");}
             final boolean error=failed;final List<StorageApps.Item> ready=result;
-            runOnUiThread(()->{if(closed||token!=generation)return;items=ready;sizes.clear();loading=false;loadFailed=error;
+            runOnUiThread(()->{if(closed||menu.exiting||token!=generation)return;items=ready;sizes.clear();loading=false;loadFailed=error;
                 int previous=menu.focus;for(int n=0;n<items.size();n++)if(items.get(n).pkg.equals(selected)){previous=n;break;}
-                menu.focus=Math.max(0,Math.min(previous,items.size()-1));menu.reveal();select();menu.invalidate();});
+                menu.focus=Math.max(0,Math.min(previous,items.size()-1));menu.reveal();
+                for(int n=menu.offset;n<Math.min(items.size(),menu.offset+9);n++)size(items.get(n));
+                select();menu.rowsReady=true;menu.invalidate();});
         });
     }
     private void select(){
@@ -110,7 +113,6 @@ final class StorageSettings extends ContextWrapper {
         catch(RuntimeException e){deleting=false;Toast.makeText(this,text(R.string.storage_delete_failed),Toast.LENGTH_LONG).show();}
     }
     private final class Menu extends View {
-        final SettingsBackground background=new SettingsBackground();
         final SettingsLogoRenderer logo=new SettingsLogoRenderer();
         final SettingsTextRenderer typography=new SettingsTextRenderer();
         final Shadows shadows=new Shadows();
@@ -127,11 +129,11 @@ final class StorageSettings extends ContextWrapper {
         int focus,offset;float k=1;long last;int pressed=-1;
         final SettingsTransitions transitions=new SettingsTransitions();
         final java.util.function.IntUnaryOperator parent=page->page==1?0:-1;
-        boolean started,exiting,drawLight,drawReduced,exitLogo;
+        boolean rowsReady,started,exiting,drawLight,drawReduced,exitLogo;
         long entered,exitAt;Bitmap exitArtwork;float oldOpacity=1,exitOpacity=1;
         final Runnable finishExit=()->{if(!closed)exit.run();};
         Menu(){super(activity);setFocusable(true);setFocusableInTouchMode(true);requestFocus();}
-        void clear(){background.clear();typography.clear();shadows.clear();}
+        void clear(){typography.clear();shadows.clear();}
         void reveal(){offset=Math.max(0,Math.min(offset,focus));if(focus>=offset+9)offset=focus-8;}
         @Override protected void onSizeChanged(int w,int h,int ow,int oh){k=w/1920f;clear();}
         void activate(){
@@ -142,6 +144,7 @@ final class StorageSettings extends ContextWrapper {
             delete();
         }
         boolean key(KeyEvent event){
+            if(!started){if(event.getKeyCode()==KeyEvent.KEYCODE_BACK&&event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled())exit.run();return true;}
             if(!ready())return true;
             int code=event.getKeyCode();boolean down=event.getAction()==KeyEvent.ACTION_DOWN;
             if(code==KeyEvent.KEYCODE_BACK){if(event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled()&&!deleting){finish();}return true;}
@@ -163,25 +166,24 @@ final class StorageSettings extends ContextWrapper {
             return true;
         }
         @Override protected void onDraw(Canvas c){
+            if(!rowsReady){sourceView.draw(c);if(resumed)postInvalidateDelayed(80);return;}
             long now=SystemClock.uptimeMillis();float dt=Math.min(.05f,Math.max(0,now-last)/1000f);last=now;
             boolean light=!HomeData.get(getContext()).isNight(System.currentTimeMillis());drawLight=light;
             boolean reduced=reduced();drawReduced=reduced;
             if(!started){started=true;entered=now;artworkAt=now;transitions.seedTitle(sourceTitle);transitions.sync(0,now,true,false,parent);transitions.sync(1,now,reduced,false,parent);}
-            background.draw(c,getWidth(),getHeight(),light);
+            sourceBackground.accept(c);
             title.setTypeface(Ui.displayBold);title.setTextSize(56*k);title.setTextAlign(Paint.Align.CENTER);title.setColor(light?0xFF738190:0xFF5A676D);
             boolean moving=transitions.drawTitle(c,exiting?sourceTitle:text(R.string.storage_title),now,reduced,getWidth()/2f,111*k,title,typography);
             label.setTypeface(Ui.displaySemibold);label.setTextSize(36*k);value.setTypeface(Ui.displayRegular);value.setTextSize(36*k);value.setTextAlign(Paint.Align.RIGHT);
             drawTile(c,now);
             typography.drawDescription(c,description(),k,light,Ui.displaySemibold);
-            focusSpring.target=1;if(reduced)focusSpring.snap(1);else if(focusSpring.step(dt))moving=true;
-            moving|=transitions.drawList(c,exiting?0:1,now,k,getWidth(),getHeight(),parent,(canvas,page)->{
-                if(page==0)sourceView.draw(canvas);else drawRows(canvas);
-            });
+            focusSpring.target=transitions.focusReady(now)&&!exiting?1:0;if(reduced)focusSpring.snap(focusSpring.target);else if(focusSpring.step(dt))moving=true;
+            moving|=transitions.drawList(c,exiting?0:1,now,k,getWidth(),getHeight(),parent,this::drawTransitionPage);
             if(moving&&resumed)postInvalidateOnAnimation();
         }
+        void drawTransitionPage(Canvas c,int page){if(page==0)sourceRows.accept(c);else drawRows(c);}
         private void drawRows(Canvas c){
             boolean light=drawLight;
-            String hint=text(R.string.storage_hint);
             if(loading||items.isEmpty()){
                 label.setColor(SettingsListRenderer.normalInk(light));c.drawText(text(loading?R.string.remote_loading:loadFailed?R.string.storage_load_failed:R.string.storage_empty),1080*k,230*k,label);
             }else{
@@ -194,7 +196,6 @@ final class StorageSettings extends ContextWrapper {
                     ink.setStyle(Paint.Style.FILL);ink.setColor(SettingsListRenderer.blend(light?0xFFC9E4F7:0xFF31444B,0xFFF5F5F7,amount));c.drawRoundRect(trash,trash.height()/2,trash.height()/2,ink);
                     drawTrash(c,trash.centerX(),trash.centerY(),app.removable?(amount>.5f?0xFF1C1C1E:SettingsListRenderer.normalInk(light)):0x66808080);
                 }
-                StorageApps.Item app=items.get(focus);if(!app.removable)hint=text(R.string.storage_protected);else if(app.bytes<0)hint=text(R.string.storage_size_unavailable);
             }
 
         }
