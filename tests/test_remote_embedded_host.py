@@ -5,7 +5,7 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 harness='''class View {static int VISIBLE=0,INVISIBLE=4;int visibility=0,focus,invalidations;ViewGroup parent;Object getParent(){return parent;}void setVisibility(int v){visibility=v;}void requestFocus(){focus++;}void invalidate(){invalidations++;}}
 class ViewGroup {static class LayoutParams{LayoutParams(int w,int h){}}int adds,removes;void addView(View v,LayoutParams p){adds++;}void removeView(View v){removes++;}}
-class RemoteShortcutSettings {View content=new View();Runnable exit;int closes,starts;RemoteShortcutSettings(Object a,View source,String title,Runnable exit){this.exit=exit;}View content(){return content;}void close(){closes++;}void start(boolean options){if(options)throw new AssertionError();starts++;}}
+class RemoteShortcutSettings {View content=new View();Runnable exit;int closes,starts;RemoteShortcutSettings(Object a,View source,String title,Runnable exit){this.exit=exit;}View content(){return content;}void close(){closes++;}void start(){starts++;}}
 public class Harness {
  RemoteShortcutSettings remoteSettings;static class Shortcuts {int reloads;void reload(){reloads++;}}Shortcuts shortcuts=new Shortcuts();
 '''+block(source,'    void openRemoteSettings(').replace('android.view.ViewGroup','ViewGroup')+'''

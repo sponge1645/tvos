@@ -5,5 +5,11 @@
     <string name="tizen_download" formatted="false">Download</string>
     <string name="tizen_versions_failed" formatted="false">Could not load versions. Check your connection and try again.</string>
     <string name="tizen_hold_hint" formatted="false">Press OK to download the latest version. Hold OK to choose an earlier version.</string>
-    <string name="tizen_downgrade" formatted="false">To install an earlier version, first uninstall the current TizenTube. Its settings and data will be deleted. The selected APK has already been downloaded and verified. After Android confirms removal, its installer will open.</string>
+    <string name="tizen_downgrade" formatted="false">To install an earlier version, first uninstall the current TizenTube. Its settings and data will be deleted. The selected APK has already been downloaded and verified. After Android confirms removal, its installer will open. An incomplete installation can be retried; previous app data cannot be restored.</string>
+    <string name="tizen_recovery_ready" formatted="false">TizenTube installation did not complete. The verified APK is saved. Try installing it again?</string>
+    <string name="tizen_recovery_download" formatted="false">TizenTube is not installed and its prepared APK is no longer cached. Download the selected version again?</string>
+    <string name="tizen_recovery_retry" formatted="false">Retry Installation</string>
+    <string name="tizen_recovery_later" formatted="false">Later</string>
+    <string name="tizen_recovery_save_failed" formatted="false">Could not save the recovery state. The current application will not be removed.</string>
+    <string name="tizen_recovery_choose" formatted="false">Other Versions</string>
 </resources>

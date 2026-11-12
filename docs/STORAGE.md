@@ -26,9 +26,10 @@ immediately; Android owns confirmation, cancellation and deletion. Touching
 blank space or an app label does not open the uninstaller.
 
 StorageApps requests GET_USAGE_STATS through the existing local ADB connection
-only when access is missing. StorageStatsManager reports appBytes + dataBytes;
+only when access is missing, scoped to the launcher Android user. StorageStatsManager reports appBytes + dataBytes;
 dataBytes already includes cacheBytes, so cache is not added twice. Unreadable
-sizes are displayed as an em dash; APK-only values are never labelled as totals.
+sizes are displayed as an em dash; an unavailable AppOps/statistics service also
+preserves the application list. APK-only values are never labelled as totals.
 A list-load failure supports retry with OK.
 
 The platform uninstall intent is created only for a validated installed package

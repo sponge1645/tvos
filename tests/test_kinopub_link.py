@@ -10,7 +10,7 @@ def method(signature):
  a=source.index(signature);b=source.index('{',a);depth=1;i=b+1
  while depth:depth+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-choose=method('    void choose(')
+choose=method('    private void choose(Recs.Pick pick, boolean alwaysAsk)')
 assert '"watch.kino.mod"' in choose
 assert 'open(pick, selected.getKey(), selected.getValue());' in choose
 assert 'openKinoPub(pick, pkg);' in method('    private void open(')

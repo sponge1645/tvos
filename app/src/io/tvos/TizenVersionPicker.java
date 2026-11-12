@@ -15,13 +15,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Explicit release choice; an older release uses the native uninstall consent before downloading. */
 final class TizenVersionPicker implements AutoCloseable {
-    static final int UNINSTALL_REQUEST=905;
+    static final int UNINSTALL_REQUEST=905,INSTALL_REQUEST=906;
     private final Activity activity;private final Handler main=new Handler(Looper.getMainLooper());
     private AtomicBoolean cancelled=new AtomicBoolean();private AlertDialog dialog;private boolean closed;
+    private boolean installing,recoveryVisible;
+    private final Runnable focusRecovery=new Runnable(){@Override public void run(){
+        if(!closed&&activity.hasWindowFocus()){
+            if(pending!=null){
+                if(ApkTrust.installed(activity.getPackageManager(),AppDownloadCatalog.get(2).packageName)==null)uninstallReturned();
+                return;
+            }
+            installing=false;resumeRecovery();
+        }
+    }};
+    void windowFocus(boolean focused){main.removeCallbacks(focusRecovery);if(focused)main.postDelayed(focusRecovery,500);}
     private long heldDownTime=-1;private TizenReleases.Version pending;
     TizenVersionPicker(Activity activity){this.activity=activity;}
     private String text(int id){return AppStrings.get(id);}
+    static boolean recoveryPending(Activity activity){return TizenRecovery.read(activity.getFilesDir())!=null;}
     void show(long downTime){
+        heldDownTime=downTime;if(resumeRecovery())return;
         cancelled.set(true);if(dialog!=null)dialog.dismiss();cancelled=new AtomicBoolean();AtomicBoolean token=cancelled;heldDownTime=downTime;
         dialog=new AlertDialog.Builder(activity).setTitle(text(R.string.tizen_versions)).setMessage(text(R.string.remote_loading))
                 .setNegativeButton(text(R.string.settings_cancel),(d,w)->token.set(true)).create();
@@ -64,7 +77,7 @@ final class TizenVersionPicker implements AutoCloseable {
     private void prepared(TizenReleases.Version version){
         if(closed)return;
         PackageInfo installed=ApkTrust.installed(activity.getPackageManager(),AppDownloadCatalog.get(2).packageName);
-        if(installed==null){AppDownloads.installPreparedTizen(activity,version.source);return;}
+        if(installed==null){launchPrepared(version);return;}
         dialog=new AlertDialog.Builder(activity).setTitle(text(R.string.tizen_versions)).setMessage(text(R.string.tizen_downgrade))
                 .setPositiveButton(text(R.string.storage_delete),(d,w)->uninstall(version))
                 .setNegativeButton(text(R.string.settings_cancel),null).show();
@@ -72,15 +85,52 @@ final class TizenVersionPicker implements AutoCloseable {
     @SuppressWarnings("deprecation")
     private void uninstall(TizenReleases.Version version){
         if(!AppDownloads.hasPreparedTizen(activity,version.source)){message(text(R.string.tizen_versions_failed));return;}
-        pending=version;
+        if(!persist(version))return;pending=version;
         try{activity.startActivityForResult(new Intent(Intent.ACTION_UNINSTALL_PACKAGE,Uri.fromParts("package",AppDownloadCatalog.get(2).packageName,null))
                 .putExtra(Intent.EXTRA_RETURN_RESULT,true),UNINSTALL_REQUEST);}
         catch(RuntimeException e){pending=null;message(text(R.string.storage_delete_failed));}
     }
     void uninstallReturned(){
-        TizenReleases.Version version=pending;pending=null;if(closed||version==null)return;
-        if(ApkTrust.installed(activity.getPackageManager(),AppDownloadCatalog.get(2).packageName)==null)AppDownloads.installPreparedTizen(activity,version.source);
+        TizenReleases.Version version=pending;pending=null;if(closed)return;
+        if(ApkTrust.installed(activity.getPackageManager(),AppDownloadCatalog.get(2).packageName)!=null){TizenRecovery.clear(activity.getFilesDir());return;}
+        if(version==null)version=recovered();if(version!=null)launchPrepared(version);
+    }
+    private TizenReleases.Version recovered(){
+        TizenRecovery record=TizenRecovery.read(activity.getFilesDir());
+        return record==null?null:new TizenReleases.Version(record.version,new AppDownloadCatalog.Source(record.url,record.sha256));
+    }
+    private boolean persist(TizenReleases.Version version){
+        TizenRecovery current=TizenRecovery.read(activity.getFilesDir());
+        if(current!=null&&current.sha256.equals(version.source.sha256))return true;
+        try{new TizenRecovery(version.name,version.source.url,version.source.sha256).write(activity.getFilesDir());return true;}
+        catch(java.io.IOException e){message(text(R.string.tizen_recovery_save_failed));return false;}
+    }
+    private void launchPrepared(TizenReleases.Version version){
+        if(!persist(version))return;
+        installing=true;
+        if(!AppDownloads.installPreparedTizen(activity,version.source)){installing=false;resumeRecovery();}
+    }
+    void installationReturned(){installing=false;resumeRecovery();}
+    boolean resumeRecovery(){
+        if(closed||installing||pending!=null||!activity.hasWindowFocus())return false;
+        TizenReleases.Version version=recovered();if(version==null)return false;
+        if(ApkTrust.installed(activity.getPackageManager(),AppDownloadCatalog.get(2).packageName)!=null){
+            if(recoveryVisible&&dialog!=null){recoveryVisible=false;dialog.dismiss();}
+            TizenRecovery.clear(activity.getFilesDir());return false;
+        }
+        if(recoveryVisible)return true;
+        boolean cached=AppDownloads.hasPreparedTizen(activity,version.source);recoveryVisible=true;
+        dialog=new AlertDialog.Builder(activity).setTitle(text(R.string.tizen_versions))
+                .setMessage(text(cached?R.string.tizen_recovery_ready:R.string.tizen_recovery_download))
+                .setPositiveButton(text(cached?R.string.tizen_recovery_retry:R.string.tizen_download),(d,w)->{
+                    recoveryVisible=false;
+                    if(cached)launchPrepared(version);
+                    else{java.lang.ref.WeakReference<TizenVersionPicker> owner=new java.lang.ref.WeakReference<>(this);
+                        AppDownloads.prepareTizenVersion(activity,version.source,()->{TizenVersionPicker current=owner.get();if(current!=null&&!current.closed)current.launchPrepared(version);});}
+                }).setNegativeButton(text(R.string.tizen_recovery_later),(d,w)->recoveryVisible=false)
+                .setNeutralButton(text(R.string.tizen_recovery_choose),(d,w)->{recoveryVisible=false;TizenRecovery.clear(activity.getFilesDir());show(-1);}).create();
+        dialog.setOnCancelListener(d->recoveryVisible=false);guardRelease(dialog);dialog.show();return true;
     }
     private void message(String message){dialog=new AlertDialog.Builder(activity).setTitle(text(R.string.tizen_versions)).setMessage(message).setPositiveButton("OK",null).show();}
-    @Override public void close(){closed=true;cancelled.set(true);pending=null;if(dialog!=null)dialog.dismiss();}
+    @Override public void close(){closed=true;main.removeCallbacks(focusRecovery);cancelled.set(true);pending=null;if(dialog!=null)dialog.dismiss();}
 }

@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory(prefix="tvos-resource-test-") as directory:
  static final ThreadPoolExecutor CITY_IO=executor();
  static ThreadPoolExecutor executor(){try{java.lang.reflect.Field f=SettingsCitySearch.class.getDeclaredField("IO");f.setAccessible(true);return (ThreadPoolExecutor)f.get(null);}catch(Exception e){throw new AssertionError(e);}}
      Handler handler=new Handler();Spoken spoken=new Spoken();int screen=GENERAL,pickers;final ModeMonitor modeMonitor=new ModeMonitor();static class ModeMonitor {boolean stopped;void stop(){stopped=true;}}boolean running=true;
+ static class Hold {boolean cancelled;void cancel(){cancelled=true;}}final Hold tizenHold=new Hold();
  final io.tvos.settings.SettingsRemoteInput remoteInput=new io.tvos.settings.SettingsRemoteInput();int confirmations,backs;
  final io.tvos.settings.SettingsRemoteInput.Actions keyActions=new io.tvos.settings.SettingsRemoteInput.Actions(){public void vertical(int d,boolean down,boolean first){}public void horizontal(int d,boolean down,boolean first){}public void confirm(){confirmations++;}public void back(boolean activate,boolean root){if(activate)backs++;}};
  void keys(int action){for(int code:new int[]{android.view.KeyEvent.KEYCODE_ENTER,android.view.KeyEvent.KEYCODE_BACK})remoteInput.onKey(new android.view.KeyEvent(action,code,0,false),false,keyActions);}
@@ -48,7 +49,7 @@ static class AppLoader {boolean cancelled;void cancel(){cancelled=true;}}final A
       CityHarness h=new CityHarness();h.keys(android.view.KeyEvent.ACTION_DOWN);
       try {
        h.citySearch.search("old");h.flush();h.pause();h.handler.drain();check(h.pickers==0,"paused settings suppress city callback");
-       check(h.updateDialog.paused&&h.modeMonitor.stopped&&h.valueSource.paused,"pause delegates update listener lifecycle");
+       check(h.updateDialog.paused&&h.modeMonitor.stopped&&h.valueSource.paused&&h.tizenHold.cancelled,"pause delegates update listener lifecycle");
        h.keys(android.view.KeyEvent.ACTION_UP);check(h.confirmations==0&&h.backs==0&&h.appLoader.cancelled&&h.tvProviderLoader.cancelled,"pause clears held keys and app lookup");
        check(h.rowShadows.cleared && h.textRenderer.cleared,"pause drops shadow and description caches");
        h.running=true;h.citySearch.search("different-screen");h.flush();h.screen=99;h.handler.drain();check(h.pickers==0 && h.citySearch.status().isEmpty(),"navigation suppresses picker");

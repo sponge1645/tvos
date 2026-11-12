@@ -105,6 +105,8 @@ public class SettingsActivity extends Activity {
         if (remoteSettings != null) remoteSettings.resume();
         if (storageSettings != null) storageSettings.resume();
         view.resume();
+        if(tizenVersions==null&&TizenVersionPicker.recoveryPending(this))tizenVersions=new TizenVersionPicker(this);
+        if(tizenVersions!=null)tizenVersions.resumeRecovery();
         SetupGate.route(this);
         if (automaticUpdates != null) automaticUpdates.resume();
         // From ADB: am start -n io.tvos/.SettingsActivity --ez screensaver true (straight to the preview).
@@ -119,7 +121,10 @@ public class SettingsActivity extends Activity {
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
         if(storageSettings!=null&&request==StorageSettings.UNINSTALL_REQUEST)storageSettings.uninstallReturned();
-        if(tizenVersions!=null&&request==TizenVersionPicker.UNINSTALL_REQUEST)tizenVersions.uninstallReturned();
+        if(request==TizenVersionPicker.UNINSTALL_REQUEST||request==TizenVersionPicker.INSTALL_REQUEST){
+            if(tizenVersions==null)tizenVersions=new TizenVersionPicker(this);
+            if(request==TizenVersionPicker.UNINSTALL_REQUEST)tizenVersions.uninstallReturned();else tizenVersions.installationReturned();
+        }
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -140,6 +145,7 @@ public class SettingsActivity extends Activity {
         super.onWindowFocusChanged(focused);
         if (remoteSettings != null) remoteSettings.windowFocus(focused);
         if (storageSettings != null) storageSettings.windowFocus(focused);
+        if(tizenVersions!=null)tizenVersions.windowFocus(focused);
         if (!focused) { if(shortcuts!=null)shortcuts.cancel();view.cancelTizenHold(); }
         if (focused && automaticUpdates != null) automaticUpdates.changed();
     }

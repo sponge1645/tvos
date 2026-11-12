@@ -18,11 +18,18 @@ release is passed directly to the worker; it never resolves latest again.
 For a lower version, the worker downloads and verifies the APK while the
 existing app is still installed. Only successful preparation offers an
 explanation of app-data removal, followed by Android's native uninstall UI.
-Cancellation leaves the existing app in place and never opens an installer.
+Cancellation of removal leaves the existing app in place and never opens an installer.
 After confirmed removal, the installer opens the already verified selected
 APK. It does not silently uninstall, use pm install -d or bypass package trust.
-Activity destruction drops the pending action safely; a later retry can select
-the release again.
+Before native uninstall, the selected version/URL/digest are atomically persisted
+and flushed to disk. Installer cancellation/failure offers Retry, Later or Other
+Versions. A cached APK can be retried offline. If Android evicted the cache, the
+same release can be downloaded again. Recovery survives process death and is
+checked when Settings reopens. Success or cancelled removal clears the record.
+For OEM installers that omit activity results, 500 ms of stable returned window
+focus triggers a PackageManager check. These safeguards are not an atomic
+rollback: removed app data cannot be restored, and installation may still need
+user action or a different release. Real-TV validation remains required.
 
 Selected APKs use digest-named private cache files and a strict read-only
 provider path. Ordinary app downloads keep installer.apk and tvOS keeps its

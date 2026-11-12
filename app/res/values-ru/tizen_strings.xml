@@ -5,5 +5,11 @@
     <string name="tizen_download" formatted="false">Загрузить</string>
     <string name="tizen_versions_failed" formatted="false">Не удалось загрузить версии. Проверьте подключение и попробуйте ещё раз.</string>
     <string name="tizen_hold_hint" formatted="false">Нажмите ОК, чтобы загрузить последнюю версию. Удерживайте ОК, чтобы выбрать более раннюю.</string>
-    <string name="tizen_downgrade" formatted="false">Для установки более ранней версии сначала удалите текущий TizenTube. Его настройки и данные будут удалены. Выбранный APK уже скачан и проверен. После подтверждения удаления в Android откроется его установщик.</string>
+    <string name="tizen_downgrade" formatted="false">Для установки более ранней версии сначала удалите текущий TizenTube. Его настройки и данные будут удалены. Выбранный APK уже скачан и проверен. После подтверждения удаления в Android откроется его установщик. Если установка не завершится, её можно будет повторить; прежние данные не восстановятся.</string>
+    <string name="tizen_recovery_ready" formatted="false">Установка TizenTube не завершена. Проверенный APK сохранён. Повторить установку?</string>
+    <string name="tizen_recovery_download" formatted="false">TizenTube не установлен, а подготовленный APK больше не хранится в кеше. Загрузить выбранную версию заново?</string>
+    <string name="tizen_recovery_retry" formatted="false">Повторить установку</string>
+    <string name="tizen_recovery_later" formatted="false">Позже</string>
+    <string name="tizen_recovery_save_failed" formatted="false">Не удалось сохранить состояние восстановления. Текущее приложение не будет удалено.</string>
+    <string name="tizen_recovery_choose" formatted="false">Другие версии</string>
 </resources>

@@ -23,11 +23,13 @@ final class StorageApps {
     private StorageApps() { }
     @SuppressWarnings("deprecation") // API 28 compatibility.
     private static boolean usageAllowed(Context c) {
-        AppOpsManager ops=c.getSystemService(AppOpsManager.class);
-        return ops!=null&&ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,Process.myUid(),c.getPackageName())==AppOpsManager.MODE_ALLOWED;
+        try {
+            AppOpsManager ops=c.getSystemService(AppOpsManager.class);
+            return ops!=null&&ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,Process.myUid(),c.getPackageName())==AppOpsManager.MODE_ALLOWED;
+        }catch(RuntimeException unavailable){return false;}
     }
     static List<Item> load(Context c) {
-        if(!usageAllowed(c))try(Adb adb=Adb.connect(c,1500,()->{})){adb.shell("appops set io.tvos GET_USAGE_STATS allow");}
+        if(!usageAllowed(c))try(Adb adb=Adb.connect(c,1500,()->{})){adb.shell("appops set --user "+(Process.myUid()/100000)+" io.tvos GET_USAGE_STATS allow");}
         catch(Exception e){AppLog.w("Storage usage access unavailable: "+e.getClass().getSimpleName());}
         PackageManager pm=c.getPackageManager();StorageStatsManager stats=c.getSystemService(StorageStatsManager.class);
         List<Item> items=new ArrayList<>();

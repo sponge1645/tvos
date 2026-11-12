@@ -30,19 +30,21 @@ public final class AppDownloads {
     public static void start(Activity activity,int index){start(activity,index,null,null);}
     static void prepareTizenVersion(Activity activity,AppDownloadCatalog.Source source,Runnable ready){start(activity,2,source,ready);}
     static boolean hasPreparedTizen(Context context,AppDownloadCatalog.Source source){File apk=new File(context.getCacheDir(),tizenFile(source));return apk.isFile()&&apk.length()>0;}
-    static void installPreparedTizen(Activity activity,AppDownloadCatalog.Source source){
+    static boolean installPreparedTizen(Activity activity,AppDownloadCatalog.Source source){
         File apk=new File(activity.getCacheDir(),tizenFile(source));
-        if(!apk.isFile()){message(activity,"TizenTube",AppStrings.get(R.string.tizen_versions_failed));return;}
-        openInstaller(activity,"content://io.tvos.apkshare/"+tizenFile(source));
+        if(!apk.isFile())return false;
+        return openInstaller(activity,"content://io.tvos.apkshare/"+tizenFile(source));
     }
     private static String tizenFile(AppDownloadCatalog.Source source){
         if(source.sha256==null||!source.sha256.matches("[0-9a-f]{64}"))throw new IllegalArgumentException("Tizen APK digest required");
         return "tizen-"+source.sha256+".apk";
     }
-    private static void openInstaller(Activity activity,String uri){
+    @SuppressWarnings("deprecation")
+    private static boolean openInstaller(Activity activity,String uri){
         Intent intent=new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(uri),"application/vnd.android.package-archive")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        try{activity.startActivity(intent);}catch(RuntimeException e){message(activity,"TizenTube",AppStrings.get(R.string.runtime_could_not_open_installer)+e.getMessage());}
+        try{activity.startActivityForResult(intent.putExtra(Intent.EXTRA_RETURN_RESULT,true),TizenVersionPicker.INSTALL_REQUEST);return true;}
+        catch(RuntimeException e){AppLog.w("Tizen installer unavailable: "+e.getClass().getSimpleName());return false;}
     }
     private static void start(Activity activity, int index,AppDownloadCatalog.Source selectedSource,Runnable prepared) {
         AppDownloadCatalog.Entry app = AppDownloadCatalog.get(index);
