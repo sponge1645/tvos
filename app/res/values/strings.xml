@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">tvOS</string>
-    <string name="remote_key_service">Optional cold-boot protection for compatible CHiQ televisions. Button assignments use the tvOS input method and do not require accessibility.</string>
+    <string name="remote_key_service">Button capture and assigned remote shortcuts. Unassigned keys, navigation, volume and power are passed through. Also provides cold-boot protection on compatible CHiQ TVs.</string>
 
     <string name="region_vpn_paused">VPN is paused while determining your region. TV traffic uses the direct connection.</string>
     <string name="region_vpn_restored">VPN connection restored.</string>

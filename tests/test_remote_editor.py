@@ -21,6 +21,7 @@ public class Test {
  Row row(int id,Runnable action){return new Row(text(id),"",false,action);}Row row(String l,String v,Runnable action){return new Row(l,v,false,action);}
  static class View {void announceForAccessibility(String s){}}final View view=new View();
  final List<Binding> bindings=new ArrayList<>();List<Row> rows;Runnable previous;String title,hint;int selected,saves,roots,messages,editedAction;
+ static class CaptureBridge {void start(){}void stop(){}}final CaptureBridge captureBridge=new CaptureBridge();
  boolean capturing,captureBackDown,busy;KeyEvent learned;
  String text(int id){return "text"+id;}String name(Binding b){return "Button "+b.code;}String label(String a){return a;}
  void show(String t,String h,List<Row> r,Runnable p,int at,int depth){title=t;hint=h;rows=r;previous=p;selected=at;capturing=false;learned=null;captureBackDown=false;}

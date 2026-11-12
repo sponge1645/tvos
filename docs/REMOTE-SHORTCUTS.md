@@ -1,9 +1,28 @@
-# Remote assignments — branch 1.1.2
+# Remote assignments — branch 1.2
 
 ## Current input path
 
-Home handles assignments locally. Across-app assignments use `RemoteInputMethod`,
-a standard Android input method, instead of an accessibility key filter. Enable
+Home handles assignments locally. An optional accessibility key filter receives
+allowed app buttons before normal window/IME delivery. Enable **tvOS** in
+Android Accessibility (Input Settings > Enable button interception). It returns
+false for navigation, volume, power, OK, ordinary controller keys and unassigned
+buttons. Global bindings use the existing tap-sequence engine; Home-only
+bindings are intercepted only on Home. The IME remains available as an
+alternative on firmware without early filtering.
+
+During learning, Settings requests a signature-protected capture lease, renewed
+every 2 seconds with a maximum 5-second expiry. Forwarded KeyEvents carry a
+session UUID and are accepted only by the active/resumed capture UI. Leaving
+the screen or losing focus ends capture; late release events are swallowed once
+without executing a binding. This also survives a settings-process failure via
+the lease timeout. No screen-content retrieval permission is requested.
+
+On DEXP/MTK, Netflix's 265/scan161 and Prime's scan500 reach vendor global-key
+handlers instead of the normal window. Device validation of accessibility
+interception on that firmware is required; it may still consume keys before the
+Android filter. Capture diagnostics log numeric code/scan/source/action only.
+
+Across-app assignments can alternatively use `RemoteInputMethod`. Enable
 **tvOS button input** in Android keyboard settings, then select it as the current
 keyboard. Its Android label is **tvOS Keyboard**. The IME metadata declares a
 standard keyboard subtype and no settingsActivity link: tapping its Android
@@ -31,9 +50,8 @@ one rollback connection attempt. Unexpected process death can leave the text
 keyboard selected; select tvOS again manually in that case. No automatic service
 restart takes ownership of a manually selected keyboard. This remains a TV trial.
 
-The old tvOS accessibility service may be disabled; it only contains the optional
-CHiQ cold-boot guard and never requests keys. Setup and Home-mode jobs do not
-enable it automatically.
+The optional tvOS accessibility service must be enabled manually for early
+interception. Setup and Home-mode jobs do not enable it automatically.
 
 Remotes and Devices opens a native tvOS-style editor: the shared settings gradient,
 logo tile, focus capsules, short row labels and checkmark pickers. The editor uses

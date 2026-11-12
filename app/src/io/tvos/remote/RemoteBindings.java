@@ -19,6 +19,14 @@ public final class RemoteBindings {
                 && code != 224 && code != 24 && code != 25 && code != 164
                 && !(code >= 19 && code <= 22);
     }
+    /** Some TV remotes advertise GAMEPAD together with KEYBOARD/DPAD for app-launch keys. */
+    public static boolean gameController(int source, int code) {
+        boolean controller = (source & 0x401) == 0x401 || (source & 0x1000010) == 0x1000010;
+        boolean appKey = code == 265 || code == 249 || code == 247 || code == 185 || code == 190
+                || code == 4062 || code == 4065 || code == 4099 || code == 4020
+                || code >= 289 && code <= 296;
+        return controller && !appKey;
+    }
     public static boolean ok(int code) { return code == 23 || code == 66 || code == 160; }
     public static boolean validAction(String action) {
         return action.length() <= 512 && (action.isEmpty() || action.matches("none|default|vpn|settings|play|next|previous|mute")

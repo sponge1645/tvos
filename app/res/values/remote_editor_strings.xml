@@ -10,7 +10,7 @@
     <string name="remote_yellow" formatted="false">Yellow button</string>
     <string name="remote_blue" formatted="false">Blue button</string>
     <string name="remote_button" formatted="false">Button</string>
-    <string name="remote_capture_hint" formatted="false">Back to cancel.</string>
+    <string name="remote_capture_hint" formatted="false">Back cancels. If app buttons are not detected, enable interception in Input Settings.</string>
     <string name="remote_limit" formatted="false">You can add up to 32 buttons.</string>
     <string name="remote_works" formatted="false">Works</string>
     <string name="remote_everywhere" formatted="false">Everywhere</string>
@@ -20,7 +20,7 @@
     <string name="remote_triple" formatted="false">Triple Press</string>
     <string name="remote_enable" formatted="false">Enable tvOS</string>
     <string name="remote_select" formatted="false">Use tvOS for Buttons</string>
-    <string name="remote_connection_hint" formatted="false">For use everywhere, select the tvOS keyboard.</string>
+    <string name="remote_connection_hint" formatted="false">Enable tvOS in Accessibility for system app buttons. The tvOS keyboard is an alternative input method. Navigation, volume and power stay with the TV.</string>
     <string name="remote_loading" formatted="false">Loading…</string>
     <string name="remote_no_apps" formatted="false">No apps found.</string>
 </resources>

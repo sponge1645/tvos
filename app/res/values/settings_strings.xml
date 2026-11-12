@@ -279,4 +279,5 @@
     <string name="settings_signal_strength" formatted="false">Signal Strength</string>
     <string name="settings_download_happ" formatted="false">Download HAPP</string>
     <string name="settings_app_happ_description" formatted="false">A VPN client for connecting to your servers.\nImport configurations and subscription links.</string>
+    <string name="remote_accessibility_enable" formatted="false">Enable button interception</string>
 </resources>

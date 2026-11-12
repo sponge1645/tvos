@@ -54,8 +54,7 @@ final class RemoteShortcuts implements AutoCloseable {
     }
     boolean homeBinding(KeyEvent e) { Binding b = find(e); return b != null && !b.global; }
     boolean onKey(KeyEvent e) {
-        if (closed || (e.getSource() & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
-                || (e.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) return false;
+        if (closed || RemoteBindings.gameController(e.getSource(), e.getKeyCode())) return false;
         if (bindings.isEmpty() && suppressed.isEmpty()) return false;
         String identity = e.getDeviceId() + ":" + e.getKeyCode() + ":" + e.getScanCode();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;

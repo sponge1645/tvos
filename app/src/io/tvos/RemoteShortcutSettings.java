@@ -48,6 +48,9 @@ final class RemoteShortcutSettings extends ContextWrapper {
         bindings.addAll(RemoteBindings.read(getFilesDir()));
         shortcuts = new RemoteShortcuts(this, true, null); click = new Click(this);
         view = new Menu();
+        captureBridge = new RemoteKeyCapture(this, event -> {
+            if (!closed && resumed && capturing) dispatchKeyEvent(event);
+        });
     }
     View content() { return view; }
     void start(boolean inputOptions) { if (inputOptions) connection(); else root(); resume(); }
@@ -55,22 +58,24 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private boolean isDestroyed() { return closed || activity.isDestroyed(); }
     private boolean isFinishing() { return closed || activity.isFinishing(); }
     private void finishToSettings() { if (closed) return; exit.run(); }
-    void resume() { resumed = true; shortcuts.reload(); view.invalidate(); }
+    void resume() { resumed = true; shortcuts.reload(); if (capturing) captureBridge.start(); view.invalidate(); }
     void pause() {
-        resumed = false; input.reset(); learned = null; captureBackDown = false;
+        resumed = false; captureBridge.stop(); input.reset(); learned = null; captureBackDown = false;
         shortcuts.cancel(); view.clearCaches();
     }
     void windowFocus(boolean focused) {
-        if (!focused) { input.reset(); learned = null; captureBackDown = false; shortcuts.cancel(); }
+        if (focused && resumed && capturing) captureBridge.start();
+        if (!focused) { captureBridge.stop(); input.reset(); learned = null; captureBackDown = false; shortcuts.cancel(); }
     }
     void close() {
         if (closed) return; closed = true; generation++; io.shutdown();
-        shortcuts.close(); click.release(); view.removeCallbacksAndMessagesCompat(); if (sourceView == null) view.background.clear();
+        captureBridge.close(); shortcuts.close(); click.release(); view.removeCallbacksAndMessagesCompat(); if (sourceView == null) view.background.clear();
     }
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final List<Binding> bindings = new ArrayList<>();
     private final SettingsRemoteInput input = new SettingsRemoteInput();
     private RemoteShortcuts shortcuts;
+    private RemoteKeyCapture captureBridge;
     private Menu view;
     private Click click;
     private boolean busy, resumed, capturing;
@@ -95,6 +100,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private Row row(int label, Runnable action) { return row(text(label), "", action); }
     private void show(String title, String hint, List<Row> rows, Runnable previous, int selected, int depth) {
         view.captureOutgoing(capturing, depth);
+        if (captureBridge != null) captureBridge.stop();
         generation++; capturing = false; learned = null; captureBackDown = false; input.reset();
         if (shortcuts != null) shortcuts.cancel();
         back = previous; view.show(title, hint, rows, selected, depth);
@@ -149,7 +155,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private void capture() {
         List<Row> rows = new ArrayList<>();
         show(text(R.string.settings_remote_add), text(R.string.remote_capture_hint), rows, this::root, 0, 2);
-        capturing = true; view.announceForAccessibility(text(R.string.settings_remote_press));
+        capturing = true; captureBridge.start(); view.announceForAccessibility(text(R.string.settings_remote_press));
     }
     private boolean learn(KeyEvent event) {
         int code = event.getKeyCode();
@@ -162,8 +168,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) message(R.string.settings_remote_reserved);
             return code != KeyEvent.KEYCODE_VOLUME_UP && code != KeyEvent.KEYCODE_VOLUME_DOWN && code != KeyEvent.KEYCODE_VOLUME_MUTE;
         }
-        if ((event.getSource() & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
-                || (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) return false;
+        if (RemoteBindings.gameController(event.getSource(), code)) return false;
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             if (event.getRepeatCount() == 0) learned = new KeyEvent(event);
             return true;
@@ -177,7 +182,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
         if (bindings.size() >= RemoteBindings.MAX) { message(R.string.remote_limit); return true; }
         bindings.add(new Binding(code, event.getScanCode(), device, !RemoteBindings.ok(code),
                 new String[]{RemoteBindings.ok(code) ? "default" : "", "", ""}));
-        int at = bindings.size() - 1; capturing = false; save(() -> edit(at)); return true;
+        int at = bindings.size() - 1; capturing = false; captureBridge.stop(); save(() -> edit(at)); return true;
     }
     private void edit(int at) {
         if (at < 0 || at >= bindings.size()) { root(); return; }
@@ -237,6 +242,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
     }
     private void connection() {
         List<Row> rows = new ArrayList<>();
+        rows.add(row(R.string.remote_accessibility_enable, () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))));
         rows.add(row(R.string.remote_enable, () -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))));
         rows.add(row(R.string.remote_select, () -> ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showInputMethodPicker()));
         rows.add(row(R.string.settings_remote_text_keyboard, this::keyboards));

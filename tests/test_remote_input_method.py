@@ -32,9 +32,9 @@ with tempfile.TemporaryDirectory() as directory:
  subprocess.run(['java','com.sun.tools.javac.Main','-d',directory,*map(str,root.rglob('*.java'))],check=True)
  subprocess.run(['java','-cp',directory,'io.tvos.Test'],check=True)
 service=ET.parse('app/res/xml/remote_key_service.xml').getroot();android='{http://schemas.android.com/apk/res/android}'
-assert service.get(android+'canRequestFilterKeyEvents')=='false'
-assert 'flagRequestFilterKeyEvents' not in service.get(android+'accessibilityFlags','')
-assert 'onKeyEvent(' not in Path('app/src/io/tvos/RemoteKeyService.java').read_text()
+assert service.get(android+'canRequestFilterKeyEvents')=='true'
+assert 'flagRequestFilterKeyEvents' in service.get(android+'accessibilityFlags','')
+assert 'onKeyEvent(' in Path('app/src/io/tvos/RemoteKeyService.java').read_text()
 assert 'volume-hold.jar' not in Path('build.sh').read_text()
 assert 'ACTION_ACCESSIBILITY_SETTINGS' not in Path('app/src/io/tvos/SetupActivity.java').read_text()
 assert 'ensureRemoteService' not in Path('app/src/io/tvos/HomeMode.java').read_text()

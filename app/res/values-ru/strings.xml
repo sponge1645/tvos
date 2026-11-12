@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="remote_key_service">Необязательная защита запуска на совместимых телевизорах CHiQ. Назначения кнопок используют службу ввода tvOS и не требуют специальных возможностей.</string>
+    <string name="remote_key_service">Обучение кнопок и выполнение назначений пульта. Неназначенные кнопки, навигация, громкость и питание передаются системе. Также обеспечивает защиту запуска на совместимых ТВ CHiQ.</string>
     <string name="region_vpn_paused">VPN временно отключён для определения региона. Трафик ТВ идёт напрямую.</string>
     <string name="region_vpn_restored">Подключение VPN восстановлено.</string>
     <string name="region_vpn_restore_failed">VPN не удалось включить, включите вручную.</string>
