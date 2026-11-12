@@ -255,7 +255,8 @@ final class RemoteShortcutSettings extends ContextWrapper {
         },()->{if(!closed&&resumed){if(direction>0)volumeSetup(-1);else root();}});
     }
     private void connection() {
-        startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        if (!AppLaunch.start(this, new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), "Remote accessibility settings"))
+            message(R.string.remote_accessibility_unavailable);
     }
     private void apps(java.util.function.Consumer<String> select, Runnable previous, boolean allowNone) {
         show(text(R.string.settings_remote_app), text(R.string.remote_loading), new ArrayList<>(), previous, 0, 4);

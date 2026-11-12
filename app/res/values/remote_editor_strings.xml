@@ -24,4 +24,5 @@
     <string name="remote_volume_up_hint" formatted="false">Press and release Volume Up. Enable tvOS in Accessibility and keep local ADB available.</string>
     <string name="remote_volume_down_hint" formatted="false">Press and release Volume Down.</string>
     <string name="remote_volume_connecting" formatted="false">Connecting to button capture. Check that tvOS is enabled in Accessibility and local ADB is available.</string>
+    <string name="remote_accessibility_unavailable" formatted="false">Accessibility settings are unavailable on this TV. Button interception could not be enabled.</string>
 </resources>

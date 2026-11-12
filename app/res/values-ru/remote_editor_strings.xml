@@ -24,4 +24,5 @@
     <string name="remote_volume_up_hint" formatted="false">Нажмите и отпустите кнопку увеличения громкости. Включите tvOS в специальных возможностях и оставьте локальный ADB доступным.</string>
     <string name="remote_volume_down_hint" formatted="false">Нажмите и отпустите кнопку уменьшения громкости.</string>
     <string name="remote_volume_connecting" formatted="false">Подключение к перехвату кнопок. Проверьте, что tvOS включён в специальных возможностях и локальный ADB доступен.</string>
+    <string name="remote_accessibility_unavailable" formatted="false">Специальные возможности недоступны на этом телевизоре. Включить перехват кнопок не удалось.</string>
 </resources>
