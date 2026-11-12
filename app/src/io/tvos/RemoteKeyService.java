@@ -54,7 +54,7 @@ public class RemoteKeyService extends AccessibilityService {
         AppLog.w("Remote key filter connected");
     }
     @Override protected boolean onKeyEvent(KeyEvent event) {
-        if (volume != null) volume.onKey(event);
+        if (volume != null && volume.onKey(event)) return false;
         int code = event.getKeyCode();
         if (!RemoteBindings.allowed(code) || RemoteBindings.ok(code)
                 || RemoteBindings.gameController(event.getSource(), code)) return false;

@@ -62,6 +62,14 @@ teardown cancels it; a 30-second deadline bounds a lost release. Volume events
 are never consumed or entered into the assignment engine. No audio listener
 is installed.
 
+The tested MStar Smart TV IR Receiver emits Linux scan 30 (KEY_A) for
+Volume Up and scan 33 (KEY_F) for Volume Down. VolumeKeyRepeat accepts these
+scans only on that exact input-device name, in addition to standard Android
+volume codes; physical keyboard A/F stay untouched. Diagnostics record
+recognized volume DOWN/UP/repeat events and generated volume steps. If
+firmware consumes these keys before accessibility delivery, this fallback
+cannot see them; the diagnostics distinguish that from audio adjustment failure.
+
 ## Validation
 
 Key-filter tests execute capture/release matching, reserved-key passthrough,
