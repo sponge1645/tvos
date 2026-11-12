@@ -13,6 +13,8 @@ public class ActionsTest {
   check(SettingsActions.activation(WIDGETS,0,0,false,6,false)==SettingsActions.Action.WEATHER_SCREEN,"first widget opens weather");
   check(SettingsActions.activation(WIDGETS,1,0,false,6,false)==SettingsActions.Action.DATE_SCREEN,"second widget opens date");
   check(SettingsActions.activation(WIDGETS,2,0,false,6,false)==SettingsActions.Action.NONE,"removed third widget is inactive");
+  ActionView interception=create(REMOTE_KEYS,REMOTE_ACCESSIBILITY_ROW);interception.activate();
+  check(ActionView.events.equals(Arrays.asList("safe-accessibility")),"main interception row uses protected shared launch boundary");
   int[] targets={GENERAL,MEDIA,SCREENSAVER,-1,-1,ACCESSIBILITY,APPS_DOWNLOADS,SHELF_EDIT,TOP_PANEL,SYSTEM};
   for(int row=0;row<10;row++){
    ActionView v=create(MAIN,row);v.activate();
@@ -72,7 +74,7 @@ public class ActionsTest {
   check(SettingsActions.activation(ACCESSIBILITY,2,0,false,6,false)==SettingsActions.Action.TV_SETTINGS,"TV settings remains third accessibility row");
   v=create(RESET,0);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-cache")),"cache clear requires existing confirmation");
   v=create(RESET,1);v.activate();check(ActionView.events.equals(Arrays.asList("confirm-reset")),"reset requires existing confirmation");
-  v=create(REMOTE_KEYS,REMOTE_ACCESSIBILITY_ROW);v.activate();check(ActionView.events.contains("start:accessibility:0")&&!ActionView.events.contains("load-apps"),"accessibility setup opens without package picker");
+  v=create(REMOTE_KEYS,REMOTE_ACCESSIBILITY_ROW);v.activate();check(ActionView.events.contains("safe-accessibility")&&!ActionView.events.contains("load-apps"),"accessibility setup opens without package picker");
   check(!SettingsActions.canAdjust(REMOTE_KEYS,REMOTE_ACCESSIBILITY_ROW,6),"accessibility setup is an OK-only action");
   check(!SettingsActions.canAdjust(REMOTE_KEYS,4,6)&&SettingsActions.activation(REMOTE_KEYS,4,0,false,6,false)==SettingsActions.Action.KEY_PICKER,"MI still uses app picker");
   check(SettingsActions.activation(UPDATES,2,0,false,6,false)==SettingsActions.Action.NONE,"retired test row has no action");

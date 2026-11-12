@@ -359,7 +359,7 @@ public class SettingsActivity extends Activity {
         private RectF rowBox(int row) {
             SettingsListRenderer.accessibilityBounds(focusBox, row, rowLayout(), mainScroll.value,
                     scrolling(), listWindow.offset(), listScroll.value, k);
-            if (screen == APPS_DOWNLOADS) focusBox.offset(0, (DownloadGroups.position(row) - row) * 84 * k);
+            if (screen == APPS_DOWNLOADS) focusBox.offset(0, ((DownloadGroups.position(row) - row) * 84 + DownloadGroups.TOP_INSET) * k);
             return focusBox;
         }
 
@@ -597,14 +597,14 @@ public class SettingsActivity extends Activity {
                 int[] titles = {R.string.apps_utilities, R.string.apps_entertainment, R.string.apps_cinema};
                 float[] positions = {164, 458, 668};
                 rowLabel.setTextSize(28 * k); rowLabel.setColor(SettingsListRenderer.secondaryInk(lightSettings()));
-                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, positions[n]*k, rowLabel);
+                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, (positions[n]+DownloadGroups.TOP_INSET)*k, rowLabel);
                 rowLabel.setTextSize(36*k);
             }
             boolean selection = SettingsScreen.multiChoice(screen) || screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
-                if (screen == APPS_DOWNLOADS) rowRect.offset(0, (DownloadGroups.position(i) - i) * 84 * k);
+                if (screen == APPS_DOWNLOADS) rowRect.offset(0, ((DownloadGroups.position(i) - i) * 84 + DownloadGroups.TOP_INSET) * k);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
                 row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = (screen == CITY && i == 1 && Prefs.automaticRegion())
@@ -1111,7 +1111,7 @@ public class SettingsActivity extends Activity {
                 case CATEGORY: toggleCategory(); invalidate(); return;
                 case SHELF: toggleShelfApp(); invalidate(); return;
                 case STORAGE: activity.openStorageSettings(this,screenTitle()); return;
-                case OPEN_ACCESSIBILITY: activity.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); return;
+                case OPEN_ACCESSIBILITY: RemoteAccessibility.open(activity); return;
                 case ADVANCED_KEYS: RemoteShortcutSettingsActivity.open(activity, this, screenTitle()); break;
                 case KEY_PICKER: openPicker(focus + 1); break;
                 case CITY_PICKER: askCity(); return;

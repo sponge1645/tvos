@@ -3,6 +3,7 @@ package io.tvos;
 /** Visual order is independent of the stable download catalog/action indices. */
 final class DownloadGroups {
     private DownloadGroups() { }
+    static final int TOP_INSET = 60;
     static final int[] ORDER = {0, 3, 4, 1, 2, 5, 6, 7};
     static float position(int row) {
         switch (row) {
