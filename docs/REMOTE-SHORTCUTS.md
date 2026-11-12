@@ -18,9 +18,12 @@ without executing a binding. This also survives a settings-process failure via
 the lease timeout. No screen-content retrieval permission is requested.
 
 On DEXP/MTK, Netflix's 265/scan161 and Prime's scan500 reach vendor global-key
-handlers instead of the normal window. Device validation of accessibility
-interception on that firmware is required; it may still consume keys before the
-Android filter. Capture diagnostics log numeric code/scan/source/action only.
+handlers instead of the normal window. Accessibility interception was confirmed
+on the tested DEXP. The TV initially rejected enabling the service with a
+misleading device-admin-policy log despite having no active administrators;
+allowing ACCESS_RESTRICTED_SETTINGS for io.tvos resolved it. Other firmware
+still requires device validation. Capture diagnostics log numeric
+code/scan/source/action only.
 
 Across-app assignments can alternatively use `RemoteInputMethod`. Enable
 **tvOS button input** in Android keyboard settings, then select it as the current
@@ -76,7 +79,14 @@ Bindings match Android code, Linux scan code and remote name, with up to 32 keys
 Tap interval is 300 ms. Single-only assignments execute on release. Double/triple
 assignments delay the single action. Original OK is supported on Home only.
 Arrows, Back, Home, power and volume are reserved and pass unchanged to Android,
-including repeats/releases. There is no volume repeat generator or audio listener.
+including repeats/releases. While the accessibility filter is active, VolumeKeyRepeat
+adds missing volume steps after the normal hold timeout plus 100 ms, using
+AudioManager on the suggested stream. Short presses add no steps. Any real
+repeat disables the fallback for that press, so normal remotes keep their
+firmware repeat rate. Release, another key, screen-off, interruption or service
+teardown cancels it; a 30-second deadline bounds a lost release. Volume events
+are never consumed or entered into the assignment engine. No audio listener
+is installed.
 
 The IME ignores tvOS windows so Home never handles a key twice and the capture
 dialog receives originals. It cancels pending sequences when input targets change.
