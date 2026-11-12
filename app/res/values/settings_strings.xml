@@ -89,8 +89,8 @@
     <string name="settings_light" formatted="false">Light</string>
     <string name="settings_dark" formatted="false">Dark</string>
     <string name="settings_automatic" formatted="false">Automatic</string>
-    <string name="settings_24_h" formatted="false">24 h</string>
-    <string name="settings_12_h" formatted="false">12 h</string>
+    <string name="settings_24_h" formatted="false">24-hour format</string>
+    <string name="settings_12_h" formatted="false">12-hour format</string>
     <string name="settings_built_in" formatted="false">Built-in</string>
     <string name="settings_not_selected" formatted="false">Not selected</string>
     <string name="settings_not_found" formatted="false">Not found</string>

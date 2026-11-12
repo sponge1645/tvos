@@ -89,8 +89,8 @@
     <string name="settings_light" formatted="false">Светлое</string>
     <string name="settings_dark" formatted="false">Тёмное</string>
     <string name="settings_automatic" formatted="false">Авто</string>
-    <string name="settings_24_h" formatted="false">24 ч</string>
-    <string name="settings_12_h" formatted="false">12 ч</string>
+    <string name="settings_24_h" formatted="false">24-часовой формат</string>
+    <string name="settings_12_h" formatted="false">12-часовой формат</string>
     <string name="settings_built_in" formatted="false">Встроенный</string>
     <string name="settings_not_selected" formatted="false">Не выбрано</string>
     <string name="settings_not_found" formatted="false">Не найдено</string>
