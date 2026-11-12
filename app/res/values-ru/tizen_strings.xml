@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tizen_versions" formatted="false">Версии TizenTube</string>
+    <string name="tizen_latest" formatted="false">Последняя</string>
+    <string name="tizen_download" formatted="false">Загрузить</string>
+    <string name="tizen_versions_failed" formatted="false">Не удалось загрузить версии. Проверьте подключение и попробуйте ещё раз.</string>
+    <string name="tizen_hold_hint" formatted="false">Нажмите ОК, чтобы загрузить последнюю версию. Удерживайте ОК, чтобы выбрать более раннюю.</string>
+    <string name="tizen_downgrade" formatted="false">Для установки более ранней версии сначала удалите текущий TizenTube. Его настройки и данные будут удалены. Выбранный APK уже скачан и проверен. После подтверждения удаления в Android откроется его установщик.</string>
+</resources>

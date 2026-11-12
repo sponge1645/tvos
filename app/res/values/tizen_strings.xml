@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tizen_versions" formatted="false">TizenTube Versions</string>
+    <string name="tizen_latest" formatted="false">Latest</string>
+    <string name="tizen_download" formatted="false">Download</string>
+    <string name="tizen_versions_failed" formatted="false">Could not load versions. Check your connection and try again.</string>
+    <string name="tizen_hold_hint" formatted="false">Press OK to download the latest version. Hold OK to choose an earlier version.</string>
+    <string name="tizen_downgrade" formatted="false">To install an earlier version, first uninstall the current TizenTube. Its settings and data will be deleted. The selected APK has already been downloaded and verified. After Android confirms removal, its installer will open.</string>
+</resources>

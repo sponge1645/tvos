@@ -54,6 +54,8 @@ public class SettingsActivity extends Activity {
     private SettingsView view;
     private RemoteShortcutSettings remoteSettings;
     private StorageSettings storageSettings;
+    private TizenVersionPicker tizenVersions;
+    void chooseTizenVersions(long downTime){if(tizenVersions==null)tizenVersions=new TizenVersionPicker(this);tizenVersions.show(downTime);}
     void openStorageSettings(View source,String title){
         if(storageSettings!=null||remoteSettings!=null)return;
         android.view.ViewGroup host=(android.view.ViewGroup)source.getParent();
@@ -117,6 +119,7 @@ public class SettingsActivity extends Activity {
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
         if(storageSettings!=null&&request==StorageSettings.UNINSTALL_REQUEST)storageSettings.uninstallReturned();
+        if(tizenVersions!=null&&request==TizenVersionPicker.UNINSTALL_REQUEST)tizenVersions.uninstallReturned();
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -137,13 +140,14 @@ public class SettingsActivity extends Activity {
         super.onWindowFocusChanged(focused);
         if (remoteSettings != null) remoteSettings.windowFocus(focused);
         if (storageSettings != null) storageSettings.windowFocus(focused);
-        if (!focused && shortcuts != null) shortcuts.cancel();
+        if (!focused) { if(shortcuts!=null)shortcuts.cancel();view.cancelTizenHold(); }
         if (focused && automaticUpdates != null) automaticUpdates.changed();
     }
 
     @Override protected void onDestroy() {
         if (remoteSettings != null) { remoteSettings.close(); remoteSettings = null; }
         if (storageSettings != null) { storageSettings.close(); storageSettings = null; }
+        if(tizenVersions!=null){tizenVersions.close();tizenVersions=null;}
         if (shortcuts != null) { shortcuts.close(); shortcuts = null; }
         super.onDestroy();
     }
@@ -213,6 +217,7 @@ public class SettingsActivity extends Activity {
 
         private boolean running;
         private final SettingsRemoteInput remoteInput = new SettingsRemoteInput();
+        private final io.tvos.settings.SettingsHoldAction tizenHold;
         private final SettingsRemoteInput.Actions remoteActions = new SettingsRemoteInput.Actions() {
             @Override public void vertical(int direction, boolean down, boolean first) { moveFocus(direction, down, first); }
             @Override public void horizontal(int direction, boolean down, boolean first) { adjustFocusedRow(direction, down, first); }
@@ -255,6 +260,10 @@ public class SettingsActivity extends Activity {
                     new SettingsValueLoader<>(handler::post, () -> running, this::invalidate),
                     new SettingsValueLoader<>(handler::post, () -> running, this::invalidate));
             tvosClick = new Click(a);
+            tizenHold=new io.tvos.settings.SettingsHoldAction(handler,
+                ()->running&&screen==APPS_DOWNLOADS&&focus==2&&hasWindowFocus()&&!updateDialog.visible()&&transitions.focusReady(SystemClock.uptimeMillis()),
+                this::tapTizenDownload,activity::chooseTizenVersions);
+
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             updateAppearance(System.currentTimeMillis());
             setFocusable(true);
@@ -368,7 +377,7 @@ public class SettingsActivity extends Activity {
         void pause() {
             running = false;
             icloudPanel.pause();
-            remoteInput.reset();
+            remoteInput.reset();tizenHold.cancel();
             appLoader.cancel();
             tvProviderLoader.cancel();
             valueSource.pause();
@@ -635,6 +644,7 @@ public class SettingsActivity extends Activity {
                 updateProgress.draw(c, k, lightSettings());
                 return;
             }
+            if(screen==APPS_DOWNLOADS&&focus==2)info=AppStrings.get(R.string.tizen_hold_hint);
             if (info == null) return;
             if (screen == DREAM_CHOICE && focus == 3 && !localPrefs().getString("icloud_album", "").isEmpty()) info = AppStrings.get(R.string.icloud_connected_help);
             textRenderer.drawDescription(c, info, k, lightSettings(), Ui.displaySemibold);
@@ -648,7 +658,10 @@ public class SettingsActivity extends Activity {
             if (enabled) SelfUpdate.get(getContext()).maybeAutomatic(true);
         }
 
+        void cancelTizenHold(){tizenHold.cancel();}
+        private void tapTizenDownload(){if(spoken.keyClick()){tvosClick.open();AppDownloads.start(activity,2);}}
         boolean onKey(KeyEvent e) {
+            if(tizenHold.onKey(e))return true;
             if (updateDialog.visible()) {
                 if (e.getAction() == KeyEvent.ACTION_UP) {
                     int code = e.getKeyCode();

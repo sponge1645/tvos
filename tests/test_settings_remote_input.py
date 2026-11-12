@@ -7,6 +7,7 @@ from tmdb_metadata_fixture import block
 source=Path('app/src/io/tvos/SettingsActivity.java').read_text()
 harness='''import android.view.KeyEvent;import static android.view.KeyEvent.*;import io.tvos.settings.*;import static io.tvos.settings.SettingsScreen.*;import java.util.*;
 public class RemoteHarness {
+ class Hold {boolean onKey(KeyEvent e){return false;}}final Hold tizenHold=new Hold();
  class Panel {boolean onKey(KeyEvent e,boolean visible){return false;}}final Panel icloudPanel=new Panel();
  final SettingsRemoteInput remoteInput=new SettingsRemoteInput();final SettingsListWindow listWindow=new SettingsListWindow(10);
  int screen=GENERAL,focus,invalidations,moves,opens,backs,activations,backActions,announcements,clickChecks;boolean clickAllowed=true,adjustable=true;

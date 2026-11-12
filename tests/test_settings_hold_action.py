@@ -1,0 +1,14 @@
+"""Actual scoped hold timer works without firmware repeat events and never falls through to a tap."""
+from pathlib import Path
+import subprocess,tempfile
+files={
+'android/os/Handler.java':'package android.os;public class Handler{public Runnable next;public void postDelayed(Runnable r,long ms){if(ms!=500)throw new AssertionError();next=r;}public void removeCallbacks(Runnable r){if(next==r)next=null;}public void fire(){Runnable r=next;next=null;if(r!=null)r.run();}}',
+'android/view/KeyEvent.java':'package android.view;public class KeyEvent{public static final int ACTION_DOWN=0,ACTION_UP=1;int code,action,repeat;boolean cancel;public KeyEvent(int c,int a){code=c;action=a;}public int getKeyCode(){return code;}public int getAction(){return action;}public int getDeviceId(){return 1;}public int getRepeatCount(){return repeat;}public long getDownTime(){return 100;}public boolean isCanceled(){return cancel;}}',
+'io/tvos/settings/SettingsHoldAction.java':Path('app/src/io/tvos/settings/SettingsHoldAction.java').read_text(),
+'Test.java':'''import android.os.*;import android.view.*;import io.tvos.settings.SettingsHoldAction;class Test{static int taps,holds;static boolean eligible=true;static void check(boolean b,String s){if(!b)throw new AssertionError(s);}public static void main(String[] args){Handler h=new Handler();SettingsHoldAction action=new SettingsHoldAction(h,()->eligible,()->taps++,time->{check(time==100,"carry original downTime to dialog release guard");holds++;});check(action.onKey(new KeyEvent(23,0)),"scoped down owned");action.onKey(new KeyEvent(23,1));check(taps==1&&holds==0&&h.next==null,"short OK only downloads latest");action.onKey(new KeyEvent(23,0));h.fire();check(holds==1&&taps==1,"timer opens version picker without repeats");action.onKey(new KeyEvent(23,1));check(taps==1,"long release never downloads latest");action.onKey(new KeyEvent(23,0));action.onKey(new KeyEvent(20,0));h.fire();check(holds==1,"moving away cancels hold");action.onKey(new KeyEvent(66,0));eligible=false;h.fire();action.onKey(new KeyEvent(66,1));check(taps==1&&holds==1,"eligibility loss suppresses hold and tap");check(!action.onKey(new KeyEvent(23,0)),"other settings retain native protocol");eligible=true;action.onKey(new KeyEvent(160,0));action.cancel();h.fire();check(holds==1,"pause/focus loss cancels timer");System.out.println("PASS: actual OK hold, short action, release suppression, eligibility and cancellation");}}'''}
+with tempfile.TemporaryDirectory() as tmp:
+ root=Path(tmp)
+ for name,source in files.items():
+  p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(source)
+ subprocess.run(['java','com.sun.tools.javac.Main','-source','8','-target','8','-Xlint:all,-options','-Werror','-d',tmp,*map(str,root.rglob('*.java'))],check=True)
+ subprocess.run(['java','-cp',tmp,'Test'],check=True)

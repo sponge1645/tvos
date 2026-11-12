@@ -10,11 +10,12 @@ class Base {protected void onPause(){}protected void onDestroy(){}public void on
 class RemoteShortcuts {boolean handles;void cancel(){Test.log.add("cancel");}void close(){Test.log.add("close");}boolean onKey(KeyEvent e){Test.log.add("shortcut");return handles;}}
 class RemoteKeys {static boolean handles;static boolean onKey(Object c,KeyEvent e){Test.log.add("legacy");return handles;}}
 class Preview {boolean showing,handles;boolean active(){return showing;}boolean onKey(KeyEvent e){Test.log.add("preview");return handles;}void close(){Test.log.add("preview-close");}}
-class View {boolean handles;boolean onKey(KeyEvent e){Test.log.add("view");return handles;}void pause(){Test.log.add("pause");}}
+class View {void cancelTizenHold(){}boolean handles;boolean onKey(KeyEvent e){Test.log.add("view");return handles;}void pause(){Test.log.add("pause");}}
 class Updates {void pause(){Test.log.add("updates-pause");}void changed(){}}
 public class Test extends Base {
  static class RemoteShortcutSettings {void pause(){}void close(){}void windowFocus(boolean f){}boolean dispatchKeyEvent(KeyEvent e){return false;}}RemoteShortcutSettings remoteSettings;
  static class StorageSettings {void pause(){}void close(){}void windowFocus(boolean f){}boolean dispatchKeyEvent(KeyEvent e){return false;}}StorageSettings storageSettings;
+ static class TizenVersionPicker{void close(){}}TizenVersionPicker tizenVersions;
  static final List<String> log=new ArrayList<>();RemoteShortcuts shortcuts=new RemoteShortcuts();Preview preview=new Preview();View view=new View();Updates automaticUpdates=new Updates();
 '''+methods+'''
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}

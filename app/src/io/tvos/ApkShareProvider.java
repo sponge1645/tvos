@@ -16,6 +16,7 @@ public final class ApkShareProvider extends ContentProvider {
     private File file(Uri uri) throws FileNotFoundException {
         String name;
         if ("/installer.apk".equals(uri.getPath())) name = "tvOS-installer.apk";
+        else if (uri.getPath()!=null&&uri.getPath().matches("/tizen-[0-9a-f]{64}\\.apk")) name=uri.getPath().substring(1);
         else if ("/update.apk".equals(uri.getPath())) name = "tvos-update.apk";
         else throw new FileNotFoundException();
         File f = new File(getContext().getCacheDir(), name);

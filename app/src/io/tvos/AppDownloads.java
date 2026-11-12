@@ -25,7 +25,26 @@ public final class AppDownloads {
     private AppDownloads() {}
 
 
-    public static void start(Activity activity, int index) {
+    static boolean busy(){return BUSY.get();}
+    static void startTizenVersion(Activity activity,AppDownloadCatalog.Source source){start(activity,2,source,null);}
+    public static void start(Activity activity,int index){start(activity,index,null,null);}
+    static void prepareTizenVersion(Activity activity,AppDownloadCatalog.Source source,Runnable ready){start(activity,2,source,ready);}
+    static boolean hasPreparedTizen(Context context,AppDownloadCatalog.Source source){File apk=new File(context.getCacheDir(),tizenFile(source));return apk.isFile()&&apk.length()>0;}
+    static void installPreparedTizen(Activity activity,AppDownloadCatalog.Source source){
+        File apk=new File(activity.getCacheDir(),tizenFile(source));
+        if(!apk.isFile()){message(activity,"TizenTube",AppStrings.get(R.string.tizen_versions_failed));return;}
+        openInstaller(activity,"content://io.tvos.apkshare/"+tizenFile(source));
+    }
+    private static String tizenFile(AppDownloadCatalog.Source source){
+        if(source.sha256==null||!source.sha256.matches("[0-9a-f]{64}"))throw new IllegalArgumentException("Tizen APK digest required");
+        return "tizen-"+source.sha256+".apk";
+    }
+    private static void openInstaller(Activity activity,String uri){
+        Intent intent=new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(uri),"application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try{activity.startActivity(intent);}catch(RuntimeException e){message(activity,"TizenTube",AppStrings.get(R.string.runtime_could_not_open_installer)+e.getMessage());}
+    }
+    private static void start(Activity activity, int index,AppDownloadCatalog.Source selectedSource,Runnable prepared) {
         AppDownloadCatalog.Entry app = AppDownloadCatalog.get(index);
         if (app == null || activity.isFinishing() || activity.isDestroyed()) return;
         if (!BUSY.compareAndSet(false, true)) {
@@ -33,7 +52,7 @@ public final class AppDownloads {
             return;
         }
         try {
-            new Job(activity, app).start();
+            new Job(activity, app,selectedSource,prepared).start();
         } catch (RuntimeException e) {
             BUSY.set(false);
             message(activity, app.name, AppStrings.get(R.string.runtime_could_not_start_download) + e.getMessage());
@@ -52,11 +71,13 @@ public final class AppDownloads {
         private final WeakReference<Activity> owner;
         private final WeakReference<AlertDialog> progress;
         private final AppDownloadCatalog.Entry app;
+        private final AppDownloadCatalog.Source selectedSource;
+        private final Runnable prepared;
         private final AtomicBoolean cancelled = new AtomicBoolean();
         private boolean resumed = true;
 
-        Job(Activity activity, AppDownloadCatalog.Entry app) {
-            this.app = app;
+        Job(Activity activity, AppDownloadCatalog.Entry app,AppDownloadCatalog.Source selectedSource,Runnable prepared) {
+            this.app = app;this.selectedSource=selectedSource;this.prepared=prepared;
             context = activity.getApplicationContext();
             application = activity.getApplication();
             owner = new WeakReference<>(activity);
@@ -88,11 +109,11 @@ public final class AppDownloads {
             String result = null;
             try {
                 PackageInfo installed = ApkTrust.installed(context.getPackageManager(), app.packageName);
-                if (ApkTrust.reviewedVersionInstalled(app, installed)) {
+                if (selectedSource==null && ApkTrust.reviewedVersionInstalled(app, installed)) {
                     result = AppStrings.get(R.string.runtime_installed_version_is_not_older_than_the_reviewed_build);
                     return;
                 }
-                AppDownloadCatalog.Source source = AppDownloadCatalog.resolve(app, installed != null,
+                AppDownloadCatalog.Source source = selectedSource!=null?selectedSource:AppDownloadCatalog.resolve(app, installed != null,
                         Build.SUPPORTED_ABIS, cancelled::get);
                 ApkTransfer.download(source, temporary, cancelled::get, this::updateProgress);
                 ApkTransfer.checkCancelled(cancelled::get);
@@ -101,11 +122,16 @@ public final class AppDownloads {
                 if (installed == null && ApkTrust.requiresInstalledApp(app, source))
                     throw new IOException(AppStrings.get(R.string.runtime_app_was_removed_during_download_retry_with_the_reviewed_installat));
                 PackageInfo archive = ApkTrust.verify(context.getPackageManager(), temporary, app, installed);
-                if (ApkTrust.alreadyInstalled(app, installed, archive)) {
+                if (ApkTrust.alreadyInstalled(app, installed, archive) && !(prepared!=null&&installed!=null&&installed.getLongVersionCode()>archive.getLongVersionCode())) {
                     result = AppStrings.get(R.string.runtime_app_is_already_installed);
                 } else {
                     ApkTransfer.checkCancelled(cancelled::get);
-                    File destination = new File(context.getCacheDir(), "tvOS-installer.apk");
+                    File destination = new File(context.getCacheDir(), selectedSource==null?"tvOS-installer.apk":tizenFile(selectedSource));
+                    if(selectedSource!=null){
+                        File[] cached=context.getCacheDir().listFiles((dir,name)->name.matches("tizen-[0-9a-f]{64}\\.apk"));
+                        if(cached!=null){java.util.Arrays.sort(cached,(a,b)->Long.compare(b.lastModified(),a.lastModified()));int kept=0;
+                            for(File old:cached)if(!old.equals(destination)&&kept++>=1)old.delete();}
+                    }
                     if (destination.exists() && !destination.delete()) throw new IOException("Could not replace APK");
                     if (!temporary.renameTo(destination)) throw new IOException("Could not publish verified APK");
                     install = true;
@@ -132,8 +158,9 @@ public final class AppDownloads {
             Activity activity = owner.get();
             if (cancelled.get() || activity == null || activity.isFinishing() || activity.isDestroyed() || !resumed) return;
             if (!install) { if (result != null) message(activity, app.name, result); return; }
+            if(prepared!=null){prepared.run();return;}
             Intent intent = new Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(Uri.parse("content://io.tvos.apkshare/installer.apk"), "application/vnd.android.package-archive")
+                    .setDataAndType(Uri.parse("content://io.tvos.apkshare/"+(selectedSource==null?"installer.apk":tizenFile(selectedSource))), "application/vnd.android.package-archive")
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             try { activity.startActivity(intent); }
             catch (RuntimeException e) {
