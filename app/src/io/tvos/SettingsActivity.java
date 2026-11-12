@@ -595,9 +595,10 @@ public class SettingsActivity extends Activity {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
             if (screen == APPS_DOWNLOADS) {
                 int[] titles = {R.string.apps_utilities, R.string.apps_entertainment, R.string.apps_cinema};
-                float[] positions = {164, 458, 668};
+                // Center capital letters in the gap, rather than positioning their baseline.
+                float[] centers = {157, 451, 661};
                 rowLabel.setTextSize(28 * k); rowLabel.setColor(SettingsListRenderer.secondaryInk(lightSettings()));
-                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, (positions[n]+DownloadGroups.TOP_INSET)*k, rowLabel);
+                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, (centers[n]+DownloadGroups.TOP_INSET)*k + Ui.halfCap(rowLabel), rowLabel);
                 rowLabel.setTextSize(36*k);
             }
             boolean selection = SettingsScreen.multiChoice(screen) || screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
