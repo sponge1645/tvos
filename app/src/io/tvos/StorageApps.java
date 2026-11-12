@@ -46,16 +46,14 @@ final class StorageApps {
         items.sort((a,b)->{int bySize=Long.compare(b.bytes,a.bytes);return bySize!=0?bySize:a.label.compareToIgnoreCase(b.label);});
         return items;
     }
-    static boolean uninstall(Context c,String pkg) {
-        if(pkg==null||!pkg.matches("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+")||pkg.equals(c.getPackageName()))return false;
+    @SuppressWarnings("deprecation") // Standard platform uninstall UI on supported Android TVs.
+    static android.content.Intent uninstallIntent(Context c,String pkg) {
+        if(pkg==null||!pkg.matches("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+")||pkg.equals(c.getPackageName()))return null;
         try {
             ApplicationInfo app=c.getPackageManager().getApplicationInfo(pkg,0);
-            if((app.flags&ApplicationInfo.FLAG_SYSTEM)!=0)return false;
-            int user=Process.myUid()/100000;
-            try(Adb adb=Adb.connect(c,1500,()->{})) {
-                String result=adb.shell("pm uninstall --user "+user+" "+pkg);
-                return result.trim().equals("Success");
-            }
-        }catch(Exception e){AppLog.w("Storage uninstall failed: "+e.getClass().getSimpleName());return false;}
+            if((app.flags&ApplicationInfo.FLAG_SYSTEM)!=0)return null;
+            return new android.content.Intent(android.content.Intent.ACTION_UNINSTALL_PACKAGE,
+                    android.net.Uri.fromParts("package",pkg,null)).putExtra(android.content.Intent.EXTRA_RETURN_RESULT,true);
+        }catch(Exception e){return null;}
     }
 }

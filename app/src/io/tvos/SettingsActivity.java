@@ -111,6 +111,11 @@ public class SettingsActivity extends Activity {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(storageSettings!=null&&request==StorageSettings.UNINSTALL_REQUEST)storageSettings.uninstallReturned();
+    }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);

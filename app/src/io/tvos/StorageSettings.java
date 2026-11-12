@@ -35,6 +35,7 @@ final class StorageSettings extends ContextWrapper {
     private final String sourceTitle;
     private final Runnable exit;
     private boolean resumed;
+    static final int UNINSTALL_REQUEST=904;
     private final ExecutorService work=Executors.newSingleThreadExecutor();
     private Menu menu;
     private int generation;
@@ -57,8 +58,8 @@ final class StorageSettings extends ContextWrapper {
     }
     View content(){return menu;}
     void start(){resume();}
-    void resume(){resumed=true;if(shortcuts!=null)shortcuts.reload();load();}
-    void pause(){resumed=false;if(menu!=null&&!deleting){menu.confirm=false;menu.confirmFocus=0;}if(shortcuts!=null)shortcuts.cancel();}
+    void resume(){resumed=true;deleting=false;if(shortcuts!=null)shortcuts.reload();load();}
+    void pause(){resumed=false;if(shortcuts!=null)shortcuts.cancel();}
     void windowFocus(boolean focus){if(!focus&&shortcuts!=null)shortcuts.cancel();}
     void close(){closed=true;generation++;iconGeneration++;work.shutdownNow();if(shortcuts!=null)shortcuts.close();menu.removeCallbacks(menu.finishExit);menu.clear();artwork=previousArtwork=null;}
     private void runOnUiThread(Runnable task){activity.runOnUiThread(task);}
@@ -99,14 +100,14 @@ final class StorageSettings extends ContextWrapper {
         });
     }
     private String size(StorageApps.Item item){String value=sizes.get(item.pkg);if(value==null){value=item.bytes<0?"—":Formatter.formatShortFileSize(sizeContext,item.bytes);sizes.put(item.pkg,value);}return value;}
+    void uninstallReturned(){deleting=false;if(resumed)load();}
+    @SuppressWarnings("deprecation") // Keep native uninstall results on API 28+.
     private void delete(){
-        if(deleting||items.isEmpty())return;
+        if(deleting||loading||items.isEmpty())return;
         StorageApps.Item item=items.get(menu.focus);if(!item.removable)return;
-        deleting=true;menu.invalidate();
-        work.execute(()->{boolean ok=StorageApps.uninstall(this,item.pkg);runOnUiThread(()->{
-            if(closed)return;deleting=false;menu.confirm=false;menu.confirmFocus=0;
-            if(ok)load();else{Toast.makeText(this,text(R.string.storage_delete_failed),Toast.LENGTH_LONG).show();menu.invalidate();}
-        });});
+        android.content.Intent request=StorageApps.uninstallIntent(this,item.pkg);if(request==null)return;
+        try{deleting=true;activity.startActivityForResult(request,UNINSTALL_REQUEST);}
+        catch(RuntimeException e){deleting=false;Toast.makeText(this,text(R.string.storage_delete_failed),Toast.LENGTH_LONG).show();}
     }
     private final class Menu extends View {
         final SettingsBackground background=new SettingsBackground();
@@ -123,7 +124,7 @@ final class StorageSettings extends ContextWrapper {
         final android.text.TextPaint label=new android.text.TextPaint(3);
         final RectF bounds=new RectF(),trash=new RectF(),image=new RectF();final Path clip=new Path();
         final Spring focusSpring=new Spring(.3f,1,0);
-        int focus,offset,confirmFocus;boolean confirm;float k=1;long last;int pressed=-1;
+        int focus,offset;float k=1;long last;int pressed=-1;
         final SettingsTransitions transitions=new SettingsTransitions();
         final java.util.function.IntUnaryOperator parent=page->page==1?0:-1;
         boolean started,exiting,drawLight,drawReduced,exitLogo;
@@ -137,19 +138,17 @@ final class StorageSettings extends ContextWrapper {
             if(!ready())return;
             if(loadFailed){load();return;}
             if(loading||deleting||items.isEmpty())return;
-            if(confirm){if(confirmFocus==1)delete();else{confirm=false;invalidate();}return;}
             if(!items.get(focus).removable)return;
-            confirm=true;confirmFocus=0;focusSpring.snap(0);invalidate();
+            delete();
         }
         boolean key(KeyEvent event){
             if(!ready())return true;
             int code=event.getKeyCode();boolean down=event.getAction()==KeyEvent.ACTION_DOWN;
-            if(code==KeyEvent.KEYCODE_BACK){if(event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled()&&!deleting){if(confirm){confirm=false;invalidate();}else finish();}return true;}
+            if(code==KeyEvent.KEYCODE_BACK){if(event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled()&&!deleting){finish();}return true;}
             if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){if(event.getAction()==KeyEvent.ACTION_UP&&!event.isCanceled())activate();return true;}
             if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN){
                 if(down&&!loading&&!deleting){int direction=code==KeyEvent.KEYCODE_DPAD_UP?-1:1;
-                    if(confirm)confirmFocus=Math.max(0,Math.min(1,confirmFocus+direction));
-                    else if(!items.isEmpty()){int next=Math.max(0,Math.min(items.size()-1,focus+direction));if(next!=focus){focus=next;reveal();select();}}
+                    if(!items.isEmpty()){int next=Math.max(0,Math.min(items.size()-1,focus+direction));if(next!=focus){focus=next;reveal();select();}}
                     focusSpring.snap(0);invalidate();}
                 return true;
             }
@@ -159,8 +158,7 @@ final class StorageSettings extends ContextWrapper {
             if(!ready())return true;
             if(event.getAction()==MotionEvent.ACTION_DOWN){pressed=(int)((event.getY()/k-189)/84)+offset;return true;}
             if(event.getAction()==MotionEvent.ACTION_UP){int hit=(int)((event.getY()/k-189)/84)+offset;
-                if(hit==pressed&&event.getX()>1000*k&&!loading&&!deleting){if(confirm){if(hit-offset>=0&&hit-offset<2){confirmFocus=hit-offset;activate();}}
-                    else if(hit>=0&&hit<items.size()){focus=hit;reveal();select();if(event.getX()>1734*k)activate();invalidate();}}
+                if(hit==pressed&&event.getX()>1000*k&&!loading&&!deleting){if(hit>=0&&hit<items.size()){focus=hit;reveal();select();if(event.getX()>1734*k)activate();invalidate();}}
                 return true;}
             return true;
         }
@@ -186,11 +184,6 @@ final class StorageSettings extends ContextWrapper {
             String hint=text(R.string.storage_hint);
             if(loading||items.isEmpty()){
                 label.setColor(SettingsListRenderer.normalInk(light));c.drawText(text(loading?R.string.remote_loading:loadFailed?R.string.storage_load_failed:R.string.storage_empty),1080*k,230*k,label);
-            }else if(confirm){
-                StorageApps.Item app=items.get(focus);hint=String.format(AppLanguage.current().locale,text(R.string.storage_confirm),app.label);
-                for(int n=0;n<2;n++){SettingsListRenderer.approvedBounds(bounds,n,k);row.set(text(n==0?R.string.settings_cancel:R.string.storage_delete),"",!deleting&&n==confirmFocus?focusSpring.value:0);row.disabled=deleting;
-                    renderer.draw(c,bounds,k,bounds.centerY()+Ui.halfCap(label),light,label,value,row);}
-                if(deleting)hint=text(R.string.storage_deleting);
             }else{
                 label.setTextSize(28*k);label.setColor(SettingsListRenderer.secondaryInk(light));c.drawText(text(R.string.storage_apps),1080*k,164*k,label);label.setTextSize(36*k);
                 for(int n=offset;n<Math.min(items.size(),offset+9);n++){
@@ -209,8 +202,6 @@ final class StorageSettings extends ContextWrapper {
         boolean ready(){return !exiting&&(reduced()||transitions.focusReady(SystemClock.uptimeMillis()));}
         String description(){
             if(exiting)return "";
-            if(deleting)return text(R.string.storage_deleting);
-            if(confirm&&!items.isEmpty())return String.format(AppLanguage.current().locale,text(R.string.storage_confirm),items.get(focus).label);
             if(!items.isEmpty()){StorageApps.Item app=items.get(focus);if(!app.removable)return text(R.string.storage_protected);if(app.bytes<0)return text(R.string.storage_size_unavailable);}
             return text(R.string.storage_hint);
         }

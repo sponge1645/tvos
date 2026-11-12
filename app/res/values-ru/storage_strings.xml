@@ -8,8 +8,6 @@
     <string name="storage_protected" formatted="false">tvOS нельзя удалить с этого экрана.</string>
     <string name="storage_empty" formatted="false">Нет приложений</string>
     <string name="storage_size_unavailable" formatted="false">Размер недоступен. Проверьте локальный ADB для доступа к статистике хранилища.</string>
-    <string name="storage_confirm" formatted="true">Удалить «%1$s»? Данные приложения тоже будут удалены.</string>
-    <string name="storage_deleting" formatted="false">Удаление…</string>
-    <string name="storage_delete_failed" formatted="false">Не удалось удалить приложение. Проверьте локальный ADB.</string>
+    <string name="storage_delete_failed" formatted="false">Не удалось открыть окно удаления Android.</string>
     <string name="storage_load_failed" formatted="false">Не удалось загрузить приложения. Нажмите ОК, чтобы повторить.</string>
 </resources>
