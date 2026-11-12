@@ -16,9 +16,24 @@ final class SearchData {
         JSONObject data = TmdbClient.get("/trending/all/week?language=" + AppLanguage.current().apiTag);
         List<Recs.Pick> result = new ArrayList<>();
         JSONArray entries = data.optJSONArray("results");
-        if (entries != null) for (int i = 0; i < entries.length() && result.size() < 10; i++) {
+        if (entries != null) for (int i = 0; i < entries.length() && result.size() < 12; i++) {
             JSONObject item = entries.optJSONObject(i);
             Recs.Pick pick = item == null ? null : TmdbMetadata.search(item);
+            if (pick != null) result.add(pick);
+        }
+        return result;
+    }
+    static List<Recs.Pick> suggestions(int section) throws java.io.IOException, org.json.JSONException {
+        if (section == 0) return trending();
+        String path = section == 1 ? "/movie/now_playing" : section == 2 ? "/tv/popular" : "/movie/top_rated";
+        JSONObject data = TmdbClient.get(path + "?language=" + AppLanguage.current().apiTag);
+        List<Recs.Pick> result = new ArrayList<>();
+        JSONArray entries = data.optJSONArray("results");
+        if (entries != null) for (int i = 0; i < entries.length() && result.size() < 12; i++) {
+            JSONObject item = entries.optJSONObject(i);
+            if (item == null) continue;
+            item.put("media_type", section == 2 ? "tv" : "movie");
+            Recs.Pick pick = TmdbMetadata.search(item);
             if (pick != null) result.add(pick);
         }
         return result;

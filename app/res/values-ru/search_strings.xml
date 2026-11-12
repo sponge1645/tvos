@@ -20,4 +20,7 @@
     <string name="search_voice_unavailable">Голосовой поиск недоступен. Воспользуйтесь клавиатурой.</string>
     <string name="search_clear">Очистить</string>
     <string name="search_watch">Смотреть</string>
+    <string name="search_now_playing">Сейчас в кино</string>
+    <string name="search_popular_tv">Популярные сериалы</string>
+    <string name="search_top_movies">Лучшие фильмы</string>
 </resources>

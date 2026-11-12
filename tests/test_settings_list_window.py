@@ -52,6 +52,7 @@ public class WindowHarness {
  for(float k:new float[]{2f/3,1,2})for(int screen=0;screen<=24;screen++)for(int row=0;row<10;row++){
   v.k=k;v.screen=screen;v.mainScroll.value=.5f;v.listScroll.value=v.listWindow.offset()+.25f;RectF box=v.rowBox(row);
   float expected=189+row*84+(screen==ABOUT&&row!=0?10:0)-(screen==MAIN?42:0)-(v.scrolling()?21:0);
+  if(screen==APPS_DOWNLOADS)expected+=(DownloadGroups.position(row)-row)*84;
   near(box.top,expected*k);near(box.bottom,(expected+62)*k);near(box.left,1000*k);near(box.right,1830*k);
  }
  SettingsListWindow edits=new SettingsListWindow(10);int f=edits.openPicker(20,35);int oldOffset=edits.offset();check(edits.keepVisible(-1,10,f)==f&&edits.offset()==oldOffset,"rejected edit no-op");
@@ -59,7 +60,7 @@ public class WindowHarness {
  System.out.println("PASS: list traversal, boundaries, empty/saved pickers, fixed pages, actual key down/up/repeats/sound/accessibility, all page bounds at 720p/1080p/4K and reorder focus");
  }}'''
 with tempfile.TemporaryDirectory() as tmp:
- root=Path(tmp);write_remote(root)
+ root=Path(tmp);(root/'DownloadGroups.java').write_text(Path('app/src/io/tvos/DownloadGroups.java').read_text().replace('package io.tvos;', ''));write_remote(root)
  for name,body in geometry_sources().items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
  (root/'WindowHarness.java').write_text(harness)

@@ -359,6 +359,7 @@ public class SettingsActivity extends Activity {
         private RectF rowBox(int row) {
             SettingsListRenderer.accessibilityBounds(focusBox, row, rowLayout(), mainScroll.value,
                     scrolling(), listWindow.offset(), listScroll.value, k);
+            if (screen == APPS_DOWNLOADS) focusBox.offset(0, (DownloadGroups.position(row) - row) * 84 * k);
             return focusBox;
         }
 
@@ -592,10 +593,18 @@ public class SettingsActivity extends Activity {
         private boolean storagePending(){return activity.storageSettings!=null&&activity.storageSettings.waiting();}
         private void drawMenu(Canvas c) {
             String[] labels = menuLabels(), values = valueSource.menu(screen, rowCount());
+            if (screen == APPS_DOWNLOADS) {
+                int[] titles = {R.string.apps_utilities, R.string.apps_entertainment, R.string.apps_cinema};
+                float[] positions = {164, 458, 668};
+                rowLabel.setTextSize(28 * k); rowLabel.setColor(SettingsListRenderer.secondaryInk(lightSettings()));
+                for (int n = 0; n < titles.length; n++) c.drawText(AppStrings.get(titles[n]), 1080*k, positions[n]*k, rowLabel);
+                rowLabel.setTextSize(36*k);
+            }
             boolean selection = SettingsScreen.multiChoice(screen) || screen == SLEEP_TIMER || screen == LANGUAGE || screen == HOME_VIEW || screen == HOME_CARD_STYLE || screen == MOVIE_SERVICE;
             for (int pass = 0; pass < labels.length; pass++) {
                 int i = SettingsListRenderer.paintRow(pass, 0, labels.length, focus);
                 SettingsListRenderer.menuBounds(rowRect, i, rowLayout(), mainScroll.value, k);
+                if (screen == APPS_DOWNLOADS) rowRect.offset(0, (DownloadGroups.position(i) - i) * 84 * k);
                 SettingsListRenderer.Row row = prepareRow(i, labels[i], values[i]);
                 row.kind = selection ? Kind.PICKER : screen == ABOUT && i != 0 ? Kind.DETAIL : Kind.NORMAL;
                 row.disabled = (screen == CITY && i == 1 && Prefs.automaticRegion())
@@ -687,7 +696,8 @@ public class SettingsActivity extends Activity {
                 boolean scrolling = scrolling();
                 int rows = rowCount(), size = scrolling ? listSize() : rows;
                 if (first && listWindow.canMove(direction, focus, rows, size, scrolling)) tvosClick.move();
-                focus = listWindow.move(direction, focus, rows, size, scrolling);
+                focus = screen == APPS_DOWNLOADS ? DownloadGroups.move(focus, direction)
+                        : listWindow.move(direction, focus, rows, size, scrolling);
             }
             invalidate();
             spoken.focusMoved();

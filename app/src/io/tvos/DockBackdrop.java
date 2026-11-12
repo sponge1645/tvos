@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 final class DockBackdrop {
     private static final long ROTATION_MS = 10 * 60 * 1000L;
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
+    private static final ExecutorService LOCAL = Executors.newSingleThreadExecutor();
     private static final ExecutorService CANCEL = Executors.newSingleThreadExecutor();
     private final Context context;
     private final DockPrograms programs;
@@ -184,6 +185,10 @@ final class DockBackdrop {
         return null;
     }
 
+    private static ExecutorService queue(String pkg) {
+        return bundled(pkg) == null ? IO : LOCAL;
+    }
+
     private void loadFocused() {
         final String pkg = focused;
         final int token = generation;
@@ -196,7 +201,7 @@ final class DockBackdrop {
         final long nextDue = rotation == null ? now + ROTATION_MS : rotation.due + steps * ROTATION_MS;
         final long requested = System.nanoTime();
         final java.util.concurrent.atomic.AtomicBoolean imageReady = new java.util.concurrent.atomic.AtomicBoolean();
-        IO.execute(() -> {
+        queue(pkg).execute(() -> {
             if (token != generation) return;
             long started = System.nanoTime();
             Artwork result = null;

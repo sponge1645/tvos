@@ -20,4 +20,7 @@
     <string name="search_voice_unavailable">Voice search is unavailable. Use the keyboard.</string>
     <string name="search_clear">Clear</string>
     <string name="search_watch">Watch</string>
+    <string name="search_now_playing">Now in cinemas</string>
+    <string name="search_popular_tv">Popular TV shows</string>
+    <string name="search_top_movies">Top rated movies</string>
 </resources>

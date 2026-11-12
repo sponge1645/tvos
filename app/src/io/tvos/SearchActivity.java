@@ -44,6 +44,9 @@ public final class SearchActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService metadataIo = Executors.newFixedThreadPool(2), artworkIo = Executors.newFixedThreadPool(2);
     private final List<Recs.Pick> trending = new ArrayList<>(), matches = new ArrayList<>();
+    private final List<List<Recs.Pick>> suggestions = new ArrayList<>();
+    private final List<Float> sectionTops = new ArrayList<>();
+    private final List<Integer> sectionIds = new ArrayList<>();
     private final List<LocalApp> apps = new ArrayList<>();
     private final List<Target> targets = new ArrayList<>();
     private final List<Integer> posterTargets = new ArrayList<>();
@@ -184,11 +187,29 @@ public final class SearchActivity extends Activity {
         }
         resultsTop = targets.isEmpty() ? 300 : 410;
         List<Recs.Pick> picks = value.isEmpty() ? trending : matches;
-        for (int i = 0; i < Math.min(64, picks.size()); i++) {
-            final Recs.Pick pick = picks.get(i);
-            posterTargets.add(target(80+(i%6)*300, resultsTop+(i/6)*510, 260, 475, pick.title, i, () -> openDetail(pick)));
+        sectionTops.clear(); sectionIds.clear();
+        float bottom = resultsTop;
+        if (value.isEmpty()) {
+            trending.clear();
+            for (int section = 0; section < suggestions.size(); section++) {
+                List<Recs.Pick> entries = suggestions.get(section);
+                if (entries.isEmpty()) continue;
+                sectionTops.add(bottom); sectionIds.add(section);
+                int start = trending.size(); trending.addAll(entries);
+                for (int i = 0; i < entries.size(); i++) {
+                    final Recs.Pick pick = entries.get(i);
+                    posterTargets.add(target(80+(i%6)*300, bottom+(i/6)*510, 260, 475, pick.title, start+i, () -> openDetail(pick)));
+                }
+                bottom += ((entries.size()+5)/6)*510 + 90;
+            }
+        } else {
+            for (int i = 0; i < Math.min(64, picks.size()); i++) {
+                final Recs.Pick pick = picks.get(i);
+                posterTargets.add(target(80+(i%6)*300, resultsTop+(i/6)*510, 260, 475, pick.title, i, () -> openDetail(pick)));
+            }
+            bottom += ((Math.min(64, picks.size())+5)/6)*510;
         }
-        contentHeight = picks.isEmpty() ? 1080 : Math.max(1080, resultsTop + ((Math.min(64, picks.size())-1)/6)*510 + 475 + 32);
+        contentHeight = Math.max(1080, bottom + 32);
         if (restoreFocus && !focusedLabel.isEmpty()) for (int i = 0; i < targets.size(); i++) {
             if (focusedLabel.equals(targets.get(i).label)) { selected = i; focus.get(i).snap(1); break; }
         }
@@ -303,8 +324,17 @@ public final class SearchActivity extends Activity {
                 for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category), 0))
                     if (info.activityInfo != null && seen.add(info.activityInfo.packageName) && !getPackageName().equals(info.activityInfo.packageName)) found.add(new LocalApp(info.activityInfo.packageName, String.valueOf(info.loadLabel(getPackageManager()))));
             main.post(() -> { if (!closed) { apps.addAll(found); if (query.hasFocus()) rebuild(); } });
-            try { List<Recs.Pick> popular = SearchData.trending(); main.post(() -> { if (!closed) { trending.addAll(popular); if (detail == null && query.getText().toString().trim().isEmpty()) rebuild(); } }); }
-            catch (java.io.IOException | org.json.JSONException e) { AppLog.w("Search suggestions unavailable"); }
+            for (int section = 0; section < 4; section++) {
+                final int index = section;
+                try {
+                    List<Recs.Pick> entries = SearchData.suggestions(section);
+                    main.post(() -> { if (!closed) {
+                        while (suggestions.size() <= index) suggestions.add(new ArrayList<>());
+                        suggestions.set(index, entries);
+                        if (detail == null && query.getText().toString().trim().isEmpty()) rebuild();
+                    } });
+                } catch (java.io.IOException | org.json.JSONException e) { AppLog.w("Search suggestions unavailable: " + section); }
+            }
         });
     }
     private StaticLayout paragraph(String value, float size, int color, int width, int lines) {
@@ -434,7 +464,10 @@ public final class SearchActivity extends Activity {
                 Symbols.draw(SearchActivity.this, c, "search", 125, 124, 48, muted());
                 paint.setColor(night ? 0x35FFFFFF : 0x351D1D1F); c.drawRect(80,resultsTop-110,1840,resultsTop-109,paint);
                 boolean empty = query.getText().toString().trim().isEmpty();
-                label(c, text(empty ? R.string.search_trending : R.string.search_titles), 80, resultsTop-33, 30, muted());
+                if (empty) {
+                    int[] titles = {R.string.search_trending, R.string.search_now_playing, R.string.search_popular_tv, R.string.search_top_movies};
+                    for (int n = 0; n < sectionTops.size(); n++) label(c, text(titles[sectionIds.get(n)]), 80, sectionTops.get(n)-33, 30, muted());
+                } else label(c, text(R.string.search_titles), 80, resultsTop-33, 30, muted());
                 if (!empty && matches.isEmpty()) label(c, !problem.isEmpty() ? problem : text(query.length() < 3 ? R.string.search_minimum : R.string.search_loading), 80, resultsTop+40, 28, muted());
                 titlePaint.setTypeface(Ui.semibold); titlePaint.setTextSize(31); titlePaint.setColor(ink()); metaPaint.setTypeface(Ui.medium); metaPaint.setTextSize(25); metaPaint.setColor(muted());
                 posters.begin(1, night ? 1 : 0, 0, 0, true, selected >= 0 && targets.get(selected).poster >= 0, titlePaint, metaPaint);

@@ -10,7 +10,7 @@ class MotionEvent{static final int ACTION_DOWN=0,ACTION_UP=1;int action;float x,
 class Base{public boolean onTouchEvent(MotionEvent e){return false;}}
 class Test extends Base{
  static class Item{boolean removable;Item(boolean r){removable=r;}}List<Item> items=new ArrayList<>();boolean loading,deleting,loadFailed,finished,resumed,started=true;Runnable exit=()->finished=true;int focus,offset,deleted,selected,loads,pressed;float k=1;
- static class Spring{void snap(float v){}}Spring focusSpring=new Spring();boolean ready(){return true;}void finish(){finished=true;}void invalidate(){}void select(){selected++;}void delete(){deleted++;}void load(){loads++;}
+ static class Spring{float value;void snap(float v){value=v;}}Spring focusSpring=new Spring(),listScroll=new Spring();boolean ready(){return true;}void finish(){finished=true;}void invalidate(){}void select(){selected++;}void delete(){deleted++;}void load(){loads++;}
 '''+methods+'''
  static void check(boolean v,String why){if(!v)throw new AssertionError(why);}void tap(int code){key(new KeyEvent(code,0));key(new KeyEvent(code,1));}
  public static void main(String[] args){Test t=new Test();for(int i=0;i<14;i++)t.items.add(new Item(i!=0));
@@ -19,7 +19,7 @@ class Test extends Base{
   t.onTouchEvent(new MotionEvent(0,1500,1000));t.onTouchEvent(new MotionEvent(1,1500,1000));check(t.deleted==1,"blank area cannot open uninstall");
   t.onTouchEvent(new MotionEvent(0,1500,290));t.onTouchEvent(new MotionEvent(1,1500,290));check(t.deleted==1,"touching app label only selects");
   t.onTouchEvent(new MotionEvent(0,1800,290));t.onTouchEvent(new MotionEvent(1,1800,290));check(t.deleted==2,"touching basket opens native uninstall");
-  t.focus=13;t.reveal();check(t.offset==5,"long list keeps final row visible");t.tap(4);check(t.finished,"Back returns to exact parent entry");
+  t.focus=13;t.reveal();check(t.offset==4,"long list keeps final row visible");t.tap(4);check(t.finished,"Back returns to exact parent entry");
   t=new Test();t.loadFailed=true;t.tap(23);check(t.loads==1&&t.deleted==0,"failed list supports retry");
   System.out.println("PASS: actual native-uninstall activation, protected launcher, touch bounds, scroll visibility and Back focus");
  }

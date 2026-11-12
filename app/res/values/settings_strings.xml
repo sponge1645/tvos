@@ -209,7 +209,7 @@
     <string name="settings_remote_help" formatted="false">How it works</string>
     <string name="settings_remote_done" formatted="false">Done</string>
     <string name="settings_remote_original" formatted="false">Original OK action</string>
-    <string name="settings_remote_vpn" formatted="false">Toggle INCY VPN</string>
+    <string name="settings_remote_vpn" formatted="false">VPN</string>
     <string name="settings_remote_settings" formatted="false">Open tvOS settings</string>
     <string name="settings_remote_play" formatted="false">Play / pause</string>
     <string name="settings_remote_next" formatted="false">Next track</string>
@@ -280,4 +280,7 @@
     <string name="settings_download_happ" formatted="false">Download HAPP</string>
     <string name="settings_app_happ_description" formatted="false">A VPN client for connecting to your servers.\nImport configurations and subscription links.</string>
     <string name="remote_accessibility_enable" formatted="false">Enable button interception</string>
+    <string name="apps_utilities">UTILITIES</string>
+    <string name="apps_entertainment">ENTERTAINMENT</string>
+    <string name="apps_cinema">STREAMING SERVICES</string>
 </resources>

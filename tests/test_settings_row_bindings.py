@@ -19,7 +19,7 @@ public class BindingHarness {
  static class Dock {final List<String[]> apps=new ArrayList<>();int size(){return apps.size();}String[] get(int i){return apps.get(i);}int position(String p){return p.equals("app20")?1:-1;}}final Dock dockEditor=new Dock();
  final List<String> appPkgs=new ArrayList<>(),appLabels=new ArrayList<>();String[] labels,values;boolean free=true,vpn;int selectedService=2;
  static class Prefs {static boolean collection=true;static boolean homeCollection(){return collection;}static boolean home;static boolean homeContinue(){return home;}static String language(){return "en";}static boolean automatic;static boolean automaticRegion(){return automatic;}static boolean topButtonEnabled(int id){return id%2==0;}static int topButtonPosition(int id){return id+1;}static boolean categoryEnabled(int id){return id%2==0;}static int categoryPosition(int id){return id+1;}}
- static class R {static class string {static final int settings_off=1,settings_vpn=2,settings_built_in=3;}}static class AppStrings {static String get(int id){return id==1?"Off":id==2?"VPN":"Built-in";}}
+ static class R {static class string {static final int settings_off=1,settings_vpn=2,settings_built_in=3,apps_utilities=4,apps_entertainment=5,apps_cinema=6;}}static class AppStrings {static String get(int id){return id==1?"Off":id==2?"VPN":"Built-in";}}
  class Store {int getInt(String key,int d){return 2;}String getString(String key,String d){return "2";}}Store localPrefs(){return new Store();}static class MovieService {static final String KEY="service";static int index(String s){return Integer.parseInt(s);}}
  String[] menuLabels(){return labels;}int rowCount(){return labels.length;}String menuButtonLabel(int id){return "Button"+id;}String categoryLabel(int id){return "Category"+id;}boolean freeActive(){return free;}boolean vpnTopEnabled(){return vpn;}
  class Values {int selection(int screen){return 2;}String[] menu(int page,int count){return values;}String vpnApp(){return "VPN app";}String[] settings(){return new String[]{"V0","V1","V2","V3","V4"};}}final Values valueSource=new Values();
@@ -70,7 +70,7 @@ public class BindingHarness {
 # Only this test double is used to determine whether the update row requests a spinner.
 harness=harness.replace(' String[] menuLabels()', ' static class Progress {boolean active,reduced;boolean busy(){return active;}void drawSpinner(Canvas c,float x,float y,float k,int ink,boolean r){reduced=r;}}final Progress updateProgress=new Progress();\n String[] menuLabels()')
 with tempfile.TemporaryDirectory() as tmp:
- root=Path(tmp);sources=geometry_sources();sources['io/tvos/BindingHarness.java']=harness;sources['io/tvos/settings/SettingsScreen.java']=Path('app/src/io/tvos/settings/SettingsScreen.java').read_text();sources['io/tvos/settings/SettingsListWindow.java']=Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text()
+ root=Path(tmp);sources=geometry_sources();sources['io/tvos/BindingHarness.java']=harness;sources['io/tvos/DownloadGroups.java']=Path('app/src/io/tvos/DownloadGroups.java').read_text();sources['io/tvos/settings/SettingsScreen.java']=Path('app/src/io/tvos/settings/SettingsScreen.java').read_text();sources['io/tvos/settings/SettingsListWindow.java']=Path('app/src/io/tvos/settings/SettingsListWindow.java').read_text()
  for name,body in sources.items():
   p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
  subprocess.run(['java','com.sun.tools.javac.Main','app/src/io/tvos/SettingsPicker.java','-d',tmp,*map(str,root.rglob('*.java'))],check=True)

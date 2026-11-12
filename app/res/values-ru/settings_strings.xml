@@ -214,7 +214,7 @@
     <string name="settings_remote_help" formatted="false">Как это работает</string>
     <string name="settings_remote_done" formatted="false">Готово</string>
     <string name="settings_remote_original" formatted="false">Обычное действие OK</string>
-    <string name="settings_remote_vpn" formatted="false">Включить / выключить INCY VPN</string>
+    <string name="settings_remote_vpn" formatted="false">VPN</string>
     <string name="settings_remote_settings" formatted="false">Открыть настройки tvOS</string>
     <string name="settings_remote_play" formatted="false">Воспроизведение / пауза</string>
     <string name="settings_remote_next" formatted="false">Следующая запись</string>
@@ -285,4 +285,7 @@
     <string name="settings_download_happ" formatted="false">Загрузить HAPP</string>
     <string name="settings_app_happ_description" formatted="false">VPN-клиент для подключения к вашим серверам.\nИмпорт конфигураций и подписок по ссылке.</string>
     <string name="remote_accessibility_enable" formatted="false">Включить перехват кнопок</string>
+    <string name="apps_utilities">УТИЛИТЫ</string>
+    <string name="apps_entertainment">РАЗВЛЕЧЕНИЯ</string>
+    <string name="apps_cinema">ОНЛАЙН-КИНОТЕАТРЫ</string>
 </resources>

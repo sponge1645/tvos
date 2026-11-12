@@ -212,7 +212,7 @@ final class RemoteShortcutSettings extends ContextWrapper {
     private String label(String action) {
         switch (action) {
             case "default": return text(R.string.settings_remote_original);
-            case "vpn": return "INCY VPN";
+            case "vpn": return "VPN";
             case "settings": return text(R.string.home_settings);
             case "play": return text(R.string.settings_remote_play);
             case "next": return text(R.string.settings_remote_next);

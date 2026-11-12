@@ -17,6 +17,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 import io.tvos.settings.SettingsListRenderer;
+import io.tvos.settings.SettingsListViewport;
 import io.tvos.settings.SettingsLogoRenderer;
 import io.tvos.settings.SettingsRowRenderer;
 import io.tvos.settings.SettingsTextRenderer;
@@ -79,7 +80,7 @@ final class StorageSettings extends ContextWrapper {
             runOnUiThread(()->{if(closed||menu.exiting||token!=generation)return;items=ready;sizes.clear();loading=false;loadFailed=error;
                 int previous=menu.focus;for(int n=0;n<items.size();n++)if(items.get(n).pkg.equals(selected)){previous=n;break;}
                 menu.focus=Math.max(0,Math.min(previous,items.size()-1));menu.reveal();
-                for(int n=menu.offset;n<Math.min(items.size(),menu.offset+9);n++)size(items.get(n));
+                for(int n=menu.offset;n<Math.min(items.size(),menu.offset+10);n++)size(items.get(n));
                 select();menu.rowsReady=true;menu.invalidate();});
         });
     }
@@ -125,7 +126,8 @@ final class StorageSettings extends ContextWrapper {
         final Paint title=new Paint(3),value=new Paint(3),ink=new Paint(3),bitmapPaint=new Paint(3);
         final android.text.TextPaint label=new android.text.TextPaint(3);
         final RectF bounds=new RectF(),trash=new RectF(),image=new RectF();final Path clip=new Path();
-        final Spring focusSpring=new Spring(.3f,1,0);
+        final Spring focusSpring=new Spring(.3f,1,0),listScroll=new Spring(.3f,1,0);
+        final SettingsListViewport viewport=new SettingsListViewport();
         int focus,offset;float k=1;long last;int pressed=-1;
         final SettingsTransitions transitions=new SettingsTransitions();
         final java.util.function.IntUnaryOperator parent=page->page==1?0:-1;
@@ -134,8 +136,9 @@ final class StorageSettings extends ContextWrapper {
         final Runnable finishExit=()->{if(!closed)exit.run();};
         Menu(){super(activity);setFocusable(true);setFocusableInTouchMode(true);requestFocus();}
         void clear(){typography.clear();shadows.clear();}
-        void reveal(){offset=Math.max(0,Math.min(offset,focus));if(focus>=offset+9)offset=focus-8;}
-        @Override protected void onSizeChanged(int w,int h,int ow,int oh){k=w/1920f;clear();}
+        void reveal(){offset=Math.max(0,Math.min(offset,focus));if(focus>=offset+10)offset=focus-9;}
+        void rowBounds(int n){SettingsListRenderer.scrollingBounds(bounds,n,offset,listScroll.value,k);}
+        @Override protected void onSizeChanged(int w,int h,int ow,int oh){k=w/1920f;viewport.resize(960*k,186*k,w,h,k);clear();}
         void activate(){
             if(!ready())return;
             if(loadFailed){load();return;}
@@ -159,8 +162,8 @@ final class StorageSettings extends ContextWrapper {
         }
         @Override public boolean onTouchEvent(MotionEvent event){
             if(!ready())return true;
-            if(event.getAction()==MotionEvent.ACTION_DOWN){pressed=(int)((event.getY()/k-189)/84)+offset;return true;}
-            if(event.getAction()==MotionEvent.ACTION_UP){int hit=(int)((event.getY()/k-189)/84)+offset;
+            if(event.getAction()==MotionEvent.ACTION_DOWN){pressed=(int)Math.floor((event.getY()/k-189)/84+listScroll.value);return true;}
+            if(event.getAction()==MotionEvent.ACTION_UP){int hit=(int)Math.floor((event.getY()/k-189)/84+listScroll.value);
                 if(hit==pressed&&event.getX()>1000*k&&!loading&&!deleting){if(hit>=0&&hit<items.size()){focus=hit;reveal();select();if(event.getX()>1734*k)activate();invalidate();}}
                 return true;}
             return true;
@@ -178,6 +181,8 @@ final class StorageSettings extends ContextWrapper {
             drawTile(c,now);
             typography.drawDescription(c,description(),k,light,Ui.displaySemibold);
             focusSpring.target=transitions.focusReady(now)&&!exiting?1:0;if(reduced)focusSpring.snap(focusSpring.target);else if(focusSpring.step(dt))moving=true;
+            listScroll.target=offset;
+            if(reduced)listScroll.snap(offset);else if(listScroll.step(dt))moving=true;
             moving|=transitions.drawList(c,exiting?0:1,now,k,getWidth(),getHeight(),parent,this::drawTransitionPage);
             if(moving&&resumed)postInvalidateOnAnimation();
         }
@@ -188,16 +193,23 @@ final class StorageSettings extends ContextWrapper {
                 label.setColor(SettingsListRenderer.normalInk(light));c.drawText(text(loading?R.string.remote_loading:loadFailed?R.string.storage_load_failed:R.string.storage_empty),1080*k,230*k,label);
             }else{
                 label.setTextSize(28*k);label.setColor(SettingsListRenderer.secondaryInk(light));c.drawText(text(R.string.storage_apps),1080*k,164*k,label);label.setTextSize(36*k);
-                for(int n=offset;n<Math.min(items.size(),offset+9);n++){
-                    StorageApps.Item app=items.get(n);SettingsListRenderer.approvedBounds(bounds,n-offset,k);bounds.right-=100*k;
+                viewport.resize(960*k,186*k,getWidth(),getHeight(),k,listScroll.value<.01f?0:38,64);
+                viewport.draw(c,this::drawAppRows);
+            }
+        }
+        private void drawAppRows(Canvas c){
+                boolean light=drawLight;
+                int first=Math.max(0,(int)Math.floor(listScroll.value)-1);
+                int end=Math.min(items.size(),(int)Math.ceil(listScroll.value)+12);
+                for(int pass=0;pass<end-first;pass++){
+                    int n=SettingsListRenderer.paintRow(pass,first,end,focus);
+                    StorageApps.Item app=items.get(n);rowBounds(n);bounds.right-=100*k;
                     String shown=TextUtils.ellipsize(app.label,label,420*k,TextUtils.TruncateAt.END).toString();
                     row.set(shown,size(app),0);row.fitValue=true;renderer.draw(c,bounds,k,bounds.centerY()+Ui.halfCap(label),light,label,value,row);
                     float amount=n==focus?focusSpring.value:0;trash.set(1748*k,bounds.top-5*k,1846*k,bounds.bottom+5*k);
                     ink.setStyle(Paint.Style.FILL);ink.setColor(SettingsListRenderer.blend(light?0xFFC9E4F7:0xFF31444B,0xFFF5F5F7,amount));c.drawRoundRect(trash,trash.height()/2,trash.height()/2,ink);
                     drawTrash(c,trash.centerX(),trash.centerY(),app.removable?(amount>.5f?0xFF1C1C1E:SettingsListRenderer.normalInk(light)):0x66808080);
                 }
-            }
-
         }
         boolean reduced(){return getSharedPreferences("settings",MODE_PRIVATE).getBoolean("reduce_motion",false);}
         boolean ready(){return !exiting&&(reduced()||transitions.focusReady(SystemClock.uptimeMillis()));}

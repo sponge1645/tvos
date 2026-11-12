@@ -48,7 +48,7 @@ public class RemoteHarness {
  System.out.println("PASS: actual remote/Activity wiring, confirm aliases/hold/cancel/reset, TalkBack gating, Back/root fallthrough, horizontal edits/repeats, read-only About and modal ownership/sounds");
  }}'''
 with tempfile.TemporaryDirectory() as tmp:
- root=Path(tmp);write(root)
+ root=Path(tmp);(root/'DownloadGroups.java').write_text(Path('app/src/io/tvos/DownloadGroups.java').read_text().replace('package io.tvos;', ''));write(root)
  (root/'RemoteHarness.java').write_text(harness)
  for name in ['SettingsListWindow','SettingsScreen']:
   (root/(name+'.java')).write_text(Path('app/src/io/tvos/settings',name+'.java').read_text())

@@ -30,8 +30,14 @@ public class SearchHarness {
   JSONArray entries=new JSONArray();for(int i=0;i<15;i++)entries.put(new JSONObject().put("id",i).put("media_type",i==0?"person":"movie"));
   TmdbClient.response=new JSONObject().put("results",entries);
   List<Recs.Pick> trending=SearchData.trending();
-  check(trending.size()==10&&trending.get(0).id==1,"trending is bounded and excludes people");
+  check(trending.size()==12&&trending.get(0).id==1,"trending is bounded and excludes people");
   check(TmdbClient.path.equals("/trending/all/week?language=ru-RU"),"localized popular titles");
+  for(int section=1;section<4;section++){
+   List<Recs.Pick> rows=SearchData.suggestions(section);
+   check(rows.size()==12,"each additional section has twelve cards");
+   String path=section==1?"/movie/now_playing":section==2?"/tv/popular":"/movie/top_rated";
+   check(TmdbClient.path.equals(path+"?language=ru-RU"),"section uses correct localized endpoint");
+  }
   Recs.Pick pick=new Recs.Pick();pick.id=42;pick.kind="tv";
   TmdbClient.response=new JSONObject().put("overview","Synopsis").put("backdrop_path","/wide.jpg").put("genres",new JSONArray().put(new JSONObject().put("name","Drama")).put(new JSONObject().put("name","Comedy")));
   SearchData.Detail detail=SearchData.detail(pick);
